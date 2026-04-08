@@ -26,8 +26,15 @@ export interface Pin {
   upvotes: { accurate: number; helpful: number };
   annotations: Annotation[];
   resources: Resource[];
+  photoUrl?: string | null;
   createdAt: Date;
 }
+
+export const ERA_OPTIONS = [
+  "Pre-1850s", "1850s", "1860s", "1870s", "1880s", "1890s",
+  "1900s", "1910s", "1920s", "1930s", "1940s", "1950s",
+  "1960s", "1970s", "1980s", "1990s", "2000s", "2010s", "2020s",
+];
 
 export const TYPE_ICONS: Record<PinType, string> = {
   guided: "\u{1F9ED}",

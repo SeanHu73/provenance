@@ -2,7 +2,9 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "../lib/firebase";
+import { useAuth } from "../lib/AuthContext";
 import type { PinType } from "../lib/types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -231,6 +233,7 @@ export default function StorytellerFlow({
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [tapping, setTapping] = useState(true);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Metadata
@@ -306,6 +309,7 @@ export default function StorytellerFlow({
   function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
+      setImageFile(file);
       setImageUrl(URL.createObjectURL(file));
     }
   }
@@ -372,9 +376,22 @@ export default function StorytellerFlow({
     setOrder(no);
   }
 
+  const { user } = useAuth();
+
   async function handlePublish() {
     setPublishing(true);
     try {
+      // Upload photo to Firebase Storage if available
+      let photoUrl: string | null = null;
+      if (imageFile) {
+        const storageRef = ref(
+          storage,
+          `pins/${Date.now()}_${imageFile.name}`
+        );
+        await uploadBytes(storageRef, imageFile);
+        photoUrl = await getDownloadURL(storageRef);
+      }
+
       const annotations = orderedData.map((d) => ({
         x: d.x,
         y: d.y,
@@ -390,11 +407,15 @@ export default function StorytellerFlow({
         lat: mapCenter.lat,
         lng: mapCenter.lng,
         era: null,
-        contributor: { name: "You", role: "Storyteller" },
+        contributor: {
+          name: user?.displayName ?? "Anonymous",
+          role: "Storyteller",
+        },
         tags: [],
         upvotes: { accurate: 0, helpful: 0 },
         annotations,
         resources: [],
+        photoUrl,
         createdAt: serverTimestamp(),
       });
       onPublished();

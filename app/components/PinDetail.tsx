@@ -11,7 +11,7 @@ import {
   TYPE_COLORS,
 } from "../lib/types";
 
-function PhotoPlaceholder({
+function PinPhoto({
   pin,
   activeAnnotation,
   onAnnotationClick,
@@ -20,24 +20,39 @@ function PhotoPlaceholder({
   activeAnnotation: number | null;
   onAnnotationClick: (i: number) => void;
 }) {
-  const bgMap: Record<string, { bg: string; icon: string }> = {
+  const fallbackMap: Record<string, { bg: string; icon: string }> = {
     "Memorial Church mosaics": { bg: "#D5C4A1", icon: "\u26EA" },
     "The Cactus Garden's hidden origin": { bg: "#A8C99A", icon: "\u{1F335}" },
     "Where the oak grove stood": { bg: "#8B9E7C", icon: "\u{1F333}" },
     "What is this symbol?": { bg: "#C4B8A8", icon: "\u{1F523}" },
-    "Rodin sculpture garden — the casting debate": { bg: "#B8AFA3", icon: "\u{1F3DB}" },
+    "Rodin sculpture garden \u2014 the casting debate": { bg: "#B8AFA3", icon: "\u{1F3DB}" },
   };
-  const { bg, icon } = bgMap[pin.title] ?? { bg: "#ccc", icon: "\u{1F4CD}" };
+
+  const hasPhoto = !!pin.photoUrl;
+  const fallback = fallbackMap[pin.title] ?? { bg: "#ccc", icon: "\u{1F4CD}" };
 
   return (
     <div
-      className="relative w-full overflow-hidden flex items-center justify-center"
-      style={{
-        aspectRatio: "4/3",
-        background: `linear-gradient(135deg, ${bg} 0%, ${bg}dd 100%)`,
-      }}
+      className="relative w-full overflow-hidden"
+      style={{ aspectRatio: "4/3" }}
     >
-      <span className="text-7xl opacity-20">{icon}</span>
+      {hasPhoto ? (
+        <img
+          src={pin.photoUrl!}
+          alt={pin.title}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : (
+        <div
+          className="absolute inset-0 flex items-center justify-center"
+          style={{
+            background: `linear-gradient(135deg, ${fallback.bg} 0%, ${fallback.bg}dd 100%)`,
+          }}
+        >
+          <span className="text-7xl opacity-20">{fallback.icon}</span>
+        </div>
+      )}
+      {/* Annotation dots overlaid on photo */}
       {pin.annotations.map((a, i) => (
         <button
           key={i}
@@ -49,9 +64,15 @@ function PhotoPlaceholder({
             transform: "translate(-50%,-50%)",
             width: activeAnnotation === i ? 32 : 26,
             height: activeAnnotation === i ? 32 : 26,
-            background: activeAnnotation === i ? TYPE_COLORS.guided : "rgba(255,255,255,0.9)",
+            background:
+              activeAnnotation === i
+                ? TYPE_COLORS.guided
+                : "rgba(255,255,255,0.9)",
             color: activeAnnotation === i ? "#fff" : "#333",
-            border: activeAnnotation === i ? `2.5px solid ${TYPE_COLORS.guided}` : "2px solid rgba(0,0,0,0.25)",
+            border:
+              activeAnnotation === i
+                ? `2.5px solid ${TYPE_COLORS.guided}`
+                : "2px solid rgba(0,0,0,0.25)",
             boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
             zIndex: activeAnnotation === i ? 3 : 2,
           }}
@@ -63,21 +84,43 @@ function PhotoPlaceholder({
   );
 }
 
+interface PinDetailProps {
+  pin: Pin;
+  allPins: Pin[];
+  onClose: () => void;
+  onTagClick: (tag: string) => void;
+  onConnectedPinClick: (pin: Pin) => void;
+}
+
 export default function PinDetail({
   pin,
+  allPins,
   onClose,
-}: {
-  pin: Pin;
-  onClose: () => void;
-}) {
+  onTagClick,
+  onConnectedPinClick,
+}: PinDetailProps) {
   const [activeAnnotation, setActiveAnnotation] = useState<number | null>(null);
   const [showQuestion, setShowQuestion] = useState(false);
-  const [upvoted, setUpvoted] = useState<{ accurate: boolean; helpful: boolean }>({
+  const [explorationComplete, setExplorationComplete] = useState(false);
+  const [upvoted, setUpvoted] = useState<{
+    accurate: boolean;
+    helpful: boolean;
+  }>({
     accurate: false,
     helpful: false,
   });
 
-  const currentAnn = activeAnnotation !== null ? pin.annotations[activeAnnotation] : null;
+  const currentAnn =
+    activeAnnotation !== null ? pin.annotations[activeAnnotation] : null;
+
+  // Connected pins: share at least one tag, exclude self
+  const connectedPins =
+    pin.tags.length > 0
+      ? allPins.filter(
+          (p) =>
+            p.id !== pin.id && p.tags.some((t) => pin.tags.includes(t))
+        )
+      : [];
 
   async function handleUpvote(field: "accurate" | "helpful") {
     if (upvoted[field]) return;
@@ -91,6 +134,26 @@ export default function PinDetail({
     }
   }
 
+  function handleAnnotationClick(i: number) {
+    setActiveAnnotation(i);
+    setShowQuestion(false);
+    // If user clicked the last annotation after viewing it, mark exploration complete
+    if (i === pin.annotations.length - 1 && activeAnnotation === i) {
+      setExplorationComplete(true);
+    }
+  }
+
+  function handleNextAnnotation() {
+    if (activeAnnotation === null) return;
+    if (activeAnnotation < pin.annotations.length - 1) {
+      setActiveAnnotation(activeAnnotation + 1);
+      setShowQuestion(false);
+    } else {
+      setExplorationComplete(true);
+      setActiveAnnotation(null);
+    }
+  }
+
   return (
     <div className="flex flex-col h-full bg-white overflow-hidden">
       {/* Drag handle */}
@@ -99,21 +162,28 @@ export default function PinDetail({
       </div>
 
       <div className="flex-1 overflow-y-auto overscroll-contain">
-        {/* Photo */}
-        <PhotoPlaceholder
+        {/* Photo with annotation overlays */}
+        <PinPhoto
           pin={pin}
           activeAnnotation={activeAnnotation}
-          onAnnotationClick={(i) => {
-            setActiveAnnotation(i);
-            setShowQuestion(false);
-          }}
+          onAnnotationClick={handleAnnotationClick}
         />
 
         {/* Annotation panel */}
         {currentAnn && (
           <div className="mx-4 -mt-2 relative z-10 p-3 bg-blue-50 rounded-lg border border-blue-100">
-            <div className="text-xs text-blue-600 font-medium mb-1">
-              Annotation {activeAnnotation! + 1} of {pin.annotations.length}
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs text-blue-600 font-medium">
+                Annotation {activeAnnotation! + 1} of {pin.annotations.length}
+              </div>
+              <button
+                onClick={handleNextAnnotation}
+                className="text-xs text-blue-600 font-medium"
+              >
+                {activeAnnotation! < pin.annotations.length - 1
+                  ? "Next \u2192"
+                  : "Finish"}
+              </button>
             </div>
             <p className="text-sm leading-relaxed text-gray-800 mb-2">
               {currentAnn.note}
@@ -128,8 +198,19 @@ export default function PinDetail({
             )}
             {showQuestion && currentAnn.question && (
               <div className="p-2.5 bg-white rounded-md border border-blue-200 text-sm text-gray-700">
-                <p className="font-medium text-blue-700 mb-1">{currentAnn.question}</p>
-                <p className="text-gray-500 text-xs">Take a moment to look before moving on.</p>
+                <p className="font-medium text-blue-700 mb-1">
+                  {currentAnn.question}
+                </p>
+                {currentAnn.insight && (
+                  <p className="text-gray-600 text-sm mt-1.5 leading-relaxed">
+                    {currentAnn.insight}
+                  </p>
+                )}
+                {!currentAnn.insight && (
+                  <p className="text-gray-500 text-xs">
+                    Take a moment to look before moving on.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -151,7 +232,9 @@ export default function PinDetail({
                 {TYPE_LABELS[pin.type]}
               </span>
               {pin.era && (
-                <span className="text-xs text-gray-400 font-medium">{pin.era}</span>
+                <span className="text-xs text-gray-400 font-medium">
+                  {pin.era}
+                </span>
               )}
             </div>
             <h2 className="text-lg font-semibold text-gray-900 leading-tight">
@@ -164,11 +247,14 @@ export default function PinDetail({
             <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-500">
               {pin.contributor.name[0]}
             </div>
-            <span className="text-sm text-gray-700">{pin.contributor.name}</span>
+            <span className="text-sm text-gray-700">
+              {pin.contributor.name}
+            </span>
             <span
               className="text-xs font-medium px-2 py-0.5 rounded-full"
               style={{
-                background: (ROLE_COLORS[pin.contributor.role] ?? "#888") + "18",
+                background:
+                  (ROLE_COLORS[pin.contributor.role] ?? "#888") + "18",
                 color: ROLE_COLORS[pin.contributor.role] ?? "#888",
               }}
             >
@@ -177,32 +263,37 @@ export default function PinDetail({
           </div>
 
           {/* Description */}
-          <p className="text-sm leading-relaxed text-gray-600">{pin.description}</p>
+          <p className="text-sm leading-relaxed text-gray-600">
+            {pin.description}
+          </p>
 
           {/* Guided CTA */}
-          {pin.type === "guided" && pin.annotations.length > 0 && (
-            <button
-              onClick={() => {
-                setActiveAnnotation(0);
-                setShowQuestion(false);
-              }}
-              className="w-full py-3 rounded-lg text-sm font-semibold text-white"
-              style={{ background: TYPE_COLORS.guided }}
-            >
-              Start guided exploration
-            </button>
-          )}
+          {pin.type === "guided" &&
+            pin.annotations.length > 0 &&
+            !explorationComplete && (
+              <button
+                onClick={() => {
+                  setActiveAnnotation(0);
+                  setShowQuestion(false);
+                }}
+                className="w-full py-3 rounded-lg text-sm font-semibold text-white"
+                style={{ background: TYPE_COLORS.guided }}
+              >
+                Start guided exploration
+              </button>
+            )}
 
-          {/* Tags */}
+          {/* Tags — tappable */}
           {pin.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {pin.tags.map((tag) => (
-                <span
+                <button
                   key={tag}
-                  className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium"
+                  onClick={() => onTagClick(tag)}
+                  className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium hover:bg-blue-50 hover:text-blue-600 transition-colors"
                 >
                   {tag}
-                </span>
+                </button>
               ))}
             </div>
           )}
@@ -212,17 +303,39 @@ export default function PinDetail({
             <button
               onClick={() => handleUpvote("accurate")}
               className="flex items-center gap-1.5 text-sm transition-colors"
-              style={{ color: upvoted.accurate ? TYPE_COLORS.guided : "#9ca3af" }}
+              style={{
+                color: upvoted.accurate ? TYPE_COLORS.guided : "#9ca3af",
+              }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" /></svg>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" />
+              </svg>
               {pin.upvotes.accurate + (upvoted.accurate ? 1 : 0)} accurate
             </button>
             <button
               onClick={() => handleUpvote("helpful")}
               className="flex items-center gap-1.5 text-sm transition-colors"
-              style={{ color: upvoted.helpful ? TYPE_COLORS.guided : "#9ca3af" }}
+              style={{
+                color: upvoted.helpful ? TYPE_COLORS.guided : "#9ca3af",
+              }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 9V5a3 3 0 00-6 0v4H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2 2 0 00-2-2h-5z" /></svg>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M14 9V5a3 3 0 00-6 0v4H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2 2 0 00-2-2h-5z" />
+              </svg>
               {pin.upvotes.helpful + (upvoted.helpful ? 1 : 0)} helpful
             </button>
           </div>
@@ -240,7 +353,13 @@ export default function PinDetail({
                     className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-lg text-sm text-gray-700"
                   >
                     <span className="text-gray-400">
-                      {r.type === "archive" ? "\u{1F4DA}" : r.type === "book" ? "\u{1F4D6}" : r.type === "museum" ? "\u{1F3DB}" : "\u{1F4CB}"}
+                      {r.type === "archive"
+                        ? "\u{1F4DA}"
+                        : r.type === "book"
+                          ? "\u{1F4D6}"
+                          : r.type === "museum"
+                            ? "\u{1F3DB}"
+                            : "\u{1F4CB}"}
                     </span>
                     {r.label}
                   </div>
@@ -248,6 +367,50 @@ export default function PinDetail({
               </div>
             </div>
           )}
+
+          {/* Connected pins — shown after guided exploration or always for non-guided */}
+          {connectedPins.length > 0 &&
+            (explorationComplete || pin.type !== "guided") && (
+              <div>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  Nearby related pins
+                </h3>
+                <div className="space-y-1.5">
+                  {connectedPins.slice(0, 4).map((cp) => (
+                    <button
+                      key={cp.id}
+                      onClick={() => onConnectedPinClick(cp)}
+                      className="flex items-center gap-2.5 w-full p-2.5 bg-gray-50 rounded-lg text-left hover:bg-blue-50 transition-colors"
+                    >
+                      <span className="text-base">
+                        {TYPE_ICONS[cp.type]}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">
+                          {cp.title}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {cp.tags
+                            .filter((t) => pin.tags.includes(t))
+                            .slice(0, 2)
+                            .join(", ")}
+                        </p>
+                      </div>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#9ca3af"
+                        strokeWidth="2"
+                      >
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
           {/* Add observation prompt */}
           <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 text-center">
@@ -266,7 +429,16 @@ export default function PinDetail({
         onClick={onClose}
         className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center text-gray-500 z-20"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+        >
+          <path d="M18 6L6 18M6 6l12 12" />
+        </svg>
       </button>
     </div>
   );
