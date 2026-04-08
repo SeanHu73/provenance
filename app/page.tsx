@@ -9,6 +9,7 @@ import PinDetail from "./components/PinDetail";
 import BottomSheet from "./components/BottomSheet";
 import Header from "./components/Header";
 import BottomNav from "./components/BottomNav";
+import StorytellerFlow from "./components/StorytellerFlow";
 
 export default function Home() {
   const [pins, setPins] = useState<Pin[]>([]);
@@ -16,6 +17,7 @@ export default function Home() {
   const [mode, setMode] = useState<"explorer" | "storyteller">("explorer");
   const [activeTab, setActiveTab] = useState("map");
   const [seeding, setSeeding] = useState(false);
+  const [showStorytellerFlow, setShowStorytellerFlow] = useState(false);
 
   useEffect(() => {
     loadPins();
@@ -64,10 +66,27 @@ export default function Home() {
 
             {/* Storyteller FAB */}
             {mode === "storyteller" && (
-              <button className="absolute bottom-4 right-4 z-10 flex items-center gap-2 px-4 py-3 bg-[#0C447C] text-white rounded-full shadow-lg text-sm font-semibold">
+              <button
+                onClick={() => setShowStorytellerFlow(true)}
+                className="absolute bottom-4 right-4 z-10 flex items-center gap-2 px-4 py-3 bg-[#0C447C] text-white rounded-full shadow-lg text-sm font-semibold"
+              >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
                 Add to map
               </button>
+            )}
+
+            {/* Storyteller Flow */}
+            {showStorytellerFlow && (
+              <div className="absolute inset-0 z-40 bg-white">
+                <StorytellerFlow
+                  mapCenter={{ lat: 37.4275, lng: -122.17 }}
+                  onClose={() => setShowStorytellerFlow(false)}
+                  onPublished={() => {
+                    setShowStorytellerFlow(false);
+                    loadPins();
+                  }}
+                />
+              </div>
             )}
 
             {/* Empty state */}
