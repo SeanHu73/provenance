@@ -84,18 +84,32 @@ function UserLocationDot({ position }: { position: { lat: number; lng: number } 
   );
 }
 
-function LocateButton() {
+function LocateButton({
+  following,
+  onToggleFollow,
+}: {
+  following: boolean;
+  onToggleFollow: () => void;
+}) {
   const map = useMap();
   const [locating, setLocating] = useState(false);
 
-  function handleLocate() {
+  function handleClick() {
+    if (following) {
+      // Already following — turn it off
+      onToggleFollow();
+      return;
+    }
+
     if (!navigator.geolocation || !map) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         map.panTo({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        map.setZoom(16);
+        // Zoom 19 ≈ ~100 yards across — street-level for place-based discovery
+        map.setZoom(19);
         setLocating(false);
+        onToggleFollow();
       },
       () => setLocating(false),
       { enableHighAccuracy: true, timeout: 10000 }
@@ -104,16 +118,25 @@ function LocateButton() {
 
   return (
     <button
-      onClick={handleLocate}
-      className="absolute bottom-4 left-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center"
-      title="Show my location"
+      onClick={handleClick}
+      className="absolute bottom-4 left-4 z-10 w-10 h-10 rounded-full shadow-lg flex items-center justify-center"
+      style={{
+        background: following ? "#4285F4" : "#fff",
+      }}
+      title={following ? "Stop following" : "Follow my location"}
     >
       {locating ? (
         <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
       ) : (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4285F4" strokeWidth="2.5">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill={following ? "#fff" : "none"}
+          stroke={following ? "#fff" : "#4285F4"}
+          strokeWidth="2.5"
+        >
+          <polygon points="12,2 19,21 12,17 5,21" />
         </svg>
       )}
     </button>
@@ -121,28 +144,36 @@ function LocateButton() {
 }
 
 function UserLocationTracker({
+  following,
   onLocationUpdate,
 }: {
+  following: boolean;
   onLocationUpdate: (pos: { lat: number; lng: number } | null) => void;
 }) {
+  const map = useMap();
+
   useEffect(() => {
     if (!navigator.geolocation) return;
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        onLocationUpdate({
+        const loc = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
-        });
+        };
+        onLocationUpdate(loc);
+        if (following && map) {
+          map.panTo(loc);
+        }
       },
       () => {
         // Permission denied or error — no dot shown
       },
-      { enableHighAccuracy: true, maximumAge: 5000 }
+      { enableHighAccuracy: true, maximumAge: 3000 }
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [onLocationUpdate]);
+  }, [onLocationUpdate, following, map]);
 
   return null;
 }
@@ -155,6 +186,7 @@ export default function MapView({
 }: MapViewProps) {
   const mapId = "provenance-map";
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [following, setFollowing] = useState(false);
 
   const handleLocationUpdate = useCallback(
     (pos: { lat: number; lng: number } | null) => setUserLocation(pos),
@@ -175,7 +207,7 @@ export default function MapView({
           disableDefaultUI={true}
           className="w-full h-full"
         >
-          <UserLocationTracker onLocationUpdate={handleLocationUpdate} />
+          <UserLocationTracker following={following} onLocationUpdate={handleLocationUpdate} />
 
           {userLocation && <UserLocationDot position={userLocation} />}
 
@@ -190,7 +222,10 @@ export default function MapView({
           ))}
         </Map>
 
-        <LocateButton />
+        <LocateButton
+          following={following}
+          onToggleFollow={() => setFollowing((f) => !f)}
+        />
       </div>
     </APIProvider>
   );
