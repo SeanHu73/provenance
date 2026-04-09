@@ -102,6 +102,7 @@ export default function PinDetail({
   const [activeAnnotation, setActiveAnnotation] = useState<number | null>(null);
   const [showQuestion, setShowQuestion] = useState(false);
   const [explorationComplete, setExplorationComplete] = useState(false);
+  const [showHistorical, setShowHistorical] = useState(false);
   const [upvoted, setUpvoted] = useState<{
     accurate: boolean;
     helpful: boolean;
@@ -163,11 +164,44 @@ export default function PinDetail({
 
       <div className="flex-1 overflow-y-auto overscroll-contain">
         {/* Photo with annotation overlays */}
-        <PinPhoto
-          pin={pin}
+        {!showHistorical ? (
+          <PinPhoto
+            pin={pin}
           activeAnnotation={activeAnnotation}
           onAnnotationClick={handleAnnotationClick}
         />
+        ) : (
+          <div className="relative w-full" style={{ aspectRatio: "4/3" }}>
+            <img
+              src={pin.historicalPhotoUrl!}
+              alt="Historical"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium">
+              Historical photo
+            </div>
+          </div>
+        )}
+
+        {/* Historical photo toggle */}
+        {pin.historicalPhotoUrl && (
+          <div className="flex justify-center py-1.5">
+            <button
+              onClick={() => setShowHistorical(!showHistorical)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
+              style={{
+                background: showHistorical ? "#FEF3C7" : "#F3F4F6",
+                color: showHistorical ? "#D97706" : "#6B7280",
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              {showHistorical ? "Show current" : "Compare with old photo"}
+            </button>
+          </div>
+        )}
 
         {/* Annotation panel */}
         {currentAnn && (

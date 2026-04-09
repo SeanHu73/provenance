@@ -234,7 +234,14 @@ export default function StorytellerFlow({
   const [tapping, setTapping] = useState(true);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [historicalImageUrl, setHistoricalImageUrl] = useState<string | null>(null);
+  const [historicalImageFile, setHistoricalImageFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const historicalFileRef = useRef<HTMLInputElement>(null);
+
+  // Pin location (tap on map to place)
+  const [pinLocation, setPinLocation] = useState<{ lat: number; lng: number }>(mapCenter);
+  const [pickingLocation, setPickingLocation] = useState(false);
 
   // Metadata
   const [title, setTitle] = useState("");
@@ -314,6 +321,14 @@ export default function StorytellerFlow({
     }
   }
 
+  function handleHistoricalImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      setHistoricalImageFile(file);
+      setHistoricalImageUrl(URL.createObjectURL(file));
+    }
+  }
+
   async function runAI() {
     setAiLoading(true);
     try {
@@ -381,15 +396,20 @@ export default function StorytellerFlow({
   async function handlePublish() {
     setPublishing(true);
     try {
-      // Upload photo to Firebase Storage if available
+      // Upload photos to Firebase Storage
       let photoUrl: string | null = null;
+      let historicalPhotoUrl: string | null = null;
+
       if (imageFile) {
-        const storageRef = ref(
-          storage,
-          `pins/${Date.now()}_${imageFile.name}`
-        );
+        const storageRef = ref(storage, `pins/${Date.now()}_${imageFile.name}`);
         await uploadBytes(storageRef, imageFile);
         photoUrl = await getDownloadURL(storageRef);
+      }
+
+      if (historicalImageFile) {
+        const storageRef = ref(storage, `pins/${Date.now()}_historical_${historicalImageFile.name}`);
+        await uploadBytes(storageRef, historicalImageFile);
+        historicalPhotoUrl = await getDownloadURL(storageRef);
       }
 
       const annotations = orderedData.map((d) => ({
@@ -404,8 +424,8 @@ export default function StorytellerFlow({
         title: title || "Untitled pin",
         type: pinType,
         description: description || orderedData.map((d) => d.note).join(" "),
-        lat: mapCenter.lat,
-        lng: mapCenter.lng,
+        lat: pinLocation.lat,
+        lng: pinLocation.lng,
         era: null,
         contributor: {
           name: user?.displayName ?? "Anonymous",
@@ -416,6 +436,7 @@ export default function StorytellerFlow({
         annotations,
         resources: [],
         photoUrl,
+        historicalPhotoUrl,
         createdAt: serverTimestamp(),
       });
       onPublished();
@@ -547,21 +568,125 @@ export default function StorytellerFlow({
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {/* Photo upload or canvas */}
-          <div className="px-4 pt-2">
-            {!imageUrl && (
+          {/* Location picker */}
+          {pickingLocation && (
+            <div className="px-4 pt-2 pb-2">
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <p className="text-sm font-medium text-blue-700 mb-1">
+                  Tap the map to place your pin
+                </p>
+                <p className="text-xs text-blue-600 mb-2">
+                  Place it where the subject is, not where you're standing.
+                </p>
+                <div
+                  className="relative w-full rounded-lg overflow-hidden bg-gray-200"
+                  style={{ aspectRatio: "16/9" }}
+                >
+                  <iframe
+                    src={`https://maps.google.com/maps?q=${pinLocation.lat},${pinLocation.lng}&z=17&output=embed`}
+                    className="absolute inset-0 w-full h-full border-0 pointer-events-none"
+                  />
+                  {/* Crosshair overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-8 h-8 relative">
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-red-500" />
+                      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-red-500" />
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 w-3 bg-red-500" />
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 h-0.5 w-3 bg-red-500" />
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-2 border-red-500" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <div className="flex-1 space-y-1">
+                    <label className="text-[10px] text-blue-600">Latitude</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={pinLocation.lat}
+                      onChange={(e) => setPinLocation((prev) => ({ ...prev, lat: parseFloat(e.target.value) || prev.lat }))}
+                      className="w-full text-xs rounded border border-blue-200 px-2 py-1 focus:outline-none focus:border-blue-400"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <label className="text-[10px] text-blue-600">Longitude</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={pinLocation.lng}
+                      onChange={(e) => setPinLocation((prev) => ({ ...prev, lng: parseFloat(e.target.value) || prev.lng }))}
+                      className="w-full text-xs rounded border border-blue-200 px-2 py-1 focus:outline-none focus:border-blue-400"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPickingLocation(false)}
+                  className="w-full mt-2 py-2 rounded-md bg-blue-600 text-white text-xs font-medium"
+                >
+                  Confirm location
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!pickingLocation && (
+            <div className="px-4 pt-2">
               <button
-                onClick={() => fileRef.current?.click()}
-                className="w-full py-3 mb-2 rounded-lg border-2 border-dashed border-gray-200 text-sm text-gray-400 flex items-center justify-center gap-2"
+                onClick={() => setPickingLocation(true)}
+                className="w-full py-2 mb-2 rounded-lg border border-gray-200 text-xs text-gray-500 flex items-center justify-center gap-1.5"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <path d="M21 15l-5-5L5 21" />
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                  <circle cx="12" cy="10" r="3" />
                 </svg>
-                Add a photo
+                {pinLocation.lat === mapCenter.lat && pinLocation.lng === mapCenter.lng
+                  ? "Set pin location on map"
+                  : `Pin: ${pinLocation.lat.toFixed(4)}, ${pinLocation.lng.toFixed(4)} — tap to change`}
               </button>
+            </div>
+          )}
+
+          {/* Photo upload */}
+          <div className="px-4 pt-1">
+            {!imageUrl && (
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="flex-1 py-3 rounded-lg border-2 border-dashed border-gray-200 text-sm text-gray-400 flex items-center justify-center gap-2"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                  Take photo
+                </button>
+                <button
+                  onClick={() => {
+                    // Create a temporary input without capture to open gallery
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) {
+                        setImageFile(file);
+                        setImageUrl(URL.createObjectURL(file));
+                      }
+                    };
+                    input.click();
+                  }}
+                  className="flex-1 py-3 rounded-lg border-2 border-dashed border-gray-200 text-sm text-gray-400 flex items-center justify-center gap-2"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <path d="M21 15l-5-5L5 21" />
+                  </svg>
+                  Upload
+                </button>
+              </div>
             )}
+            {/* Hidden camera input */}
             <input
               ref={fileRef}
               type="file"
@@ -580,6 +705,63 @@ export default function StorytellerFlow({
                 setActiveIdx(i);
                 setTapping(false);
               }}
+            />
+
+            {/* Change photo button */}
+            {imageUrl && (
+              <button
+                onClick={() => {
+                  setImageUrl(null);
+                  setImageFile(null);
+                }}
+                className="text-xs text-gray-400 mt-1 mb-1"
+              >
+                Change photo
+              </button>
+            )}
+          </div>
+
+          {/* Historical photo for comparison */}
+          <div className="px-4 pt-1">
+            {!historicalImageUrl ? (
+              <button
+                onClick={() => historicalFileRef.current?.click()}
+                className="w-full py-2 mb-2 rounded-lg border border-dashed border-amber-200 text-xs text-amber-500 flex items-center justify-center gap-1.5"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+                Add a historical photo for comparison (optional)
+              </button>
+            ) : (
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-amber-600">Historical photo</span>
+                  <button
+                    onClick={() => {
+                      setHistoricalImageUrl(null);
+                      setHistoricalImageFile(null);
+                    }}
+                    className="text-[10px] text-gray-400"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <img
+                  src={historicalImageUrl}
+                  alt="Historical"
+                  className="w-full rounded-lg object-cover"
+                  style={{ aspectRatio: "4/3" }}
+                />
+              </div>
+            )}
+            <input
+              ref={historicalFileRef}
+              type="file"
+              accept="image/*"
+              onChange={handleHistoricalImage}
+              className="hidden"
             />
           </div>
 

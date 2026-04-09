@@ -27,6 +27,7 @@ export interface Pin {
   annotations: Annotation[];
   resources: Resource[];
   photoUrl?: string | null;
+  historicalPhotoUrl?: string | null;
   createdAt: Date;
 }
 
