@@ -6,178 +6,45 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { APIProvider, Map } from "@vis.gl/react-google-maps";
 import { db, storage } from "../lib/firebase";
 import { useAuth } from "../lib/AuthContext";
-import type { PinType } from "../lib/types";
+import {
+  CONTEXT_TYPES,
+  ERA_OPTIONS,
+  getInitials,
+  type ContextType,
+  type GuideType,
+  type Guide,
+} from "../lib/types";
+import { QUESTION_JOURNEYS, fillTemplate } from "../lib/question-journeys";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────
 
-interface Point {
-  x: number;
+type Phase =
+  | "context"
+  | "guide"
+  | "place"
+  | "questions"
+  | "arrange"
+  | "preview";
+
+interface AnswerDraft {
+  stopId: string;
+  questionText: string; // already filled-in (no [GUIDE] placeholders)
+  answer: string;
+  x: number; // photo annotation coord (0-100)
   y: number;
-  note: string;
-  connection: string;
+  lookFirst: boolean;
+  lookPrompt: string;
+  historicalImageFile: File | null;
+  historicalImageUrl: string | null;
 }
 
-interface AISuggestions {
-  questions: string[];
-  insights: string[];
-  bigPicture: string;
-  sequenceRationale: string;
-  connections: { from: number; to: number; thread: string }[];
+interface StorytellerFlowProps {
+  mapCenter: { lat: number; lng: number };
+  onClose: () => void;
+  onPublished: () => void;
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-const ORIENT_STEPS = [
-  {
-    label: "Explorer sees a question",
-    text: '"What do you notice about the colours in the mosaic?"',
-    type: "question" as const,
-  },
-  {
-    label: "They look at the real thing, then tap to reveal",
-    text: '"The left section was restored after 1906 — original glass on the right, modern replacement on the left."',
-    type: "insight" as const,
-  },
-  {
-    label: "The insight builds on the last one",
-    text: '"Each point adds a piece. By the end, the explorer sees the building differently."',
-    type: "summary" as const,
-  },
-];
-
-const CONNECTION_PROMPTS = [
-  "How does this relate to what you described at point {prev}?",
-  "Is this the same story as point {prev}, or a different layer?",
-  "Would an explorer need to understand point {prev} before this one makes sense?",
-  "What changed between what you described at point {prev} and what you're describing here?",
-];
-
-function getConnectionPrompt(idx: number) {
-  if (idx === 0) return null;
-  return CONNECTION_PROMPTS[(idx - 1) % CONNECTION_PROMPTS.length].replace(
-    "{prev}",
-    String(idx)
-  );
-}
-
-// ─── Sub-components ──────────────────────────────────────────────────────────
-
-function Spinner({ text }: { text: string }) {
-  return (
-    <div className="flex items-center gap-2 py-2.5">
-      <div className="w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin" />
-      <span className="text-sm text-gray-500">{text}</span>
-    </div>
-  );
-}
-
-function PhotoCanvas({
-  points,
-  activeIdx,
-  tapping,
-  imageUrl,
-  onTap,
-  onPointClick,
-}: {
-  points: Point[];
-  activeIdx: number | null;
-  tapping: boolean;
-  imageUrl: string | null;
-  onTap: (x: number, y: number) => void;
-  onPointClick: (i: number) => void;
-}) {
-  function handleClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (!tapping) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width) * 100;
-    const y = ((e.clientY - r.top) / r.height) * 100;
-    onTap(x, y);
-  }
-
-  function handleTouch(e: React.TouchEvent<HTMLDivElement>) {
-    if (!tapping) return;
-    e.preventDefault();
-    const r = e.currentTarget.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = ((touch.clientX - r.left) / r.width) * 100;
-    const y = ((touch.clientY - r.top) / r.height) * 100;
-    onTap(x, y);
-  }
-
-  return (
-    <div
-      className="relative w-full overflow-hidden"
-      style={{
-        aspectRatio: "4/3",
-        cursor: tapping ? "crosshair" : "default",
-      }}
-      onClick={handleClick}
-      onTouchEnd={handleTouch}
-    >
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt="Your photo"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-[#C9B896] via-[#B8A882] to-[#D1C4A0] flex items-center justify-center">
-          <span className="text-7xl opacity-10">📷</span>
-        </div>
-      )}
-      {tapping && (
-        <div className="absolute inset-0 border-2 border-dashed border-blue-400/40 pointer-events-none" />
-      )}
-      {tapping && points.length === 0 && (
-        <div className="absolute bottom-3 left-0 right-0 text-center pointer-events-none">
-          <span className="px-3 py-1.5 rounded-full bg-black/50 text-white text-xs">
-            Tap where you want explorers to look first
-          </span>
-        </div>
-      )}
-      {points.map((p, i) => {
-        const active = activeIdx === i;
-        const done = !!p.note?.trim();
-        return (
-          <button
-            key={i}
-            onClick={(e) => {
-              e.stopPropagation();
-              onPointClick(i);
-            }}
-            className="absolute flex items-center justify-center rounded-full transition-all"
-            style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              transform: "translate(-50%,-50%)",
-              width: active ? 30 : 24,
-              height: active ? 30 : 24,
-              background: active
-                ? "#fff"
-                : done
-                  ? "rgba(255,255,255,0.85)"
-                  : "rgba(255,255,255,0.5)",
-              border: active
-                ? "2.5px solid #185FA5"
-                : done
-                  ? "2px solid #0F6E56"
-                  : "2px dashed rgba(0,0,0,0.25)",
-              color: active ? "#185FA5" : done ? "#0F6E56" : "rgba(0,0,0,0.3)",
-              fontSize: active ? 12 : 10,
-              fontWeight: 600,
-              zIndex: active ? 3 : 2,
-              boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
-            }}
-          >
-            {done && !active ? "✓" : i + 1}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Voice Input Hook ────────────────────────────────────────────────────────
+// ─── Voice Input Hook ───────────────────────────────────────────────────────
 
 function useVoiceInput(onResult: (text: string) => void) {
   const [listening, setListening] = useState(false);
@@ -212,107 +79,199 @@ function useVoiceInput(onResult: (text: string) => void) {
   return { listening, toggle };
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
+// ─── Annotation Photo (storyteller side) ────────────────────────────────────
 
-interface StorytellerFlowProps {
-  mapCenter: { lat: number; lng: number };
-  onClose: () => void;
-  onPublished: () => void;
+function StorytellerPhoto({
+  imageUrl,
+  answers,
+  activeIdx,
+  tapping,
+  onTap,
+}: {
+  imageUrl: string | null;
+  answers: AnswerDraft[];
+  activeIdx: number | null;
+  tapping: boolean;
+  onTap: (x: number, y: number) => void;
+}) {
+  function handleClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (!tapping) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * 100;
+    const y = ((e.clientY - r.top) / r.height) * 100;
+    onTap(x, y);
+  }
+  function handleTouch(e: React.TouchEvent<HTMLDivElement>) {
+    if (!tapping) return;
+    e.preventDefault();
+    const r = e.currentTarget.getBoundingClientRect();
+    const t = e.touches[0];
+    const x = ((t.clientX - r.left) / r.width) * 100;
+    const y = ((t.clientY - r.top) / r.height) * 100;
+    onTap(x, y);
+  }
+  return (
+    <div
+      className="relative w-full overflow-hidden"
+      style={{ aspectRatio: "4/3", cursor: tapping ? "crosshair" : "default" }}
+      onClick={handleClick}
+      onTouchEnd={handleTouch}
+    >
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt="Your photo"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-br from-[#C9B896] via-[#B8A882] to-[#D1C4A0] flex items-center justify-center">
+          <span className="text-7xl opacity-10">📷</span>
+        </div>
+      )}
+      {tapping && (
+        <div className="absolute inset-0 border-2 border-dashed border-blue-400/60 pointer-events-none" />
+      )}
+      {tapping && (
+        <div className="absolute bottom-3 left-0 right-0 text-center pointer-events-none">
+          <span className="px-3 py-1.5 rounded-full bg-black/60 text-white text-[13px]">
+            Tap where you want the group to look
+          </span>
+        </div>
+      )}
+      {answers.map((a, i) => (
+        <div
+          key={i}
+          className="absolute flex items-center justify-center rounded-full font-semibold text-[13px]"
+          style={{
+            left: `${a.x}%`,
+            top: `${a.y}%`,
+            transform: "translate(-50%,-50%)",
+            width: activeIdx === i ? 32 : 26,
+            height: activeIdx === i ? 32 : 26,
+            background: activeIdx === i ? "#0C447C" : "rgba(255,255,255,0.92)",
+            color: activeIdx === i ? "#fff" : "#333",
+            border:
+              activeIdx === i
+                ? "2.5px solid #0C447C"
+                : "2px solid rgba(0,0,0,0.25)",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
+            zIndex: activeIdx === i ? 3 : 2,
+          }}
+        >
+          {i + 1}
+        </div>
+      ))}
+    </div>
+  );
 }
+
+// ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function StorytellerFlow({
   mapCenter,
   onClose,
   onPublished,
 }: StorytellerFlowProps) {
-  // Phase
-  const [phase, setPhase] = useState<"orient" | "build" | "connect" | "preview">("orient");
-  const [orientStep, setOrientStep] = useState(0);
+  const { user } = useAuth();
 
-  // Build
-  const [points, setPoints] = useState<Point[]>([]);
-  const [activeIdx, setActiveIdx] = useState<number | null>(null);
-  const [tapping, setTapping] = useState(true);
+  // ── Phase ──
+  const [phase, setPhase] = useState<Phase>("context");
+
+  // ── Step 1: Context type ──
+  const [contextType, setContextType] = useState<ContextType | null>(null);
+
+  // ── Step 2: Guide ──
+  const [guideType, setGuideType] = useState<GuideType | null>(null);
+  const [guideName, setGuideName] = useState("");
+  const [guideRole, setGuideRole] = useState("");
+  const [guideEra, setGuideEra] = useState("");
+  const [guideRelationship, setGuideRelationship] = useState("");
+  const [guidePerspective, setGuidePerspective] = useState("");
+  const [guideBasedOn, setGuideBasedOn] = useState("");
+
+  // ── Step 3: Place ──
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [historicalImageUrl, setHistoricalImageUrl] = useState<string | null>(null);
-  const [historicalImageFile, setHistoricalImageFile] = useState<File | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const historicalFileRef = useRef<HTMLInputElement>(null);
-
-  // Pin location (tap on map to place)
-  const [pinLocation, setPinLocation] = useState<{ lat: number; lng: number }>(mapCenter);
+  const [pinLocation, setPinLocation] = useState(mapCenter);
   const [pickingLocation, setPickingLocation] = useState(false);
-
-  // Metadata
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [pinType, setPinType] = useState<PinType>("guided");
+  const [era, setEra] = useState<string>("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  // Connect (AI)
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiDone, setAiDone] = useState(false);
-  const [questions, setQuestions] = useState<string[]>([]);
-  const [insights, setInsights] = useState<string[]>([]);
-  const [bigPicture, setBigPicture] = useState("");
-  const [seqRationale, setSeqRationale] = useState("");
-  const [aiConnections, setAiConnections] = useState<
-    { from: number; to: number; thread: string }[]
-  >([]);
-  const [order, setOrder] = useState<number[]>([]);
-  const [editingField, setEditingField] = useState<string | null>(null);
-
-  // Preview
-  const [prevIdx, setPrevIdx] = useState<number | null>(null);
-  const [prevPhase, setPrevPhase] = useState(0);
-
-  // Publishing
-  const [publishing, setPublishing] = useState(false);
-
-  // Voice
-  const voiceCallback = useCallback(
-    (transcript: string) => {
-      if (activeIdx === null) return;
-      setPoints((prev) => {
-        const next = [...prev];
-        next[activeIdx] = {
-          ...next[activeIdx],
-          note: next[activeIdx].note
-            ? next[activeIdx].note + " " + transcript
-            : transcript,
-        };
-        return next;
-      });
-    },
-    [activeIdx]
+  // ── Step 4: Question journey answers ──
+  const [answers, setAnswers] = useState<AnswerDraft[]>([]);
+  const [currentStopIdx, setCurrentStopIdx] = useState(0);
+  // For the current stop: which question variant (or "custom") and the draft
+  const [questionChoice, setQuestionChoice] = useState<number | "custom">(0);
+  const [customQuestion, setCustomQuestion] = useState("");
+  const [draftAnswer, setDraftAnswer] = useState("");
+  const [draftLookFirst, setDraftLookFirst] = useState(false);
+  const [draftLookPrompt, setDraftLookPrompt] = useState("");
+  const [draftCoord, setDraftCoord] = useState<{ x: number; y: number } | null>(
+    null
   );
+  const [draftHistoricalUrl, setDraftHistoricalUrl] = useState<string | null>(
+    null
+  );
+  const [draftHistoricalFile, setDraftHistoricalFile] = useState<File | null>(
+    null
+  );
+  const histFileRef = useRef<HTMLInputElement>(null);
+  const [tappingPhoto, setTappingPhoto] = useState(false);
+
+  // ── Step 5: Arrange ──
+  const [order, setOrder] = useState<number[]>([]);
+
+  // ── Publishing ──
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+
+  // ── Voice ──
+  const voiceCallback = useCallback((transcript: string) => {
+    setDraftAnswer((prev) => (prev ? prev + " " + transcript : transcript));
+  }, []);
   const { listening, toggle: toggleVoice } = useVoiceInput(voiceCallback);
 
-  // Derived
-  const filledCount = points.filter((p) => p.note.trim()).length;
-  const orderedData = order.map((i) => ({
-    ...points[i],
-    question: questions[i] ?? "",
-    insight: insights[i] ?? "",
-    origIdx: i,
-  }));
+  // ── Derived ──
+  const journey = contextType ? QUESTION_JOURNEYS[contextType] : null;
+  const currentStop = journey?.stops[currentStopIdx] ?? null;
+  const guideForTemplate = {
+    name: guideName || "the guide",
+    era: guideEra || "their time",
+    role: guideRole || "guide",
+  };
+  const guideObj: Guide | null =
+    guideType && guideName
+      ? {
+          name: guideName,
+          role: guideRole,
+          era: guideEra,
+          relationship: guideRelationship,
+          perspective: guidePerspective,
+          type: guideType,
+          avatarInitials: getInitials(guideName),
+          ...(guideType === "composite" && guideBasedOn
+            ? { basedOn: guideBasedOn }
+            : {}),
+        }
+      : null;
+
+  // Pre-fill self-guide from auth user when they pick "myself"
+  useEffect(() => {
+    if (guideType === "self" && user) {
+      if (!guideName && user.displayName) setGuideName(user.displayName);
+      if (!guideRole) setGuideRole("Storyteller");
+    }
+  }, [guideType, user, guideName, guideRole]);
+
+  // Suggest look-first when entering a new stop
+  useEffect(() => {
+    if (currentStop) {
+      setDraftLookFirst(currentStop.suggestLookFirst ?? false);
+    }
+  }, [currentStop]);
 
   // ── Handlers ──
-
-  function addPoint(x: number, y: number) {
-    const np = [...points, { x, y, note: "", connection: "" }];
-    setPoints(np);
-    setActiveIdx(np.length - 1);
-    setTapping(false);
-  }
-
-  function removePoint(i: number) {
-    const np = [...points];
-    np.splice(i, 1);
-    setPoints(np);
-    if (activeIdx === i) setActiveIdx(null);
-    else if (activeIdx !== null && activeIdx > i) setActiveIdx(activeIdx - 1);
-  }
 
   function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -322,60 +281,78 @@ export default function StorytellerFlow({
     }
   }
 
+  function pickFromGallery() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        setImageFile(file);
+        setImageUrl(URL.createObjectURL(file));
+      }
+    };
+    input.click();
+  }
+
   function handleHistoricalImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
-      setHistoricalImageFile(file);
-      setHistoricalImageUrl(URL.createObjectURL(file));
+      setDraftHistoricalFile(file);
+      setDraftHistoricalUrl(URL.createObjectURL(file));
     }
   }
 
-  async function runAI() {
-    setAiLoading(true);
-    try {
-      const res = await fetch("/api/shape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          points: points.map((p, i) => ({
-            index: i,
-            note: p.note,
-            connection: p.connection || undefined,
-          })),
-          title: title || undefined,
-          description: description || undefined,
-        }),
-      });
-      if (res.ok) {
-        const data: AISuggestions = await res.json();
-        setQuestions(data.questions);
-        setInsights(data.insights);
-        setBigPicture(data.bigPicture);
-        setSeqRationale(data.sequenceRationale);
-        setAiConnections(data.connections ?? []);
-        setOrder(points.map((_, i) => i));
-        setAiDone(true);
-      } else {
-        // Fallback: generate placeholders so the flow isn't blocked
-        setQuestions(points.map((p) => `What do you notice about ${p.note.split(" ").slice(0, 4).join(" ")}...?`));
-        setInsights(points.map((p) => p.note));
-        setBigPicture("These details together reveal something about this place that you wouldn't see at a glance.");
-        setSeqRationale("Current order follows the storyteller's original sequence.");
-        setAiConnections([]);
-        setOrder(points.map((_, i) => i));
-        setAiDone(true);
-      }
-    } catch {
-      // Fallback on network error
-      setQuestions(points.map(() => "What do you notice here?"));
-      setInsights(points.map((p) => p.note));
-      setBigPicture("Together, these observations tell a larger story about this place.");
-      setSeqRationale("Default order.");
-      setOrder(points.map((_, i) => i));
-      setAiDone(true);
-    } finally {
-      setAiLoading(false);
+  function resetDraft() {
+    setQuestionChoice(0);
+    setCustomQuestion("");
+    setDraftAnswer("");
+    setDraftLookFirst(currentStop?.suggestLookFirst ?? false);
+    setDraftLookPrompt("");
+    setDraftCoord(null);
+    setDraftHistoricalUrl(null);
+    setDraftHistoricalFile(null);
+    setTappingPhoto(false);
+  }
+
+  function getQuestionText(): string {
+    if (!currentStop) return "";
+    if (questionChoice === "custom") {
+      return customQuestion;
     }
+    if (questionChoice === 0) {
+      return fillTemplate(currentStop.primary, guideForTemplate);
+    }
+    return fillTemplate(
+      currentStop.alternatives[questionChoice - 1],
+      guideForTemplate
+    );
+  }
+
+  function saveAnswerAndContinue() {
+    if (!currentStop || !draftAnswer.trim()) return;
+    const newAnswer: AnswerDraft = {
+      stopId: currentStop.id,
+      questionText: getQuestionText(),
+      answer: draftAnswer.trim(),
+      x: draftCoord?.x ?? 50,
+      y: draftCoord?.y ?? 50,
+      lookFirst: draftLookFirst,
+      lookPrompt: draftLookPrompt.trim(),
+      historicalImageFile: draftHistoricalFile,
+      historicalImageUrl: draftHistoricalUrl,
+    };
+    setAnswers((prev) => [...prev, newAnswer]);
+    resetDraft();
+    // Move to next stop in journey, or stay at last stop
+    if (journey && currentStopIdx < journey.stops.length - 1) {
+      setCurrentStopIdx(currentStopIdx + 1);
+    }
+  }
+
+  function finishQuestions() {
+    setOrder(answers.map((_, i) => i));
+    setPhase("arrange");
   }
 
   function moveUp(pos: number) {
@@ -384,7 +361,6 @@ export default function StorytellerFlow({
     [no[pos - 1], no[pos]] = [no[pos], no[pos - 1]];
     setOrder(no);
   }
-
   function moveDown(pos: number) {
     if (pos >= order.length - 1) return;
     const no = [...order];
@@ -392,42 +368,58 @@ export default function StorytellerFlow({
     setOrder(no);
   }
 
-  const { user } = useAuth();
-
   async function handlePublish() {
+    if (!contextType || !guideObj) {
+      setPublishError("Missing context type or guide.");
+      return;
+    }
     setPublishing(true);
+    setPublishError(null);
     try {
-      // Upload photos to Firebase Storage
+      // Upload main photo
       let photoUrl: string | null = null;
-      let historicalPhotoUrl: string | null = null;
-
       if (imageFile) {
-        const storageRef = ref(storage, `pins/${Date.now()}_${imageFile.name}`);
-        await uploadBytes(storageRef, imageFile);
-        photoUrl = await getDownloadURL(storageRef);
+        const r = ref(storage, `pins/${Date.now()}_${imageFile.name}`);
+        await uploadBytes(r, imageFile);
+        photoUrl = await getDownloadURL(r);
       }
-
-      if (historicalImageFile) {
-        const storageRef = ref(storage, `pins/${Date.now()}_historical_${historicalImageFile.name}`);
-        await uploadBytes(storageRef, historicalImageFile);
-        historicalPhotoUrl = await getDownloadURL(storageRef);
+      // Upload per-answer historical photos in order
+      const orderedAnswers = order.map((i) => answers[i]);
+      const annotations = [];
+      for (let i = 0; i < orderedAnswers.length; i++) {
+        const a = orderedAnswers[i];
+        let histUrl: string | null = null;
+        if (a.historicalImageFile) {
+          const r = ref(
+            storage,
+            `pins/${Date.now()}_hist_${i}_${a.historicalImageFile.name}`
+          );
+          await uploadBytes(r, a.historicalImageFile);
+          histUrl = await getDownloadURL(r);
+        }
+        annotations.push({
+          x: a.x,
+          y: a.y,
+          question: a.questionText,
+          answer: a.answer,
+          lookFirst: a.lookFirst,
+          lookPrompt: a.lookPrompt,
+          historicalPhotoUrl: histUrl,
+          order: i,
+        });
       }
-
-      const annotations = orderedData.map((d) => ({
-        x: d.x,
-        y: d.y,
-        note: d.insight,
-        question: d.question,
-        insight: d.insight,
-      }));
 
       await addDoc(collection(db, "pins"), {
-        title: title || "Untitled pin",
-        type: pinType,
-        description: description || orderedData.map((d) => d.note).join(" "),
+        title: title || guideObj.name + "'s perspective",
+        type: CONTEXT_TYPES.find((c) => c.id === contextType)?.defaultPinType ?? "guided",
+        contextType,
+        guide: guideObj,
+        description:
+          guideObj.perspective ||
+          orderedAnswers.map((a) => a.answer).join(" ").slice(0, 240),
         lat: pinLocation.lat,
         lng: pinLocation.lng,
-        era: null,
+        era: era || null,
         contributor: {
           name: user?.displayName ?? "Anonymous",
           role: "Storyteller",
@@ -437,150 +429,370 @@ export default function StorytellerFlow({
         annotations,
         resources: [],
         photoUrl,
-        historicalPhotoUrl,
+        historicalPhotoUrl: null,
         createdAt: serverTimestamp(),
       });
       onPublished();
     } catch (err) {
       console.error("Publish failed:", err);
+      setPublishError(String(err));
     } finally {
       setPublishing(false);
     }
   }
 
-  // ── ORIENT ──
+  // ─── Render: header (used in all phases) ─────────────────────────────────
 
-  if (phase === "orient") {
+  function Header({ title }: { title: string }) {
     return (
-      <div className="flex flex-col h-full bg-white">
-        <div className="flex items-center justify-between px-4 h-12 border-b border-gray-100">
-          <span className="text-[15px] font-medium text-gray-900">
-            Create a guided look
-          </span>
-          <button onClick={onClose} className="text-sm text-gray-400">
-            Cancel
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4">
-          <p className="text-base font-medium text-gray-900 mb-1 leading-snug">
-            You're about to help someone see this place the way you do.
-          </p>
-          <p className="text-sm text-gray-500 mb-5 leading-relaxed">
-            Here's what an explorer will experience from what you create:
-          </p>
-
-          <div className="flex flex-col gap-2.5 mb-5">
-            {ORIENT_STEPS.map((step, i) => (
-              <div
-                key={i}
-                className="flex gap-2.5 transition-opacity duration-400"
-                style={{ opacity: orientStep >= i ? 1 : 0.25 }}
-              >
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 mt-0.5"
-                  style={{
-                    background:
-                      step.type === "question"
-                        ? "#EFF6FF"
-                        : step.type === "insight"
-                          ? "#F0FDF4"
-                          : "#FFFBEB",
-                    color:
-                      step.type === "question"
-                        ? "#2563EB"
-                        : step.type === "insight"
-                          ? "#16A34A"
-                          : "#D97706",
-                  }}
-                >
-                  {step.type === "question" ? "?" : step.type === "insight" ? "→" : "Σ"}
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-500 mb-0.5">
-                    {step.label}
-                  </p>
-                  <p
-                    className="text-sm text-gray-900 leading-relaxed"
-                    style={{
-                      fontStyle: step.type === "question" ? "italic" : "normal",
-                    }}
-                  >
-                    {step.text}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {orientStep < 2 ? (
-            <button
-              onClick={() => setOrientStep(orientStep + 1)}
-              className="w-full py-2.5 rounded-lg border border-gray-200 text-sm text-gray-500"
-            >
-              Show next step
-            </button>
-          ) : (
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-800 mb-1.5 leading-relaxed">
-                Your job is to share what you know. The platform will help you
-                turn it into this kind of experience — suggesting questions,
-                finding connections, and shaping the flow.
-              </p>
-              <p className="text-xs text-gray-500">
-                You don't need to be a teacher. Just tell it like you'd tell a
-                friend.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {orientStep >= 2 && (
-          <div className="px-4 py-2.5 border-t border-gray-100">
-            <button
-              onClick={() => setPhase("build")}
-              className="w-full py-3 rounded-lg bg-gray-900 text-white text-sm font-medium"
-            >
-              Let's start
-            </button>
-          </div>
-        )}
+      <div className="flex items-center justify-between px-4 h-12 border-b border-gray-100 shrink-0">
+        <span className="text-[15px] font-medium text-gray-900">{title}</span>
+        <button onClick={onClose} className="text-[13px] text-gray-400">
+          Cancel
+        </button>
       </div>
     );
   }
 
-  // ── BUILD ──
+  // ═══ PHASE: CONTEXT ═══
 
-  if (phase === "build") {
-    const connPrompt =
-      activeIdx !== null && activeIdx > 0
-        ? getConnectionPrompt(activeIdx)
-        : null;
-
+  if (phase === "context") {
     return (
       <div className="flex flex-col h-full bg-white">
-        <div className="flex items-center justify-between px-4 h-12 border-b border-gray-100">
-          <span className="text-[15px] font-medium text-gray-900">
-            Build your guided look
-          </span>
-          <span className="text-xs text-gray-400">
-            {filledCount} point{filledCount !== 1 ? "s" : ""} described
-          </span>
+        <Header title="What kind of story?" />
+        <div className="flex-1 overflow-y-auto p-4">
+          <p className="text-[15px] text-gray-700 mb-1 leading-relaxed">
+            Pick the type of story you want to tell.
+          </p>
+          <p className="text-[13px] text-gray-500 mb-4">
+            This shapes the questions you&rsquo;ll be guided through.
+          </p>
+          <div className="flex flex-col gap-2.5">
+            {CONTEXT_TYPES.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setContextType(c.id)}
+                className="flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-colors"
+                style={{
+                  borderColor: contextType === c.id ? "#0C447C" : "#E5E7EB",
+                  background: contextType === c.id ? "#EFF6FF" : "#fff",
+                }}
+              >
+                <span className="text-[24px] shrink-0">{c.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[15px] font-semibold text-gray-900 leading-snug">
+                    {c.label}
+                  </p>
+                  <p className="text-[13px] text-gray-500 mt-0.5 leading-relaxed">
+                    {c.description}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
+        <div className="px-4 py-3 border-t border-gray-100">
+          <button
+            onClick={() => setPhase("guide")}
+            disabled={!contextType}
+            className="w-full py-3 rounded-xl text-[15px] font-semibold"
+            style={{
+              background: contextType ? "#0C447C" : "#E5E7EB",
+              color: contextType ? "#fff" : "#9CA3AF",
+            }}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-        <div className="flex-1 overflow-y-auto">
-          {/* Location picker */}
-          {pickingLocation && (
-            <div className="px-4 pt-2 pb-2">
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                <p className="text-sm font-medium text-blue-700 mb-1">
-                  Tap the map to place your pin
+  // ═══ PHASE: GUIDE ═══
+
+  if (phase === "guide") {
+    const journeyForType = contextType ? QUESTION_JOURNEYS[contextType] : null;
+    return (
+      <div className="flex flex-col h-full bg-white">
+        <Header title="Who will guide this?" />
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div>
+            <p className="text-[15px] text-gray-700 leading-relaxed">
+              Choose a guide whose perspective frames the experience for the group.
+            </p>
+            {journeyForType && (
+              <p className="text-[13px] text-gray-500 mt-1 italic">
+                Suggested: {journeyForType.guideHint}
+              </p>
+            )}
+          </div>
+
+          {/* Guide type cards */}
+          <div className="flex flex-col gap-2">
+            {(
+              [
+                {
+                  id: "historical" as const,
+                  icon: "📜",
+                  title: "A real person from history",
+                  desc: "A specific named individual",
+                },
+                {
+                  id: "composite" as const,
+                  icon: "👤",
+                  title: "A character I'm creating",
+                  desc: "A composite representing real experiences",
+                },
+                {
+                  id: "self" as const,
+                  icon: "🪪",
+                  title: "Myself",
+                  desc: "Personal testimony — you are the guide",
+                },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setGuideType(opt.id)}
+                className="flex items-center gap-3 p-3 rounded-xl border-2 text-left"
+                style={{
+                  borderColor: guideType === opt.id ? "#0C447C" : "#E5E7EB",
+                  background: guideType === opt.id ? "#EFF6FF" : "#fff",
+                }}
+              >
+                <span className="text-[20px]">{opt.icon}</span>
+                <div className="flex-1">
+                  <p className="text-[14px] font-semibold text-gray-900">
+                    {opt.title}
+                  </p>
+                  <p className="text-[12px] text-gray-500">{opt.desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Fields */}
+          {guideType && (
+            <div className="space-y-3 pt-2">
+              <div>
+                <label className="text-[12px] font-medium text-gray-600 block mb-1">
+                  Name
+                </label>
+                <input
+                  value={guideName}
+                  onChange={(e) => setGuideName(e.target.value)}
+                  placeholder={
+                    guideType === "historical"
+                      ? "e.g. Ah Ling"
+                      : guideType === "composite"
+                        ? "e.g. Maria Gonzalez"
+                        : "Your name"
+                  }
+                  className="w-full text-[15px] rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-[12px] font-medium text-gray-600 block mb-1">
+                  Role
+                </label>
+                <input
+                  value={guideRole}
+                  onChange={(e) => setGuideRole(e.target.value)}
+                  placeholder="e.g. Railroad worker, Architect, Long-time resident"
+                  className="w-full text-[15px] rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-[12px] font-medium text-gray-600 block mb-1">
+                  Era
+                </label>
+                <input
+                  value={guideEra}
+                  onChange={(e) => setGuideEra(e.target.value)}
+                  placeholder="e.g. 1865, 1940s, today"
+                  className="w-full text-[15px] rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              {guideType === "composite" && (
+                <div>
+                  <label className="text-[12px] font-medium text-gray-600 block mb-1">
+                    Based on
+                  </label>
+                  <input
+                    value={guideBasedOn}
+                    onChange={(e) => setGuideBasedOn(e.target.value)}
+                    placeholder="e.g. The experiences of Latina cannery workers in 1940s Monterey"
+                    className="w-full text-[15px] rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:border-blue-500"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Composite characters get a label so explorers know they&rsquo;re a synthesis.
+                  </p>
+                </div>
+              )}
+              <div>
+                <label className="text-[12px] font-medium text-gray-600 block mb-1">
+                  One-sentence relationship to this place
+                </label>
+                <textarea
+                  value={guideRelationship}
+                  onChange={(e) => setGuideRelationship(e.target.value)}
+                  rows={2}
+                  placeholder='e.g. "He built this station with his own hands."'
+                  className="w-full text-[15px] rounded-lg border border-gray-200 px-3 py-2.5 resize-none leading-relaxed focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+                <label className="text-[12px] font-semibold text-blue-700 block mb-1">
+                  In one sentence: what does this person want visitors to understand that they might not see on their own?
+                </label>
+                <p className="text-[11px] text-blue-600 mb-2">
+                  This is the perspective statement — everything in the exploration builds toward it.
                 </p>
-                <p className="text-xs text-blue-600 mb-2">
-                  Place it where the subject is, not where you're standing.
+                <textarea
+                  value={guidePerspective}
+                  onChange={(e) => setGuidePerspective(e.target.value)}
+                  rows={3}
+                  placeholder='e.g. "These tracks were laid by hands like mine — but my name is on no plaque."'
+                  className="w-full text-[15px] rounded-lg border border-blue-200 px-3 py-2.5 resize-none leading-relaxed focus:outline-none focus:border-blue-500 bg-white"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="flex gap-2 px-4 py-3 border-t border-gray-100">
+          <button
+            onClick={() => setPhase("context")}
+            className="px-4 py-3 rounded-xl border border-gray-200 text-[14px] text-gray-500"
+          >
+            Back
+          </button>
+          <button
+            onClick={() => setPhase("place")}
+            disabled={
+              !guideType ||
+              !guideName.trim() ||
+              !guideRelationship.trim() ||
+              !guidePerspective.trim()
+            }
+            className="flex-1 py-3 rounded-xl text-[15px] font-semibold"
+            style={{
+              background:
+                guideType &&
+                guideName.trim() &&
+                guideRelationship.trim() &&
+                guidePerspective.trim()
+                  ? "#0C447C"
+                  : "#E5E7EB",
+              color:
+                guideType &&
+                guideName.trim() &&
+                guideRelationship.trim() &&
+                guidePerspective.trim()
+                  ? "#fff"
+                  : "#9CA3AF",
+            }}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ═══ PHASE: PLACE ═══
+
+  if (phase === "place") {
+    return (
+      <div className="flex flex-col h-full bg-white">
+        <Header title="Capture the place" />
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Photo */}
+          <div>
+            <label className="text-[12px] font-medium text-gray-600 block mb-1.5">
+              Photo
+            </label>
+            {imageUrl ? (
+              <div>
+                <img
+                  src={imageUrl}
+                  alt="Pin"
+                  className="w-full rounded-xl object-cover"
+                  style={{ aspectRatio: "4/3" }}
+                />
+                <button
+                  onClick={() => {
+                    setImageUrl(null);
+                    setImageFile(null);
+                  }}
+                  className="text-[12px] text-gray-400 mt-1.5"
+                >
+                  Change photo
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="flex-1 py-4 rounded-xl border-2 border-dashed border-gray-200 text-[13px] text-gray-500 flex items-center justify-center gap-2"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                  Take photo
+                </button>
+                <button
+                  onClick={pickFromGallery}
+                  className="flex-1 py-4 rounded-xl border-2 border-dashed border-gray-200 text-[13px] text-gray-500 flex items-center justify-center gap-2"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <path d="M21 15l-5-5L5 21" />
+                  </svg>
+                  Upload
+                </button>
+              </div>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleImage}
+              className="hidden"
+            />
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="text-[12px] font-medium text-gray-600 block mb-1.5">
+              Pin location
+            </label>
+            {!pickingLocation ? (
+              <button
+                onClick={() => setPickingLocation(true)}
+                className="w-full py-3 rounded-xl border border-gray-200 text-[13px] text-gray-600 flex items-center justify-center gap-2"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                {pinLocation.lat === mapCenter.lat &&
+                pinLocation.lng === mapCenter.lng
+                  ? "Tap to set pin location"
+                  : `${pinLocation.lat.toFixed(4)}, ${pinLocation.lng.toFixed(4)} — tap to change`}
+              </button>
+            ) : (
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+                <p className="text-[13px] font-medium text-blue-700 mb-1">
+                  Drag the map so the crosshair sits where the subject is
+                </p>
+                <p className="text-[11px] text-blue-600 mb-2">
+                  Place it where the subject is, not where you&rsquo;re standing.
                 </p>
                 <div
-                  className="relative w-full rounded-lg overflow-hidden bg-gray-200"
+                  className="relative w-full rounded-xl overflow-hidden bg-gray-200"
                   style={{ aspectRatio: "16/9" }}
                 >
                   <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}>
@@ -599,7 +811,6 @@ export default function StorytellerFlow({
                       className="w-full h-full"
                     />
                   </APIProvider>
-                  {/* Crosshair overlay — fixed in screen center */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-8 h-8 relative">
                       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-red-500" />
@@ -610,776 +821,548 @@ export default function StorytellerFlow({
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2 mt-2">
-                  <div className="flex-1 space-y-1">
-                    <label className="text-[10px] text-blue-600">Latitude</label>
-                    <input
-                      type="number"
-                      step="0.0001"
-                      value={pinLocation.lat}
-                      onChange={(e) => setPinLocation((prev) => ({ ...prev, lat: parseFloat(e.target.value) || prev.lat }))}
-                      className="w-full text-xs rounded border border-blue-200 px-2 py-1 focus:outline-none focus:border-blue-400"
-                    />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <label className="text-[10px] text-blue-600">Longitude</label>
-                    <input
-                      type="number"
-                      step="0.0001"
-                      value={pinLocation.lng}
-                      onChange={(e) => setPinLocation((prev) => ({ ...prev, lng: parseFloat(e.target.value) || prev.lng }))}
-                      className="w-full text-xs rounded border border-blue-200 px-2 py-1 focus:outline-none focus:border-blue-400"
-                    />
-                  </div>
-                </div>
                 <button
                   onClick={() => setPickingLocation(false)}
-                  className="w-full mt-2 py-2 rounded-md bg-blue-600 text-white text-xs font-medium"
+                  className="w-full mt-2 py-2.5 rounded-lg bg-blue-600 text-white text-[13px] font-semibold"
                 >
                   Confirm location
                 </button>
               </div>
-            </div>
-          )}
-
-          {!pickingLocation && (
-            <div className="px-4 pt-2">
-              <button
-                onClick={() => setPickingLocation(true)}
-                className="w-full py-2 mb-2 rounded-lg border border-gray-200 text-xs text-gray-500 flex items-center justify-center gap-1.5"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-                {pinLocation.lat === mapCenter.lat && pinLocation.lng === mapCenter.lng
-                  ? "Set pin location on map"
-                  : `Pin: ${pinLocation.lat.toFixed(4)}, ${pinLocation.lng.toFixed(4)} — tap to change`}
-              </button>
-            </div>
-          )}
-
-          {/* Photo upload */}
-          <div className="px-4 pt-1">
-            {!imageUrl && (
-              <div className="flex gap-2 mb-2">
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  className="flex-1 py-3 rounded-lg border-2 border-dashed border-gray-200 text-sm text-gray-400 flex items-center justify-center gap-2"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
-                    <circle cx="12" cy="13" r="4" />
-                  </svg>
-                  Take photo
-                </button>
-                <button
-                  onClick={() => {
-                    // Create a temporary input without capture to open gallery
-                    const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept = "image/*";
-                    input.onchange = (e) => {
-                      const file = (e.target as HTMLInputElement).files?.[0];
-                      if (file) {
-                        setImageFile(file);
-                        setImageUrl(URL.createObjectURL(file));
-                      }
-                    };
-                    input.click();
-                  }}
-                  className="flex-1 py-3 rounded-lg border-2 border-dashed border-gray-200 text-sm text-gray-400 flex items-center justify-center gap-2"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <path d="M21 15l-5-5L5 21" />
-                  </svg>
-                  Upload
-                </button>
-              </div>
             )}
-            {/* Hidden camera input */}
+          </div>
+
+          {/* Title */}
+          <div>
+            <label className="text-[12px] font-medium text-gray-600 block mb-1.5">
+              Title for this pin
+            </label>
             <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleImage}
-              className="hidden"
-            />
-            <PhotoCanvas
-              points={points}
-              activeIdx={activeIdx}
-              tapping={tapping}
-              imageUrl={imageUrl}
-              onTap={addPoint}
-              onPointClick={(i) => {
-                setActiveIdx(i);
-                setTapping(false);
-              }}
-            />
-
-            {/* Change photo button */}
-            {imageUrl && (
-              <button
-                onClick={() => {
-                  setImageUrl(null);
-                  setImageFile(null);
-                }}
-                className="text-xs text-gray-400 mt-1 mb-1"
-              >
-                Change photo
-              </button>
-            )}
-          </div>
-
-          {/* Historical photo for comparison */}
-          <div className="px-4 pt-1">
-            {!historicalImageUrl ? (
-              <button
-                onClick={() => historicalFileRef.current?.click()}
-                className="w-full py-2 mb-2 rounded-lg border border-dashed border-amber-200 text-xs text-amber-500 flex items-center justify-center gap-1.5"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 6v6l4 2" />
-                </svg>
-                Add a historical photo for comparison (optional)
-              </button>
-            ) : (
-              <div className="mb-2">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-amber-600">Historical photo</span>
-                  <button
-                    onClick={() => {
-                      setHistoricalImageUrl(null);
-                      setHistoricalImageFile(null);
-                    }}
-                    className="text-[10px] text-gray-400"
-                  >
-                    Remove
-                  </button>
-                </div>
-                <img
-                  src={historicalImageUrl}
-                  alt="Historical"
-                  className="w-full rounded-lg object-cover"
-                  style={{ aspectRatio: "4/3" }}
-                />
-              </div>
-            )}
-            <input
-              ref={historicalFileRef}
-              type="file"
-              accept="image/*"
-              onChange={handleHistoricalImage}
-              className="hidden"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Memorial Church mosaics"
+              className="w-full text-[15px] rounded-lg border border-gray-200 px-3 py-2.5 focus:outline-none focus:border-blue-500"
             />
           </div>
 
-          <div className="px-4 pt-2">
-            {!tapping && points.length > 0 && (
-              <button
-                onClick={() => {
-                  setActiveIdx(null);
-                  setTapping(true);
-                }}
-                className="w-full py-2 rounded-lg border border-dashed border-gray-200 text-xs text-gray-400 mb-2"
-              >
-                + Tap photo to add another point
-              </button>
-            )}
-          </div>
-
-          {/* Active point editor */}
-          {activeIdx !== null && points[activeIdx] && (
-            <div className="px-4 pb-3">
-              <div className="p-3 border-2 border-blue-500 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-5 h-5 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-[11px] font-semibold">
-                      {activeIdx + 1}
-                    </div>
-                    <span className="text-sm font-medium text-gray-900">
-                      Point {activeIdx + 1}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => removePoint(activeIdx)}
-                    className="text-xs text-red-500"
-                  >
-                    Remove
-                  </button>
-                </div>
-
-                <label className="text-xs text-gray-500 block mb-1">
-                  What's here? What should someone notice?
-                </label>
-                <textarea
-                  value={points[activeIdx].note}
-                  onChange={(e) => {
-                    const np = [...points];
-                    np[activeIdx] = { ...np[activeIdx], note: e.target.value };
-                    setPoints(np);
-                  }}
-                  placeholder="Describe what you see and why it matters. Keep it natural — you're talking to a curious friend."
-                  rows={3}
-                  className="w-full text-sm rounded-md border border-gray-200 p-2 resize-none leading-relaxed focus:outline-none focus:border-blue-400 mb-1.5"
-                />
-
+          {/* Era */}
+          <div>
+            <label className="text-[12px] font-medium text-gray-600 block mb-1.5">
+              Era
+            </label>
+            <div className="flex gap-1.5 flex-wrap">
+              {ERA_OPTIONS.map((e) => (
                 <button
-                  onClick={toggleVoice}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs mb-2"
+                  key={e}
+                  onClick={() => setEra(era === e ? "" : e)}
+                  className="px-2.5 py-1 rounded-full text-[12px] font-medium border"
                   style={{
-                    background: listening ? "#FEE2E2" : "#F3F4F6",
-                    color: listening ? "#DC2626" : "#6B7280",
+                    background: era === e ? "#0C447C" : "#fff",
+                    color: era === e ? "#fff" : "#666",
+                    borderColor: era === e ? "#0C447C" : "#E5E7EB",
                   }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                    <path d="M19 10v2a7 7 0 01-14 0v-2" />
-                  </svg>
-                  {listening ? "Listening..." : "Say it instead"}
-                </button>
-
-                {connPrompt && (
-                  <div className="p-2.5 bg-amber-50 rounded-md mb-2">
-                    <p className="text-xs font-medium text-amber-600 mb-1">
-                      Connection check
-                    </p>
-                    <p className="text-xs text-gray-800 mb-1.5 leading-relaxed">
-                      {connPrompt}
-                    </p>
-                    <textarea
-                      value={points[activeIdx].connection}
-                      onChange={(e) => {
-                        const np = [...points];
-                        np[activeIdx] = {
-                          ...np[activeIdx],
-                          connection: e.target.value,
-                        };
-                        setPoints(np);
-                      }}
-                      placeholder="Optional — jot down how they connect, or skip this"
-                      rows={2}
-                      className="w-full text-xs rounded border border-amber-200 p-1.5 resize-none leading-relaxed focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                )}
-
-                <div className="flex gap-1.5 mt-1">
-                  {activeIdx > 0 && (
-                    <button
-                      onClick={() => setActiveIdx(activeIdx - 1)}
-                      className="px-3 py-1.5 rounded-md border border-gray-200 text-xs text-gray-500"
-                    >
-                      ← Prev
-                    </button>
-                  )}
-                  {activeIdx < points.length - 1 && (
-                    <button
-                      onClick={() => setActiveIdx(activeIdx + 1)}
-                      className="px-3 py-1.5 rounded-md border border-gray-200 text-xs text-gray-500"
-                    >
-                      Next →
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setActiveIdx(null);
-                      setTapping(true);
-                    }}
-                    className="px-3 py-1.5 rounded-md border border-gray-200 text-xs text-gray-500 ml-auto"
-                  >
-                    Done with this point
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Points summary when no active point */}
-          {points.length > 0 && activeIdx === null && (
-            <div className="px-4 pb-3">
-              <p className="text-xs font-medium text-gray-400 mb-1.5">
-                Your points so far
-              </p>
-              {points.map((p, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setActiveIdx(i);
-                    setTapping(false);
-                  }}
-                  className="flex items-start gap-2 w-full p-2.5 rounded-lg border border-gray-100 text-left mb-1"
-                >
-                  <div
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 mt-0.5"
-                    style={{
-                      background: p.note.trim() ? "#F0FDF4" : "#F3F4F6",
-                      color: p.note.trim() ? "#16A34A" : "#9CA3AF",
-                    }}
-                  >
-                    {p.note.trim() ? "✓" : i + 1}
-                  </div>
-                  <p className="text-xs text-gray-700 truncate flex-1">
-                    {p.note.trim() || "Tap to describe..."}
-                  </p>
+                  {e}
                 </button>
               ))}
             </div>
-          )}
-
-          {/* Title & description (shown when points exist) */}
-          {points.length > 0 && activeIdx === null && (
-            <div className="px-4 pb-3 space-y-2">
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">
-                  Title for this pin
-                </label>
-                <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Memorial Church mosaics"
-                  className="w-full text-sm rounded-md border border-gray-200 px-2.5 py-2 focus:outline-none focus:border-blue-400"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">
-                  Brief description
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="One or two sentences about why this place is interesting"
-                  rows={2}
-                  className="w-full text-sm rounded-md border border-gray-200 p-2.5 resize-none leading-relaxed focus:outline-none focus:border-blue-400"
-                />
-              </div>
-            </div>
-          )}
+          </div>
         </div>
-
-        <div className="flex gap-2 px-4 py-2.5 border-t border-gray-100">
+        <div className="flex gap-2 px-4 py-3 border-t border-gray-100">
           <button
-            onClick={() => setPhase("orient")}
-            className="px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-500"
+            onClick={() => setPhase("guide")}
+            className="px-4 py-3 rounded-xl border border-gray-200 text-[14px] text-gray-500"
           >
             Back
           </button>
           <button
-            onClick={() => {
-              setPhase("connect");
-              if (!aiDone) runAI();
-            }}
-            disabled={filledCount < 2}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium"
+            onClick={() => setPhase("questions")}
+            disabled={!imageUrl || !title.trim()}
+            className="flex-1 py-3 rounded-xl text-[15px] font-semibold"
             style={{
-              background: filledCount < 2 ? "#F3F4F6" : "#111",
-              color: filledCount < 2 ? "#9CA3AF" : "#fff",
-              cursor: filledCount < 2 ? "default" : "pointer",
+              background: imageUrl && title.trim() ? "#0C447C" : "#E5E7EB",
+              color: imageUrl && title.trim() ? "#fff" : "#9CA3AF",
             }}
           >
-            Shape into exploration
-            {filledCount < 2 ? ` (need ${2 - filledCount} more)` : ""}
+            Continue
           </button>
         </div>
       </div>
     );
   }
 
-  // ── CONNECT ──
+  // ═══ PHASE: QUESTIONS ═══
 
-  if (phase === "connect") {
+  if (phase === "questions" && currentStop && journey) {
+    const showWarning = answers.length >= 4;
     return (
       <div className="flex flex-col h-full bg-white">
-        <div className="flex items-center justify-between px-4 h-12 border-b border-gray-100">
-          <span className="text-[15px] font-medium text-gray-900">
-            Shape the exploration
-          </span>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-4 pt-2 pb-4">
-          {aiLoading && (
-            <div className="py-8 text-center">
-              <Spinner text="Reading your notes and finding connections..." />
-              <p className="text-xs text-gray-400 mt-2">
-                Drafting questions, insights, and a suggested sequence.
-              </p>
-            </div>
-          )}
-
-          {aiDone && (
-            <>
-              <div className="p-2.5 bg-green-50 rounded-lg mb-3">
-                <p className="text-xs text-green-700 leading-relaxed">
-                  Here's what the platform built from your notes. Everything is
-                  editable — tap "edit" on anything you want to change.
-                </p>
-              </div>
-
-              {/* Connections spotted */}
-              {aiConnections.length > 0 && (
-                <div className="p-2.5 bg-amber-50 rounded-lg mb-3 border-l-[3px] border-amber-500">
-                  <p className="text-xs font-medium text-amber-600 mb-1">
-                    Connections spotted
-                  </p>
-                  {aiConnections.map((c, i) => (
-                    <p key={i} className="text-xs text-gray-800 leading-relaxed">
-                      Points {c.from + 1} → {c.to + 1}: {c.thread}
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              {/* Sequence rationale */}
-              <div className="p-2.5 bg-blue-50 rounded-lg mb-3 border-l-[3px] border-blue-500">
-                <p className="text-[10px] font-medium text-blue-600 mb-0.5">
-                  Suggested sequence
-                </p>
-                <p className="text-xs text-gray-800 leading-relaxed">
-                  {seqRationale}
-                </p>
-              </div>
-
-              {/* Per-point cards */}
-              {order.map((origIdx, pos) => (
-                <div
-                  key={origIdx}
-                  className="mb-2.5 p-2.5 border border-gray-200 rounded-lg"
-                >
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <div className="flex flex-col gap-px">
-                      <button
-                        onClick={() => moveUp(pos)}
-                        disabled={pos === 0}
-                        className="text-[10px] leading-none disabled:text-gray-200 text-gray-400"
-                      >
-                        ▲
-                      </button>
-                      <span className="text-sm font-semibold text-blue-600 text-center">
-                        {pos + 1}
-                      </span>
-                      <button
-                        onClick={() => moveDown(pos)}
-                        disabled={pos === order.length - 1}
-                        className="text-[10px] leading-none disabled:text-gray-200 text-gray-400"
-                      >
-                        ▼
-                      </button>
-                    </div>
-                    <p className="text-[11px] text-gray-400 truncate flex-1">
-                      Your note: "{points[origIdx]?.note.slice(0, 45)}..."
-                    </p>
-                  </div>
-
-                  <div className="ml-7 space-y-2">
-                    {/* Question */}
-                    <div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-medium text-blue-600 uppercase tracking-wide">
-                          Question for explorer
-                        </span>
-                        <button
-                          onClick={() =>
-                            setEditingField(
-                              editingField === `q${origIdx}`
-                                ? null
-                                : `q${origIdx}`
-                            )
-                          }
-                          className="text-[10px] text-blue-600"
-                        >
-                          {editingField === `q${origIdx}` ? "done" : "edit"}
-                        </button>
-                      </div>
-                      {editingField === `q${origIdx}` ? (
-                        <textarea
-                          value={questions[origIdx]}
-                          onChange={(e) => {
-                            const q = [...questions];
-                            q[origIdx] = e.target.value;
-                            setQuestions(q);
-                          }}
-                          rows={2}
-                          className="w-full text-xs rounded border border-gray-200 p-1.5 resize-none leading-relaxed mt-1 focus:outline-none focus:border-blue-400"
-                        />
-                      ) : (
-                        <p className="text-xs text-gray-800 italic leading-relaxed mt-0.5">
-                          {questions[origIdx]}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Insight */}
-                    <div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">
-                          Insight revealed
-                        </span>
-                        <button
-                          onClick={() =>
-                            setEditingField(
-                              editingField === `i${origIdx}`
-                                ? null
-                                : `i${origIdx}`
-                            )
-                          }
-                          className="text-[10px] text-blue-600"
-                        >
-                          {editingField === `i${origIdx}` ? "done" : "edit"}
-                        </button>
-                      </div>
-                      {editingField === `i${origIdx}` ? (
-                        <textarea
-                          value={insights[origIdx]}
-                          onChange={(e) => {
-                            const ins = [...insights];
-                            ins[origIdx] = e.target.value;
-                            setInsights(ins);
-                          }}
-                          rows={2}
-                          className="w-full text-xs rounded border border-gray-200 p-1.5 resize-none leading-relaxed mt-1 focus:outline-none focus:border-blue-400"
-                        />
-                      ) : (
-                        <p className="text-xs text-gray-800 leading-relaxed mt-0.5">
-                          {insights[origIdx]}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {/* Big picture */}
-              <div className="p-2.5 bg-blue-50 rounded-lg mt-1">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-medium text-blue-600 uppercase tracking-wide">
-                    The big picture
-                  </span>
-                  <button
-                    onClick={() =>
-                      setEditingField(editingField === "bp" ? null : "bp")
-                    }
-                    className="text-[10px] text-blue-600"
-                  >
-                    {editingField === "bp" ? "done" : "edit"}
-                  </button>
-                </div>
-                {editingField === "bp" ? (
-                  <textarea
-                    value={bigPicture}
-                    onChange={(e) => setBigPicture(e.target.value)}
-                    rows={3}
-                    className="w-full text-xs rounded border border-blue-200 p-1.5 resize-none leading-relaxed focus:outline-none focus:border-blue-400"
-                  />
-                ) : (
-                  <p className="text-sm text-gray-900 font-medium leading-relaxed">
-                    {bigPicture}
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex gap-2 px-4 py-2.5 border-t border-gray-100">
-          <button
-            onClick={() => setPhase("build")}
-            className="px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-500"
-          >
-            Back
-          </button>
-          <button
-            onClick={() => {
-              setPhase("preview");
-              setPrevIdx(null);
-              setPrevPhase(0);
-            }}
-            disabled={!aiDone}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium"
-            style={{
-              background: aiDone ? "#111" : "#F3F4F6",
-              color: aiDone ? "#fff" : "#9CA3AF",
-              cursor: aiDone ? "pointer" : "default",
-            }}
-          >
-            Preview as explorer
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── PREVIEW ──
-
-  if (phase === "preview") {
-    return (
-      <div className="flex flex-col h-full bg-white">
-        <div className="flex items-center justify-between px-4 h-12 border-b border-gray-100">
-          <span className="text-[15px] font-medium text-gray-900">
-            Explorer preview
-          </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium">
-            PREVIEW
-          </span>
-        </div>
-
+        <Header title={`${currentStop.label}`} />
         <div className="flex-1 overflow-y-auto">
-          <PhotoCanvas
-            points={orderedData}
-            activeIdx={prevIdx}
-            tapping={false}
+          {/* Photo with answer markers */}
+          <StorytellerPhoto
             imageUrl={imageUrl}
-            onTap={() => {}}
-            onPointClick={(i) => {
-              setPrevIdx(i);
-              setPrevPhase(0);
+            answers={answers}
+            activeIdx={null}
+            tapping={tappingPhoto}
+            onTap={(x, y) => {
+              setDraftCoord({ x, y });
+              setTappingPhoto(false);
             }}
           />
 
-          <div className="p-4">
-            {/* Intro */}
-            {prevIdx === null && (
-              <>
-                <p className="text-sm text-gray-900 mb-1 leading-relaxed">
-                  This guide builds an understanding piece by piece.
+          <div className="p-4 space-y-4">
+            <p className="text-[13px] text-gray-500 leading-relaxed italic">
+              {currentStop.purpose}
+            </p>
+
+            {/* Question chooser */}
+            <div className="space-y-2">
+              <p className="text-[12px] font-semibold text-gray-600 uppercase tracking-wide">
+                Choose a question for {guideName || "your guide"}
+              </p>
+              <button
+                onClick={() => setQuestionChoice(0)}
+                className="w-full p-3 rounded-xl border-2 text-left"
+                style={{
+                  borderColor: questionChoice === 0 ? "#0C447C" : "#E5E7EB",
+                  background: questionChoice === 0 ? "#EFF6FF" : "#fff",
+                }}
+              >
+                <p className="text-[15px] font-semibold text-gray-900 leading-snug">
+                  {fillTemplate(currentStop.primary, guideForTemplate)}
                 </p>
-                <p className="text-sm text-gray-500 mb-3">
-                  Each point adds to the picture.
-                </p>
+              </button>
+              {currentStop.alternatives.map((alt, i) => (
                 <button
-                  onClick={() => {
-                    setPrevIdx(0);
-                    setPrevPhase(0);
+                  key={i}
+                  onClick={() => setQuestionChoice(i + 1)}
+                  className="w-full p-2.5 rounded-lg border text-left"
+                  style={{
+                    borderColor:
+                      questionChoice === i + 1 ? "#0C447C" : "#E5E7EB",
+                    background: questionChoice === i + 1 ? "#EFF6FF" : "#fff",
                   }}
-                  className="w-full py-3 rounded-lg bg-gray-900 text-white text-sm font-medium"
                 >
-                  Start ({orderedData.length} points)
+                  <p className="text-[11px] text-gray-400 mb-0.5">or try:</p>
+                  <p className="text-[14px] text-gray-800 leading-snug">
+                    {fillTemplate(alt, guideForTemplate)}
+                  </p>
                 </button>
-              </>
-            )}
-
-            {/* Active point */}
-            {prevIdx !== null && prevIdx < orderedData.length && (
-              <>
-                {/* Progress bar */}
-                <div className="flex gap-1 mb-3">
-                  {orderedData.map((_, i) => (
-                    <div
-                      key={i}
-                      className="flex-1 h-[3px] rounded-full"
-                      style={{
-                        background:
-                          i < prevIdx
-                            ? "#2563EB"
-                            : i === prevIdx
-                              ? "#111"
-                              : "#E5E7EB",
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {prevPhase === 0 && (
-                  <>
-                    <p className="text-sm text-gray-500 mb-1">
-                      {orderedData[prevIdx].note?.slice(0, 60)}
-                    </p>
-                    <p className="text-[15px] font-medium text-gray-900 leading-relaxed mb-3">
-                      {orderedData[prevIdx].question}
-                    </p>
-                    <button
-                      onClick={() => setPrevPhase(1)}
-                      className="w-full py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium"
-                    >
-                      See what this reveals →
-                    </button>
-                  </>
-                )}
-
-                {prevPhase === 1 && (
-                  <>
-                    <div className="p-3 bg-blue-50 rounded-lg mb-3">
-                      <p className="text-sm text-gray-900 font-medium leading-relaxed">
-                        {orderedData[prevIdx].insight}
-                      </p>
-                    </div>
-                    {prevIdx > 0 && (
-                      <div className="flex gap-1 flex-wrap mb-3">
-                        {orderedData.slice(0, prevIdx).map((d, i) => (
-                          <span
-                            key={i}
-                            className="px-2 py-0.5 rounded-full bg-gray-100 text-[10px] text-gray-500"
-                          >
-                            {i + 1}.{" "}
-                            {d.insight?.split("—")[0]?.slice(0, 25)?.trim()}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {prevIdx < orderedData.length - 1 ? (
-                      <button
-                        onClick={() => {
-                          setPrevIdx(prevIdx + 1);
-                          setPrevPhase(0);
-                        }}
-                        className="w-full py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium"
-                      >
-                        Next piece →
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setPrevIdx(orderedData.length)}
-                        className="w-full py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium"
-                      >
-                        See the full picture →
-                      </button>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-
-            {/* Big picture (end) */}
-            {prevIdx !== null && prevIdx >= orderedData.length && (
-              <div className="pt-2">
-                <div className="p-3.5 bg-blue-50 rounded-xl mb-3">
-                  <p className="text-[10px] font-medium text-blue-600 mb-1">
-                    The big picture
+              ))}
+              <button
+                onClick={() => setQuestionChoice("custom")}
+                className="w-full p-2.5 rounded-lg border border-dashed text-left"
+                style={{
+                  borderColor:
+                    questionChoice === "custom" ? "#0C447C" : "#D1D5DB",
+                  background:
+                    questionChoice === "custom" ? "#EFF6FF" : "#FAFAFA",
+                }}
+              >
+                <p className="text-[11px] text-gray-400 mb-0.5">
+                  None fit? Write your own
+                </p>
+                {questionChoice === "custom" ? (
+                  <textarea
+                    value={customQuestion}
+                    onChange={(e) => setCustomQuestion(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    rows={2}
+                    placeholder={`Write a question for ${guideName || "your guide"} to ask the group`}
+                    className="w-full mt-1 text-[14px] rounded border border-gray-200 p-2 resize-none focus:outline-none focus:border-blue-500 bg-white"
+                  />
+                ) : (
+                  <p className="text-[13px] text-gray-500">
+                    Write a question for {guideName || "your guide"} to ask
                   </p>
-                  <p className="text-sm text-gray-900 font-medium leading-relaxed">
-                    {bigPicture}
+                )}
+              </button>
+            </div>
+
+            {/* Answer */}
+            <div>
+              <label className="text-[12px] font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">
+                {guideName || "Your guide"}&rsquo;s answer
+              </label>
+              <textarea
+                value={draftAnswer}
+                onChange={(e) => setDraftAnswer(e.target.value)}
+                rows={4}
+                placeholder="Write what the guide would say. Keep it natural — like you're talking to a curious friend."
+                className="w-full text-[15px] rounded-lg border border-gray-200 p-3 resize-none leading-relaxed focus:outline-none focus:border-blue-500"
+              />
+              <button
+                onClick={toggleVoice}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] mt-2"
+                style={{
+                  background: listening ? "#FEE2E2" : "#F3F4F6",
+                  color: listening ? "#DC2626" : "#6B7280",
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                  <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                </svg>
+                {listening ? "Listening..." : "Say it instead"}
+              </button>
+            </div>
+
+            {/* Annotation point */}
+            <div>
+              <label className="text-[12px] font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">
+                Photo annotation
+              </label>
+              <button
+                onClick={() => setTappingPhoto(true)}
+                className="w-full py-2.5 rounded-lg border border-dashed border-gray-300 text-[13px] text-gray-500"
+              >
+                {draftCoord
+                  ? `Marker placed at ${Math.round(draftCoord.x)}%, ${Math.round(draftCoord.y)}% — tap photo again to move`
+                  : "Tap on the photo above to mark what you're describing"}
+              </button>
+            </div>
+
+            {/* Look first toggle */}
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-100">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <p className="text-[14px] font-semibold text-amber-900">
+                    Should the group observe this before reading?
+                  </p>
+                  <p className="text-[12px] text-amber-700 mt-0.5 leading-relaxed">
+                    Toggle on to make this a group look-and-discuss moment before the answer is revealed.
                   </p>
                 </div>
-                {orderedData.map((d, i) => (
-                  <div key={i} className="flex gap-1.5 py-0.5">
-                    <div className="w-4 h-4 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-[8px] font-semibold shrink-0 mt-0.5">
-                      {i + 1}
-                    </div>
-                    <p className="text-[11px] text-gray-500 leading-relaxed">
-                      {d.insight}
-                    </p>
-                  </div>
-                ))}
+                <button
+                  onClick={() => setDraftLookFirst(!draftLookFirst)}
+                  className="relative w-11 h-6 rounded-full transition-colors shrink-0"
+                  style={{ background: draftLookFirst ? "#D97706" : "#E5E7EB" }}
+                >
+                  <div
+                    className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform"
+                    style={{
+                      transform: draftLookFirst
+                        ? "translateX(22px)"
+                        : "translateX(2px)",
+                    }}
+                  />
+                </button>
+              </div>
+              {draftLookFirst && (
+                <input
+                  value={draftLookPrompt}
+                  onChange={(e) => setDraftLookPrompt(e.target.value)}
+                  placeholder="What should they look at? e.g. the cornerstone"
+                  className="w-full mt-2 text-[14px] rounded-lg border border-amber-200 px-3 py-2 focus:outline-none focus:border-amber-500 bg-white"
+                />
+              )}
+            </div>
+
+            {/* Historical photo */}
+            <div>
+              <label className="text-[12px] font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">
+                Historical photo (optional)
+              </label>
+              {draftHistoricalUrl ? (
+                <div>
+                  <img
+                    src={draftHistoricalUrl}
+                    alt="Historical"
+                    className="w-full rounded-lg object-cover"
+                    style={{ aspectRatio: "4/3" }}
+                  />
+                  <button
+                    onClick={() => {
+                      setDraftHistoricalUrl(null);
+                      setDraftHistoricalFile(null);
+                    }}
+                    className="text-[12px] text-gray-400 mt-1"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => histFileRef.current?.click()}
+                  className="w-full py-2.5 rounded-lg border border-dashed border-amber-300 text-[12px] text-amber-600"
+                >
+                  Add an old photo for this stop
+                </button>
+              )}
+              <input
+                ref={histFileRef}
+                type="file"
+                accept="image/*"
+                onChange={handleHistoricalImage}
+                className="hidden"
+              />
+            </div>
+
+            {/* Preview of how it'll appear to explorers */}
+            {draftAnswer.trim() && (
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+                <p className="text-[11px] uppercase font-semibold text-blue-700 mb-1">
+                  Preview — how the group will see this
+                </p>
+                <p className="text-[15px] text-gray-900 italic leading-snug mb-2">
+                  {guideName || "Your guide"} asks your group: &ldquo;
+                  {getQuestionText() || "..."}&rdquo;
+                </p>
+                {draftLookFirst && (
+                  <p className="text-[12px] text-amber-700 mb-1.5">
+                    First: &ldquo;Everyone look at {draftLookPrompt || "..."}. Discuss together.&rdquo;
+                  </p>
+                )}
+                <p className="text-[14px] text-gray-700 leading-relaxed">
+                  {draftAnswer}
+                </p>
+              </div>
+            )}
+
+            {/* Warning if too many */}
+            {showWarning && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-100">
+                <p className="text-[13px] text-red-700">
+                  Groups tend to lose focus after 4 stops. Can any of these be combined?
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex gap-2 px-4 py-2.5 border-t border-gray-100">
+        {/* Footer: stop navigation and save */}
+        <div className="flex flex-col gap-2 px-4 py-3 border-t border-gray-100">
+          <div className="flex items-center justify-between text-[12px] text-gray-500">
+            <span>{answers.length} stop{answers.length !== 1 ? "s" : ""} saved</span>
+            <span>
+              Stop {currentStopIdx + 1} of {journey.stops.length} in journey
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPhase("place")}
+              className="px-4 py-3 rounded-xl border border-gray-200 text-[14px] text-gray-500"
+            >
+              Back
+            </button>
+            <button
+              onClick={saveAnswerAndContinue}
+              disabled={!draftAnswer.trim() || (questionChoice === "custom" && !customQuestion.trim())}
+              className="flex-1 py-3 rounded-xl text-[14px] font-semibold"
+              style={{
+                background:
+                  draftAnswer.trim() &&
+                  !(questionChoice === "custom" && !customQuestion.trim())
+                    ? "#0C447C"
+                    : "#E5E7EB",
+                color:
+                  draftAnswer.trim() &&
+                  !(questionChoice === "custom" && !customQuestion.trim())
+                    ? "#fff"
+                    : "#9CA3AF",
+              }}
+            >
+              Save & continue
+            </button>
+            <button
+              onClick={finishQuestions}
+              disabled={answers.length < 1}
+              className="px-4 py-3 rounded-xl text-[14px] font-semibold"
+              style={{
+                background: answers.length >= 1 ? "#16A34A" : "#E5E7EB",
+                color: answers.length >= 1 ? "#fff" : "#9CA3AF",
+              }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ═══ PHASE: ARRANGE ═══
+
+  if (phase === "arrange") {
+    const orderedAnswers = order.map((i) => answers[i]);
+    return (
+      <div className="flex flex-col h-full bg-white">
+        <Header title="Arrange the stops" />
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <p className="text-[13px] text-gray-500 leading-relaxed">
+            Reorder your stops. Build from observation toward the perspective.
+          </p>
+
+          {orderedAnswers.map((a, pos) => (
+            <div
+              key={pos}
+              className="p-3 rounded-xl border border-gray-200 flex gap-3"
+            >
+              <div className="flex flex-col items-center gap-1">
+                <button
+                  onClick={() => moveUp(pos)}
+                  disabled={pos === 0}
+                  className="text-[14px] disabled:text-gray-200 text-gray-400"
+                >
+                  ▲
+                </button>
+                <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[13px] font-semibold">
+                  {pos + 1}
+                </span>
+                <button
+                  onClick={() => moveDown(pos)}
+                  disabled={pos === order.length - 1}
+                  className="text-[14px] disabled:text-gray-200 text-gray-400"
+                >
+                  ▼
+                </button>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] italic text-blue-700 leading-snug mb-1">
+                  &ldquo;{a.questionText}&rdquo;
+                </p>
+                <p className="text-[14px] text-gray-800 leading-relaxed">
+                  {a.answer}
+                </p>
+                {a.lookFirst && (
+                  <p className="text-[11px] text-amber-700 mt-1">
+                    👁 Group look-first
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Perspective statement at bottom */}
+          <div className="p-4 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 text-white">
+            <p className="text-[10px] uppercase tracking-wider text-blue-200 font-semibold mb-1">
+              Everything builds toward this
+            </p>
+            <p className="text-[15px] leading-relaxed italic">
+              &ldquo;{guidePerspective}&rdquo;
+            </p>
+            <p className="text-[12px] text-blue-200 mt-2">
+              — {guideName}, {guideRole}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2 px-4 py-3 border-t border-gray-100">
           <button
-            onClick={() => setPhase("connect")}
-            className="px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-500"
+            onClick={() => setPhase("questions")}
+            className="px-4 py-3 rounded-xl border border-gray-200 text-[14px] text-gray-500"
+          >
+            Back
+          </button>
+          <button
+            onClick={() => setPhase("preview")}
+            className="flex-1 py-3 rounded-xl bg-[#0C447C] text-white text-[15px] font-semibold"
+          >
+            Preview as group
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ═══ PHASE: PREVIEW ═══
+
+  if (phase === "preview") {
+    const orderedAnswers = order.map((i) => answers[i]);
+    return (
+      <div className="flex flex-col h-full bg-white">
+        <Header title="Group preview" />
+        <div className="flex-1 overflow-y-auto">
+          {imageUrl && (
+            <img
+              src={imageUrl}
+              alt={title}
+              className="w-full object-cover"
+              style={{ aspectRatio: "4/3" }}
+            />
+          )}
+          <div className="p-4 space-y-4">
+            {/* Guide card */}
+            <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-white border border-blue-100">
+              <div className="flex items-start gap-3">
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center text-[18px] font-semibold text-white shrink-0"
+                  style={{ background: "#0C447C" }}
+                >
+                  {getInitials(guideName)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[16px] font-semibold text-gray-900">
+                    {guideName}
+                  </p>
+                  <p className="text-[14px] text-gray-600">
+                    {guideRole} · {guideEra}
+                  </p>
+                </div>
+              </div>
+              <p className="text-[15px] text-gray-800 mt-3 italic leading-relaxed">
+                &ldquo;{guideRelationship}&rdquo;
+              </p>
+            </div>
+
+            {/* Stops */}
+            {orderedAnswers.map((a, i) => (
+              <div
+                key={i}
+                className="p-4 rounded-xl bg-blue-50 border border-blue-100"
+              >
+                <p className="text-[12px] font-semibold text-blue-700 mb-2">
+                  Stop {i + 1} of {orderedAnswers.length}
+                </p>
+                {a.lookFirst && (
+                  <div className="p-3 rounded-lg bg-amber-50 border border-amber-100 mb-2">
+                    <p className="text-[14px] text-amber-800 font-medium">
+                      {guideName} says: &ldquo;Everyone look at{" "}
+                      {a.lookPrompt || "this"}. Talk about what you see.&rdquo;
+                    </p>
+                  </div>
+                )}
+                <p className="text-[16px] font-semibold text-gray-900 italic leading-snug mb-2">
+                  {guideName} asks your group: &ldquo;{a.questionText}&rdquo;
+                </p>
+                <div className="p-3 rounded-lg bg-white border border-blue-200">
+                  <p className="text-[10px] uppercase font-semibold text-blue-700 mb-1">
+                    {guideName}&rsquo;s answer
+                  </p>
+                  <p className="text-[14px] text-gray-800 leading-relaxed">
+                    {a.answer}
+                  </p>
+                </div>
+              </div>
+            ))}
+
+            {/* Perspective */}
+            <div className="p-4 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 text-white">
+              <p className="text-[10px] uppercase tracking-wider text-blue-200 font-semibold mb-2">
+                {guideName}&rsquo;s message to your group
+              </p>
+              <p className="text-[18px] font-medium leading-relaxed italic">
+                &ldquo;{guidePerspective}&rdquo;
+              </p>
+            </div>
+
+            {publishError && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-100 text-[13px] text-red-700">
+                {publishError}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2 px-4 py-3 border-t border-gray-100">
+          <button
+            onClick={() => setPhase("arrange")}
+            className="px-4 py-3 rounded-xl border border-gray-200 text-[14px] text-gray-500"
           >
             Edit
           </button>
           <button
             onClick={handlePublish}
             disabled={publishing}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-50"
-            style={{ background: "#16A34A" }}
+            className="flex-1 py-3 rounded-xl bg-green-600 text-white text-[15px] font-semibold disabled:opacity-50"
           >
             {publishing ? "Publishing..." : "Publish to map"}
           </button>
