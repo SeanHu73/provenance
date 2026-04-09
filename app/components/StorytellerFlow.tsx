@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { APIProvider, Map } from "@vis.gl/react-google-maps";
 import { db, storage } from "../lib/firebase";
 import { useAuth } from "../lib/AuthContext";
 import type { PinType } from "../lib/types";
@@ -582,11 +583,23 @@ export default function StorytellerFlow({
                   className="relative w-full rounded-lg overflow-hidden bg-gray-200"
                   style={{ aspectRatio: "16/9" }}
                 >
-                  <iframe
-                    src={`https://maps.google.com/maps?q=${pinLocation.lat},${pinLocation.lng}&z=17&output=embed`}
-                    className="absolute inset-0 w-full h-full border-0 pointer-events-none"
-                  />
-                  {/* Crosshair overlay */}
+                  <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}>
+                    <Map
+                      defaultCenter={pinLocation}
+                      defaultZoom={18}
+                      mapTypeId="hybrid"
+                      gestureHandling="greedy"
+                      disableDefaultUI={true}
+                      onCameraChanged={(e) => {
+                        setPinLocation({
+                          lat: e.detail.center.lat,
+                          lng: e.detail.center.lng,
+                        });
+                      }}
+                      className="w-full h-full"
+                    />
+                  </APIProvider>
+                  {/* Crosshair overlay — fixed in screen center */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-8 h-8 relative">
                       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-red-500" />
