@@ -204,7 +204,12 @@ export default function MapView({
           defaultHeading={0}
           mapTypeId="hybrid"
           gestureHandling="greedy"
-          disableDefaultUI={true}
+          disableDefaultUI={false}
+          zoomControl={false}
+          mapTypeControl={false}
+          streetViewControl={false}
+          fullscreenControl={false}
+          rotateControl={true}
           className="w-full h-full"
         >
           <UserLocationTracker following={following} onLocationUpdate={handleLocationUpdate} />
