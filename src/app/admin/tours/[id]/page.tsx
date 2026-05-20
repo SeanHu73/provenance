@@ -644,7 +644,9 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
     ...rawStop,
     title: rawStop.title ?? '',
     isFinalStop: rawStop.isFinalStop ?? false,
-    backgroundPhotoOverride: rawStop.backgroundPhotoOverride ?? (rawStop as unknown as Record<string, unknown>).backgroundPhotoUrl as string | null ?? null,
+    backgroundPhotoOverride: rawStop.backgroundPhotoOverride !== undefined
+      ? rawStop.backgroundPhotoOverride
+      : (rawStop as unknown as Record<string, unknown>).backgroundPhotoUrl as string | null ?? null,
     seed: rawStop.seed ?? { text: '', photoUrl: null, photoCaption: null, photos: [], ttsText: null },
     notice: rawStop.notice ?? { prompt: '', timerSeconds: 30, photoUrl: null, photoCaption: null, photos: [] },
     wonder: rawStop.wonder === undefined ? { question: '', photos: [], audioUrl: null, audioTitle: null } : rawStop.wonder ? { ...rawStop.wonder, photos: rawStop.wonder.photos || [], audioUrl: rawStop.wonder.audioUrl ?? null, audioTitle: rawStop.wonder.audioTitle ?? null } : null,

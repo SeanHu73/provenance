@@ -109,8 +109,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
     // Walk stops up to current index, applying overrides
     for (let i = 0; i <= (session?.currentStopIndex ?? -1); i++) {
       const s = tour.stops[i];
-      // Check both new field name and legacy field name
-      const override = s?.backgroundPhotoOverride || (s as unknown as Record<string, unknown>)?.backgroundPhotoUrl as string | undefined;
+      // Check new field name; only fall back to legacy if new field is undefined (never set)
+      const override = s?.backgroundPhotoOverride !== undefined
+        ? s.backgroundPhotoOverride
+        : (s as unknown as Record<string, unknown>)?.backgroundPhotoUrl as string | null;
       if (override) photo = override;
     }
     return photo;
