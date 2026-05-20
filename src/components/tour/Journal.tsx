@@ -55,6 +55,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
   const [paused, setPaused] = useState(false);
   const [showJournal, setShowJournal] = useState(false);
+  const [showQuestionInput, setShowQuestionInput] = useState(false);
   const lastTapRef = useRef(0);
 
   // Double-tap handler: two taps within 400ms
@@ -264,19 +265,48 @@ export default function Journal({ onMapPeek }: JournalProps) {
         )}
       </div>
 
-      {/* Footer bar */}
+      {/* Footer bar — Journal + Question buttons */}
       {phase !== 'end' && (
-        <div className="shrink-0 px-5 py-2 border-t flex items-center justify-end" style={{ borderColor: '#D4BFA0' }}>
+        <div className="shrink-0 px-4 py-3 border-t flex items-center gap-3" style={{ borderColor: '#D4BFA0' }}>
           <button
             onClick={() => setShowJournal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-[#6B5D4F] hover:bg-[#D4BFA0]/20 transition-colors border border-[#D4BFA0]"
+            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-[#5C4A35] bg-[#D4BFA0]/40 hover:bg-[#D4BFA0]/60 transition-colors"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
             </svg>
             Journal
           </button>
+          <button
+            onClick={() => setShowQuestionInput(true)}
+            className="w-14 h-12 flex items-center justify-center rounded-xl text-base font-bold text-[#8B3A3A] bg-[#8B3A3A]/10 hover:bg-[#8B3A3A]/20 transition-colors"
+            title="Ask a question"
+          >
+            ?
+          </button>
+        </div>
+      )}
+
+      {/* Question input overlay */}
+      {showQuestionInput && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowQuestionInput(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="relative w-full max-w-lg bg-[#FFF8EE] rounded-t-2xl shadow-2xl animate-slide-up flex flex-col"
+            style={{ height: '50vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: '#D4BFA0' }}>
+              <h3 className="text-base font-semibold text-[#2C2418]">Ask a question</h3>
+              <button onClick={() => setShowQuestionInput(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-[#6B5D4F] hover:bg-[#D4BFA0]/30 text-lg">&times;</button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              <QuestionInputPanel
+                onSubmit={() => setShowQuestionInput(false)}
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -284,6 +314,65 @@ export default function Journal({ onMapPeek }: JournalProps) {
       {showJournal && (
         <JournalOverlay tour={tour} session={session} onClose={() => setShowJournal(false)} />
       )}
+    </div>
+  );
+}
+
+// ─── Question Input Panel (used in the ? overlay) ───────────────
+
+import MicButton from './MicButton';
+
+function QuestionInputPanel({ onSubmit }: { onSubmit: () => void }) {
+  const { tour, session, bankQuestion, currentStop } = useTour();
+  const [question, setQuestion] = useState('');
+  const [added, setAdded] = useState(false);
+
+  const handleAdd = () => {
+    if (!question.trim() || !tour || !session) return;
+    bankQuestion({
+      id: `bq_${Date.now().toString(36)}`,
+      tourId: tour.id,
+      sessionId: session.id,
+      questionText: question.trim(),
+      askedAfterStopId: currentStop?.id || 'unknown',
+      aiResponse: 'banked',
+      timestamp: new Date().toISOString(),
+    });
+    setQuestion('');
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-[#6B5D4F] leading-relaxed">
+        Something specific or an open-ended question to be posed to the community.
+      </p>
+      <div className="flex gap-2">
+        <textarea
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="What are you curious about?"
+          rows={3}
+          className="flex-1 px-4 py-3 rounded-lg border-2 border-[#D4BFA0] bg-white text-[18px] font-serif text-[#2C2418] placeholder:text-[#6B5D4F]/40 focus:outline-none focus:border-[#C4923A]"
+        />
+        <MicButton onTranscript={(t) => setQuestion((prev) => prev ? prev + ' ' + t : t)} />
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={handleAdd}
+          disabled={!question.trim()}
+          className="flex-1 py-3 rounded-lg text-base font-semibold bg-[#C4923A] text-white disabled:opacity-30"
+        >
+          {added ? '✓ Added' : 'Add question'}
+        </button>
+        <button
+          onClick={onSubmit}
+          className="px-4 py-3 rounded-lg text-base font-semibold text-[#6B5D4F] border border-[#D4BFA0]"
+        >
+          Done
+        </button>
+      </div>
     </div>
   );
 }

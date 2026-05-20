@@ -69,15 +69,6 @@ export default function WhatsNext({ stop, isLastStop, onAskQuestion, onContinue 
       ))}
 
       <div className="space-y-3">
-        <button
-          onClick={onAskQuestion}
-          className="w-full py-3 rounded-lg text-base font-semibold border-2 border-[#C4923A] text-[#C4923A] bg-[#C4923A]/10"
-        >
-          What are you still curious about?
-        </button>
-        <p className="text-xs text-[#6B5D4F] text-center italic -mt-1">
-          This could be something specific or an open-ended question to be posed to the community.
-        </p>
         <div className="flex gap-2">
           <BackButton />
           <button
