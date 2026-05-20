@@ -376,9 +376,9 @@ export default function Journal({ onMapPeek }: JournalProps) {
         <div className="shrink-0 px-4 py-3 border-t flex items-center gap-3" style={{ borderColor: '#D4BFA0' }}>
           <button
             onClick={() => setShowJournal(true)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-[#5C4A35] bg-[#D4BFA0]/40 hover:bg-[#D4BFA0]/60 transition-colors"
+            className="shrink-0 flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-base font-semibold text-[#5C4A35] bg-[#D4BFA0]/40 hover:bg-[#D4BFA0]/60 transition-colors border-2 border-[#7A7A5E]"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
             </svg>
@@ -386,7 +386,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
           </button>
           <button
             onClick={() => setShowQuestionInput(true)}
-            className="w-14 h-12 flex items-center justify-center rounded-xl text-base font-bold text-[#8B3A3A] bg-[#8B3A3A]/10 hover:bg-[#8B3A3A]/20 transition-colors"
+            className="flex-1 flex items-center justify-center py-3.5 rounded-xl text-lg font-bold text-[#8B3A3A] bg-[#8B3A3A]/10 hover:bg-[#8B3A3A]/20 transition-colors border-2 border-[#7A7A5E]"
             title="Ask a question"
           >
             ?

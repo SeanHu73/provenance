@@ -27,8 +27,8 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
       </p>
 
       {/* The question — centered in dark box */}
-      <div className="rounded-xl px-5 py-6 text-center border-3" style={{ backgroundColor: '#7A1A1A40', borderColor: '#C4923A' }}>
-        <p className="text-[28px] leading-relaxed font-serif font-bold" style={{ color: '#2C2418' }}>
+      <div className="rounded-xl px-5 py-6 text-center border-3" style={{ backgroundColor: '#7A1A1A90', borderColor: '#C4923A' }}>
+        <p className="text-[28px] leading-relaxed font-serif font-bold" style={{ color: '#FFF8EE' }}>
           &ldquo;{aq.question}&rdquo;
         </p>
       </div>
