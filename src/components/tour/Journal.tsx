@@ -80,27 +80,24 @@ export default function Journal({ onMapPeek }: JournalProps) {
   // Progress bar visibility — show during stops, hide on intro/end
   const showProgress = !['intro', 'end'].includes(phase);
 
-  // Track slide direction and stop changes synchronously via refs
-  const prevStopIdxRef2 = useRef(session.currentStopIndex);
-  const prevPhaseKeyRef = useRef(`${phase}-${session.currentRound}-${session.currentStopIndex}`);
-  const slideDirectionRef = useRef<1 | -1>(1);
-  const isStopChangeRef = useRef(false);
+  // Transition type: phases within a stop SLIDE, transitions between
+  // stops (or to/from closing/intro) FADE. We determine this by
+  // grouping phases into "groups" — same group = slide, different = fade.
+  //
+  // Group key: stopIndex for in-stop phases, 'intro' for intro/eq_opening,
+  // 'closing' for eq_closing/eq_final_reflect/eq_questions, 'end' for end.
+  const getGroup = (p: string, idx: number) => {
+    if (['intro', 'eq_opening'].includes(p)) return 'intro';
+    if (['eq_closing', 'eq_final_reflect', 'eq_questions'].includes(p)) return 'closing';
+    if (p === 'end') return 'end';
+    return `stop-${idx}`;
+  };
 
-  // Update refs synchronously before render
-  const newPhaseKey = `${phase}-${session.currentRound}-${session.currentStopIndex}`;
-  if (newPhaseKey !== prevPhaseKeyRef.current) {
-    // Detect stop change
-    isStopChangeRef.current = session.currentStopIndex !== prevStopIdxRef2.current;
-    prevStopIdxRef2.current = session.currentStopIndex;
-    prevPhaseKeyRef.current = newPhaseKey;
-  }
-
-  // Back button sets direction to -1
-  const originalGoBack = goBack;
-  const goBackWithDirection = useCallback(() => {
-    slideDirectionRef.current = -1;
-    originalGoBack();
-  }, [originalGoBack]);
+  const currentGroup = getGroup(phase, session.currentStopIndex);
+  const prevGroupRef = useRef(currentGroup);
+  const isFade = currentGroup !== prevGroupRef.current;
+  // Update ref AFTER reading (so this render uses the comparison, next render gets the new value)
+  useEffect(() => { prevGroupRef.current = currentGroup; }, [currentGroup]);
 
   // Device capability for blur
   const blurSupported = useMemo(() => canUseBlur(), []);
@@ -132,16 +129,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
   // Background photo shows on ALL screens when available
   const showBgPhoto = !!bgPhoto && bgLoaded;
 
-  // Read current values from refs for this render
-  const slideDirection = slideDirectionRef.current;
-  const isStopChange = isStopChangeRef.current;
-
-  // Reset direction to forward after each render (back button sets it to -1 before the state update)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { slideDirectionRef.current = 1; });
-
   // Phase key for AnimatePresence
-  const phaseKey = newPhaseKey;
+  const phaseKey = `${phase}-${session.currentRound}-${session.currentStopIndex}`;
 
   // Pause overlay — dark screen, double-tap to return
   if (paused) {
@@ -208,16 +197,16 @@ export default function Journal({ onMapPeek }: JournalProps) {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={phaseKey}
-            initial={isStopChange
-              ? { opacity: 0, x: 0 }
-              : { x: `${slideDirection * 100}%`, opacity: 1 }
+            initial={isFade
+              ? { opacity: 0 }
+              : { x: '100%' }
             }
             animate={{ x: 0, opacity: 1 }}
-            exit={isStopChange
-              ? { opacity: 0, x: 0 }
-              : { x: `${slideDirection * -100}%`, opacity: 1 }
+            exit={isFade
+              ? { opacity: 0 }
+              : { x: '-100%' }
             }
-            transition={{ duration: isStopChange ? 0.4 : 0.12, ease: isStopChange ? 'easeInOut' : 'easeOut' }}
+            transition={{ duration: isFade ? 0.4 : 0.12, ease: isFade ? 'easeInOut' : 'easeOut' }}
             className="absolute inset-0 overflow-y-auto p-4"
           >
             <div className={`min-h-full rounded-2xl shadow-lg px-5 py-6 ${
