@@ -127,6 +127,18 @@ export default function Journal({ onMapPeek }: JournalProps) {
   // Background photo shows on ALL screens when available
   const showBgPhoto = !!bgPhoto && bgLoaded;
 
+  // Detect if this is a stop change (fade) or within-stop phase change (slide)
+  const prevStopIdxRef = useRef(session.currentStopIndex);
+  const [isStopChange, setIsStopChange] = useState(false);
+  useEffect(() => {
+    if (session.currentStopIndex !== prevStopIdxRef.current) {
+      setIsStopChange(true);
+      prevStopIdxRef.current = session.currentStopIndex;
+    } else {
+      setIsStopChange(false);
+    }
+  }, [session.currentStopIndex, phase]);
+
   // Phase key for AnimatePresence
   const phaseKey = `${phase}-${session.currentRound}-${session.currentStopIndex}`;
 
@@ -195,10 +207,16 @@ export default function Journal({ onMapPeek }: JournalProps) {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={phaseKey}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            initial={isStopChange
+              ? { opacity: 0 }
+              : { x: `${slideDirection * 100}%`, opacity: 0 }
+            }
+            animate={{ x: 0, opacity: 1 }}
+            exit={isStopChange
+              ? { opacity: 0 }
+              : { x: `${slideDirection * -100}%`, opacity: 0 }
+            }
+            transition={{ duration: isStopChange ? 0.4 : 0.12, ease: isStopChange ? 'easeInOut' : 'easeOut' }}
             className="absolute inset-0 overflow-y-auto p-4"
           >
             <div className={`min-h-full rounded-2xl shadow-lg px-5 py-6 ${
