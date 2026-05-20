@@ -42,6 +42,8 @@ export default function ToursListPage() {
         guide: { name: '', role: '', initials: '' },
         description: '',
         coverPhotoUrl: '',
+        peekAudioUrl: null,
+        peekAudioTitle: null,
         location: null,
         stops: [],
         connectionWeb: [],

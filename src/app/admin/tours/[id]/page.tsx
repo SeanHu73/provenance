@@ -336,6 +336,15 @@ export default function TourEditorPage() {
             )}
           </label>
 
+          <AudioUpload
+            audioUrl={tour.peekAudioUrl ?? null}
+            audioTitle={tour.peekAudioTitle ?? null}
+            onChange={(url) => updateField('peekAudioUrl', url)}
+            onTitleChange={(title) => updateField('peekAudioTitle', title)}
+            uploadPath={`memorial-church/audio/tours/${tourId}/peek`}
+            onUploadFile={uploadPhoto}
+          />
+
           {/* Tour-level map pin */}
           <div>
             <span className="text-xs text-stone-600">Tour pin on map (the single marker learners tap to start this tour)</span>

@@ -73,6 +73,16 @@ export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
             {tour.stops.length} stop{tour.stops.length !== 1 ? 's' : ''} &middot; ~{tour.stops.length * 5} min
           </p>
 
+          {/* Audio */}
+          {tour.peekAudioUrl && (
+            <div className="rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(255,248,238,0.15)' }}>
+              {tour.peekAudioTitle && (
+                <p className="text-xs font-semibold px-3 pt-2" style={{ color: '#FFF8EE' }}>{tour.peekAudioTitle}</p>
+              )}
+              <audio controls src={tour.peekAudioUrl} className="w-full h-8" style={{ filter: 'invert(1) hue-rotate(180deg)', opacity: 0.7 }} />
+            </div>
+          )}
+
           {/* Begin button */}
           <button
             onClick={onBegin}

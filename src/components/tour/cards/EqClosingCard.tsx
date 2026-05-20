@@ -28,8 +28,8 @@ export default function EqClosingCard({ tour, onComplete }: Props) {
       </p>
 
       {/* The essential question — cardinal box */}
-      <div className="rounded-xl px-5 py-6 text-center border-2" style={{ backgroundColor: '#7A1A1A', borderColor: '#F0E0C8' }}>
-        <p className="text-[28px] leading-relaxed font-serif font-bold" style={{ color: '#F0E0C8' }}>
+      <div className="rounded-xl px-5 py-6 text-center border-3" style={{ backgroundColor: '#7A1A1A40', borderColor: '#C4923A' }}>
+        <p className="text-[28px] leading-relaxed font-serif font-bold" style={{ color: '#2C2418' }}>
           &ldquo;{eq.question}&rdquo;
         </p>
       </div>

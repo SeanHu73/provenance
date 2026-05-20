@@ -190,6 +190,8 @@ export interface Tour {
   };
   description: string;               // Brief intro shown on journal peek
   coverPhotoUrl: string;             // Photo for the journal peek
+  peekAudioUrl: string | null;       // Audio that plays on the journal peek
+  peekAudioTitle: string | null;
   // The "parent" pin on the map — the single marker visible before a
   // tour starts. Tapping it opens the journal peek.
   location: { lat: number; lng: number } | null;
