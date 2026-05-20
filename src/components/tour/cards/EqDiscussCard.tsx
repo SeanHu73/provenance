@@ -27,10 +27,12 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
         Please discuss...
       </p>
 
-      {/* The essential question */}
-      <p className="text-[23px] leading-relaxed font-serif font-semibold text-[#2C2418]">
-        &ldquo;{eq.question}&rdquo;
-      </p>
+      {/* The essential question — centered in translucent box */}
+      <div className="rounded-xl px-5 py-6 text-center" style={{ backgroundColor: 'rgba(240, 224, 200, 0.7)' }}>
+        <p className="text-[26px] leading-relaxed font-serif font-bold text-[#2C2418]">
+          &ldquo;{eq.question}&rdquo;
+        </p>
+      </div>
 
       {/* Instruction */}
       <p className="text-[18px] text-[#6B5D4F] italic leading-relaxed">

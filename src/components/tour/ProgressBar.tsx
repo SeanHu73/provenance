@@ -24,7 +24,7 @@ export default function ProgressBar({ tour, session }: Props) {
   const currentIdx = session.currentStopIndex;
   const completedIds = new Set(session.completedStops);
   const isClosing = ['eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
-  const isIntroPhase = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening'].includes(session.currentPhase);
+  const isIntroPhase = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional'].includes(session.currentPhase);
   const isInStopPhase = !isClosing && !isIntroPhase;
 
   // Auto-scroll to keep current stop centered
@@ -48,8 +48,8 @@ export default function ProgressBar({ tour, session }: Props) {
       >
         {/* Intro pill — for essential question / intro phases */}
         {tour.essentialQuestion && (() => {
-          const isIntroActive = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening'].includes(session.currentPhase);
-          const isIntroDone = !isIntroActive && session.currentStopIndex >= 0 && !['intro', 'eq_scene', 'eq_discuss', 'eq_opening'].includes(session.currentPhase);
+          const isIntroActive = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional'].includes(session.currentPhase);
+          const isIntroDone = !isIntroActive && session.currentStopIndex >= 0 && !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional'].includes(session.currentPhase);
           return (
             <div
               className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold transition-all ${
@@ -194,7 +194,7 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
         >
           {/* Intro card */}
           {tour.essentialQuestion && (() => {
-            const isActive = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening'].includes(session.currentPhase);
+            const isActive = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional'].includes(session.currentPhase);
             const isDone = !isActive;
             return (
               <div

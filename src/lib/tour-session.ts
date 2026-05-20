@@ -235,12 +235,14 @@ export function completeEqDiscuss(session: TourSession): TourSession {
 export function completeEqOpening(
   session: TourSession,
   theory: string,
-  reasoning: string
+  reasoning: string,
+  tour: Tour
 ): TourSession {
+  const hasAdditional = !!tour.essentialQuestion?.additionalQuestion;
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: 'seed',
+    currentPhase: hasAdditional ? 'eq_additional' : 'seed',
     essentialQuestionResponses: {
       initialTheory: theory,
       initialReasoning: reasoning,
@@ -251,6 +253,14 @@ export function completeEqOpening(
       whatShiftedResponse: null,
       reasoningSourceResponse: null,
     },
+  };
+}
+
+export function completeEqAdditional(session: TourSession): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'seed',
   };
 }
 

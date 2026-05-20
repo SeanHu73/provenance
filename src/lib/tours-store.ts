@@ -91,7 +91,7 @@ export function blankStop(order: number): import('./types').Stop {
     location: null,
     seed: { text: '', photoUrl: null, photoCaption: null, photos: [], ttsText: null, timerSeconds: null, audioUrl: null, audioTitle: null },
     notice: { prompt: '', timerSeconds: 30, photoUrl: null, photoCaption: null, photos: [], audioUrl: null, audioTitle: null },
-    wonder: { question: '', photos: [], audioUrl: null, audioTitle: null },
+    wonder: { question: '', questionType: 'discuss' as const, photos: [], audioUrl: null, audioTitle: null },
     reveal: { text: '', photoUrl: null, photoCaption: null, photos: [], bridgeText: '', bridgePhotos: [], audioUrl: null, audioTitle: null },
     extraRounds: [],
     reflect: {

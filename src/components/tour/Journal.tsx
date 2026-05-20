@@ -18,6 +18,7 @@ import IntroScreens from './cards/IntroScreens';
 import EqSceneCard from './cards/EqSceneCard';
 import EqDiscussCard from './cards/EqDiscussCard';
 import EqOpeningCard from './cards/EqOpeningCard';
+import EqAdditionalCard from './cards/EqAdditionalCard';
 import EqClosingCard from './cards/EqClosingCard';
 import EqFinalReflectCard from './cards/EqFinalReflectCard';
 import EqQuestionsCard from './cards/EqQuestionsCard';
@@ -54,6 +55,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeEqScene,
     completeEqDiscuss,
     completeEqOpening,
+    completeEqAdditional,
     completeEqClosing,
     completeEqFinalReflect,
     endTour,
@@ -229,6 +231,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
           <EqOpeningCard tour={tour} onComplete={completeEqOpening} />
         )}
 
+        {phase === 'eq_additional' && tour.essentialQuestion && (
+          <EqAdditionalCard tour={tour} onContinue={completeEqAdditional} />
+        )}
+
         {phase === 'seed' && currentStop && (
           <SeedCard stop={currentStop} onContinue={advancePhase} />
         )}
@@ -245,7 +251,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
             : (currentStop.extraRounds || [])[round - 1]?.wonder ?? null;
           if (!wonder) return null;
           // Build a minimal stop-like object for WonderCard
-          const virtualStop = { ...currentStop, wonder };
+          const virtualStop = { ...currentStop, wonder: { ...wonder, questionType: wonder.questionType || 'discuss' } };
           return <WonderCard key={`wonder-${round}`} stop={virtualStop} onContinue={advancePhase} />;
         })()}
 

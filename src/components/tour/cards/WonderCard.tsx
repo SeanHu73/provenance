@@ -17,7 +17,7 @@ export default function WonderCard({ stop, onContinue }: Props) {
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
       <p className="text-2xl uppercase tracking-[0.14em] text-[#C4923A] font-semibold">
-        Chance to discuss...
+        {stop.wonder?.questionType === 'opinion' ? "What’s your opinion?" : 'Chance to discuss...'}
       </p>
 
       {/* Audio player */}

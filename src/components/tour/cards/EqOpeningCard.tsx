@@ -30,10 +30,12 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
         Discussion Question
       </p>
 
-      {/* Reminder of the question */}
-      <p className="text-[21px] leading-relaxed font-serif font-semibold text-[#2C2418]">
-        &ldquo;{eq.question}&rdquo;
-      </p>
+      {/* Reminder of the question — centered in translucent box */}
+      <div className="rounded-xl px-5 py-5 text-center" style={{ backgroundColor: 'rgba(240, 224, 200, 0.7)' }}>
+        <p className="text-[24px] leading-relaxed font-serif font-bold text-[#2C2418]">
+          &ldquo;{eq.question}&rdquo;
+        </p>
+      </div>
 
       {/* Theory input */}
       <div className="space-y-2">
@@ -111,7 +113,7 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
             onClick={() => onComplete(theory.trim(), reasoning.trim())}
             className="flex-1 py-3 rounded-lg text-base font-semibold bg-[#7A7A5E] text-white"
           >
-            Let&apos;s find the first stop...
+            {eq.additionalQuestion ? 'Continue' : "Let's find the first stop..."}
           </button>
         </div>
       )}

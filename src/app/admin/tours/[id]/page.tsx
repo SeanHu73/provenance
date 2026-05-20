@@ -427,6 +427,7 @@ export default function TourEditorPage() {
                     theoryPlaceholder: 'Based on what you\'re thinking now...',
                     reasoningPrompt: 'What makes you think that?',
                     reasoningPlaceholder: 'What are you drawing on — something you see, something you know, a hunch?',
+                    additionalQuestion: null,
                     finalReflectionPrompt: 'Your interpretation now...',
                     finalReflectionPlaceholder: 'What is your interpretation now? Has anything changed? Or has it stayed mostly the same?',
                     finalReasoningPrompt: 'What did you discuss or see to reach this interpretation?',
@@ -539,6 +540,45 @@ export default function TourEditorPage() {
                   />
                 </label>
               </div>
+              {/* Additional question */}
+              <div className="border-t border-stone-200 pt-3 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!tour.essentialQuestion.additionalQuestion}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { question: '', questionType: 'discuss' } });
+                      } else {
+                        updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: null });
+                      }
+                    }}
+                    className="rounded"
+                  />
+                  <span className="text-xs text-stone-600">Add a follow-up question (shown after written prompts, before first stop)</span>
+                </label>
+                {tour.essentialQuestion.additionalQuestion && (
+                  <div className="space-y-2 pl-2 border-l-2 border-stone-200">
+                    <div className="flex gap-3">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" checked={tour.essentialQuestion.additionalQuestion.questionType === 'discuss'} onChange={() => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, questionType: 'discuss' } })} />
+                        <span className="text-xs text-stone-600">Discussion Question</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" checked={tour.essentialQuestion.additionalQuestion.questionType === 'opinion'} onChange={() => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, questionType: 'opinion' } })} />
+                        <span className="text-xs text-stone-600">Discuss Opinion</span>
+                      </label>
+                    </div>
+                    <input
+                      value={tour.essentialQuestion.additionalQuestion.question}
+                      onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, question: e.target.value } })}
+                      className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      placeholder="The follow-up question..."
+                    />
+                  </div>
+                )}
+              </div>
+
               <label className="block">
                 <span className="text-xs text-stone-500">Closing framing (after tour ends)</span>
                 <textarea
@@ -699,7 +739,7 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
       : (rawStop as unknown as Record<string, unknown>).backgroundPhotoUrl as string | null ?? null,
     seed: rawStop.seed ?? { text: '', photoUrl: null, photoCaption: null, photos: [], ttsText: null },
     notice: rawStop.notice ?? { prompt: '', timerSeconds: 30, photoUrl: null, photoCaption: null, photos: [] },
-    wonder: rawStop.wonder === undefined ? { question: '', photos: [], audioUrl: null, audioTitle: null } : rawStop.wonder ? { ...rawStop.wonder, photos: rawStop.wonder.photos || [], audioUrl: rawStop.wonder.audioUrl ?? null, audioTitle: rawStop.wonder.audioTitle ?? null } : null,
+    wonder: rawStop.wonder === undefined ? { question: '', questionType: 'discuss', photos: [], audioUrl: null, audioTitle: null } : rawStop.wonder ? { ...rawStop.wonder, questionType: rawStop.wonder.questionType || 'discuss', photos: rawStop.wonder.photos || [], audioUrl: rawStop.wonder.audioUrl ?? null, audioTitle: rawStop.wonder.audioTitle ?? null } : null,
     reveal: rawStop.reveal ?? { text: '', photoUrl: null, photoCaption: null, photos: [], bridgeText: '' },
     reflect: rawStop.reflect === undefined ? null : rawStop.reflect,
     detours: rawStop.detours ?? [],
@@ -882,7 +922,7 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
       <fieldset className="space-y-2">
         <legend className="text-xs font-semibold text-stone-700 uppercase tracking-wide flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#C4923A] inline-block" />
-          Wonder (discussion prompt)
+          Discussion Question
         </legend>
         <label className="flex items-center gap-2 cursor-pointer">
           <input
@@ -890,17 +930,27 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
             checked={stop.wonder !== null}
             onChange={(e) => {
               if (e.target.checked) {
-                onChange({ wonder: { question: '', photos: [], audioUrl: null, audioTitle: null } });
+                onChange({ wonder: { question: '', questionType: 'discuss', photos: [], audioUrl: null, audioTitle: null } });
               } else {
                 onChange({ wonder: null });
               }
             }}
             className="rounded"
           />
-          <span className="text-xs text-stone-600">Include a wonder phase for this stop</span>
+          <span className="text-xs text-stone-600">Include a discussion question for this stop</span>
         </label>
         {stop.wonder !== null && (
           <>
+            <div className="flex gap-3">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="radio" name={`wtype-${stop.id}`} checked={(stop.wonder.questionType || 'discuss') === 'discuss'} onChange={() => onChange({ wonder: { ...stop.wonder!, questionType: 'discuss' } })} />
+                <span className="text-xs text-stone-600">Discussion Question</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="radio" name={`wtype-${stop.id}`} checked={stop.wonder.questionType === 'opinion'} onChange={() => onChange({ wonder: { ...stop.wonder!, questionType: 'opinion' } })} />
+                <span className="text-xs text-stone-600">Discuss Opinion</span>
+              </label>
+            </div>
             <RichTextarea
               label="Question (prompts group conversation)"
               value={stop.wonder.question}
@@ -994,7 +1044,7 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
                       checked={round.wonder !== null}
                       onChange={(e) => {
                         const next = [...(stop.extraRounds || [])];
-                        next[i] = { ...next[i], wonder: e.target.checked ? { question: '', photos: [], audioUrl: null, audioTitle: null } : null };
+                        next[i] = { ...next[i], wonder: e.target.checked ? { question: '', questionType: 'discuss', photos: [], audioUrl: null, audioTitle: null } : null };
                         onChange({ extraRounds: next });
                       }}
                       className="rounded"
@@ -1095,7 +1145,7 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
         <button
           onClick={() => onChange({
             extraRounds: [...(stop.extraRounds || []), {
-              wonder: { question: '', photos: [], audioUrl: null, audioTitle: null },
+              wonder: { question: '', questionType: 'discuss' as const, photos: [], audioUrl: null, audioTitle: null },
               reveal: { text: '', photos: [], audioUrl: null, audioTitle: null },
             }],
           })}

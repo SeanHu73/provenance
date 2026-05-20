@@ -212,6 +212,11 @@ export interface Tour {
     theoryPlaceholder: string;
     reasoningPrompt: string;           // "What makes you think that?"
     reasoningPlaceholder: string;
+    // Optional additional question after written prompts
+    additionalQuestion: {
+      question: string;
+      questionType: 'discuss' | 'opinion';
+    } | null;
     finalReflectionPrompt: string;     // "Your interpretation now..."
     finalReflectionPlaceholder: string;
     finalReasoningPrompt: string;      // "What did you discuss or see..."
@@ -265,6 +270,7 @@ export interface Stop {
   // Wonder phase — null means skip (notice goes straight to reveal)
   wonder: {
     question: string;                // Discussion prompt (no options)
+    questionType: 'discuss' | 'opinion';  // 'discuss' = "Chance to discuss...", 'opinion' = "What's your opinion?"
     photos: Array<{ url: string; caption: string | null }>;
     audioUrl: string | null;
     audioTitle: string | null;
@@ -284,7 +290,7 @@ export interface Stop {
 
   // Extra wonder + context rounds (optional, after the initial reveal, before the bridge)
   extraRounds: Array<{
-    wonder: { question: string; photos: Array<{ url: string; caption: string | null }>; audioUrl: string | null; audioTitle: string | null } | null;
+    wonder: { question: string; questionType: 'discuss' | 'opinion'; photos: Array<{ url: string; caption: string | null }>; audioUrl: string | null; audioTitle: string | null } | null;
     reveal: {
       text: string;
       photos: Array<{ url: string; caption: string | null }>;
@@ -347,7 +353,7 @@ export interface WebNode {
   y: number;
 }
 
-export type TourPhase = 'intro' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing' | 'eq_final_reflect' | 'eq_questions' | 'end';
+export type TourPhase = 'intro' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing' | 'eq_final_reflect' | 'eq_questions' | 'end';
 
 export interface TourSession {
   id: string;
