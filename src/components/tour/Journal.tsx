@@ -98,15 +98,9 @@ export default function Journal({ onMapPeek }: JournalProps) {
       className="fixed inset-0 z-40 flex flex-col"
       style={{ backgroundColor: '#FFF8EE' }}
     >
-      {/* Progress bar */}
-      {showProgress && <ProgressBar tour={tour} session={session} />}
-
-      {/* Top bar */}
-      <div
-        className="shrink-0 flex items-center justify-between px-4 py-2 border-b"
-        style={{ borderColor: '#D4BFA0' }}
-      >
-        <div className="flex items-center gap-2">
+      {/* Title bar — centered, above progress */}
+      <div className="shrink-0 flex items-center justify-between px-4 py-2">
+        <div className="w-8">
           {canGoBack && phase !== 'end' && (
             <button
               onClick={goBack}
@@ -118,29 +112,9 @@ export default function Journal({ onMapPeek }: JournalProps) {
               </svg>
             </button>
           )}
-          <div>
-            <p className="text-sm font-semibold text-[#2C2418]">{tour.title}</p>
-            {phase !== 'end' && currentStop && (
-              <p className="text-[11px] text-[#6B5D4F] uppercase tracking-wide">
-                Stop {stopNum} of {tour.stops.length}
-                {currentStop.title && <> &middot; {currentStop.title}</>}
-              </p>
-            )}
-          </div>
         </div>
-        <div className="flex items-center gap-1">
-          {onMapPeek && phase !== 'end' && (
-            <button
-              onClick={onMapPeek}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[#6B5D4F] hover:bg-[#D4BFA0]/30 text-sm"
-              title="View on map"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-                <circle cx="12" cy="9" r="2.5"/>
-              </svg>
-            </button>
-          )}
+        <p className="text-lg font-bold text-[#2C2418] text-center">{tour.title}</p>
+        <div className="w-8">
           <button
             onClick={endTour}
             className="w-8 h-8 rounded-full flex items-center justify-center text-[#6B5D4F] hover:bg-[#D4BFA0]/30 text-sm"
@@ -150,6 +124,9 @@ export default function Journal({ onMapPeek }: JournalProps) {
           </button>
         </div>
       </div>
+
+      {/* Progress bar */}
+      {showProgress && <ProgressBar tour={tour} session={session} />}
 
       {/* Card area — scrollable */}
       <div className="flex-1 overflow-y-auto px-5 py-6">
