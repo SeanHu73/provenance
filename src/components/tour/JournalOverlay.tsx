@@ -37,7 +37,7 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
       <div className="absolute inset-0 bg-black/40" />
       <div
         className="relative w-full max-w-lg bg-[#FFF8EE] rounded-t-2xl shadow-2xl animate-slide-up flex flex-col"
-        style={{ maxHeight: '85vh' }}
+        style={{ height: '85vh' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
