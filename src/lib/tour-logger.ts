@@ -131,10 +131,20 @@ export function logEqFinalReflect(opts: {
 }
 
 function fire(entry: Record<string, unknown>): void {
+  const payload = JSON.stringify(entry);
+
+  // Try sendBeacon first — designed to survive page transitions on mobile
+  if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+    const blob = new Blob([payload], { type: 'application/json' });
+    const sent = navigator.sendBeacon('/api/log-tour', blob);
+    if (sent) return;
+  }
+
+  // Fallback to fetch with keepalive
   fetch('/api/log-tour', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(entry),
+    body: payload,
     keepalive: true,
   }).catch(() => {});
 }
