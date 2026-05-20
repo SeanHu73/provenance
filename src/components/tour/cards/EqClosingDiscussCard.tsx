@@ -7,6 +7,7 @@
 
 import { Tour } from '@/lib/types';
 import BackButton from './BackButton';
+import AudioButton from './AudioButton';
 
 interface Props {
   tour: Tour;
@@ -22,6 +23,9 @@ export default function EqClosingDiscussCard({ tour, onContinue }: Props) {
       <p className="text-2xl uppercase tracking-[0.14em] text-[#C4923A] font-semibold">
         Going back to the discussion question...
       </p>
+
+      {/* Audio */}
+      {eq.closingAudioUrl && <AudioButton audioUrl={eq.closingAudioUrl} title={eq.closingAudioTitle} />}
 
       {/* Closing framing */}
       <p className="text-[18px] text-[#6B5D4F] italic leading-relaxed">

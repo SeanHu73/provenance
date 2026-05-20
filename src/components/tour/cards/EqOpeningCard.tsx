@@ -60,7 +60,7 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
           <button
             onClick={() => setTheoryCommitted(true)}
             disabled={!theory.trim()}
-            className="w-full py-3 rounded-lg text-base font-semibold text-[#C4923A] border-2 border-[#C4923A] bg-[#C4923A]/10 hover:bg-[#C4923A]/20 disabled:opacity-50 transition-colors"
+            className="w-full py-3 rounded-lg text-base font-semibold text-white bg-[#C4923A] hover:bg-[#B8832E] disabled:opacity-40 transition-colors"
           >
             Propose theory
           </button>
@@ -94,7 +94,7 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
             <button
               onClick={() => setReasoningCommitted(true)}
               disabled={!reasoning.trim()}
-              className="w-full py-3 rounded-lg text-base font-semibold text-[#C4923A] border-2 border-[#C4923A] bg-[#C4923A]/10 hover:bg-[#C4923A]/20 disabled:opacity-50 transition-colors"
+              className="w-full py-3 rounded-lg text-base font-semibold text-white bg-[#C4923A] hover:bg-[#B8832E] disabled:opacity-40 transition-colors"
             >
               Confirm your explanation
             </button>

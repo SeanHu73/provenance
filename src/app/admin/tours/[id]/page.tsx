@@ -437,6 +437,8 @@ export default function TourEditorPage() {
                     reasoningPrompt: 'What makes you think that?',
                     reasoningPlaceholder: 'What are you drawing on — something you see, something you know, a hunch?',
                     additionalQuestion: null,
+                    closingAudioUrl: null,
+                    closingAudioTitle: null,
                     finalReflectionPrompt: 'Your interpretation now...',
                     finalReflectionPlaceholder: 'What is your interpretation now? Has anything changed? Or has it stayed mostly the same?',
                     finalReasoningPrompt: 'What did you discuss or see to reach this interpretation?',
@@ -597,6 +599,14 @@ export default function TourEditorPage() {
                   className="mt-1 w-full px-3 py-1.5 border border-stone-300 rounded text-sm"
                 />
               </label>
+              <AudioUpload
+                audioUrl={tour.essentialQuestion.closingAudioUrl ?? null}
+                audioTitle={tour.essentialQuestion.closingAudioTitle ?? null}
+                onChange={(url) => updateField('essentialQuestion', { ...tour.essentialQuestion!, closingAudioUrl: url })}
+                onTitleChange={(title) => updateField('essentialQuestion', { ...tour.essentialQuestion!, closingAudioTitle: title })}
+                uploadPath={`memorial-church/audio/tours/${tourId}/eq_closing`}
+                onUploadFile={uploadPhoto}
+              />
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                   <span className="text-xs text-stone-500">Final reflection prompt</span>

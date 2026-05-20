@@ -211,7 +211,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
               : { x: '-100%' }
             }
             transition={{ duration: isFade ? 0.4 : 0.12, ease: isFade ? 'easeInOut' : 'easeOut' }}
-            className="absolute inset-0 overflow-y-auto p-4"
+            className="absolute inset-0 overflow-y-auto p-4 tour-scroll"
             ref={(el) => { scrollContainerRef.current = el; checkScroll(); }}
             onScroll={checkScroll}
           >
@@ -360,23 +360,21 @@ export default function Journal({ onMapPeek }: JournalProps) {
         </AnimatePresence>
       </div>
 
-      {/* Scroll indicator */}
+      {/* Scroll indicator — large arrow above footer */}
       {canScrollMore && (
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 pointer-events-none animate-gentle-pulse">
-          <div className="w-8 h-8 rounded-full bg-[#2C2418]/20 flex items-center justify-center">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2C2418" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </div>
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 pointer-events-none animate-gentle-pulse">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2C2418" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.5">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </div>
       )}
 
       {/* Footer bar — Journal + Question buttons */}
       {phase !== 'end' && (
-        <div className="shrink-0 px-4 py-3 border-t flex items-center gap-3" style={{ borderColor: '#D4BFA0' }}>
+        <div className="shrink-0 px-4 py-3 border-t flex items-center justify-center gap-3" style={{ borderColor: '#D4BFA0' }}>
           <button
             onClick={() => setShowJournal(true)}
-            className="shrink-0 flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-base font-semibold text-[#5C4A35] bg-[#D4BFA0]/40 hover:bg-[#D4BFA0]/60 transition-colors border-2 border-[#7A7A5E]"
+            className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-base font-semibold text-[#5C4A35] bg-[#D4BFA0]/40 hover:bg-[#D4BFA0]/60 transition-colors border-2 border-[#7A7A5E]"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
@@ -386,7 +384,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
           </button>
           <button
             onClick={() => setShowQuestionInput(true)}
-            className="flex-1 flex items-center justify-center py-3.5 rounded-xl text-lg font-bold text-[#8B3A3A] bg-[#8B3A3A]/10 hover:bg-[#8B3A3A]/20 transition-colors border-2 border-[#7A7A5E]"
+            className="flex items-center justify-center px-5 py-3.5 rounded-xl text-2xl font-bold text-[#8B3A3A] bg-[#8B3A3A]/10 hover:bg-[#8B3A3A]/20 transition-colors border-2 border-[#7A7A5E]"
             title="Ask a question"
           >
             ?

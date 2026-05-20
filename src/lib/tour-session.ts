@@ -44,9 +44,14 @@ function advanceFromReveal(
     return advanceFromReveal(currentRound + 1, extras, stop);
   }
   // No more rounds — go to reflect or whats_next
-  return stop.reflect !== null
-    ? { phase: 'reflect', round: currentRound }
-    : { phase: 'whats_next', round: currentRound };
+  // Final stops without reflect skip whats_next entirely
+  if (stop.reflect !== null) {
+    return { phase: 'reflect', round: currentRound };
+  }
+  if (stop.isFinalStop) {
+    return { phase: 'whats_next', round: currentRound }; // whats_next will auto-continue to closing
+  }
+  return { phase: 'whats_next', round: currentRound };
 }
 
 function nextPhaseAndRound(

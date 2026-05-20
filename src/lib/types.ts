@@ -219,6 +219,8 @@ export interface Tour {
       question: string;
       questionType: 'discuss' | 'opinion';
     } | null;
+    closingAudioUrl: string | null;     // Audio for the closing discuss screen
+    closingAudioTitle: string | null;
     finalReflectionPrompt: string;     // "Your interpretation now..."
     finalReflectionPlaceholder: string;
     finalReasoningPrompt: string;      // "What did you discuss or see..."
