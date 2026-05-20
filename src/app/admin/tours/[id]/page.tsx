@@ -735,41 +735,7 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
       )}
 
       {/* ── Background photo override ── */}
-      <div className="space-y-1">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={!!stop.backgroundPhotoOverride}
-            onChange={(e) => onChange({ backgroundPhotoOverride: e.target.checked ? '' : null })}
-            className="rounded"
-          />
-          <span className="text-xs text-stone-600">Change background photo from this stop onward</span>
-        </label>
-        {stop.backgroundPhotoOverride !== null && stop.backgroundPhotoOverride !== undefined && (
-          <div className="flex gap-2">
-            <input
-              value={stop.backgroundPhotoOverride || ''}
-              onChange={(e) => onChange({ backgroundPhotoOverride: e.target.value || null })}
-              className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs"
-              placeholder="New background photo URL..."
-            />
-            <label className="px-2 py-1 rounded bg-stone-200 text-stone-700 text-xs cursor-pointer hover:bg-stone-300">
-              Upload
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const url = await onUploadPhoto(file, `memorial-church/photos/tours/${tourId}/bg_${stop.id}_${file.name}`);
-                  onChange({ backgroundPhotoOverride: url });
-                }}
-              />
-            </label>
-          </div>
-        )}
-      </div>
+      <BgPhotoOverride stop={stop} tourId={tourId} onChange={onChange} onUploadPhoto={onUploadPhoto} />
 
       {/* ── Seed ── */}
       <fieldset className="space-y-2">
@@ -1387,6 +1353,53 @@ interface DetourEditorProps {
   tourId: string;
   onChange: (patch: Partial<Detour>) => void;
   onUploadPhoto: (file: File, path: string) => Promise<string>;
+}
+
+function BgPhotoOverride({ stop, tourId, onChange, onUploadPhoto }: { stop: Stop; tourId: string; onChange: (patch: Partial<Stop>) => void; onUploadPhoto: (file: File, path: string) => Promise<string> }) {
+  const [enabled, setEnabled] = useState(!!stop.backgroundPhotoOverride);
+
+  return (
+    <div className="space-y-1">
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => {
+            setEnabled(e.target.checked);
+            if (!e.target.checked) {
+              onChange({ backgroundPhotoOverride: null });
+            }
+          }}
+          className="rounded"
+        />
+        <span className="text-xs text-stone-600">Change background photo from this stop onward</span>
+      </label>
+      {enabled && (
+        <div className="flex gap-2">
+          <input
+            value={stop.backgroundPhotoOverride || ''}
+            onChange={(e) => onChange({ backgroundPhotoOverride: e.target.value || '' })}
+            className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs"
+            placeholder="New background photo URL..."
+          />
+          <label className="px-2 py-1 rounded bg-stone-200 text-stone-700 text-xs cursor-pointer hover:bg-stone-300">
+            Upload
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const url = await onUploadPhoto(file, `memorial-church/photos/tours/${tourId}/bg_${stop.id}_${file.name}`);
+                onChange({ backgroundPhotoOverride: url });
+              }}
+            />
+          </label>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function BridgeToggle({ stop, tourId, onChange, onUploadPhoto }: { stop: Stop; tourId: string; onChange: (patch: Partial<Stop>) => void; onUploadPhoto: (file: File, path: string) => Promise<string> }) {
