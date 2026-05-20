@@ -1036,10 +1036,10 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
       <fieldset className="space-y-2">
         <legend className="text-xs font-semibold text-stone-700 uppercase tracking-wide flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#C4923A] inline-block" />
-          Additional wonder + context rounds
+          Additional Discussion Questions + Context
         </legend>
         {(stop.extraRounds || []).length === 0 ? (
-          <p className="text-[10px] text-stone-400 italic">No extra rounds. Add one to continue the wonder → context cycle within this stop.</p>
+          <p className="text-[10px] text-stone-400 italic">No extra rounds. Add one to continue the discussion → context cycle within this stop.</p>
         ) : (
           <ul className="space-y-3">
             {(stop.extraRounds || []).map((round, i) => (
@@ -1068,12 +1068,30 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
                       }}
                       className="rounded"
                     />
-                    <span className="text-xs text-stone-600">Include wonder</span>
+                    <span className="text-xs text-stone-600">Include discussion question</span>
                   </label>
                   {round.wonder !== null && (
                     <>
+                      <div className="flex gap-3">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={(round.wonder.questionType || 'discuss') === 'discuss'} onChange={() => {
+                            const next = [...(stop.extraRounds || [])];
+                            next[i] = { ...next[i], wonder: { ...next[i].wonder!, questionType: 'discuss' } };
+                            onChange({ extraRounds: next });
+                          }} />
+                          <span className="text-xs text-stone-600">Discussion Question</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={round.wonder.questionType === 'opinion'} onChange={() => {
+                            const next = [...(stop.extraRounds || [])];
+                            next[i] = { ...next[i], wonder: { ...next[i].wonder!, questionType: 'opinion' } };
+                            onChange({ extraRounds: next });
+                          }} />
+                          <span className="text-xs text-stone-600">Discuss Opinion</span>
+                        </label>
+                      </div>
                       <RichTextarea
-                        label="Wonder question"
+                        label="Discussion question"
                         value={round.wonder.question}
                         onChange={(question) => {
                           const next = [...(stop.extraRounds || [])];
@@ -1170,7 +1188,7 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
           })}
           className="text-xs text-blue-700 hover:underline"
         >
-          + Add another wonder + context round
+          + Add another discussion + context round
         </button>
       </fieldset>
 
