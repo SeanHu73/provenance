@@ -63,7 +63,7 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
             className="text-base text-[#6B5D4F] flex items-center gap-2 py-2 px-3 rounded-lg border border-[#D4BFA0] hover:bg-[#D4BFA0]/20"
           >
             <span className="text-xs">{framingOpen ? '▼' : '▶'}</span>
-            {framingOpen ? 'Hide context' : 'More context'}
+            {framingOpen ? 'Hide text' : 'Tap to read along'}
           </button>
           {framingOpen && (
             <p className="text-[18px] text-[#6B5D4F] italic leading-relaxed animate-fade-in">

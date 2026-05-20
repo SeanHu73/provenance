@@ -30,9 +30,9 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
         Discussion Question
       </p>
 
-      {/* Reminder of the question — centered in translucent box */}
-      <div className="rounded-xl px-5 py-5 text-center" style={{ backgroundColor: 'rgba(240, 224, 200, 0.7)' }}>
-        <p className="text-[24px] leading-relaxed font-serif font-bold text-[#2C2418]">
+      {/* Reminder of the question — centered in dark box */}
+      <div className="rounded-xl px-5 py-6 text-center border-2" style={{ backgroundColor: '#2C2418', borderColor: '#FFF8EE' }}>
+        <p className="text-[28px] leading-relaxed font-serif font-bold" style={{ color: '#FFF8EE' }}>
           &ldquo;{eq.question}&rdquo;
         </p>
       </div>
