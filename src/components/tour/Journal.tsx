@@ -80,24 +80,11 @@ export default function Journal({ onMapPeek }: JournalProps) {
   // Progress bar visibility — show during stops, hide on intro/end
   const showProgress = !['intro', 'end'].includes(phase);
 
-  // Transition type: phases within a stop SLIDE, transitions between
-  // stops (or to/from closing/intro) FADE. We determine this by
-  // grouping phases into "groups" — same group = slide, different = fade.
-  //
-  // Group key: stopIndex for in-stop phases, 'intro' for intro/eq_opening,
-  // 'closing' for eq_closing/eq_final_reflect/eq_questions, 'end' for end.
-  const getGroup = (p: string, idx: number) => {
-    if (['intro', 'eq_opening'].includes(p)) return 'intro';
-    if (['eq_closing', 'eq_final_reflect', 'eq_questions'].includes(p)) return 'closing';
-    if (p === 'end') return 'end';
-    return `stop-${idx}`;
-  };
-
-  const currentGroup = getGroup(phase, session.currentStopIndex);
-  const prevGroupRef = useRef(currentGroup);
-  const isFade = currentGroup !== prevGroupRef.current;
-  // Update ref AFTER reading (so this render uses the comparison, next render gets the new value)
-  useEffect(() => { prevGroupRef.current = currentGroup; }, [currentGroup]);
+  // Determine transition type from the phase history.
+  // Look at the previous entry — if it was in the same stop, slide. Otherwise fade.
+  const history = session.phaseHistory || [];
+  const prevEntry = history.length > 0 ? history[history.length - 1] : null;
+  const isFade = !prevEntry || prevEntry.stopIndex !== session.currentStopIndex;
 
   // Device capability for blur
   const blurSupported = useMemo(() => canUseBlur(), []);
