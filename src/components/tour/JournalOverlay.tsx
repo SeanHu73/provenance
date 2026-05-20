@@ -2,20 +2,29 @@
 
 /**
  * Journal overlay — a reference panel that hovers over the tour.
- * Three tabs: Stops (with expandable context), Questions, Your Responses.
+ * Three tabs: Stops (with expandable context + questions), Questions, Your Theory.
  */
 
 import { useState } from 'react';
 import { Tour, TourSession } from '@/lib/types';
-import FormattedText from './cards/FormattedText';
+import PhotoContent from './cards/PhotoContent';
 import FullscreenPhoto from './cards/FullscreenPhoto';
 
-type Tab = 'stops' | 'questions' | 'responses';
+type Tab = 'stops' | 'questions' | 'theory';
 
 interface Props {
   tour: Tour;
   session: TourSession;
   onClose: () => void;
+}
+
+/** Get the first notice photo for a stop (for thumbnails) */
+function getStopThumbnail(stop: Tour['stops'][number]): string | null {
+  return (stop.notice.photos || [])[0]?.url
+    || stop.notice.photoUrl
+    || (stop.seed.photos || [])[0]?.url
+    || stop.seed.photoUrl
+    || null;
 }
 
 export default function JournalOverlay({ tour, session, onClose }: Props) {
@@ -29,7 +38,7 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: 'stops', label: 'Stops' },
     { id: 'questions', label: `Questions${session.bankedQuestions.length > 0 ? ` (${session.bankedQuestions.length})` : ''}` },
-    { id: 'responses', label: 'Your Responses' },
+    { id: 'theory', label: 'Your Theory' },
   ];
 
   return (
@@ -73,23 +82,25 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                 const isCurrent = i === currentIdx;
                 const isUpcoming = !isCompleted && !isCurrent;
                 const isExpanded = expandedStopId === stop.id;
-                const firstPhoto = (stop.seed.photos || [])[0]?.url || stop.seed.photoUrl || null;
+                const thumbnail = getStopThumbnail(stop);
+
+                // Questions asked at this stop
+                const stopQuestions = session.bankedQuestions.filter((q) => q.askedAfterStopId === stop.id);
 
                 return (
                   <div key={stop.id} className={`rounded-xl border overflow-hidden ${
                     isCurrent ? 'border-[#C4923A]' : isCompleted ? 'border-[#D4BFA0]' : 'border-[#D4BFA0]/40'
                   }`}>
-                    {/* Stop header — always visible */}
+                    {/* Stop header */}
                     <button
                       onClick={() => !isUpcoming && setExpandedStopId(isExpanded ? null : stop.id)}
                       className="w-full flex items-center gap-3 p-3 text-left"
                       disabled={isUpcoming}
                     >
-                      {/* Thumbnail */}
                       <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#D4BFA0]/20 shrink-0">
-                        {!isUpcoming && firstPhoto ? (
+                        {!isUpcoming && thumbnail ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={firstPhoto} alt="" className="w-full h-full object-cover" />
+                          <img src={thumbnail} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-sm font-bold text-[#D4BFA0]">{i + 1}</div>
                         )}
@@ -107,26 +118,33 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                       )}
                     </button>
 
-                    {/* Expanded context — shows reveal text */}
+                    {/* Expanded content */}
                     {isExpanded && !isUpcoming && (
                       <div className="px-4 pb-4 space-y-4 border-t border-[#D4BFA0]/30 pt-3 animate-fade-in">
-                        {/* Main reveal */}
+                        {/* Questions at this stop */}
+                        {stopQuestions.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-[10px] text-[#8B3A3A] uppercase tracking-wide font-semibold">Your questions at this stop</p>
+                            {stopQuestions.map((q) => (
+                              <div key={q.id} className="p-2 rounded-lg bg-[#8B3A3A]/5 border border-[#8B3A3A]/10">
+                                <p className="text-xs font-serif text-[#2C2418]">&ldquo;{q.questionText}&rdquo;</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Main reveal — using PhotoContent for proper [photo:N] rendering */}
                         {stop.reveal.text && (
                           <div className="space-y-2">
                             <p className="text-[10px] text-[#C4923A] uppercase tracking-wide font-semibold">Context</p>
-                            <div className="border-l-3 border-[#C4923A] pl-3">
-                              <p className="text-sm font-serif text-[#2C2418] leading-relaxed">
-                                <FormattedText text={stop.reveal.text} />
-                              </p>
-                            </div>
-                            {/* Reveal photos */}
-                            {(stop.reveal.photos || []).filter(p => p.url).map((photo, pi) => (
-                              <button key={pi} onClick={() => setFullscreenPhoto(photo)} className="w-full rounded-lg overflow-hidden border border-[#D4BFA0] text-left">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={photo.url} alt={photo.caption || ''} className="w-full max-h-40 object-contain bg-[#F0E0C8]" />
-                                {photo.caption && <p className="text-[10px] text-[#6B5D4F] px-2 py-1 italic">{photo.caption}</p>}
-                              </button>
-                            ))}
+                            <PhotoContent
+                              text={stop.reveal.text}
+                              photos={stop.reveal.photos || []}
+                              legacyPhotoUrl={stop.reveal.photoUrl}
+                              legacyPhotoCaption={stop.reveal.photoCaption}
+                              textClass="text-sm font-serif text-[#2C2418] leading-relaxed"
+                              borderColor="#C4923A"
+                            />
                           </div>
                         )}
 
@@ -135,17 +153,12 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                           round.reveal && round.reveal.text ? (
                             <div key={ri} className="space-y-2">
                               <p className="text-[10px] text-[#C4923A] uppercase tracking-wide font-semibold">Context (continued)</p>
-                              <div className="border-l-3 border-[#C4923A] pl-3">
-                                <p className="text-sm font-serif text-[#2C2418] leading-relaxed">
-                                  <FormattedText text={round.reveal.text} />
-                                </p>
-                              </div>
-                              {(round.reveal.photos || []).filter(p => p.url).map((photo, pi) => (
-                                <button key={pi} onClick={() => setFullscreenPhoto(photo)} className="w-full rounded-lg overflow-hidden border border-[#D4BFA0] text-left">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={photo.url} alt={photo.caption || ''} className="w-full max-h-40 object-contain bg-[#F0E0C8]" />
-                                </button>
-                              ))}
+                              <PhotoContent
+                                text={round.reveal.text}
+                                photos={round.reveal.photos || []}
+                                textClass="text-sm font-serif text-[#2C2418] leading-relaxed"
+                                borderColor="#C4923A"
+                              />
                             </div>
                           ) : null
                         ))}
@@ -162,23 +175,26 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
             <div className="space-y-3">
               {session.bankedQuestions.length === 0 ? (
                 <p className="text-sm text-[#6B5D4F] italic text-center py-8">
-                  No questions yet. Questions you ask during the tour will appear here.
+                  No questions yet. Tap the ? button to ask one.
                 </p>
               ) : (
-                session.bankedQuestions.map((q) => (
-                  <div key={q.id} className="p-3 rounded-lg bg-white border border-[#D4BFA0]">
-                    <p className="text-sm font-serif text-[#2C2418]">&ldquo;{q.questionText}&rdquo;</p>
-                    <p className="text-[10px] text-[#6B5D4F] mt-1">
-                      {q.aiResponse === 'coming_up' ? 'Coming up on the tour' : q.aiResponse === 'answered_off_path' ? 'Answered' : 'Saved for later'}
-                    </p>
-                  </div>
-                ))
+                session.bankedQuestions.map((q) => {
+                  const stop = tour.stops.find((s) => s.id === q.askedAfterStopId);
+                  return (
+                    <div key={q.id} className="p-3 rounded-lg bg-white border border-[#D4BFA0]">
+                      <p className="text-sm font-serif text-[#2C2418]">&ldquo;{q.questionText}&rdquo;</p>
+                      <p className="text-[10px] text-[#6B5D4F] mt-1">
+                        {stop ? `At: ${stop.title || 'Stop'}` : ''} &middot; {q.aiResponse === 'coming_up' ? 'Coming up' : q.aiResponse === 'answered_off_path' ? 'Answered' : 'Saved'}
+                      </p>
+                    </div>
+                  );
+                })
               )}
             </div>
           )}
 
-          {/* ── Responses tab ── */}
-          {tab === 'responses' && (
+          {/* ── Your Theory tab ── */}
+          {tab === 'theory' && (
             <div className="space-y-4">
               {/* Essential question responses */}
               {session.essentialQuestionResponses && tour.essentialQuestion && (

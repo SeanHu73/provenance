@@ -146,7 +146,7 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
             const isCurrent = i === session.currentStopIndex && !['eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
             const isUpcoming = !isCompleted && !isCurrent;
 
-            const firstPhoto = (stop.seed.photos || [])[0]?.url || stop.seed.photoUrl || null;
+            const firstPhoto = (stop.notice.photos || [])[0]?.url || stop.notice.photoUrl || (stop.seed.photos || [])[0]?.url || stop.seed.photoUrl || null;
 
             return (
               <div
