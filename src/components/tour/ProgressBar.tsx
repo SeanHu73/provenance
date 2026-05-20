@@ -105,6 +105,38 @@ export default function ProgressBar({ tour, session }: Props) {
         </div>
       </div>
 
+      {/* Progress fill bar */}
+      {(() => {
+        const totalStops = stops.length;
+        const hasIntro = !!tour.essentialQuestion;
+        const totalSegments = totalStops + (hasIntro ? 1 : 0) + 1; // intro + stops + closing
+        let pct = 0;
+        if (isIntroPhase) {
+          pct = (0.5 / totalSegments) * 100;
+        } else if (isClosing) {
+          const closingPhases = ['eq_closing', 'eq_final_reflect', 'eq_questions', 'end'];
+          const ci = closingPhases.indexOf(session.currentPhase);
+          pct = ((totalSegments - 1 + (ci >= 0 ? ci / closingPhases.length : 0)) / totalSegments) * 100;
+        } else if (session.currentPhase === 'end') {
+          pct = 100;
+        } else {
+          const stopPhases = ['seed', 'wonder', 'reveal', 'reflect', 'whats_next', 'branch'];
+          const pi = stopPhases.indexOf(session.currentPhase);
+          const sub = pi >= 0 ? pi / stopPhases.length : 0.5;
+          const base = hasIntro ? 1 : 0;
+          pct = ((base + currentIdx + sub) / totalSegments) * 100;
+        }
+        pct = Math.min(Math.max(pct, 0), 100);
+        return (
+          <div className="shrink-0 w-full h-2 bg-[#D4BFA0]/30">
+            <div
+              className="h-full bg-[#C4923A] transition-all duration-500 ease-out rounded-r-full"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        );
+      })()}
+
       {/* Swipeable stop tracker overlay */}
       {trackerOpen && (
         <StopTrackerOverlay
