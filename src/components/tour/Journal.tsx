@@ -64,6 +64,15 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const [paused, setPaused] = useState(false);
   const [showJournal, setShowJournal] = useState(false);
   const [showQuestionInput, setShowQuestionInput] = useState(false);
+  const [canScrollMore, setCanScrollMore] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const checkScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) { setCanScrollMore(false); return; }
+    const hasMore = el.scrollHeight - el.scrollTop - el.clientHeight > 30;
+    setCanScrollMore(hasMore);
+  }, []);
   const lastTapRef = useRef(0);
 
   // Double-tap handler: two taps within 400ms
@@ -201,8 +210,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
             }
             transition={{ duration: isFade ? 0.4 : 0.12, ease: isFade ? 'easeInOut' : 'easeOut' }}
             className="absolute inset-0 overflow-y-auto p-4"
+            ref={(el) => { scrollContainerRef.current = el; checkScroll(); }}
+            onScroll={checkScroll}
           >
-            <div className={`min-h-full rounded-2xl shadow-lg px-5 py-6 ${
+            <div className={`min-h-full rounded-2xl shadow-lg px-5 py-6 flex flex-col justify-center ${
               showBgPhoto
                 ? phase === 'reveal'
                   ? blurSupported
@@ -342,6 +353,17 @@ export default function Journal({ onMapPeek }: JournalProps) {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* Scroll indicator */}
+      {canScrollMore && (
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 pointer-events-none animate-gentle-pulse">
+          <div className="w-8 h-8 rounded-full bg-[#2C2418]/20 flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2C2418" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
+        </div>
+      )}
 
       {/* Footer bar — Journal + Question buttons */}
       {phase !== 'end' && (
