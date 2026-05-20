@@ -193,21 +193,21 @@ export default function Journal({ onMapPeek }: JournalProps) {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={phaseKey}
-            initial={{ x: `${slideDirection * 100}%`, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: `${slideDirection * -100}%`, opacity: 0 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
             className="absolute inset-0 overflow-y-auto p-4"
           >
             <div className={`min-h-full rounded-2xl shadow-lg px-5 py-6 ${
               showBgPhoto
                 ? phase === 'reveal'
                   ? blurSupported
-                    ? 'bg-[#FFF8EE]/75 backdrop-blur-[10px]'
-                    : 'bg-[#FFF8EE]/80'
+                    ? 'bg-[#FFF8EE]/80 backdrop-blur-[10px]'
+                    : 'bg-[#FFF8EE]/85'
                   : blurSupported
-                    ? 'bg-[#FFF8EE]/60 backdrop-blur-[12px]'
-                    : 'bg-[#FFF8EE]/70'
+                    ? 'bg-[#FFF8EE]/[0.65] backdrop-blur-[12px]'
+                    : 'bg-[#FFF8EE]/75'
                 : 'bg-[#FFF8EE]'
             }`}
             >
