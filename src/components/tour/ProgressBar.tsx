@@ -24,6 +24,8 @@ export default function ProgressBar({ tour, session }: Props) {
   const currentIdx = session.currentStopIndex;
   const completedIds = new Set(session.completedStops);
   const isClosing = ['eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
+  const isIntroPhase = ['intro', 'eq_opening'].includes(session.currentPhase);
+  const isInStopPhase = !isClosing && !isIntroPhase;
 
   // Auto-scroll to keep current stop centered
   useEffect(() => {
@@ -65,7 +67,7 @@ export default function ProgressBar({ tour, session }: Props) {
 
         {stops.map((stop, i) => {
           const isCompleted = completedIds.has(stop.id);
-          const isCurrent = i === currentIdx && !isClosing;
+          const isCurrent = i === currentIdx && isInStopPhase;
           const isUpcoming = !isCompleted && !isCurrent;
 
           return (

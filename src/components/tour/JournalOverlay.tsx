@@ -79,7 +79,8 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
             <div className="space-y-3">
               {tour.stops.map((stop, i) => {
                 const isCompleted = completedIds.has(stop.id);
-                const isCurrent = i === currentIdx;
+                const isInStop = !['intro', 'eq_opening', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
+                const isCurrent = i === currentIdx && isInStop;
                 const isUpcoming = !isCompleted && !isCurrent;
                 const isExpanded = expandedStopId === stop.id;
                 const thumbnail = getStopThumbnail(stop);
