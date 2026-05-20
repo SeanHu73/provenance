@@ -45,6 +45,7 @@ export default function ToursListPage() {
         location: null,
         stops: [],
         connectionWeb: [],
+        backgroundPhotoUrl: null,
         essentialQuestion: null,
         createdAt: now,
         updatedAt: now,

@@ -369,6 +369,43 @@ export default function TourEditorPage() {
           </div>
         </section>
 
+        {/* Background photo */}
+        <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-3">
+          <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Background Photo</h2>
+          <p className="text-[10px] text-stone-400">Shown behind all screens throughout the tour. Stops can override this with their own photo.</p>
+          <div className="flex gap-2 items-center">
+            <input
+              value={tour.backgroundPhotoUrl || ''}
+              onChange={(e) => updateField('backgroundPhotoUrl', e.target.value || null)}
+              className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs"
+              placeholder="Upload or paste a URL..."
+            />
+            <label className="px-2 py-1 rounded bg-stone-200 text-stone-700 text-xs cursor-pointer hover:bg-stone-300">
+              Upload
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const url = await uploadPhoto(file, `memorial-church/photos/tours/${tourId}/tour_bg_${file.name}`);
+                  updateField('backgroundPhotoUrl', url);
+                }}
+              />
+            </label>
+            {tour.backgroundPhotoUrl && (
+              <button onClick={() => updateField('backgroundPhotoUrl', null)} className="text-xs text-red-600 hover:underline">Remove</button>
+            )}
+          </div>
+          {tour.backgroundPhotoUrl && (
+            <div className="w-full h-20 rounded overflow-hidden border border-stone-200">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={tour.backgroundPhotoUrl} alt="background" className="w-full h-full object-cover" />
+            </div>
+          )}
+        </section>
+
         {/* Essential question */}
         <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-4">
           <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Essential Question</h2>
@@ -607,7 +644,7 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
     ...rawStop,
     title: rawStop.title ?? '',
     isFinalStop: rawStop.isFinalStop ?? false,
-    backgroundPhotoUrl: rawStop.backgroundPhotoUrl ?? null,
+    backgroundPhotoOverride: rawStop.backgroundPhotoOverride ?? (rawStop as unknown as Record<string, unknown>).backgroundPhotoUrl as string | null ?? null,
     seed: rawStop.seed ?? { text: '', photoUrl: null, photoCaption: null, photos: [], ttsText: null },
     notice: rawStop.notice ?? { prompt: '', timerSeconds: 30, photoUrl: null, photoCaption: null, photos: [] },
     wonder: rawStop.wonder === undefined ? { question: '', photos: [], audioUrl: null, audioTitle: null } : rawStop.wonder ? { ...rawStop.wonder, photos: rawStop.wonder.photos || [], audioUrl: rawStop.wonder.audioUrl ?? null, audioTitle: rawStop.wonder.audioTitle ?? null } : null,
@@ -697,35 +734,42 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
         </p>
       )}
 
-      {/* ── Background photo ── */}
-      <label className="block">
-        <span className="text-xs text-stone-500">Background photo (optional) — if set, the Look Around and Wonder screens will overlay on this image. Use a wide photo of the area the group is standing in.</span>
-        <div className="flex gap-2 mt-1">
+      {/* ── Background photo override ── */}
+      <div className="space-y-1">
+        <label className="flex items-center gap-2 cursor-pointer">
           <input
-            value={stop.backgroundPhotoUrl || ''}
-            onChange={(e) => onChange({ backgroundPhotoUrl: e.target.value || null })}
-            className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs"
-            placeholder="/photos/onsite/..."
+            type="checkbox"
+            checked={!!stop.backgroundPhotoOverride}
+            onChange={(e) => onChange({ backgroundPhotoOverride: e.target.checked ? '' : null })}
+            className="rounded"
           />
-          <label className="px-2 py-1 rounded bg-stone-200 text-stone-700 text-xs cursor-pointer hover:bg-stone-300">
-            Upload
+          <span className="text-xs text-stone-600">Change background photo from this stop onward</span>
+        </label>
+        {stop.backgroundPhotoOverride !== null && stop.backgroundPhotoOverride !== undefined && (
+          <div className="flex gap-2">
             <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const url = await onUploadPhoto(file, `memorial-church/photos/tours/${tourId}/bg_${stop.id}_${file.name}`);
-                onChange({ backgroundPhotoUrl: url });
-              }}
+              value={stop.backgroundPhotoOverride || ''}
+              onChange={(e) => onChange({ backgroundPhotoOverride: e.target.value || null })}
+              className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs"
+              placeholder="New background photo URL..."
             />
-          </label>
-          {stop.backgroundPhotoUrl && (
-            <button onClick={() => onChange({ backgroundPhotoUrl: null })} className="text-xs text-red-600 hover:underline">Remove</button>
-          )}
-        </div>
-      </label>
+            <label className="px-2 py-1 rounded bg-stone-200 text-stone-700 text-xs cursor-pointer hover:bg-stone-300">
+              Upload
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const url = await onUploadPhoto(file, `memorial-church/photos/tours/${tourId}/bg_${stop.id}_${file.name}`);
+                  onChange({ backgroundPhotoOverride: url });
+                }}
+              />
+            </label>
+          </div>
+        )}
+      </div>
 
       {/* ── Seed ── */}
       <fieldset className="space-y-2">

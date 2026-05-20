@@ -102,8 +102,18 @@ export default function Journal({ onMapPeek }: JournalProps) {
   // Device capability for blur
   const blurSupported = useMemo(() => canUseBlur(), []);
 
-  // Background photo for current stop
-  const bgPhoto = currentStop?.backgroundPhotoUrl || null;
+  // Compute effective background photo — tour default, overridden per stop
+  const bgPhoto = useMemo(() => {
+    if (!tour) return null;
+    let photo = tour.backgroundPhotoUrl || null;
+    // Walk stops up to current index, applying overrides
+    for (let i = 0; i <= (session?.currentStopIndex ?? -1); i++) {
+      const s = tour.stops[i];
+      if (s?.backgroundPhotoOverride) photo = s.backgroundPhotoOverride;
+    }
+    return photo;
+  }, [tour, session?.currentStopIndex]);
+
   const [bgLoaded, setBgLoaded] = useState(false);
   useEffect(() => {
     if (!bgPhoto) { setBgLoaded(false); return; }
@@ -112,8 +122,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
     img.src = bgPhoto;
   }, [bgPhoto]);
 
-  // Phases that show the background photo
-  const showBgPhoto = bgPhoto && bgLoaded && ['notice', 'wonder'].includes(phase);
+  // Background photo shows on ALL screens when available
+  const showBgPhoto = !!bgPhoto && bgLoaded;
 
   // Phase key for AnimatePresence
   const phaseKey = `${phase}-${session.currentRound}-${session.currentStopIndex}`;
@@ -170,10 +180,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
       {/* Card area — scrollable with slide transitions */}
       <div className="flex-1 overflow-hidden relative" style={{ backgroundColor: '#E8D8C0' }}>
-        {/* Background photo (fixed behind cards) */}
+        {/* Background photo (fixed behind cards, always visible when loaded) */}
         {bgPhoto && (
           <div
-            className={`absolute inset-0 transition-opacity duration-500 ${showBgPhoto ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 transition-opacity duration-500 ${bgLoaded ? 'opacity-100' : 'opacity-0'}`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={bgPhoto} alt="" className="w-full h-full object-cover" />
@@ -190,15 +200,15 @@ export default function Journal({ onMapPeek }: JournalProps) {
             className="absolute inset-0 overflow-y-auto p-4"
           >
             <div className={`min-h-full rounded-2xl shadow-lg px-5 py-6 ${
-              phase === 'reveal'
-                ? blurSupported && bgPhoto
-                  ? 'bg-[#FFF8EE]/90 backdrop-blur-[8px]'
-                  : 'bg-[#FFF8EE]/95'
-                : showBgPhoto
+              showBgPhoto
+                ? phase === 'reveal'
                   ? blurSupported
-                    ? 'bg-[#FFF8EE]/70 backdrop-blur-[12px]'
+                    ? 'bg-[#FFF8EE]/75 backdrop-blur-[10px]'
                     : 'bg-[#FFF8EE]/80'
-                  : 'bg-[#FFF8EE]/85'
+                  : blurSupported
+                    ? 'bg-[#FFF8EE]/60 backdrop-blur-[12px]'
+                    : 'bg-[#FFF8EE]/70'
+                : 'bg-[#FFF8EE]'
             }`}
             >
 

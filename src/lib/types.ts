@@ -193,6 +193,9 @@ export interface Tour {
   // The "parent" pin on the map — the single marker visible before a
   // tour starts. Tapping it opens the journal peek.
   location: { lat: number; lng: number } | null;
+  // Default background photo — shown behind all screens (including intro).
+  // Individual stops can override this from their stop onward.
+  backgroundPhotoUrl: string | null;
   stops: Stop[];                     // Ordered array of stops
   connectionWeb: WebNode[];          // Pre-authored node/connection structure
   // Essential question — optional framing that bookends the tour
@@ -227,9 +230,9 @@ export interface Stop {
     lng: number;
   } | null;
 
-  // Background photo — when set, notice and wonder screens render
-  // with frosted glass overlay on this image
-  backgroundPhotoUrl: string | null;
+  // Override background photo — replaces the tour-level background
+  // from this stop onward. null = keep using the previous background.
+  backgroundPhotoOverride: string | null;
 
   // Seed phase
   seed: {

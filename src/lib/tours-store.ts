@@ -87,7 +87,7 @@ export function blankStop(order: number): import('./types').Stop {
     order,
     title: '',
     isFinalStop: false,
-    backgroundPhotoUrl: null,
+    backgroundPhotoOverride: null,
     location: null,
     seed: { text: '', photoUrl: null, photoCaption: null, photos: [], ttsText: null, timerSeconds: null, audioUrl: null, audioTitle: null },
     notice: { prompt: '', timerSeconds: 30, photoUrl: null, photoCaption: null, photos: [], audioUrl: null, audioTitle: null },
