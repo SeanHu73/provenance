@@ -80,22 +80,25 @@ export default function Journal({ onMapPeek }: JournalProps) {
   // Progress bar visibility — show during stops, hide on intro/end
   const showProgress = !['intro', 'end'].includes(phase);
 
-  // Slide direction tracking — forward (right-to-left) or back (left-to-right)
-  const prevPhaseRef = useRef(phase);
-  const [slideDirection, setSlideDirection] = useState<1 | -1>(1);
-  useEffect(() => {
-    if (phase !== prevPhaseRef.current) {
-      // If phase history got shorter, we went back
-      const histLen = session.phaseHistory?.length ?? 0;
-      setSlideDirection(histLen < (prevPhaseRef.current ? 1 : 0) ? -1 : 1);
-      prevPhaseRef.current = phase;
-    }
-  }, [phase, session.phaseHistory?.length]);
+  // Track slide direction and stop changes synchronously via refs
+  const prevStopIdxRef2 = useRef(session.currentStopIndex);
+  const prevPhaseKeyRef = useRef(`${phase}-${session.currentRound}-${session.currentStopIndex}`);
+  const slideDirectionRef = useRef<1 | -1>(1);
+  const isStopChangeRef = useRef(false);
 
-  // Track back button usage for direction
+  // Update refs synchronously before render
+  const newPhaseKey = `${phase}-${session.currentRound}-${session.currentStopIndex}`;
+  if (newPhaseKey !== prevPhaseKeyRef.current) {
+    // Detect stop change
+    isStopChangeRef.current = session.currentStopIndex !== prevStopIdxRef2.current;
+    prevStopIdxRef2.current = session.currentStopIndex;
+    prevPhaseKeyRef.current = newPhaseKey;
+  }
+
+  // Back button sets direction to -1
   const originalGoBack = goBack;
   const goBackWithDirection = useCallback(() => {
-    setSlideDirection(-1);
+    slideDirectionRef.current = -1;
     originalGoBack();
   }, [originalGoBack]);
 
@@ -129,20 +132,16 @@ export default function Journal({ onMapPeek }: JournalProps) {
   // Background photo shows on ALL screens when available
   const showBgPhoto = !!bgPhoto && bgLoaded;
 
-  // Detect if this is a stop change (fade) or within-stop phase change (slide)
-  const prevStopIdxRef = useRef(session.currentStopIndex);
-  const [isStopChange, setIsStopChange] = useState(false);
-  useEffect(() => {
-    if (session.currentStopIndex !== prevStopIdxRef.current) {
-      setIsStopChange(true);
-      prevStopIdxRef.current = session.currentStopIndex;
-    } else {
-      setIsStopChange(false);
-    }
-  }, [session.currentStopIndex, phase]);
+  // Read current values from refs for this render
+  const slideDirection = slideDirectionRef.current;
+  const isStopChange = isStopChangeRef.current;
+
+  // Reset direction to forward after each render (back button sets it to -1 before the state update)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { slideDirectionRef.current = 1; });
 
   // Phase key for AnimatePresence
-  const phaseKey = `${phase}-${session.currentRound}-${session.currentStopIndex}`;
+  const phaseKey = newPhaseKey;
 
   // Pause overlay — dark screen, double-tap to return
   if (paused) {
@@ -210,13 +209,13 @@ export default function Journal({ onMapPeek }: JournalProps) {
           <motion.div
             key={phaseKey}
             initial={isStopChange
-              ? { opacity: 0 }
-              : { x: `${slideDirection * 100}%`, opacity: 0 }
+              ? { opacity: 0, x: 0 }
+              : { x: `${slideDirection * 100}%`, opacity: 1 }
             }
             animate={{ x: 0, opacity: 1 }}
             exit={isStopChange
-              ? { opacity: 0 }
-              : { x: `${slideDirection * -100}%`, opacity: 0 }
+              ? { opacity: 0, x: 0 }
+              : { x: `${slideDirection * -100}%`, opacity: 1 }
             }
             transition={{ duration: isStopChange ? 0.4 : 0.12, ease: isStopChange ? 'easeInOut' : 'easeOut' }}
             className="absolute inset-0 overflow-y-auto p-4"
