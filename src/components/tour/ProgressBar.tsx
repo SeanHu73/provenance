@@ -44,6 +44,25 @@ export default function ProgressBar({ tour, session }: Props) {
         style={{ borderColor: '#D4BFA0', backgroundColor: '#F0E0C8', scrollbarWidth: 'none' }}
         onClick={() => setTrackerOpen(true)}
       >
+        {/* Intro pill — for essential question / intro phases */}
+        {tour.essentialQuestion && (() => {
+          const isIntroActive = ['intro', 'eq_opening'].includes(session.currentPhase);
+          const isIntroDone = !isIntroActive && session.currentStopIndex >= 0 && !['intro', 'eq_opening'].includes(session.currentPhase);
+          return (
+            <div
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold transition-all ${
+                isIntroActive
+                  ? 'bg-[#C4923A] text-white shadow-sm'
+                  : isIntroDone
+                    ? 'bg-[#7A7A5E]/20 text-[#7A7A5E]'
+                    : 'bg-[#D4BFA0]/30 text-[#6B5D4F]/40'
+              }`}
+            >
+              <span className="text-xs">Intro</span>
+            </div>
+          );
+        })()}
+
         {stops.map((stop, i) => {
           const isCompleted = completedIds.has(stop.id);
           const isCurrent = i === currentIdx && !isClosing;
@@ -73,17 +92,15 @@ export default function ProgressBar({ tour, session }: Props) {
         })}
 
         {/* Closing indicator */}
-        {tour.essentialQuestion && (
-          <div
-            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold ${
-              isClosing
-                ? 'bg-[#C4923A] text-white shadow-sm'
-                : 'bg-[#D4BFA0]/30 text-[#6B5D4F]/40'
-            }`}
-          >
-            ✦
-          </div>
-        )}
+        <div
+          className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${
+            isClosing
+              ? 'bg-[#C4923A] text-white shadow-sm'
+              : 'bg-[#D4BFA0]/30 text-[#6B5D4F]/40'
+          }`}
+        >
+          <span className="text-xs">{tour.essentialQuestion ? 'Closing' : '✦'}</span>
+        </div>
       </div>
 
       {/* Swipeable stop tracker overlay */}
@@ -141,9 +158,42 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
           className="flex gap-3 px-4 py-4 overflow-x-auto"
           style={{ scrollbarWidth: 'none', scrollSnapType: 'x mandatory' }}
         >
+          {/* Intro card */}
+          {tour.essentialQuestion && (() => {
+            const isActive = ['intro', 'eq_opening'].includes(session.currentPhase);
+            const isDone = !isActive;
+            return (
+              <div
+                className={`shrink-0 w-[200px] rounded-xl overflow-hidden border-2 transition-all ${
+                  isActive ? 'border-[#C4923A] shadow-lg' : 'border-[#7A7A5E]/30'
+                }`}
+                style={{ scrollSnapAlign: 'center' }}
+              >
+                <div className={`h-28 flex items-center justify-center ${isActive ? 'bg-[#C4923A]/10' : 'bg-[#F0E0C8]'}`}>
+                  <span className="text-3xl">📖</span>
+                </div>
+                <div className="p-3 bg-[#FFF8EE]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-[#C4923A] text-white' : 'bg-[#7A7A5E]/20 text-[#7A7A5E]'}`}>
+                      ★
+                    </span>
+                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#C4923A] animate-pulse" />}
+                    {isDone && !isActive && <span className="text-[#7A7A5E] text-xs">✓</span>}
+                  </div>
+                  <p className={`text-sm font-semibold ${isActive ? 'text-[#C4923A]' : 'text-[#2C2418]'}`}>
+                    Guiding Question
+                  </p>
+                  <p className="text-[10px] text-[#6B5D4F] mt-0.5">
+                    {isActive ? 'In progress' : 'Completed'}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
           {tour.stops.map((stop, i) => {
             const isCompleted = completedIds.has(stop.id);
-            const isCurrent = i === session.currentStopIndex && !['eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
+            const isCurrent = i === session.currentStopIndex && !['intro', 'eq_opening', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
             const isUpcoming = !isCompleted && !isCurrent;
 
             const firstPhoto = (stop.notice.photos || [])[0]?.url || stop.notice.photoUrl || (stop.seed.photos || [])[0]?.url || stop.seed.photoUrl || null;
@@ -194,6 +244,32 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
               </div>
             );
           })}
+
+          {/* Closing card */}
+          {(() => {
+            const closingPhases = ['eq_closing', 'eq_final_reflect', 'eq_questions', 'end'];
+            const isActive = closingPhases.includes(session.currentPhase);
+            return (
+              <div
+                className={`shrink-0 w-[200px] rounded-xl overflow-hidden border-2 transition-all ${
+                  isActive ? 'border-[#C4923A] shadow-lg' : 'border-[#D4BFA0]/50'
+                }`}
+                style={{ scrollSnapAlign: 'center' }}
+              >
+                <div className={`h-28 flex items-center justify-center ${isActive ? 'bg-[#C4923A]/10' : 'bg-[#D4BFA0]/20'}`}>
+                  <span className="text-3xl">{tour.essentialQuestion ? '🔄' : '✦'}</span>
+                </div>
+                <div className="p-3 bg-[#FFF8EE]">
+                  <p className={`text-sm font-semibold ${isActive ? 'text-[#C4923A]' : 'text-[#6B5D4F]/50'}`}>
+                    {tour.essentialQuestion ? 'Closing Reflection' : 'Wrap Up'}
+                  </p>
+                  <p className="text-[10px] text-[#6B5D4F] mt-0.5">
+                    {isActive ? 'In progress' : session.currentPhase === 'end' ? 'Completed' : 'Upcoming'}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
