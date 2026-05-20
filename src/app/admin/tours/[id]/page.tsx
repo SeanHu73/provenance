@@ -910,17 +910,28 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
           onChange={(prompt) => onChange({ notice: { ...stop.notice, prompt } })}
           rows={2}
         />
-        <label className="block">
-          <span className="text-xs text-stone-500">Timer (seconds)</span>
-          <input
-            type="number"
-            value={stop.notice.timerSeconds}
-            onChange={(e) => onChange({ notice: { ...stop.notice, timerSeconds: parseInt(e.target.value) || 30 } })}
-            className="mt-1 w-20 px-2 py-1 border border-stone-300 rounded text-sm"
-            min={5}
-            max={120}
-          />
-        </label>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={stop.notice.timerSeconds > 0}
+              onChange={(e) => onChange({ notice: { ...stop.notice, timerSeconds: e.target.checked ? 30 : 0 } })}
+              className="rounded"
+            />
+            <span className="text-xs text-stone-600">Include timer</span>
+          </label>
+          {stop.notice.timerSeconds > 0 && (
+            <input
+              type="number"
+              value={stop.notice.timerSeconds}
+              onChange={(e) => onChange({ notice: { ...stop.notice, timerSeconds: parseInt(e.target.value) || 30 } })}
+              className="w-16 px-2 py-1 border border-stone-300 rounded text-sm"
+              min={5}
+              max={120}
+            />
+          )}
+          {stop.notice.timerSeconds > 0 && <span className="text-[10px] text-stone-400">seconds</span>}
+        </div>
         <PhotoListEditor
           photos={stop.notice.photos || []}
           onChange={(photos) => onChange({ notice: { ...stop.notice, photos } })}
