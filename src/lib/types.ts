@@ -227,6 +227,10 @@ export interface Stop {
     lng: number;
   } | null;
 
+  // Background photo — when set, notice and wonder screens render
+  // with frosted glass overlay on this image
+  backgroundPhotoUrl: string | null;
+
   // Seed phase
   seed: {
     text: string;                    // 2–3 sentences of context

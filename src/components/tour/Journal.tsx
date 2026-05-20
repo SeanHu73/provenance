@@ -10,8 +10,10 @@
  * in tour-session.ts determines the next phase.
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
+import { canUseBlur } from '@/lib/device-capability';
 import IntroScreens from './cards/IntroScreens';
 import EqOpeningCard from './cards/EqOpeningCard';
 import EqClosingCard from './cards/EqClosingCard';
@@ -78,6 +80,44 @@ export default function Journal({ onMapPeek }: JournalProps) {
   // Progress bar visibility — show during stops, hide on intro/end
   const showProgress = !['intro', 'end'].includes(phase);
 
+  // Slide direction tracking — forward (right-to-left) or back (left-to-right)
+  const prevPhaseRef = useRef(phase);
+  const [slideDirection, setSlideDirection] = useState<1 | -1>(1);
+  useEffect(() => {
+    if (phase !== prevPhaseRef.current) {
+      // If phase history got shorter, we went back
+      const histLen = session.phaseHistory?.length ?? 0;
+      setSlideDirection(histLen < (prevPhaseRef.current ? 1 : 0) ? -1 : 1);
+      prevPhaseRef.current = phase;
+    }
+  }, [phase, session.phaseHistory?.length]);
+
+  // Track back button usage for direction
+  const originalGoBack = goBack;
+  const goBackWithDirection = useCallback(() => {
+    setSlideDirection(-1);
+    originalGoBack();
+  }, [originalGoBack]);
+
+  // Device capability for blur
+  const blurSupported = useMemo(() => canUseBlur(), []);
+
+  // Background photo for current stop
+  const bgPhoto = currentStop?.backgroundPhotoUrl || null;
+  const [bgLoaded, setBgLoaded] = useState(false);
+  useEffect(() => {
+    if (!bgPhoto) { setBgLoaded(false); return; }
+    const img = new Image();
+    img.onload = () => setBgLoaded(true);
+    img.src = bgPhoto;
+  }, [bgPhoto]);
+
+  // Phases that show the background photo
+  const showBgPhoto = bgPhoto && bgLoaded && ['notice', 'wonder'].includes(phase);
+
+  // Phase key for AnimatePresence
+  const phaseKey = `${phase}-${session.currentRound}-${session.currentStopIndex}`;
+
   // Pause overlay — dark screen, double-tap to return
   if (paused) {
     return (
@@ -128,8 +168,37 @@ export default function Journal({ onMapPeek }: JournalProps) {
       {/* Progress bar */}
       {showProgress && <ProgressBar tour={tour} session={session} />}
 
-      {/* Card area — scrollable */}
-      <div className="flex-1 overflow-y-auto px-5 py-6">
+      {/* Card area — scrollable with slide transitions */}
+      <div className="flex-1 overflow-hidden relative">
+        {/* Background photo (fixed behind cards) */}
+        {bgPhoto && (
+          <div
+            className={`absolute inset-0 transition-opacity duration-500 ${showBgPhoto ? 'opacity-100' : 'opacity-0'}`}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={bgPhoto} alt="" className="w-full h-full object-cover" />
+          </div>
+        )}
+
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={phaseKey}
+            initial={{ x: `${slideDirection * 100}%`, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: `${slideDirection * -100}%`, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="absolute inset-0 overflow-y-auto"
+          >
+            <div className={`min-h-full px-5 py-6 ${
+              showBgPhoto
+                ? blurSupported
+                  ? 'bg-black/30 backdrop-blur-[12px]'
+                  : 'bg-black/55'
+                : ''
+            }`}
+            style={showBgPhoto ? { color: '#fff' } : undefined}
+            >
+
         {phase === 'intro' && (
           <IntroScreens tour={tour} onComplete={completeIntro} />
         )}
@@ -240,6 +309,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
         {phase === 'end' && (
           <EndCard />
         )}
+
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Footer bar — Journal + Question buttons */}

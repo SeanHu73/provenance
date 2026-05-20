@@ -607,6 +607,7 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
     ...rawStop,
     title: rawStop.title ?? '',
     isFinalStop: rawStop.isFinalStop ?? false,
+    backgroundPhotoUrl: rawStop.backgroundPhotoUrl ?? null,
     seed: rawStop.seed ?? { text: '', photoUrl: null, photoCaption: null, photos: [], ttsText: null },
     notice: rawStop.notice ?? { prompt: '', timerSeconds: 30, photoUrl: null, photoCaption: null, photos: [] },
     wonder: rawStop.wonder === undefined ? { question: '', photos: [], audioUrl: null, audioTitle: null } : rawStop.wonder ? { ...rawStop.wonder, photos: rawStop.wonder.photos || [], audioUrl: rawStop.wonder.audioUrl ?? null, audioTitle: rawStop.wonder.audioTitle ?? null } : null,
@@ -695,6 +696,36 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
           This stop ends the tour. After reflection, learners go to the closing guiding question and final questions — no &ldquo;What&apos;s next&rdquo; screen.
         </p>
       )}
+
+      {/* ── Background photo ── */}
+      <label className="block">
+        <span className="text-xs text-stone-500">Background photo (optional) — if set, the Look Around and Wonder screens will overlay on this image. Use a wide photo of the area the group is standing in.</span>
+        <div className="flex gap-2 mt-1">
+          <input
+            value={stop.backgroundPhotoUrl || ''}
+            onChange={(e) => onChange({ backgroundPhotoUrl: e.target.value || null })}
+            className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs"
+            placeholder="/photos/onsite/..."
+          />
+          <label className="px-2 py-1 rounded bg-stone-200 text-stone-700 text-xs cursor-pointer hover:bg-stone-300">
+            Upload
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const url = await onUploadPhoto(file, `memorial-church/photos/tours/${tourId}/bg_${stop.id}_${file.name}`);
+                onChange({ backgroundPhotoUrl: url });
+              }}
+            />
+          </label>
+          {stop.backgroundPhotoUrl && (
+            <button onClick={() => onChange({ backgroundPhotoUrl: null })} className="text-xs text-red-600 hover:underline">Remove</button>
+          )}
+        </div>
+      </label>
 
       {/* ── Seed ── */}
       <fieldset className="space-y-2">
