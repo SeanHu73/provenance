@@ -169,7 +169,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
       {showProgress && <ProgressBar tour={tour} session={session} />}
 
       {/* Card area — scrollable with slide transitions */}
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 overflow-hidden relative" style={{ backgroundColor: '#E8D8C0' }}>
         {/* Background photo (fixed behind cards) */}
         {bgPhoto && (
           <div
@@ -186,17 +186,20 @@ export default function Journal({ onMapPeek }: JournalProps) {
             initial={{ x: `${slideDirection * 100}%`, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: `${slideDirection * -100}%`, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="absolute inset-0 overflow-y-auto"
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute inset-0 overflow-y-auto p-4"
           >
-            <div className={`min-h-full px-5 py-6 ${
-              showBgPhoto
-                ? blurSupported
-                  ? 'bg-black/30 backdrop-blur-[12px]'
-                  : 'bg-black/55'
-                : ''
+            <div className={`min-h-full rounded-2xl shadow-lg px-5 py-6 ${
+              phase === 'reveal'
+                ? blurSupported && bgPhoto
+                  ? 'bg-[#FFF8EE]/90 backdrop-blur-[8px]'
+                  : 'bg-[#FFF8EE]/95'
+                : showBgPhoto
+                  ? blurSupported
+                    ? 'bg-[#FFF8EE]/70 backdrop-blur-[12px]'
+                    : 'bg-[#FFF8EE]/80'
+                  : 'bg-[#FFF8EE]/85'
             }`}
-            style={showBgPhoto ? { color: '#fff' } : undefined}
             >
 
         {phase === 'intro' && (
