@@ -109,7 +109,9 @@ export default function Journal({ onMapPeek }: JournalProps) {
     // Walk stops up to current index, applying overrides
     for (let i = 0; i <= (session?.currentStopIndex ?? -1); i++) {
       const s = tour.stops[i];
-      if (s?.backgroundPhotoOverride) photo = s.backgroundPhotoOverride;
+      // Check both new field name and legacy field name
+      const override = s?.backgroundPhotoOverride || (s as unknown as Record<string, unknown>)?.backgroundPhotoUrl as string | undefined;
+      if (override) photo = override;
     }
     return photo;
   }, [tour, session?.currentStopIndex]);
