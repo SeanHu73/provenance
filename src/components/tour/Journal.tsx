@@ -217,11 +217,11 @@ export default function Journal({ onMapPeek }: JournalProps) {
               showBgPhoto
                 ? phase === 'reveal'
                   ? blurSupported
-                    ? 'bg-[#FFF8EE]/80 backdrop-blur-[10px]'
-                    : 'bg-[#FFF8EE]/85'
+                    ? 'bg-[#FFF8EE]/[0.85] backdrop-blur-[10px]'
+                    : 'bg-[#FFF8EE]/[0.9]'
                   : blurSupported
-                    ? 'bg-[#FFF8EE]/[0.65] backdrop-blur-[12px]'
-                    : 'bg-[#FFF8EE]/75'
+                    ? 'bg-[#FFF8EE]/70 backdrop-blur-[12px]'
+                    : 'bg-[#FFF8EE]/[0.8]'
                 : 'bg-[#FFF8EE]'
             }`}
             >
