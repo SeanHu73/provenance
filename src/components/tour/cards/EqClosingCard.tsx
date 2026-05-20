@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Essential Question — Closing screen.
- * Captures the group's final interpretation after the full tour.
+ * Essential Question — Closing written response screen.
+ * Shows the question again and captures final interpretation.
  */
 
 import { useState } from 'react';
@@ -24,22 +24,19 @@ export default function EqClosingCard({ tour, onComplete }: Props) {
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
       <p className="text-2xl uppercase tracking-[0.14em] text-[#C4923A] font-semibold">
-        Going back to the guiding question...
+        Discussion Question
       </p>
 
-      {/* The essential question */}
-      <p className="text-[23px] leading-relaxed font-serif font-semibold text-[#2C2418]">
-        &ldquo;{eq.question}&rdquo;
-      </p>
-
-      {/* Closing framing */}
-      <p className="text-sm text-[#6B5D4F] italic leading-relaxed">
-        {eq.closingFraming}
-      </p>
+      {/* The essential question — cardinal box */}
+      <div className="rounded-xl px-5 py-6 text-center border-2" style={{ backgroundColor: '#7A1A1A', borderColor: '#F0E0C8' }}>
+        <p className="text-[28px] leading-relaxed font-serif font-bold" style={{ color: '#F0E0C8' }}>
+          &ldquo;{eq.question}&rdquo;
+        </p>
+      </div>
 
       {/* Final interpretation */}
       <div className="space-y-2">
-        <p className="text-sm font-semibold text-[#2C2418]">
+        <p className="text-[18px] font-semibold text-[#2C2418]">
           {eq.finalReflectionPrompt}
         </p>
         <div className="flex gap-2">
@@ -56,7 +53,7 @@ export default function EqClosingCard({ tour, onComplete }: Props) {
 
       {/* Final reasoning */}
       <div className="space-y-2">
-        <p className="text-sm font-semibold text-[#2C2418]">
+        <p className="text-[18px] font-semibold text-[#2C2418]">
           {eq.finalReasoningPrompt}
         </p>
         <div className="flex gap-2">

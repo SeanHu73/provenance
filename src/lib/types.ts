@@ -353,7 +353,7 @@ export interface WebNode {
   y: number;
 }
 
-export type TourPhase = 'intro' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing' | 'eq_final_reflect' | 'eq_questions' | 'end';
+export type TourPhase = 'intro' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_final_reflect' | 'eq_questions' | 'end';
 
 export interface TourSession {
   id: string;

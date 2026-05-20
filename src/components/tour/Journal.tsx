@@ -19,6 +19,7 @@ import EqSceneCard from './cards/EqSceneCard';
 import EqDiscussCard from './cards/EqDiscussCard';
 import EqOpeningCard from './cards/EqOpeningCard';
 import EqAdditionalCard from './cards/EqAdditionalCard';
+import EqClosingDiscussCard from './cards/EqClosingDiscussCard';
 import EqClosingCard from './cards/EqClosingCard';
 import EqFinalReflectCard from './cards/EqFinalReflectCard';
 import EqQuestionsCard from './cards/EqQuestionsCard';
@@ -56,6 +57,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeEqDiscuss,
     completeEqOpening,
     completeEqAdditional,
+    completeEqClosingDiscuss,
     completeEqClosing,
     completeEqFinalReflect,
     endTour,
@@ -331,6 +333,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
         {phase === 'branch' && (
           <BranchCard />
+        )}
+
+        {phase === 'eq_closing_discuss' && tour.essentialQuestion && (
+          <EqClosingDiscussCard tour={tour} onContinue={completeEqClosingDiscuss} />
         )}
 
         {phase === 'eq_closing' && tour.essentialQuestion && (

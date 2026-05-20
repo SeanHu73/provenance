@@ -150,7 +150,7 @@ export function advanceToNextStop(session: TourSession, tour: Tour): TourSession
 
   // If this is marked as final stop OR there are no more stops, go to closing flow
   if (isFinal || nextIndex >= tour.stops.length) {
-    const endPhase = tour.essentialQuestion ? 'eq_closing' : 'eq_questions';
+    const endPhase = tour.essentialQuestion ? 'eq_closing_discuss' : 'eq_questions';
     return {
       ...session,
       phaseHistory: pushHistory(session),
@@ -261,6 +261,14 @@ export function completeEqAdditional(session: TourSession): TourSession {
     ...session,
     phaseHistory: pushHistory(session),
     currentPhase: 'seed',
+  };
+}
+
+export function completeEqClosingDiscuss(session: TourSession): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'eq_closing',
   };
 }
 

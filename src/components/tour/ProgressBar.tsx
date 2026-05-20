@@ -23,7 +23,7 @@ export default function ProgressBar({ tour, session }: Props) {
   const stops = tour.stops;
   const currentIdx = session.currentStopIndex;
   const completedIds = new Set(session.completedStops);
-  const isClosing = ['eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
+  const isClosing = ['eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
   const isIntroPhase = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional'].includes(session.currentPhase);
   const isInStopPhase = !isClosing && !isIntroPhase;
 
@@ -114,7 +114,7 @@ export default function ProgressBar({ tour, session }: Props) {
         if (isIntroPhase) {
           pct = (0.5 / totalSegments) * 100;
         } else if (isClosing) {
-          const closingPhases = ['eq_closing', 'eq_final_reflect', 'eq_questions', 'end'];
+          const closingPhases = ['eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'];
           const ci = closingPhases.indexOf(session.currentPhase);
           pct = ((totalSegments - 1 + (ci >= 0 ? ci / closingPhases.length : 0)) / totalSegments) * 100;
         } else if (session.currentPhase === 'end') {
@@ -227,7 +227,7 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
 
           {tour.stops.map((stop, i) => {
             const isCompleted = completedIds.has(stop.id);
-            const isCurrent = i === session.currentStopIndex && !['intro', 'eq_opening', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
+            const isCurrent = i === session.currentStopIndex && !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
             const isUpcoming = !isCompleted && !isCurrent;
 
             const firstPhoto = (stop.notice.photos || [])[0]?.url || stop.notice.photoUrl || (stop.seed.photos || [])[0]?.url || stop.seed.photoUrl || null;
@@ -281,7 +281,7 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
 
           {/* Closing card */}
           {(() => {
-            const closingPhases = ['eq_closing', 'eq_final_reflect', 'eq_questions', 'end'];
+            const closingPhases = ['eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'];
             const isActive = closingPhases.includes(session.currentPhase);
             return (
               <div
