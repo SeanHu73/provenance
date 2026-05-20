@@ -79,7 +79,7 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
             <div className="space-y-3">
               {tour.stops.map((stop, i) => {
                 const isCompleted = completedIds.has(stop.id);
-                const isInStop = !['intro', 'eq_opening', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
+                const isInStop = !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
                 const isCurrent = i === currentIdx && isInStop;
                 const isUpcoming = !isCompleted && !isCurrent;
                 const isExpanded = expandedStopId === stop.id;
@@ -200,7 +200,7 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
               {/* Essential question responses */}
               {session.essentialQuestionResponses && tour.essentialQuestion && (
                 <div className="p-4 rounded-xl bg-white border border-[#D4BFA0] space-y-3">
-                  <p className="text-[10px] text-[#C4923A] uppercase tracking-wide font-semibold">Guiding Question</p>
+                  <p className="text-[10px] text-[#C4923A] uppercase tracking-wide font-semibold">Discussion Question</p>
                   <p className="text-sm font-serif font-semibold text-[#2C2418]">
                     &ldquo;{tour.essentialQuestion.question}&rdquo;
                   </p>

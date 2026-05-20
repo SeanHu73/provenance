@@ -212,7 +212,23 @@ export function completeIntro(session: TourSession, tour: Tour): TourSession {
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: tour.essentialQuestion ? 'eq_opening' : 'seed',
+    currentPhase: tour.essentialQuestion ? 'eq_scene' : 'seed',
+  };
+}
+
+export function completeEqScene(session: TourSession): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'eq_discuss',
+  };
+}
+
+export function completeEqDiscuss(session: TourSession): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'eq_opening',
   };
 }
 

@@ -16,17 +16,12 @@ export default function WonderCard({ stop, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <p className="text-4xl uppercase tracking-[0.14em] text-[#C4923A] font-bold">
-        WONDER
+      <p className="text-2xl uppercase tracking-[0.14em] text-[#C4923A] font-semibold">
+        Chance to discuss...
       </p>
 
       {/* Audio player */}
       {stop.wonder?.audioUrl && <AudioButton audioUrl={stop.wonder.audioUrl} title={stop.wonder.audioTitle} />}
-
-      {/* Subtitle */}
-      <p className="text-2xl uppercase tracking-[0.14em] text-[#C4923A]/70 font-semibold -mt-3">
-        Talk to each other...
-      </p>
 
       {/* Discussion prompt + photos */}
       <PhotoContent

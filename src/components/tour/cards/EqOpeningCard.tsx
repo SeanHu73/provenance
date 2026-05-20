@@ -1,11 +1,12 @@
 'use client';
 
 /**
- * Essential Question — Opening screen.
- * Captures the group's initial theory and reasoning before the tour begins.
+ * Essential Question — Written response screen.
+ * Captures the group's initial theory and reasoning.
+ * The question was already discussed verbally on the previous screen.
  */
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Tour } from '@/lib/types';
 import BackButton from './BackButton';
 import MicButton from '../MicButton';
@@ -21,37 +22,22 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
   const [reasoning, setReasoning] = useState('');
   const [theoryCommitted, setTheoryCommitted] = useState(false);
   const [reasoningCommitted, setReasoningCommitted] = useState(false);
-  const [framingOpen, setFramingOpen] = useState(false);
 
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
       <p className="text-2xl uppercase tracking-[0.14em] text-[#C4923A] font-semibold">
-        Guiding Question
+        Discussion Question
       </p>
 
-      {/* The essential question */}
-      <p className="text-[23px] leading-relaxed font-serif font-semibold text-[#2C2418]">
+      {/* Reminder of the question */}
+      <p className="text-[21px] leading-relaxed font-serif font-semibold text-[#2C2418]">
         &ldquo;{eq.question}&rdquo;
       </p>
 
-      {/* Framing — collapsible */}
-      <button
-        onClick={() => setFramingOpen(!framingOpen)}
-        className="text-sm text-[#6B5D4F] italic flex items-center gap-1"
-      >
-        <span className="text-[10px]">{framingOpen ? '▼' : '▶'}</span>
-        {framingOpen ? 'Hide instructions' : 'Read instructions'}
-      </button>
-      {framingOpen && (
-        <p className="text-sm text-[#6B5D4F] italic leading-relaxed animate-fade-in">
-          {eq.openingFraming}
-        </p>
-      )}
-
       {/* Theory input */}
       <div className="space-y-2">
-        <p className="text-sm font-semibold text-[#2C2418]">
+        <p className="text-[18px] font-semibold text-[#2C2418]">
           {eq.theoryPrompt}
         </p>
         <div className="flex gap-2">
@@ -78,14 +64,14 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
           </button>
         )}
         {theoryCommitted && (
-          <span className="text-[10px] text-[#7A7A5E]">&#10003; Theory proposed</span>
+          <span className="text-xs text-[#7A7A5E]">&#10003; Theory proposed</span>
         )}
       </div>
 
       {/* Reasoning input — appears after theory is committed */}
       {theoryCommitted && (
         <div className="space-y-2 animate-fade-in">
-          <p className="text-sm font-semibold text-[#2C2418]">
+          <p className="text-[18px] font-semibold text-[#2C2418]">
             {eq.reasoningPrompt}
           </p>
           <div className="flex gap-2">
@@ -112,12 +98,12 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
             </button>
           )}
           {reasoningCommitted && (
-            <span className="text-[10px] text-[#7A7A5E]">&#10003; Explanation confirmed</span>
+            <span className="text-xs text-[#7A7A5E]">&#10003; Explanation confirmed</span>
           )}
         </div>
       )}
 
-      {/* Continue — appears after both are committed */}
+      {/* Continue */}
       {theoryCommitted && reasoningCommitted && (
         <div className="flex gap-2 animate-fade-in">
           <BackButton />

@@ -15,6 +15,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { canUseBlur } from '@/lib/device-capability';
 import IntroScreens from './cards/IntroScreens';
+import EqSceneCard from './cards/EqSceneCard';
+import EqDiscussCard from './cards/EqDiscussCard';
 import EqOpeningCard from './cards/EqOpeningCard';
 import EqClosingCard from './cards/EqClosingCard';
 import EqFinalReflectCard from './cards/EqFinalReflectCard';
@@ -49,6 +51,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
     enterBranch,
     addReflection,
     completeIntro,
+    completeEqScene,
+    completeEqDiscuss,
     completeEqOpening,
     completeEqClosing,
     completeEqFinalReflect,
@@ -211,6 +215,14 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
         {phase === 'intro' && (
           <IntroScreens tour={tour} onComplete={completeIntro} />
+        )}
+
+        {phase === 'eq_scene' && tour.essentialQuestion && (
+          <EqSceneCard tour={tour} onContinue={completeEqScene} />
+        )}
+
+        {phase === 'eq_discuss' && tour.essentialQuestion && (
+          <EqDiscussCard tour={tour} onContinue={completeEqDiscuss} />
         )}
 
         {phase === 'eq_opening' && tour.essentialQuestion && (

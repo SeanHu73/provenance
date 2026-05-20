@@ -417,6 +417,10 @@ export default function TourEditorPage() {
                 if (e.target.checked) {
                   updateField('essentialQuestion', {
                     question: 'What is this place for?',
+                    scenePhotoUrl: null,
+                    sceneDescription: '',
+                    sceneAudioUrl: null,
+                    sceneAudioTitle: null,
                     openingFraming: 'Before we begin, take a moment. Based on what you see and what you already know — what would you say?',
                     closingFraming: 'You answered this question before the tour began. Now that we have explored this place, how would you respond?',
                     theoryPrompt: 'What might your theory be?',
@@ -446,8 +450,54 @@ export default function TourEditorPage() {
                   className="mt-1 w-full px-3 py-1.5 border border-stone-300 rounded text-sm"
                 />
               </label>
+
+              <p className="text-xs text-stone-700 font-semibold mt-2">Scene-setting screen</p>
               <label className="block">
-                <span className="text-xs text-stone-500">Opening framing (before tour begins)</span>
+                <span className="text-xs text-stone-500">Scene photo (where to find the starting point)</span>
+                <div className="flex gap-2 mt-1">
+                  <input
+                    value={tour.essentialQuestion.scenePhotoUrl || ''}
+                    onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, scenePhotoUrl: e.target.value || null })}
+                    className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs"
+                    placeholder="Upload or paste URL..."
+                  />
+                  <label className="px-2 py-1 rounded bg-stone-200 text-stone-700 text-xs cursor-pointer hover:bg-stone-300">
+                    Upload
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const url = await uploadPhoto(file, `memorial-church/photos/tours/${tourId}/eq_scene_${file.name}`);
+                        updateField('essentialQuestion', { ...tour.essentialQuestion!, scenePhotoUrl: url });
+                      }}
+                    />
+                  </label>
+                </div>
+              </label>
+              <label className="block">
+                <span className="text-xs text-stone-500">Scene description (directions to find it)</span>
+                <textarea
+                  value={tour.essentialQuestion.sceneDescription || ''}
+                  onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, sceneDescription: e.target.value })}
+                  rows={2}
+                  className="mt-1 w-full px-3 py-1.5 border border-stone-300 rounded text-sm"
+                  placeholder="Find the stone plaque on the north wall..."
+                />
+              </label>
+              <AudioUpload
+                audioUrl={tour.essentialQuestion.sceneAudioUrl ?? null}
+                audioTitle={tour.essentialQuestion.sceneAudioTitle ?? null}
+                onChange={(url) => updateField('essentialQuestion', { ...tour.essentialQuestion!, sceneAudioUrl: url })}
+                onTitleChange={(title) => updateField('essentialQuestion', { ...tour.essentialQuestion!, sceneAudioTitle: title })}
+                uploadPath={`memorial-church/audio/tours/${tourId}/eq_scene`}
+                onUploadFile={uploadPhoto}
+              />
+
+              <label className="block">
+                <span className="text-xs text-stone-500">Opening framing (toggle text on scene screen)</span>
                 <textarea
                   value={tour.essentialQuestion.openingFraming}
                   onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, openingFraming: e.target.value })}

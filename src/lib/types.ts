@@ -201,7 +201,12 @@ export interface Tour {
   // Essential question — optional framing that bookends the tour
   essentialQuestion: {
     question: string;                  // "What is this place for?"
-    openingFraming: string;            // "Before we begin, take a moment..."
+    // Scene-setting screen
+    scenePhotoUrl: string | null;      // Photo of where to find the starting point
+    sceneDescription: string;          // "Find the stone plaque on the north wall..."
+    sceneAudioUrl: string | null;      // Optional audio for the scene
+    sceneAudioTitle: string | null;
+    openingFraming: string;            // Toggle text below the scene
     closingFraming: string;            // "You answered this question before..."
     theoryPrompt: string;              // "What might your theory be?"
     theoryPlaceholder: string;
@@ -342,7 +347,7 @@ export interface WebNode {
   y: number;
 }
 
-export type TourPhase = 'intro' | 'eq_opening' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing' | 'eq_final_reflect' | 'eq_questions' | 'end';
+export type TourPhase = 'intro' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing' | 'eq_final_reflect' | 'eq_questions' | 'end';
 
 export interface TourSession {
   id: string;

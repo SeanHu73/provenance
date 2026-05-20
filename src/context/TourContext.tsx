@@ -23,6 +23,8 @@ import {
   recordDetourVisit as recordDetourVisitImpl,
   goBack as goBackImpl,
   completeIntro as completeIntroImpl,
+  completeEqScene as completeEqSceneImpl,
+  completeEqDiscuss as completeEqDiscussImpl,
   completeEqOpening as completeEqOpeningImpl,
   completeEqClosing as completeEqClosingImpl,
   completeEqFinalReflect as completeEqFinalReflectImpl,
@@ -51,6 +53,8 @@ interface TourContextValue {
   recordDetourVisit: (detourId: string) => void;
   isDetourVisited: (detourId: string) => boolean;
   completeIntro: () => void;
+  completeEqScene: () => void;
+  completeEqDiscuss: () => void;
   completeEqOpening: (theory: string, reasoning: string) => void;
   completeEqClosing: (finalReflection: string, finalReasoning: string) => void;
   completeEqFinalReflect: (cognitive: number, perceptual: number | null, whatShifted: string[] | null, reasoningSource: string[] | null) => void;
@@ -179,6 +183,16 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(completeIntroImpl(session, tour));
   }, [session, tour, persist]);
 
+  const completeEqSceneFn = useCallback(() => {
+    if (!session) return;
+    persist(completeEqSceneImpl(session));
+  }, [session, persist]);
+
+  const completeEqDiscussFn = useCallback(() => {
+    if (!session) return;
+    persist(completeEqDiscussImpl(session));
+  }, [session, persist]);
+
   const completeEqOpeningFn = useCallback((theory: string, reasoning: string) => {
     if (!session || !tour) return;
     persist(completeEqOpeningImpl(session, theory, reasoning));
@@ -235,6 +249,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
       recordDetourVisit: recordDetourVisitFn,
       isDetourVisited,
       completeIntro: completeIntroFn,
+      completeEqScene: completeEqSceneFn,
+      completeEqDiscuss: completeEqDiscussFn,
       completeEqOpening: completeEqOpeningFn,
       completeEqClosing: completeEqClosingFn,
       completeEqFinalReflect: completeEqFinalReflectFn,
