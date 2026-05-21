@@ -469,7 +469,7 @@ export default function TourEditorPage() {
                 <input
                   value={tour.essentialQuestion.question}
                   onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, question: e.target.value })}
-                  className="mt-1 w-full px-3 py-1.5 border border-stone-300 rounded text-sm"
+                  className="mt-1 w-full px-3 py-1.5 border border-stone-300 rounded-lg shadow-md text-sm"
                 />
               </label>
 
