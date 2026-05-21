@@ -57,8 +57,9 @@ function formatDist(m: number): string {
 }
 
 /**
- * Centres the map on the user and zooms to show the nearest tour pin.
- * Falls back to MEMORIAL_CHURCH if no tour pins are available yet.
+ * Fits the map to show both the user and the nearest tour pin, with ~18%
+ * padding on each side so neither point is close to the screen edge.
+ * Falls back to MEMORIAL_CHURCH if no tour pins are loaded yet.
  * Caps automatic zoom at MAX_AUTO_ZOOM; beyond 5 miles just centres on user.
  */
 function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
@@ -75,15 +76,38 @@ function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
   if (distM > SHOW_PIN_RADIUS_M) {
     map.panTo(userPos);
     map.setZoom(MAX_AUTO_ZOOM);
-  } else {
-    const zoom = Math.min(MAX_AUTO_ZOOM, Math.max(12, Math.round(17 - Math.log2(Math.max(distM, 50) / 50))));
-    const center =
-      distM < 30
-        ? userPos
-        : { lat: (userPos.lat + target.lat) / 2, lng: (userPos.lng + target.lng) / 2 };
-    map.panTo(center);
-    map.setZoom(zoom);
+    return;
   }
+
+  if (distM < 30) {
+    map.panTo(userPos);
+    map.setZoom(MAX_AUTO_ZOOM);
+    return;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const g = (window as any).google;
+  if (!g?.maps?.LatLngBounds) {
+    map.panTo({ lat: (userPos.lat + target.lat) / 2, lng: (userPos.lng + target.lng) / 2 });
+    map.setZoom(15);
+    return;
+  }
+
+  const bounds = new g.maps.LatLngBounds();
+  bounds.extend(userPos);
+  bounds.extend(target);
+
+  const padW = Math.round(window.innerWidth * 0.18);
+  const padH = Math.round(window.innerHeight * 0.18);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyMap = map as any;
+  anyMap.fitBounds(bounds, { top: padH, right: padW, bottom: padH, left: padW });
+
+  // Cap zoom — fitBounds may zoom in too far for very close pins
+  g.maps.event.addListenerOnce(anyMap, 'idle', () => {
+    const z = anyMap.getZoom?.();
+    if (typeof z === 'number' && z > MAX_AUTO_ZOOM) anyMap.setZoom(MAX_AUTO_ZOOM);
+  });
 }
 
 function PinMarker({ pin, isSelected, onClick }: { pin: Pin; isSelected: boolean; onClick: () => void }) {

@@ -378,6 +378,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
           <button
             onClick={() => setShowJournal(true)}
             className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-base font-semibold text-warm-white bg-white/15 hover:bg-white/25 transition-colors border-2 border-white/40"
+            style={{ boxShadow: '0 0 14px 4px rgba(255,255,255,0.22)' }}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
@@ -387,7 +388,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
           </button>
           <button
             onClick={() => setShowQuestionInput(true)}
-            className="flex items-center justify-center px-5 py-3.5 rounded-xl text-2xl font-bold text-warm-white bg-white/15 hover:bg-white/25 transition-colors border-2 border-white/40"
+            className="flex items-center justify-center px-5 py-3.5 rounded-xl text-xl leading-none font-bold text-warm-white bg-white/15 hover:bg-white/25 transition-colors border-2 border-white/40"
+            style={{ boxShadow: '0 0 14px 4px rgba(255,255,255,0.22)' }}
             title="Ask a question"
           >
             ?

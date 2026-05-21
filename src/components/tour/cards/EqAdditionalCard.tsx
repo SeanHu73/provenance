@@ -26,12 +26,18 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
         {isOpinion ? "What's your opinion?" : 'Chance to discuss...'}
       </p>
 
-      {/* The question — edges fade softly into background */}
-      <div
-        className="rounded-xl px-8 py-7 text-center"
-        style={{ background: 'var(--th-question-bg)', boxShadow: '0 0 18px 5px var(--th-question-shadow)' }}
-      >
-        <p className="text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
+      {/* The question — soft-edge blur-behind effect */}
+      <div className="relative px-8 py-7 text-center overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'var(--th-question-bg-solid)',
+            filter: 'blur(14px)',
+            transform: 'scale(0.85)',
+            borderRadius: '10px',
+          }}
+        />
+        <p className="relative text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;{aq.question}&rdquo;
         </p>
       </div>
