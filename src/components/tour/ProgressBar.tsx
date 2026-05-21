@@ -206,9 +206,9 @@ function LinearProgressBar({ tour, session }: Props) {
                 className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold text-white"
                 style={{
                   backgroundColor: isIntroActive
-                    ? 'var(--aged-gold)'
+                    ? '#F59E0B'
                     : isIntroDone
-                      ? 'var(--aged-gold)'
+                      ? '#F59E0B'
                       : 'color-mix(in srgb, var(--th-border) 60%, transparent)',
                   minWidth: isIntroActive ? undefined : '20px',
                   height: '20px',
@@ -240,7 +240,7 @@ function LinearProgressBar({ tour, session }: Props) {
             className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold text-white"
             style={{
               backgroundColor: isClosing
-                ? 'var(--aged-gold)'
+                ? '#F59E0B'
                 : 'color-mix(in srgb, var(--th-border) 60%, transparent)',
               minWidth: '20px',
               height: '20px',
@@ -255,7 +255,7 @@ function LinearProgressBar({ tour, session }: Props) {
       <div className="shrink-0 w-full h-2" style={{ backgroundColor: 'color-mix(in srgb, var(--th-border) 40%, transparent)' }}>
         <div
           className="h-full transition-all duration-500 ease-out rounded-r-full"
-          style={{ width: `${pct}%`, backgroundColor: 'var(--aged-gold)' }}
+          style={{ width: `${pct}%`, backgroundColor: '#F59E0B' }}
         />
       </div>
 
@@ -281,7 +281,7 @@ const Pill = React.forwardRef<
       <div
         ref={ref}
         className="shrink-0 rounded-full transition-all duration-200"
-        style={{ width: '20px', height: '20px', backgroundColor: 'var(--aged-gold)' }}
+        style={{ width: '20px', height: '20px', backgroundColor: '#F59E0B' }}
       />
     );
   }
@@ -291,7 +291,7 @@ const Pill = React.forwardRef<
       <div
         ref={ref}
         className="shrink-0 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-bold"
-        style={{ backgroundColor: 'var(--aged-gold)', maxWidth: '160px', color: 'rgba(0,0,0,0.8)' }}
+        style={{ backgroundColor: '#F59E0B', maxWidth: '160px', color: 'rgba(0,0,0,0.8)' }}
       >
         <span className="shrink-0">{visitNumber}</span>
         {displayName && <span className="truncate">{displayName}</span>}

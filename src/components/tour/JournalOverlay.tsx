@@ -159,8 +159,8 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={thumbnail} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-sm font-bold text-sandstone-light">
-                            {(tour.unstructuredMode && visitNum) ? visitNum : i + 1}
+                          <div className="w-full h-full flex items-center justify-center text-sandstone-light">
+                            {!tour.unstructuredMode && <span className="text-sm font-bold">{i + 1}</span>}
                           </div>
                         )}
                       </div>

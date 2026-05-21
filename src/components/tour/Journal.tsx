@@ -300,7 +300,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
         {phase === 'whats_next' && currentStop && (
           <div className="animate-fade-in flex flex-col justify-center min-h-full space-y-6">
-            {currentStop.isFinalStop ? (
+            {currentStop.isFinalStop && !tour.unstructuredMode ? (
               <>
                 {currentStop.reveal.bridgeText && (
                   <p className="text-[18px] text-text-secondary italic leading-relaxed">
