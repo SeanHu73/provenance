@@ -235,7 +235,7 @@ export default function MapContainer({ pins, selectedPinId, onPinSelect, tourPin
         <GoogleMap
           mapId="memorial-church-map"
           defaultCenter={MEMORIAL_CHURCH}
-          defaultZoom={16}
+          defaultZoom={19}
           defaultTilt={45}
           defaultHeading={0}
           mapTypeId="hybrid"
