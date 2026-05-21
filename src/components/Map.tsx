@@ -354,11 +354,15 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
   if (data.unstructuredMode) {
     const baseSize = 36;
     const size = data.isCompleted
-      ? Math.round(baseSize * 0.65)
+      ? Math.round(baseSize * 0.85)      // slightly smaller when done but still visible
       : data.isSelectedOverlay
-        ? Math.round(baseSize * 1.5)
+        ? Math.round(baseSize * 1.5)     // larger when selected
         : baseSize;
     const displayTitle = data.stop.mergeGroup || data.stop.title;
+
+    // Completed pin: use a muted version of the surface-alt color so it reads as "done"
+    const completedBg = 'color-mix(in srgb, var(--th-primary) 22%, white)';
+
     return (
       <AdvancedMarker
         position={data.stop.location}
@@ -366,42 +370,44 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
         zIndex={data.isSelectedOverlay ? 10 : data.isCompleted ? 1 : 5}
       >
         <div className="flex flex-col items-center" style={{ transform: 'translateY(calc(50% - 18px))' }}>
-          {/* Circle with correctly-centered pulsing ring */}
           <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+            {/* Pulsing ring — only for selected, sits behind the circle */}
             {data.isSelectedOverlay && (
-              <div
-                className="absolute rounded-full animate-ping"
+              <span
+                className="absolute inline-flex rounded-full animate-ping"
                 style={{
-                  width: size + 20,
-                  height: size + 20,
+                  width: size + 18,
+                  height: size + 18,
                   top: '50%',
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
-                  background: 'var(--th-aged-gold)',
-                  opacity: 0.3,
+                  background: '#F59E0B',
+                  opacity: 0.45,
                   pointerEvents: 'none',
                 }}
               />
             )}
+            {/* Pin circle */}
             <div
               className="flex items-center justify-center rounded-full shadow-md transition-all duration-200 w-full h-full"
               style={{
                 background: data.isCompleted
-                  ? 'color-mix(in srgb, var(--th-text-secondary) 50%, transparent)'
+                  ? completedBg
                   : data.isSelectedOverlay
                     ? '#F59E0B'
                     : 'var(--th-primary)',
                 border: data.isSelectedOverlay
-                  ? '3px solid rgba(255,255,255,0.9)'
-                  : '2px solid rgba(255,255,255,0.7)',
+                  ? '3px solid rgba(255,255,255,0.95)'
+                  : data.isCompleted
+                    ? '2px solid rgba(255,255,255,0.8)'
+                    : '2px solid rgba(255,255,255,0.7)',
                 boxShadow: data.isSelectedOverlay
-                  ? '0 0 0 3px rgba(245,158,11,0.35), 0 4px 12px rgba(0,0,0,0.4)'
+                  ? '0 0 0 3px rgba(245,158,11,0.3), 0 4px 14px rgba(0,0,0,0.4)'
                   : '0 2px 6px rgba(0,0,0,0.3)',
-                opacity: data.isCompleted ? 0.7 : 1,
               }}
             >
               {data.isCompleted ? (
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--th-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="2 6 5 9 10 3" />
                 </svg>
               ) : (
@@ -409,6 +415,8 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
               )}
             </div>
           </div>
+
+          {/* Title label — show for selected and incomplete pins */}
           {!data.isCompleted && displayTitle && (
             <div className="mt-1 px-2 py-0.5 bg-white rounded-md text-[9px] font-semibold text-gray-800 shadow-sm max-w-[110px] text-center leading-tight truncate">
               {displayTitle}

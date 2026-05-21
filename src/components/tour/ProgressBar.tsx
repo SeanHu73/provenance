@@ -290,8 +290,8 @@ const Pill = React.forwardRef<
     return (
       <div
         ref={ref}
-        className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold text-white"
-        style={{ backgroundColor: 'var(--th-aged-gold)', maxWidth: '160px' }}
+        className="shrink-0 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-bold"
+        style={{ backgroundColor: 'var(--th-aged-gold)', maxWidth: '160px', color: 'rgba(0,0,0,0.8)' }}
       >
         <span className="shrink-0">{visitNumber}</span>
         {displayName && <span className="truncate">{displayName}</span>}

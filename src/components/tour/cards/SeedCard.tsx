@@ -51,13 +51,15 @@ export default function SeedCard({ stop, onContinue }: Props) {
       {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} />}
 
       {/* Seed text + photos */}
-      {stop.seed.text && (
+      {stop.seed.text ? (
         <PhotoContent
           text={stop.seed.text}
           photos={stop.seed.photos || []}
           legacyPhotoUrl={stop.seed.photoUrl}
           legacyPhotoCaption={stop.seed.photoCaption}
         />
+      ) : !stop.seed.audioUrl && (
+        <p className="text-base text-text-secondary italic">Take a moment to look around this spot.</p>
       )}
 
       {/* Divider */}

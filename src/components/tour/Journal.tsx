@@ -359,6 +359,19 @@ export default function Journal({ onMapPeek }: JournalProps) {
           <EndCard />
         )}
 
+        {/* Fallback: stop phase with no currentStop data — prevents blank screen */}
+        {['seed', 'notice', 'wonder', 'reveal', 'reflect', 'whats_next', 'branch'].includes(phase) && !currentStop && (
+          <div className="animate-fade-in space-y-4 min-h-full flex flex-col justify-center text-center">
+            <p className="text-base text-text-secondary italic">This stop has no content yet.</p>
+            <button
+              onClick={advanceStop}
+              className="py-3 rounded-lg text-base font-semibold bg-olive text-white"
+            >
+              Skip to next stop
+            </button>
+          </div>
+        )}
+
             </div>
           </motion.div>
         </AnimatePresence>

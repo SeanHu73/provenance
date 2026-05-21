@@ -12,6 +12,7 @@ import Journal from '@/components/tour/Journal';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import ProgressBar from '@/components/tour/ProgressBar';
 import UnstructuredMapControls, { MidwayCheckinCard } from '@/components/tour/cards/UnstructuredMapOverlay';
+import UnstructuredClosingView from '@/components/tour/cards/UnstructuredClosingView';
 
 const Map = dynamic(() => import('@/components/Map'), { ssr: false });
 
@@ -47,6 +48,7 @@ function HomeInner() {
   const tourStopMarkers: TourStopMarkerData[] = [];
   const isUnstructuredMapPhase = !!(activeTour?.unstructuredMode && session?.currentPhase === 'unstructured_map');
   const isMidwayCheckin = !!(activeTour?.unstructuredMode && session?.currentPhase === 'midway_checkin');
+  const isUnstructuredClosing = !!(activeTour?.unstructuredMode && session && ['eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase));
   if (isActive && activeTour) {
     if (isUnstructuredMapPhase) {
       // Unstructured mode: show all logical stops with locations
@@ -104,8 +106,8 @@ function HomeInner() {
 
   return (
     <div className="relative h-full w-full flex flex-col bg-cream">
-      {/* Title bar — shown in document flow during unstructured map / midway phases */}
-      {isActive && (isUnstructuredMapPhase || isMidwayCheckin) && (
+      {/* Title bar — shown in document flow during unstructured map / midway / closing phases */}
+      {isActive && (isUnstructuredMapPhase || isMidwayCheckin || isUnstructuredClosing) && (
         <div
           className="shrink-0 flex items-center justify-between px-4 py-2"
           style={{ backgroundColor: 'var(--th-primary)' }}
@@ -136,8 +138,8 @@ function HomeInner() {
         </div>
       )}
 
-      {/* Progress strip — shown in document flow during unstructured map / midway phases */}
-      {isActive && (isUnstructuredMapPhase || isMidwayCheckin) && activeTour && session && (
+      {/* Progress strip — shown in document flow during unstructured map / midway / closing phases */}
+      {isActive && (isUnstructuredMapPhase || isMidwayCheckin || isUnstructuredClosing) && activeTour && session && (
         <ProgressBar tour={activeTour} session={session} />
       )}
 
@@ -150,8 +152,11 @@ function HomeInner() {
         </div>
       )}
 
-      {/* Map — hidden during midway check-in */}
-      {!isMidwayCheckin && (
+      {/* Closing content for unstructured tours (replaces map area) */}
+      {isUnstructuredClosing && <UnstructuredClosingView />}
+
+      {/* Map — hidden during midway check-in and unstructured closing */}
+      {!isMidwayCheckin && !isUnstructuredClosing && (
         <div className="flex-1 relative">
           <Map
             pins={[]}
@@ -217,8 +222,8 @@ function HomeInner() {
         />
       )}
 
-      {/* Tour journal — active tour playback; not shown during unstructured map or midway phases */}
-      {isActive && !mapPeek && !isUnstructuredMapPhase && !isMidwayCheckin && (
+      {/* Tour journal — active tour playback; not shown during unstructured map, midway, or closing phases */}
+      {isActive && !mapPeek && !isUnstructuredMapPhase && !isMidwayCheckin && !isUnstructuredClosing && (
         <Journal
           onMapPeek={currentStopHasLocation ? () => setMapPeek(true) : undefined}
         />

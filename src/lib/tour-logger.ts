@@ -130,6 +130,24 @@ export function logEqFinalReflect(opts: {
   });
 }
 
+export function logStopEntered(opts: {
+  tourId: string;
+  sessionId: string;
+  tourTitle: string;
+  stopIndex: number;
+  stopTitle: string;
+}): void {
+  fire({
+    event: 'stop_entered',
+    tourId: opts.tourId,
+    sessionId: opts.sessionId,
+    tourTitle: opts.tourTitle,
+    stopIndex: opts.stopIndex,
+    stopTitle: opts.stopTitle,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 function fire(entry: Record<string, unknown>): void {
   const payload = JSON.stringify(entry);
 
