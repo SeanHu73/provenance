@@ -243,7 +243,9 @@ Tailwind CSS 4, TypeScript 5, @vis.gl/react-google-maps 1.8.3.
 
 ## 8. Recent Session Work (May 2026)
 
-This session built the complete v2 tour system from scratch:
+### v2 tour system (earlier session)
+
+An earlier session built the complete v2 tour system from scratch:
 - Tour data model + admin authoring (Priority 1)
 - Explorer playback with all card types (Priority 2)
 - Question routing at branch points (Priority 3)
@@ -265,13 +267,37 @@ This session built the complete v2 tour system from scratch:
 - Google Sheets logging with sendBeacon
 - Device capability detection for blur fallback
 
-### Theme system (2026-05-20)
+### Theme system — Red & Teal (this session, 2026-05-20)
 
-Added the dual-theme system documented in §9: a `--th-*` token layer,
-the Red and Teal themes, `ThemeContext` + `ThemeSwitcher`, fonts loaded
-via `next/font` (Newsreader for content, a per-theme serif for titles),
-coloured title/footer bars, and migration of ~514 hardcoded hex values
-across 30 explorer files to theme tokens. Build and TypeScript pass.
+Added the dual-theme system (full reference in §9). Shipped to
+production `master` over several commits.
+
+- New `--th-*` themeable token layer in `globals.css`; two themes
+  selected by the `data-theme` attribute on `<html>` — **Red**
+  (default) and **Teal** — switchable with no reload.
+- `ThemeContext` + `ThemeProvider` and a `ThemeSwitcher` control at the
+  top-right of the map; the choice persists in `localStorage`, with a
+  pre-paint inline script in `layout.tsx` to avoid a theme flash.
+- Migrated ~514 hardcoded hex values across 30 explorer-side files onto
+  theme tokens (Tailwind colour tokens + `var(--th-*)`); no per-component
+  colour hexes remain in the explorer UI.
+- Fonts moved to `next/font/google` (self-hosted): **Newsreader** for
+  all content/body text in both themes, **DM Serif Display** (Red) and
+  **Cormorant Garamond** (Teal) for titles via a new `font-display`
+  utility. This replaced a CSS `@import url()` that Tailwind v4's build
+  was silently stripping (the original font bug).
+- Themeable corner radius; buttons made rounder.
+- Teal theme made genuinely teal-dominant — its `--th-primary` is teal,
+  with cranberry demoted to the secondary accent.
+- Coloured the journal title bar, the journal footer, and the map's
+  bottom bar with the active theme's primary colour.
+- Enlarged titles (section headings `text-2xl`→`text-3xl`, essential-
+  question hero text 28px→34px, tour titles bumped a step).
+- Themes renamed Ledger→Red, Folio→Teal.
+
+Admin pages were intentionally left out of theme scope (see §9). Build
+and TypeScript pass; verified structurally (compiled CSS + dev server),
+not pixel-reviewed in a browser.
 
 ---
 
