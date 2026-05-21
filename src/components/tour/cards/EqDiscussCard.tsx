@@ -40,7 +40,7 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
       </div>
 
       {/* Instruction */}
-      <p className="text-[18px] font-semibold text-text-primary text-center leading-relaxed">
+      <p className="text-[18px] text-text-secondary italic leading-relaxed">
         Talk this over with your group before continuing.
       </p>
 

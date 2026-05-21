@@ -104,8 +104,8 @@ export default function MicButton({ onTranscript, size = 'sm' }: Props) {
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
-  const btnSize = size === 'lg' ? 'w-16 h-16' : 'w-12 h-20 self-center';
-  const iconSize = size === 'lg' ? 24 : 20;
+  const btnSize = size === 'lg' ? 'w-16 h-16' : 'w-16 h-20 self-center';
+  const iconSize = size === 'lg' ? 24 : 26;
 
   if (state === 'recording') {
     return (
