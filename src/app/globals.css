@@ -1,18 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 /* ============================================================
    THEME SYSTEM
-   Two themes — "Ledger" and "Folio" — are selected via the
+   Two themes — "Red" and "Teal" — are selected via the
    data-theme attribute on <html>. Every themeable value lives in
    a --th-* custom property. Components reference these (directly,
    or through the legacy aliases / Tailwind tokens below), so
    switching data-theme re-resolves the whole UI instantly.
+
+   Fonts are loaded via next/font in layout.tsx, which exposes
+   each family as a --font-* variable on <html>.
    ============================================================ */
 
-/* ---- Ledger (default) — 1970s New Journalism ---------------- */
+/* ---- Red (default) — 1970s New Journalism ------------------- */
 :root,
-[data-theme='ledger'] {
+[data-theme='red'] {
   --th-primary: #8B2538;          /* cranberry — brand, buttons, accents */
   --th-primary-hover: #A33147;
   --th-secondary: #B8752B;        /* warm amber — secondary accent */
@@ -33,38 +35,38 @@
   --th-bg-dark: #DAD4D1;
   --th-border: #D8D8D8;           /* borders, dividers, scrollbars */
 
-  --th-font-display: 'DM Serif Display', 'Georgia', serif;
-  --th-font-body: 'Outfit', system-ui, sans-serif;
+  --th-font-display: var(--font-dm-serif-display), 'Georgia', serif;
+  --th-font-body: var(--font-outfit), system-ui, sans-serif;
 
   --th-radius-lg: 0.625rem;
   --th-radius-xl: 0.875rem;
   --th-radius-2xl: 1rem;
 }
 
-/* ---- Folio — 1950s Mid-Century ------------------------------ */
-[data-theme='folio'] {
-  --th-primary: #A73848;          /* cranberry — brand, buttons, accents */
-  --th-primary-hover: #BC4757;
-  --th-secondary: #3A8D89;        /* teal — secondary accent */
-  --th-secondary-hover: #46A09B;
+/* ---- Teal — 1950s Mid-Century ------------------------------- */
+[data-theme='teal'] {
+  --th-primary: #3A8D89;          /* teal — brand, buttons, accents */
+  --th-primary-hover: #327B77;
+  --th-secondary: #A73848;        /* cranberry — secondary accent */
+  --th-secondary-hover: #BC4757;
   --th-accent-dark: #2C6B68;      /* dark teal — section headings, timer */
   --th-olive: #6A8A82;            /* light accent — completed states, borders */
   --th-journal: #25342F;          /* journal cover / dark utility surface */
-  --th-question-bg: #7E2A3890;    /* essential-question box (translucent) */
-  --th-question-red: #A73848;     /* the "?" question button */
+  --th-question-bg: #21534F90;    /* essential-question box (translucent) */
+  --th-question-red: #357F7B;     /* the "?" question button */
 
   --th-text: #2D3D38;
   --th-text-muted: #57605B;
   --th-text-faint: #5D5D5E;
 
   --th-surface: #FFFFFF;
-  --th-surface-alt: #F6F0F6;
-  --th-bg: #E7E1E7;
-  --th-bg-dark: #D9D2D9;
+  --th-surface-alt: #F0F4F3;
+  --th-bg: #E2E8E6;
+  --th-bg-dark: #D2DAD8;
   --th-border: #D5D5D5;
 
-  --th-font-display: 'Cormorant Garamond', 'Georgia', serif;
-  --th-font-body: 'Space Grotesk', system-ui, sans-serif;
+  --th-font-display: var(--font-cormorant-garamond), 'Georgia', serif;
+  --th-font-body: var(--font-space-grotesk), system-ui, sans-serif;
 
   --th-radius-lg: 0.25rem;
   --th-radius-xl: 0.375rem;

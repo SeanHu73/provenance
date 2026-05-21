@@ -10,7 +10,7 @@ Read this instead of re-discovering the codebase.*
 Next.js 16.2.3 App Router + TypeScript + Tailwind CSS 4 + Framer Motion.
 Firebase Firestore + Firebase Storage. Google Maps. Deepgram (voice input).
 Deployed on Vercel, auto-deploys from GitHub master.
-Two switchable visual themes (Ledger / Folio) — see §9.
+Two switchable visual themes (Red / Teal) — see §9.
 
 **Repo:** `github.com/SeanHu73/memorial-church-tool`
 
@@ -65,7 +65,7 @@ Map (tour pin) → Journal Peek → Intro screens →
 | FullscreenPhoto | `cards/FullscreenPhoto.tsx` | Portal-based fullscreen with pinch zoom |
 | MicButton | `src/components/tour/MicButton.tsx` | Deepgram voice-to-text |
 | VoiceInput | `src/components/tour/VoiceInput.tsx` | Standalone voice input (prominent mode) |
-| ThemeSwitcher | `src/components/ThemeSwitcher.tsx` | Ledger/Folio toggle on the map (§9) |
+| ThemeSwitcher | `src/components/ThemeSwitcher.tsx` | Red/Teal toggle on the map (§9) |
 
 ### Data Layer
 
@@ -80,7 +80,7 @@ Map (tour pin) → Journal Peek → Intro screens →
 | `src/lib/photo-sync-tour.ts` | Auto-registers tour uploads in photo library |
 | `src/lib/device-capability.ts` | Detects low-end devices for blur fallback |
 | `src/context/TourContext.tsx` | React context for all tour state + actions |
-| `src/context/ThemeContext.tsx` | Theme state (Ledger/Folio) + localStorage persistence (§9) |
+| `src/context/ThemeContext.tsx` | Theme state (Red/Teal) + localStorage persistence (§9) |
 
 ### Phase Types (TourPhase)
 
@@ -268,9 +268,9 @@ This session built the complete v2 tour system from scratch:
 ### Theme system (2026-05-20)
 
 Added the dual-theme system documented in §9: a `--th-*` token layer,
-the Ledger and Folio themes, `ThemeContext` + `ThemeSwitcher`, four
-Google fonts, and migration of ~514 hardcoded hex values across 30
-explorer files to theme tokens. Build and TypeScript pass.
+the Red and Teal themes, `ThemeContext` + `ThemeSwitcher`, four fonts
+loaded via `next/font`, and migration of ~514 hardcoded hex values
+across 30 explorer files to theme tokens. Build and TypeScript pass.
 
 ---
 
@@ -283,24 +283,34 @@ glass, transitions, background photos, progress bar) is shared.
 
 ### Themes
 
-| | Ledger (default) | Folio |
+| | Red (default) | Teal |
 |---|---|---|
 | Persona | 1970s New Journalism | 1950s Mid-Century |
 | Display font | DM Serif Display | Cormorant Garamond |
 | Body font | Outfit | Space Grotesk |
-| Primary | #8B2538 cranberry | #A73848 cranberry |
-| Secondary | #B8752B amber | #3A8D89 teal |
+| Primary (dominant accent) | #8B2538 cranberry | #3A8D89 teal |
+| Secondary accent | #B8752B amber | #A73848 cranberry |
 | Corner radius | softer (lg .625rem / 2xl 1rem) | crisper (lg .25rem / 2xl .5rem) |
 
-Source style guides: `docs/Style_Guide_Ledger.md`, `docs/Style_Guide_Folio.md`
-(screenshots: `docs/Style Guide - Red.png` / `Style Guide - Teal.png`).
+Each theme is named for its dominant accent. The dominant colour drives
+buttons, the progress bar, headings, and map pins (`--th-primary`); the
+secondary accent appears on essential-question box borders etc.
+
+Source style guides: `docs/Style_Guide_Ledger.md` → Red theme,
+`docs/Style_Guide_Folio.md` → Teal theme (screenshots:
+`docs/Style Guide - Red.png` / `Style Guide - Teal.png`).
 
 ### How it works
 
 - `globals.css` defines a `--th-*` token layer in two blocks:
-  `:root, [data-theme='ledger']` and `[data-theme='folio']`. Switching
+  `:root, [data-theme='red']` and `[data-theme='teal']`. Switching
   the `data-theme` attribute on `<html>` re-resolves every token
   instantly — no reload.
+- Fonts are loaded with `next/font/google` in `layout.tsx` (self-hosted,
+  no external request). Each family is exposed as a `--font-*` variable
+  on `<html>`; the theme blocks point `--th-font-display` /
+  `--th-font-body` at the right pair. (An earlier CSS `@import url()`
+  was dropped — Tailwind v4's build strips external font imports.)
 - Legacy palette names (`--sandstone`, `--aged-gold`, etc.) plus four
   new ones (`--olive`, `--accent-dark`, `--journal`, `--question-red`)
   are aliased onto `--th-*` and exposed as Tailwind tokens via
@@ -327,5 +337,4 @@ into tour content, not UI chrome) are deliberately left untouched.
 
 ---
 
-*End of handoff. Latest committed: `04af60b`. The theme system (§9) is
-implemented and builds clean, but is uncommitted as of this update.*
+*End of handoff. The theme system (§9) is live on `master`.*

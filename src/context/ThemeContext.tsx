@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Theme context — selects between the "Ledger" and "Folio" visual
+ * Theme context — selects between the "Red" and "Teal" visual
  * themes. The active theme is written to the data-theme attribute on
  * <html>, which re-resolves every --th-* custom property in
  * globals.css, so switching is instant. The choice persists in
@@ -18,15 +18,15 @@ import {
   type ReactNode,
 } from 'react';
 
-export type Theme = 'ledger' | 'folio';
+export type Theme = 'red' | 'teal';
 
 export const THEMES: { id: Theme; label: string }[] = [
-  { id: 'ledger', label: 'Ledger' },
-  { id: 'folio', label: 'Folio' },
+  { id: 'red', label: 'Red' },
+  { id: 'teal', label: 'Teal' },
 ];
 
 const STORAGE_KEY = 'provenance-theme';
-const DEFAULT_THEME: Theme = 'ledger';
+const DEFAULT_THEME: Theme = 'red';
 
 interface ThemeContextValue {
   theme: Theme;
@@ -39,7 +39,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 function isTheme(value: unknown): value is Theme {
-  return value === 'ledger' || value === 'folio';
+  return value === 'red' || value === 'teal';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
