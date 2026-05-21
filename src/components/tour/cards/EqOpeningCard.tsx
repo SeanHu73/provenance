@@ -35,18 +35,15 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
         </p>
       </div>
 
-      {/* Reminder of the question — soft-edge blur-behind effect */}
-      <div className="relative px-8 py-7 text-center">
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'var(--th-question-bg-solid)',
-            filter: 'blur(5px)',
-            transform: 'scale(0.99)',
-            borderRadius: '12px',
-          }}
-        />
-        <p className="relative text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
+      {/* Reminder of the question */}
+      <div
+        className="px-8 py-7 text-center rounded-2xl"
+        style={{
+          backgroundColor: 'var(--th-question-bg-solid)',
+          boxShadow: '0 8px 28px var(--th-question-shadow)',
+        }}
+      >
+        <p className="text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;{eq.question}&rdquo;
         </p>
       </div>
