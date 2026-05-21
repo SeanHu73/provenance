@@ -34,7 +34,6 @@ import FormattedText from './cards/FormattedText';
 import WhatsNext from './cards/WhatsNext';
 import BranchCard from './cards/BranchCard';
 import EndCard from './cards/EndCard';
-import UnstructuredMapOverlay, { MidwayCheckinCard } from './cards/UnstructuredMapOverlay';
 
 interface JournalProps {
   /** If provided, renders a "View on map" button (for stops at a different location). */
@@ -61,7 +60,6 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeEqClosingDiscuss,
     completeEqClosing,
     completeEqFinalReflect,
-    completeMidwayCheckin,
     endTour,
   } = useTour();
 
@@ -95,39 +93,6 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
   const phase = session.currentPhase;
 
-  // Unstructured map view — transparent overlay, map visible underneath
-  if (phase === 'unstructured_map') {
-    return (
-      <UnstructuredMapOverlay
-        tour={tour}
-        session={session}
-        canGoBack={canGoBack}
-        onBack={goBack}
-        onExit={endTour}
-      />
-    );
-  }
-
-  // Midway check-in — full-screen interstitial inside normal Journal chrome
-  if (phase === 'midway_checkin') {
-    return (
-      <div className="fixed inset-0 z-40 flex flex-col" style={{ backgroundColor: 'var(--th-surface)' }}>
-        <div className="shrink-0 flex items-center justify-between px-4 py-2" style={{ backgroundColor: 'var(--th-primary)' }}>
-          <div className="w-8" />
-          <p className="text-lg font-display font-bold text-warm-white text-center">{tour.title}</p>
-          <div className="w-8">
-            <button onClick={endTour} className="w-8 h-8 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15 text-sm" title="Exit tour">&times;</button>
-          </div>
-        </div>
-        <ProgressBar tour={tour} session={session} />
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="min-h-full rounded-2xl bg-warm-white shadow-lg px-5 py-6">
-            <MidwayCheckinCard tour={tour} onComplete={completeMidwayCheckin} />
-          </div>
-        </div>
-      </div>
-    );
-  }
   const stopNum = session.currentStopIndex + 1;
 
   // Progress bar visibility — show during stops, hide on intro/end

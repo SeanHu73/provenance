@@ -10,6 +10,8 @@ import type { TourPinData, TourStopMarkerData } from '@/components/Map';
 import JournalPeek from '@/components/tour/JournalPeek';
 import Journal from '@/components/tour/Journal';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
+import ProgressBar from '@/components/tour/ProgressBar';
+import UnstructuredMapControls, { MidwayCheckinCard } from '@/components/tour/cards/UnstructuredMapOverlay';
 
 const Map = dynamic(() => import('@/components/Map'), { ssr: false });
 
@@ -17,7 +19,18 @@ function HomeInner() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [peekTour, setPeekTour] = useState<Tour | null>(null);
   const [mapPeek, setMapPeek] = useState(false); // temporarily show map during tour
-  const { tour: activeTour, session, isActive, startTour, selectedUnstructuredStopId, setSelectedUnstructuredStopId } = useTour();
+  const {
+    tour: activeTour,
+    session,
+    isActive,
+    startTour,
+    selectedUnstructuredStopId,
+    setSelectedUnstructuredStopId,
+    canGoBack,
+    goBack,
+    endTour,
+    completeMidwayCheckin,
+  } = useTour();
 
   useEffect(() => {
     getTours().then(setTours).catch((err) => {
@@ -33,6 +46,7 @@ function HomeInner() {
   // During tour: show stop pins that have locations
   const tourStopMarkers: TourStopMarkerData[] = [];
   const isUnstructuredMapPhase = !!(activeTour?.unstructuredMode && session?.currentPhase === 'unstructured_map');
+  const isMidwayCheckin = !!(activeTour?.unstructuredMode && session?.currentPhase === 'midway_checkin');
   if (isActive && activeTour) {
     if (isUnstructuredMapPhase) {
       // Unstructured mode: show all logical stops with locations
@@ -90,26 +104,79 @@ function HomeInner() {
 
   return (
     <div className="relative h-full w-full flex flex-col bg-cream">
-      {/* Map */}
-      <div className="flex-1 relative">
-        <Map
-          pins={[]}
-          selectedPinId={null}
-          onPinSelect={() => {}}
-          tourPins={tourPins}
-          onTourPinSelect={handleTourPinSelect}
-          tourStops={tourStopMarkers}
-          onTourStopSelect={handleTourStopSelect}
-          hidePins={true}
-        />
-
-        {/* Theme switcher — top-right of the map */}
-        {(!isActive || mapPeek) && (
-          <div className="absolute top-3 right-3 z-[60]">
-            <ThemeSwitcher />
+      {/* Title bar — shown in document flow during unstructured map / midway phases */}
+      {isActive && (isUnstructuredMapPhase || isMidwayCheckin) && (
+        <div
+          className="shrink-0 flex items-center justify-between px-4 py-2"
+          style={{ backgroundColor: 'var(--th-primary)' }}
+        >
+          <div className="w-8">
+            {canGoBack && (
+              <button
+                onClick={goBack}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15"
+                title="Go back"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+            )}
           </div>
-        )}
-      </div>
+          <p className="text-lg font-display font-bold text-warm-white text-center">{activeTour?.title}</p>
+          <div className="w-8">
+            <button
+              onClick={endTour}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15 text-sm"
+              title="Exit tour"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Progress strip — shown in document flow during unstructured map / midway phases */}
+      {isActive && (isUnstructuredMapPhase || isMidwayCheckin) && activeTour && session && (
+        <ProgressBar tour={activeTour} session={session} />
+      )}
+
+      {/* Midway check-in content (replaces map area) */}
+      {isMidwayCheckin && activeTour && (
+        <div className="flex-1 overflow-y-auto p-4" style={{ backgroundColor: 'var(--th-surface)' }}>
+          <div className="min-h-full rounded-2xl bg-warm-white shadow-lg px-5 py-6">
+            <MidwayCheckinCard tour={activeTour} onComplete={completeMidwayCheckin} />
+          </div>
+        </div>
+      )}
+
+      {/* Map — hidden during midway check-in */}
+      {!isMidwayCheckin && (
+        <div className="flex-1 relative">
+          <Map
+            pins={[]}
+            selectedPinId={null}
+            onPinSelect={() => {}}
+            tourPins={tourPins}
+            onTourPinSelect={handleTourPinSelect}
+            tourStops={tourStopMarkers}
+            onTourStopSelect={handleTourStopSelect}
+            hidePins={true}
+          />
+
+          {/* Theme switcher — top-right of the map */}
+          {(!isActive || mapPeek) && (
+            <div className="absolute top-3 right-3 z-[60]">
+              <ThemeSwitcher />
+            </div>
+          )}
+
+          {/* Unstructured map controls — gallery / stop card / toggle */}
+          {isUnstructuredMapPhase && activeTour && session && (
+            <UnstructuredMapControls tour={activeTour} session={session} />
+          )}
+        </div>
+      )}
 
       {/* Bottom bar */}
       {!isActive && (
@@ -150,8 +217,8 @@ function HomeInner() {
         />
       )}
 
-      {/* Tour journal — active tour playback (hidden during map peek) */}
-      {isActive && !mapPeek && (
+      {/* Tour journal — active tour playback; not shown during unstructured map or midway phases */}
+      {isActive && !mapPeek && !isUnstructuredMapPhase && !isMidwayCheckin && (
         <Journal
           onMapPeek={currentStopHasLocation ? () => setMapPeek(true) : undefined}
         />

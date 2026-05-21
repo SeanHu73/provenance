@@ -77,9 +77,29 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
           {/* ── Stops tab ── */}
           {tab === 'stops' && (
             <div className="space-y-3">
-              {tour.stops.map((stop, i) => {
+              {(() => {
+                // For unstructured tours, show stops in completion order first, then upcoming
+                type StopEntry = { stop: Tour['stops'][number]; i: number };
+                let stopsToShow: StopEntry[];
+                if (tour.unstructuredMode) {
+                  const order: string[] = session.completionOrder || [];
+                  const completedEntries: StopEntry[] = order
+                    .map(id => {
+                      const idx = tour.stops.findIndex(s => s.id === id);
+                      return idx >= 0 ? { stop: tour.stops[idx], i: idx } : null;
+                    })
+                    .filter(Boolean) as StopEntry[];
+                  const completedSet = new Set(order);
+                  const remainingEntries: StopEntry[] = tour.stops
+                    .map((stop, i) => ({ stop, i }))
+                    .filter(({ stop }) => !completedSet.has(stop.id));
+                  stopsToShow = [...completedEntries, ...remainingEntries];
+                } else {
+                  stopsToShow = tour.stops.map((stop, i) => ({ stop, i }));
+                }
+                return stopsToShow.map(({ stop, i }) => {
                 const isCompleted = completedIds.has(stop.id);
-                const isInStop = !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
+                const isInStop = !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end', 'unstructured_map', 'midway_checkin'].includes(session.currentPhase);
                 const isCurrent = i === currentIdx && isInStop;
                 const isUpcoming = !isCompleted && !isCurrent;
                 const isExpanded = expandedStopId === stop.id;
@@ -167,7 +187,8 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                     )}
                   </div>
                 );
-              })}
+              });
+              })()}
             </div>
           )}
 

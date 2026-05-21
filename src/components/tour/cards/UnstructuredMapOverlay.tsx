@@ -5,17 +5,15 @@ import { Tour, TourSession, Stop } from '@/lib/types';
 import { getLogicalStops } from '@/lib/tour-session';
 import { useTour } from '@/context/TourContext';
 import MicButton from '../MicButton';
-import ProgressBar from '../ProgressBar';
 
 interface Props {
   tour: Tour;
   session: TourSession;
-  canGoBack: boolean;
-  onBack: () => void;
-  onExit: () => void;
 }
 
-export default function UnstructuredMapOverlay({ tour, session, canGoBack, onBack, onExit }: Props) {
+// Transparent controls overlay rendered absolutely within the map container.
+// Title bar and progress strip are rendered by the parent (HomeInner) in document flow.
+export default function UnstructuredMapControls({ tour, session }: Props) {
   const { selectedUnstructuredStopId, setSelectedUnstructuredStopId, enterUnstructuredStop } = useTour();
   const [view, setView] = useState<'map' | 'gallery'>('map');
 
@@ -27,9 +25,6 @@ export default function UnstructuredMapOverlay({ tour, session, canGoBack, onBac
     : -1;
 
   const completedIds = new Set(session.completedStops);
-  const logicalStops = getLogicalStops(tour);
-  const completedCount = (session.completionOrder || []).length;
-  const totalCount = logicalStops.length;
 
   const handleBeginStop = () => {
     if (selectedStopIndex >= 0) {
@@ -37,57 +32,16 @@ export default function UnstructuredMapOverlay({ tour, session, canGoBack, onBac
     }
   };
 
-  const handleDismissOverlay = () => {
-    setSelectedUnstructuredStopId(null);
-  };
-
-  const handleGallerySelect = (stopId: string) => {
-    setSelectedUnstructuredStopId(stopId);
-    setView('map');
-  };
-
   return (
-    <div className="fixed inset-0 z-40 flex flex-col pointer-events-none">
-      {/* Title bar */}
-      <div
-        className="pointer-events-auto shrink-0 flex items-center justify-between px-4 py-2"
-        style={{ backgroundColor: 'var(--th-primary)' }}
-      >
-        <div className="w-8">
-          {canGoBack && (
-            <button
-              onClick={onBack}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15"
-              title="Go back"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-          )}
-        </div>
-        <p className="text-lg font-display font-bold text-warm-white text-center">{tour.title}</p>
-        <div className="w-8">
-          <button
-            onClick={onExit}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15 text-sm"
-            title="Exit tour"
-          >
-            &times;
-          </button>
-        </div>
-      </div>
-
-      {/* Progress strip */}
-      <div className="pointer-events-auto">
-        <UnstructuredProgressStrip completed={completedCount} total={totalCount} />
-      </div>
-
+    <div className="absolute inset-0 z-10 flex flex-col pointer-events-none">
       {/* Transparent middle — map shows through */}
       <div
         className="flex-1 relative"
-        onClick={() => {
-          if (selectedUnstructuredStopId) setSelectedUnstructuredStopId(null);
+        onClick={(e) => {
+          if (selectedUnstructuredStopId) {
+            e.stopPropagation();
+            setSelectedUnstructuredStopId(null);
+          }
         }}
       >
         {/* Gallery view — slides over the map */}
@@ -100,7 +54,7 @@ export default function UnstructuredMapOverlay({ tour, session, canGoBack, onBac
             <GalleryView
               tour={tour}
               completedIds={completedIds}
-              onSelectStop={handleGallerySelect}
+              onSelectStop={(stopId) => { setSelectedUnstructuredStopId(stopId); setView('map'); }}
             />
           </div>
         )}
@@ -115,7 +69,7 @@ export default function UnstructuredMapOverlay({ tour, session, canGoBack, onBac
               stop={selectedStop}
               isCompleted={completedIds.has(selectedStop.id)}
               onBegin={handleBeginStop}
-              onDismiss={handleDismissOverlay}
+              onDismiss={() => setSelectedUnstructuredStopId(null)}
             />
           </div>
         )}
@@ -134,42 +88,6 @@ export default function UnstructuredMapOverlay({ tour, session, canGoBack, onBac
 
 // ─── Sub-components ──────────────────────────────────────────────
 
-function UnstructuredProgressStrip({ completed, total }: { completed: number; total: number }) {
-  const pct = total > 0 ? (completed / total) * 100 : 0;
-  return (
-    <>
-      <div
-        className="flex items-center justify-between px-4 py-2 border-b text-xs"
-        style={{ backgroundColor: 'var(--th-surface-alt)', borderColor: 'var(--th-border)', color: 'var(--th-text-secondary)' }}
-      >
-        <span className="font-medium">{completed} of {total} explored</span>
-        <div className="flex gap-1">
-          {Array.from({ length: Math.min(total, 12) }).map((_, i) => (
-            <div
-              key={i}
-              className="h-1.5 w-5 rounded-full transition-colors duration-300"
-              style={{
-                backgroundColor: i < completed
-                  ? 'var(--th-aged-gold)'
-                  : 'color-mix(in srgb, var(--th-border) 60%, transparent)',
-              }}
-            />
-          ))}
-          {total > 12 && (
-            <span className="text-[10px] text-text-secondary ml-1">+{total - 12}</span>
-          )}
-        </div>
-      </div>
-      <div className="w-full h-1.5" style={{ backgroundColor: 'color-mix(in srgb, var(--th-border) 40%, transparent)' }}>
-        <div
-          className="h-full bg-aged-gold transition-all duration-500 ease-out rounded-r-full"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </>
-  );
-}
-
 function StopOverlayCard({
   stop,
   isCompleted,
@@ -181,10 +99,16 @@ function StopOverlayCard({
   onBegin: () => void;
   onDismiss: () => void;
 }) {
-  const thumbnail = (stop.seed.photos || [])[0]?.url || stop.seed.photoUrl || null;
+  const thumbnail =
+    (stop.notice.photos || [])[0]?.url ||
+    stop.notice.photoUrl ||
+    (stop.seed.photos || [])[0]?.url ||
+    stop.seed.photoUrl ||
+    null;
   const seedPreview = stop.seed.text
     ? stop.seed.text.replace(/\[photo:\d+\]/g, '').trim().slice(0, 100)
     : null;
+  const displayTitle = stop.mergeGroup || stop.title;
 
   return (
     <div className="rounded-2xl shadow-2xl overflow-hidden" style={{ backgroundColor: 'var(--th-surface)' }}>
@@ -196,7 +120,7 @@ function StopOverlayCard({
       )}
       <div className="p-4 space-y-3">
         <div>
-          <p className="text-base font-semibold text-text-primary leading-snug">{stop.title}</p>
+          <p className="text-base font-semibold text-text-primary leading-snug">{displayTitle}</p>
           {stop.category && (
             <p className="text-xs text-text-secondary mt-0.5 uppercase tracking-wide">{stop.category}</p>
           )}
@@ -277,10 +201,12 @@ function GalleryView({
   onSelectStop: (stopId: string) => void;
 }) {
   const categories = tour.categories || [];
+  const logicalStopIds = new Set(getLogicalStops(tour).map((s) => s.id));
   const stopsByCategory: Record<string, Stop[]> = {};
   const uncategorized: Stop[] = [];
 
   for (const stop of tour.stops) {
+    if (!logicalStopIds.has(stop.id)) continue; // skip merge-group secondaries
     const cat = stop.category;
     if (cat && categories.includes(cat)) {
       if (!stopsByCategory[cat]) stopsByCategory[cat] = [];
@@ -292,7 +218,6 @@ function GalleryView({
 
   return (
     <div className="p-4 pb-20 space-y-6">
-      {/* Title */}
       <div className="pt-2">
         <p className="text-base font-semibold text-text-primary">Choose a stop to explore</p>
         <p className="text-xs text-text-secondary mt-0.5">Tap any stop — you can explore them in any order.</p>
@@ -348,7 +273,13 @@ function GalleryCard({
   isCompleted: boolean;
   onSelect: () => void;
 }) {
-  const thumbnail = (stop.seed.photos || [])[0]?.url || stop.seed.photoUrl || null;
+  const thumbnail =
+    (stop.notice.photos || [])[0]?.url ||
+    stop.notice.photoUrl ||
+    (stop.seed.photos || [])[0]?.url ||
+    stop.seed.photoUrl ||
+    null;
+  const displayTitle = stop.mergeGroup || stop.title;
 
   return (
     <button
@@ -377,7 +308,7 @@ function GalleryCard({
       )}
       <div className="flex-1 min-w-0 flex flex-col justify-center">
         <p className="text-sm font-semibold truncate" style={{ color: isCompleted ? 'var(--th-text-secondary)' : 'var(--th-text-primary)' }}>
-          {stop.title}
+          {displayTitle}
         </p>
         {stop.category && (
           <p className="text-[10px] text-text-secondary uppercase tracking-wide mt-0.5">{stop.category}</p>
