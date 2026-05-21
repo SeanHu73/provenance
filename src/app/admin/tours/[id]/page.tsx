@@ -2040,7 +2040,7 @@ function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto }: PhotoL
               <div className="space-y-1.5 border-t border-stone-100 pt-2">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] font-medium text-stone-500">Thumbnail crop:</span>
-                  <span className="text-[10px] text-stone-400">(gallery, journal, progress bar)</span>
+                  <span className="text-[10px] text-stone-400">(map overlay card, gallery, journal)</span>
                   {photo.thumbnailFocalPoint && (
                     <button
                       type="button"
@@ -2049,10 +2049,13 @@ function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto }: PhotoL
                     >clear</button>
                   )}
                 </div>
-                <p className="text-[10px] text-stone-400">Click the square to set which part shows in small thumbnails.</p>
+                <p className="text-[10px] text-stone-400">
+                  Preview matches the wide rectangular thumbnail shown when tapping a stop pin. Click to set focal point.
+                </p>
+                {/* 3:1 wide rectangle — matches h-28 full-width map overlay card */}
                 <div
-                  className="relative rounded overflow-hidden border border-stone-300 cursor-crosshair"
-                  style={{ width: 96, height: 96 }}
+                  className="relative w-full rounded overflow-hidden border border-stone-300 cursor-crosshair"
+                  style={{ aspectRatio: '3/1' }}
                   onClick={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
@@ -2088,7 +2091,7 @@ function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto }: PhotoL
                 </div>
                 <p className="text-[10px] text-stone-400">
                   {photo.thumbnailFocalPoint
-                    ? `${photo.thumbnailFocalPoint.x}%, ${photo.thumbnailFocalPoint.y}%`
+                    ? `Focal point: ${photo.thumbnailFocalPoint.x}%, ${photo.thumbnailFocalPoint.y}%`
                     : 'Defaults to centre'}
                 </p>
               </div>
