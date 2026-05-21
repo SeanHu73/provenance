@@ -30,7 +30,7 @@ export default function NoticeCard({ stop, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <p className="text-2xl uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
+      <p className="text-3xl uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
         Look around...
       </p>
 

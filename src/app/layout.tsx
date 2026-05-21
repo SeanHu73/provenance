@@ -1,13 +1,14 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, DM_Serif_Display, Cormorant_Garamond } from 'next/font/google';
+import { Newsreader, DM_Serif_Display, Cormorant_Garamond } from 'next/font/google';
 import './globals.css';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import { ThemeProvider } from '@/context/ThemeContext';
 
 // Shared content/body font — used for all reading text in both themes.
-const inter = Inter({
+const newsreader = Newsreader({
   subsets: ['latin'],
-  variable: '--font-inter',
+  style: ['normal', 'italic'],
+  variable: '--font-newsreader',
   display: 'swap',
 });
 
@@ -30,7 +31,7 @@ const cormorantGaramond = Cormorant_Garamond({
 });
 
 const fontVariables = [
-  inter.variable,
+  newsreader.variable,
   dmSerifDisplay.variable,
   cormorantGaramond.variable,
 ].join(' ');

@@ -57,7 +57,7 @@ export default function IntroScreens({ tour, onComplete }: Props) {
 
       {/* Content */}
       <div className="space-y-4 px-2" key={current}>
-        <p className="text-2xl uppercase tracking-[0.14em] font-display text-aged-gold font-semibold animate-fade-in">
+        <p className="text-3xl uppercase tracking-[0.14em] font-display text-aged-gold font-semibold animate-fade-in">
           {screen.title}
         </p>
         <p className="text-[21px] leading-relaxed font-serif text-text-primary animate-fade-in">

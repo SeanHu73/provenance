@@ -94,7 +94,7 @@ export default function DetourFlow({ detour, onReturn }: Props) {
       {/* Reveal phase */}
       {phase === 'reveal' && (
         <div className="animate-fade-in space-y-4">
-          <p className="text-2xl uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+          <p className="text-3xl uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
             Context
           </p>
           <div className="animate-blur-reveal">
@@ -116,7 +116,7 @@ export default function DetourFlow({ detour, onReturn }: Props) {
       {/* "Anything else?" — end of detour */}
       {phase === 'done' && (
         <div className="animate-fade-in space-y-4">
-          <p className="text-2xl uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+          <p className="text-3xl uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
             Anything else?
           </p>
 

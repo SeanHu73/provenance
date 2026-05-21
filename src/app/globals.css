@@ -36,7 +36,7 @@
   --th-border: #D8D8D8;           /* borders, dividers, scrollbars */
 
   --th-font-display: var(--font-dm-serif-display), 'Georgia', serif;
-  --th-font-body: var(--font-inter), system-ui, sans-serif;
+  --th-font-body: var(--font-newsreader), 'Georgia', serif;
 
   --th-radius-lg: 1rem;
   --th-radius-xl: 1.15rem;
@@ -66,7 +66,7 @@
   --th-border: #D5D5D5;
 
   --th-font-display: var(--font-cormorant-garamond), 'Georgia', serif;
-  --th-font-body: var(--font-inter), system-ui, sans-serif;
+  --th-font-body: var(--font-newsreader), 'Georgia', serif;
 
   --th-radius-lg: 0.65rem;
   --th-radius-xl: 0.8rem;
