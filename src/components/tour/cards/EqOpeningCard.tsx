@@ -26,12 +26,17 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
-        Discussion Question
-      </p>
+      <div className="space-y-1">
+        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+          Share your discussion...
+        </p>
+        <p className="text-sm text-text-secondary">
+          You can type or tap and speak into the mic to respond.
+        </p>
+      </div>
 
-      {/* Reminder of the question — centered in dark box */}
-      <div className="rounded-xl px-5 py-6 text-center border-3" style={{ backgroundColor: 'var(--th-question-bg)', borderColor: 'var(--th-secondary)' }}>
+      {/* Reminder of the question — centered in dark box, edges fade softly */}
+      <div className="px-5 py-6 text-center" style={{ backgroundColor: 'var(--th-question-bg)', maskImage: 'radial-gradient(ellipse 85% 80% at 50% 50%, black 50%, transparent 100%)', WebkitMaskImage: 'radial-gradient(ellipse 85% 80% at 50% 50%, black 50%, transparent 100%)' }}>
         <p className="text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;{eq.question}&rdquo;
         </p>

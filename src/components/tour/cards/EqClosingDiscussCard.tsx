@@ -32,8 +32,8 @@ export default function EqClosingDiscussCard({ tour, onContinue }: Props) {
         {eq.closingFraming}
       </p>
 
-      {/* The essential question — cardinal box */}
-      <div className="rounded-xl px-5 py-6 text-center border-3" style={{ backgroundColor: 'var(--th-question-bg)', borderColor: 'var(--th-secondary)' }}>
+      {/* The essential question — edges fade softly into background */}
+      <div className="px-5 py-6 text-center" style={{ backgroundColor: 'var(--th-question-bg)', maskImage: 'radial-gradient(ellipse 85% 80% at 50% 50%, black 50%, transparent 100%)', WebkitMaskImage: 'radial-gradient(ellipse 85% 80% at 50% 50%, black 50%, transparent 100%)' }}>
         <p className="text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;{eq.question}&rdquo;
         </p>

@@ -26,8 +26,8 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
         {isOpinion ? "What's your opinion?" : 'Chance to discuss...'}
       </p>
 
-      {/* The question — centered in dark box */}
-      <div className="rounded-xl px-5 py-6 text-center border-3" style={{ backgroundColor: 'var(--th-question-bg)', borderColor: 'var(--th-secondary)' }}>
+      {/* The question — edges fade softly into background */}
+      <div className="px-5 py-6 text-center" style={{ backgroundColor: 'var(--th-question-bg)', maskImage: 'radial-gradient(ellipse 85% 80% at 50% 50%, black 50%, transparent 100%)', WebkitMaskImage: 'radial-gradient(ellipse 85% 80% at 50% 50%, black 50%, transparent 100%)' }}>
         <p className="text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;{aq.question}&rdquo;
         </p>
