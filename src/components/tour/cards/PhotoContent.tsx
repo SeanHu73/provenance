@@ -126,19 +126,36 @@ function PhotoBlock({ photo, onTap }: { photo: Photo; onTap: () => void }) {
   return (
     <button
       onClick={onTap}
-      className={`w-full rounded-lg overflow-hidden shadow-md border border-sandstone-light my-3 text-left cursor-pointer ${isLetterbox ? 'bg-black' : 'bg-sandstone'}`}
+      className={`w-full rounded-lg shadow-md border border-sandstone-light my-3 text-left cursor-pointer ${isLetterbox ? 'bg-black' : 'bg-sandstone'}`}
+      style={{ overflow: 'clip' }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={photo.url}
-        alt={photo.caption || ''}
-        className={`w-full ${isCover ? 'h-72 object-cover' : 'max-h-72 object-contain'}`}
-        style={isCover ? {
-          objectPosition,
-          transform: zoom > 1 ? `scale(${zoom})` : undefined,
-          transformOrigin: zoom > 1 ? transformOrigin : undefined,
-        } : undefined}
-      />
+      {isCover ? (
+        <div className="w-full h-72" style={{ overflow: 'clip' }}>
+          {/* Scale wrapper — keeps overflow:clip reliable when zooming */}
+          <div
+            style={{
+              width: '100%', height: '100%',
+              transform: zoom > 1 ? `scale(${zoom})` : undefined,
+              transformOrigin: zoom > 1 ? transformOrigin : undefined,
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photo.url}
+              alt={photo.caption || ''}
+              className="w-full h-full object-cover"
+              style={{ objectPosition }}
+            />
+          </div>
+        </div>
+      ) : (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={photo.url}
+          alt={photo.caption || ''}
+          className="w-full max-h-72 object-contain"
+        />
+      )}
       {photo.caption && (
         <p className={`text-xs px-3 py-1.5 italic ${isLetterbox ? 'text-white/70 bg-black/50' : 'text-text-secondary bg-sandstone/50'}`}>
           {photo.caption}

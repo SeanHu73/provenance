@@ -1021,6 +1021,7 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
           onChange={(photos) => onChange({ seed: { ...stop.seed, photos } })}
           uploadPath={`memorial-church/photos/tours/${tourId}/seed_${stop.id}`}
           onUploadPhoto={onUploadPhoto}
+          showThumbnailCrop
         />
         <AudioUpload
           audioUrl={stop.seed.audioUrl ?? null}
@@ -1071,6 +1072,7 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
           onChange={(photos) => onChange({ notice: { ...stop.notice, photos } })}
           uploadPath={`memorial-church/photos/tours/${tourId}/notice_${stop.id}`}
           onUploadPhoto={onUploadPhoto}
+          showThumbnailCrop
         />
         <AudioUpload
           audioUrl={stop.notice.audioUrl ?? null}
@@ -1881,9 +1883,10 @@ interface PhotoListEditorProps {
   onChange: (photos: StopPhoto[]) => void;
   uploadPath: string;
   onUploadPhoto: (file: File, path: string) => Promise<string>;
+  showThumbnailCrop?: boolean;
 }
 
-function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto }: PhotoListEditorProps) {
+function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto, showThumbnailCrop = false }: PhotoListEditorProps) {
   return (
     <div className="space-y-2">
       <span className="text-xs text-stone-500">
@@ -1975,8 +1978,8 @@ function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto }: PhotoL
                       <p className="text-[10px] text-stone-400">Click image to set focal point. Preview matches phone proportions.</p>
                       {/* Phone-ratio preview (h-72 / ~320px card ≈ 4:3) */}
                       <div
-                        className="relative w-full rounded overflow-hidden border border-stone-300 cursor-crosshair bg-black"
-                        style={{ aspectRatio: '4/3' }}
+                        className="relative w-full rounded border border-stone-300 cursor-crosshair bg-black"
+                        style={{ aspectRatio: '4/3', overflow: 'clip' }}
                         onClick={(e) => {
                           const rect = e.currentTarget.getBoundingClientRect();
                           const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
@@ -1986,22 +1989,28 @@ function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto }: PhotoL
                           onChange(next);
                         }}
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={photo.url}
-                          alt=""
-                          className="w-full h-full object-cover select-none"
+                        {/* Scale wrapper — lets the outer overflow:clip reliably clip the zoom */}
+                        <div
                           style={{
-                            objectPosition: objPos,
+                            position: 'absolute',
+                            inset: 0,
                             transform: zoom > 1 ? `scale(${zoom})` : undefined,
                             transformOrigin: zoom > 1 ? origin : undefined,
                           }}
-                          draggable={false}
-                        />
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={photo.url}
+                            alt=""
+                            className="w-full h-full object-cover select-none"
+                            style={{ objectPosition: objPos }}
+                            draggable={false}
+                          />
+                        </div>
                         {fp && (
                           <div
                             className="absolute w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none"
-                            style={{ left: `${fp.x}%`, top: `${fp.y}%`, transform: 'translate(-50%,-50%)', background: '#F59E0B' }}
+                            style={{ left: `${fp.x}%`, top: `${fp.y}%`, transform: 'translate(-50%,-50%)', background: '#F59E0B', zIndex: 1 }}
                           />
                         )}
                       </div>
@@ -2036,8 +2045,8 @@ function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto }: PhotoL
                 })()}
               </div>
 
-              {/* ── Thumbnail crop ── */}
-              <div className="space-y-1.5 border-t border-stone-100 pt-2">
+              {/* ── Thumbnail crop — only for seed/notice photos that drive thumbnails ── */}
+              {showThumbnailCrop && <div className="space-y-1.5 border-t border-stone-100 pt-2">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] font-medium text-stone-500">Thumbnail crop:</span>
                   <span className="text-[10px] text-stone-400">(map overlay card, gallery, journal)</span>
@@ -2052,10 +2061,10 @@ function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto }: PhotoL
                 <p className="text-[10px] text-stone-400">
                   Preview matches the wide rectangular thumbnail shown when tapping a stop pin. Click to set focal point.
                 </p>
-                {/* 3:1 wide rectangle — matches h-28 full-width map overlay card */}
+                {/* ~3.5:1 wide rectangle — matches h-28 full-width map overlay card on a typical phone */}
                 <div
-                  className="relative w-full rounded overflow-hidden border border-stone-300 cursor-crosshair"
-                  style={{ aspectRatio: '3/1' }}
+                  className="relative w-full rounded border border-stone-300 cursor-crosshair"
+                  style={{ aspectRatio: '7/2', overflow: 'clip' }}
                   onClick={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
@@ -2094,7 +2103,7 @@ function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto }: PhotoL
                     ? `Focal point: ${photo.thumbnailFocalPoint.x}%, ${photo.thumbnailFocalPoint.y}%`
                     : 'Defaults to centre'}
                 </p>
-              </div>
+              </div>}
             </div>
           )}
         </div>
