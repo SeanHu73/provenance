@@ -36,7 +36,7 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
       </div>
 
       {/* Reminder of the question — centered in dark box, edges fade softly */}
-      <div className="px-5 py-6 text-center" style={{ backgroundColor: 'var(--th-question-bg)', maskImage: 'radial-gradient(ellipse 85% 80% at 50% 50%, black 50%, transparent 100%)', WebkitMaskImage: 'radial-gradient(ellipse 85% 80% at 50% 50%, black 50%, transparent 100%)' }}>
+      <div className="rounded-xl px-5 py-6 text-center" style={{ backgroundColor: 'var(--th-question-bg)', maskImage: 'linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent), linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent)', maskComposite: 'intersect', WebkitMaskImage: 'linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent), linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent)', WebkitMaskComposite: 'destination-in' }}>
         <p className="text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;{eq.question}&rdquo;
         </p>
