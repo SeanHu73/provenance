@@ -104,7 +104,7 @@ function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
   }
 
   const DRIFT_START_M = 643.7; // 0.4 miles
-  const MAX_DRIFT     = 0.40;  // user can shift at most 40% from center
+  const MAX_DRIFT     = 0.25;  // user can shift at most 25% from center
   const PIN_EDGE      = 0.10;  // pin stays 10% from its nearest edge
 
   // Drift grows linearly from 0 at DRIFT_START_M to MAX_DRIFT at 2×DRIFT_START_M
@@ -299,7 +299,16 @@ function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
   const size = 60;
   return (
     <AdvancedMarker position={tour.location} onClick={onClick} zIndex={5}>
-      <div className="flex flex-col items-center cursor-pointer">
+      {/*
+        translateY(calc(50% - 30px)) shifts the element down until the circle
+        centre (30px from the element top) aligns with the geographic position,
+        so the label always hangs below the pin and into the screen rather than
+        behind/above it.
+      */}
+      <div
+        className="flex flex-col items-center cursor-pointer"
+        style={{ transform: 'translateY(calc(50% - 30px))' }}
+      >
         <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
           <span
             className="absolute inline-flex h-full w-full rounded-full animate-ping"
@@ -320,12 +329,12 @@ function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
             </svg>
           </div>
         </div>
-        <div className="mt-1.5 flex flex-col items-center gap-1">
-          <div className="px-2.5 py-0.5 bg-white rounded-md text-xs font-semibold text-gray-900 shadow-sm border border-gray-200 max-w-[180px] truncate font-sans">
+        <div className="mt-2 flex flex-col items-center gap-1.5">
+          <div className="px-3 py-1 bg-white rounded-lg text-sm font-semibold text-gray-900 shadow-md border border-gray-200 max-w-[200px] text-center font-sans leading-snug">
             {tour.title}
           </div>
           <div
-            className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide font-sans shadow-sm"
+            className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide font-sans shadow-md"
             style={{ background: 'var(--th-primary)', color: 'var(--th-surface)' }}
           >
             Tap to start

@@ -34,7 +34,7 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
           style={{
             background: 'var(--th-question-bg-solid)',
             filter: 'blur(5px)',
-            transform: 'scale(0.97)',
+            transform: 'scale(0.99)',
             borderRadius: '12px',
           }}
         />
