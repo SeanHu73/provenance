@@ -241,6 +241,8 @@ export interface StopPhoto {
   caption: string | null;
   displayMode?: 'cover' | 'contain';
   focalPoint?: { x: number; y: number };
+  zoom?: number;                          // cover mode: 1.0 = standard fill, >1 = zoomed in
+  thumbnailFocalPoint?: { x: number; y: number }; // focal point for small thumbnails
 }
 
 export interface Stop {

@@ -384,11 +384,11 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
               !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end', 'unstructured_map', 'midway_checkin'].includes(session.currentPhase);
             const isUpcoming = !isCompleted && !isCurrent;
 
-            const firstPhoto =
-              (stop.notice.photos || [])[0]?.url ||
-              stop.notice.photoUrl ||
-              (stop.seed.photos || [])[0]?.url ||
-              stop.seed.photoUrl ||
+            const thumbPhoto =
+              (stop.notice.photos || []).find(p => p.url) ||
+              (stop.notice.photoUrl ? { url: stop.notice.photoUrl, caption: stop.notice.photoCaption } : null) ||
+              (stop.seed.photos || []).find(p => p.url) ||
+              (stop.seed.photoUrl ? { url: stop.seed.photoUrl, caption: stop.seed.photoCaption } : null) ||
               null;
 
             const displayTitle = stop.mergeGroup || stop.title;
@@ -403,9 +403,16 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
                 style={{ scrollSnapAlign: 'center' }}
               >
                 <div className={`h-28 ${isUpcoming ? 'bg-sandstone-light/20' : 'bg-sandstone'}`}>
-                  {!isUpcoming && firstPhoto ? (
+                  {!isUpcoming && thumbPhoto ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={firstPhoto} alt="" className="w-full h-full object-cover" />
+                    <img
+                      src={thumbPhoto.url}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      style={thumbPhoto.thumbnailFocalPoint
+                        ? { objectPosition: `${thumbPhoto.thumbnailFocalPoint.x}% ${thumbPhoto.thumbnailFocalPoint.y}%` }
+                        : undefined}
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <span className="text-2xl font-bold text-sandstone-light">{i + 1}</span>

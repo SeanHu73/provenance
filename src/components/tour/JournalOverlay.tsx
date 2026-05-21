@@ -18,13 +18,16 @@ interface Props {
   onClose: () => void;
 }
 
-/** Get the first notice photo for a stop (for thumbnails) */
-function getStopThumbnail(stop: Tour['stops'][number]): string | null {
-  return (stop.notice.photos || [])[0]?.url
-    || stop.notice.photoUrl
-    || (stop.seed.photos || [])[0]?.url
-    || stop.seed.photoUrl
-    || null;
+type ThumbPhoto = { url: string; thumbnailFocalPoint?: { x: number; y: number } };
+
+function getStopThumbnailPhoto(stop: Tour['stops'][number]): ThumbPhoto | null {
+  const np = (stop.notice.photos || []).find(p => p.url);
+  if (np) return np;
+  if (stop.notice.photoUrl) return { url: stop.notice.photoUrl };
+  const sp = (stop.seed.photos || []).find(p => p.url);
+  if (sp) return sp;
+  if (stop.seed.photoUrl) return { url: stop.seed.photoUrl };
+  return null;
 }
 
 export default function JournalOverlay({ tour, session, onClose }: Props) {
@@ -126,7 +129,7 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                 const isCurrent = i === currentIdx && isInStop;
                 const isUpcoming = !isCompleted && !isCurrent;
                 const isExpanded = expandedStopId === stop.id;
-                const thumbnail = getStopThumbnail(stop);
+                const thumbPhoto = getStopThumbnailPhoto(stop);
 
                 // Visit-order number for unstructured mode
                 let visitNum: number | null = null;
@@ -155,9 +158,16 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                       disabled={isUpcoming}
                     >
                       <div className="w-12 h-12 rounded-lg overflow-hidden bg-sandstone-light/20 shrink-0">
-                        {!isUpcoming && thumbnail ? (
+                        {!isUpcoming && thumbPhoto ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={thumbnail} alt="" className="w-full h-full object-cover" />
+                          <img
+                            src={thumbPhoto.url}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            style={thumbPhoto.thumbnailFocalPoint
+                              ? { objectPosition: `${thumbPhoto.thumbnailFocalPoint.x}% ${thumbPhoto.thumbnailFocalPoint.y}%` }
+                              : undefined}
+                          />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-sandstone-light">
                             {!tour.unstructuredMode && <span className="text-sm font-bold">{i + 1}</span>}

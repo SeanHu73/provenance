@@ -99,11 +99,11 @@ function StopOverlayCard({
   onBegin: () => void;
   onDismiss: () => void;
 }) {
-  const thumbnail =
-    (stop.notice.photos || [])[0]?.url ||
-    stop.notice.photoUrl ||
-    (stop.seed.photos || [])[0]?.url ||
-    stop.seed.photoUrl ||
+  const thumbPhoto =
+    (stop.notice.photos || []).find(p => p.url) ||
+    (stop.notice.photoUrl ? { url: stop.notice.photoUrl, caption: stop.notice.photoCaption } : null) ||
+    (stop.seed.photos || []).find(p => p.url) ||
+    (stop.seed.photoUrl ? { url: stop.seed.photoUrl, caption: stop.seed.photoCaption } : null) ||
     null;
   const seedPreview = stop.seed.text
     ? stop.seed.text.replace(/\[photo:\d+\]/g, '').trim().slice(0, 100)
@@ -112,10 +112,17 @@ function StopOverlayCard({
 
   return (
     <div className="rounded-2xl shadow-2xl overflow-hidden" style={{ backgroundColor: 'var(--th-surface)' }}>
-      {thumbnail && (
+      {thumbPhoto && (
         <div className="h-28 bg-sandstone">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={thumbnail} alt="" className="w-full h-full object-cover" />
+          <img
+            src={thumbPhoto.url}
+            alt=""
+            className="w-full h-full object-cover"
+            style={thumbPhoto.thumbnailFocalPoint
+              ? { objectPosition: `${thumbPhoto.thumbnailFocalPoint.x}% ${thumbPhoto.thumbnailFocalPoint.y}%` }
+              : undefined}
+          />
         </div>
       )}
       <div className="p-4 space-y-3">
@@ -273,11 +280,11 @@ function GalleryCard({
   isCompleted: boolean;
   onSelect: () => void;
 }) {
-  const thumbnail =
-    (stop.notice.photos || [])[0]?.url ||
-    stop.notice.photoUrl ||
-    (stop.seed.photos || [])[0]?.url ||
-    stop.seed.photoUrl ||
+  const thumbPhoto =
+    (stop.notice.photos || []).find(p => p.url) ||
+    (stop.notice.photoUrl ? { url: stop.notice.photoUrl, caption: stop.notice.photoCaption } : null) ||
+    (stop.seed.photos || []).find(p => p.url) ||
+    (stop.seed.photoUrl ? { url: stop.seed.photoUrl, caption: stop.seed.photoCaption } : null) ||
     null;
   const displayTitle = stop.mergeGroup || stop.title;
 
@@ -287,10 +294,17 @@ function GalleryCard({
       className={`w-full flex gap-3 p-3 rounded-xl border text-left transition-all ${isCompleted ? 'opacity-50' : ''}`}
       style={{ borderColor: 'var(--th-border)', backgroundColor: 'var(--th-surface)' }}
     >
-      {thumbnail ? (
+      {thumbPhoto ? (
         <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={thumbnail} alt="" className="w-full h-full object-cover" />
+          <img
+            src={thumbPhoto.url}
+            alt=""
+            className="w-full h-full object-cover"
+            style={thumbPhoto.thumbnailFocalPoint
+              ? { objectPosition: `${thumbPhoto.thumbnailFocalPoint.x}% ${thumbPhoto.thumbnailFocalPoint.y}%` }
+              : undefined}
+          />
         </div>
       ) : (
         <div

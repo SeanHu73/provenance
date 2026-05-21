@@ -18,6 +18,7 @@ interface Photo {
   caption: string | null;
   displayMode?: 'cover' | 'contain';
   focalPoint?: { x: number; y: number };
+  zoom?: number;
 }
 
 interface Props {
@@ -117,6 +118,10 @@ function PhotoBlock({ photo, onTap }: { photo: Photo; onTap: () => void }) {
   const objectPosition = isCover && photo.focalPoint
     ? `${photo.focalPoint.x}% ${photo.focalPoint.y}%`
     : '50% 50%';
+  const zoom = isCover && photo.zoom && photo.zoom > 1 ? photo.zoom : 1;
+  const transformOrigin = isCover && photo.focalPoint
+    ? `${photo.focalPoint.x}% ${photo.focalPoint.y}%`
+    : 'center';
 
   return (
     <button
@@ -128,7 +133,11 @@ function PhotoBlock({ photo, onTap }: { photo: Photo; onTap: () => void }) {
         src={photo.url}
         alt={photo.caption || ''}
         className={`w-full ${isCover ? 'h-72 object-cover' : 'max-h-72 object-contain'}`}
-        style={isCover ? { objectPosition } : undefined}
+        style={isCover ? {
+          objectPosition,
+          transform: zoom > 1 ? `scale(${zoom})` : undefined,
+          transformOrigin: zoom > 1 ? transformOrigin : undefined,
+        } : undefined}
       />
       {photo.caption && (
         <p className={`text-xs px-3 py-1.5 italic ${isLetterbox ? 'text-white/70 bg-black/50' : 'text-text-secondary bg-sandstone/50'}`}>

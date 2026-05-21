@@ -1938,83 +1938,160 @@ function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto }: PhotoL
             >&times;</button>
           </div>
 
-          {/* Display mode + focal point — only when a URL is set */}
           {photo.url && (
-            <div className="pl-5 space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-stone-400">Display:</span>
-                {(['auto', 'cover', 'contain'] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => {
-                      const next = [...photos];
-                      next[i] = { ...next[i], displayMode: mode === 'auto' ? undefined : mode };
-                      onChange(next);
-                    }}
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                      (photo.displayMode ?? 'auto') === mode
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                    }`}
-                  >
-                    {mode === 'auto' ? 'Auto' : mode === 'cover' ? 'Crop' : 'Full'}
-                  </button>
-                ))}
-                <span className="text-[10px] text-stone-300 ml-1">
-                  {(photo.displayMode ?? 'auto') === 'auto' && '(fit in card)'}
-                  {photo.displayMode === 'cover' && '(fill card, click image to set focal point)'}
-                  {photo.displayMode === 'contain' && '(full image, black bars)'}
-                </span>
+            <div className="pl-5 space-y-3">
+              {/* ── Content display mode ── */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-medium text-stone-500">Content display:</span>
+                  {(['auto', 'cover', 'contain'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => {
+                        const next = [...photos];
+                        next[i] = { ...next[i], displayMode: mode === 'auto' ? undefined : mode };
+                        onChange(next);
+                      }}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        (photo.displayMode ?? 'auto') === mode
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      }`}
+                    >
+                      {mode === 'auto' ? 'Auto (fit)' : mode === 'cover' ? 'Crop (fill)' : 'Full (black bars)'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Crop mode: phone-ratio preview + zoom slider */}
+                {photo.displayMode === 'cover' && (() => {
+                  const fp = photo.focalPoint;
+                  const zoom = photo.zoom ?? 1;
+                  const objPos = fp ? `${fp.x}% ${fp.y}%` : '50% 50%';
+                  const origin = fp ? `${fp.x}% ${fp.y}%` : 'center';
+                  return (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] text-stone-400">Click image to set focal point. Preview matches phone proportions.</p>
+                      {/* Phone-ratio preview (h-72 / ~320px card ≈ 4:3) */}
+                      <div
+                        className="relative w-full rounded overflow-hidden border border-stone-300 cursor-crosshair bg-black"
+                        style={{ aspectRatio: '4/3' }}
+                        onClick={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+                          const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+                          const next = [...photos];
+                          next[i] = { ...next[i], focalPoint: { x, y } };
+                          onChange(next);
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={photo.url}
+                          alt=""
+                          className="w-full h-full object-cover select-none"
+                          style={{
+                            objectPosition: objPos,
+                            transform: zoom > 1 ? `scale(${zoom})` : undefined,
+                            transformOrigin: zoom > 1 ? origin : undefined,
+                          }}
+                          draggable={false}
+                        />
+                        {fp && (
+                          <div
+                            className="absolute w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none"
+                            style={{ left: `${fp.x}%`, top: `${fp.y}%`, transform: 'translate(-50%,-50%)', background: '#F59E0B' }}
+                          />
+                        )}
+                      </div>
+                      {/* Zoom slider */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-stone-400 shrink-0">Zoom:</span>
+                        <input
+                          type="range"
+                          min={1} max={3} step={0.05}
+                          value={zoom}
+                          onChange={(e) => {
+                            const next = [...photos];
+                            next[i] = { ...next[i], zoom: parseFloat(e.target.value) };
+                            onChange(next);
+                          }}
+                          className="flex-1 h-1 accent-amber-500"
+                        />
+                        <span className="text-[10px] text-stone-500 w-8 text-right">{zoom.toFixed(2)}×</span>
+                        {zoom !== 1 && (
+                          <button
+                            type="button"
+                            onClick={() => { const next = [...photos]; next[i] = { ...next[i], zoom: 1 }; onChange(next); }}
+                            className="text-[10px] text-blue-600 hover:underline"
+                          >reset</button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-stone-400">
+                        {fp ? `Focal point: ${fp.x}%, ${fp.y}%` : 'No focal point — defaults to centre'}
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* Focal point picker — shown only in Crop mode */}
-              {photo.displayMode === 'cover' && (
-                <div className="space-y-1">
-                  <div
-                    className="relative rounded overflow-hidden border border-stone-200 cursor-crosshair"
-                    style={{ height: 140 }}
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
-                      const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
-                      const next = [...photos];
-                      next[i] = { ...next[i], focalPoint: { x, y } };
-                      onChange(next);
-                    }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={photo.url}
-                      alt=""
-                      className="w-full h-full object-cover select-none"
-                      style={{
-                        objectPosition: photo.focalPoint
-                          ? `${photo.focalPoint.x}% ${photo.focalPoint.y}%`
-                          : '50% 50%',
-                      }}
-                      draggable={false}
-                    />
-                    {/* Focal point dot */}
-                    {photo.focalPoint && (
-                      <div
-                        className="absolute w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none"
-                        style={{
-                          left: `${photo.focalPoint.x}%`,
-                          top: `${photo.focalPoint.y}%`,
-                          transform: 'translate(-50%, -50%)',
-                          background: '#F59E0B',
-                        }}
-                      />
-                    )}
-                  </div>
-                  <p className="text-[10px] text-stone-400">
-                    {photo.focalPoint
-                      ? `Focal point: ${photo.focalPoint.x}%, ${photo.focalPoint.y}% — click elsewhere to adjust`
-                      : 'Click image to set focal point (defaults to centre)'}
-                  </p>
+              {/* ── Thumbnail crop ── */}
+              <div className="space-y-1.5 border-t border-stone-100 pt-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-medium text-stone-500">Thumbnail crop:</span>
+                  <span className="text-[10px] text-stone-400">(gallery, journal, progress bar)</span>
+                  {photo.thumbnailFocalPoint && (
+                    <button
+                      type="button"
+                      onClick={() => { const next = [...photos]; next[i] = { ...next[i], thumbnailFocalPoint: undefined }; onChange(next); }}
+                      className="text-[10px] text-red-500 hover:underline ml-auto"
+                    >clear</button>
+                  )}
                 </div>
-              )}
+                <p className="text-[10px] text-stone-400">Click the square to set which part shows in small thumbnails.</p>
+                <div
+                  className="relative rounded overflow-hidden border border-stone-300 cursor-crosshair"
+                  style={{ width: 96, height: 96 }}
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+                    const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+                    const next = [...photos];
+                    next[i] = { ...next[i], thumbnailFocalPoint: { x, y } };
+                    onChange(next);
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photo.url}
+                    alt=""
+                    className="w-full h-full object-cover select-none"
+                    style={{
+                      objectPosition: photo.thumbnailFocalPoint
+                        ? `${photo.thumbnailFocalPoint.x}% ${photo.thumbnailFocalPoint.y}%`
+                        : '50% 50%',
+                    }}
+                    draggable={false}
+                  />
+                  {photo.thumbnailFocalPoint && (
+                    <div
+                      className="absolute w-3 h-3 rounded-full border-2 border-white shadow pointer-events-none"
+                      style={{
+                        left: `${photo.thumbnailFocalPoint.x}%`,
+                        top: `${photo.thumbnailFocalPoint.y}%`,
+                        transform: 'translate(-50%,-50%)',
+                        background: '#F59E0B',
+                      }}
+                    />
+                  )}
+                </div>
+                <p className="text-[10px] text-stone-400">
+                  {photo.thumbnailFocalPoint
+                    ? `${photo.thumbnailFocalPoint.x}%, ${photo.thumbnailFocalPoint.y}%`
+                    : 'Defaults to centre'}
+                </p>
+              </div>
             </div>
           )}
         </div>
