@@ -41,8 +41,8 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
           className="absolute inset-0"
           style={{
             background: 'var(--th-question-bg-solid)',
-            filter: 'blur(8px)',
-            transform: 'scale(0.93)',
+            filter: 'blur(5px)',
+            transform: 'scale(0.97)',
             borderRadius: '12px',
           }}
         />

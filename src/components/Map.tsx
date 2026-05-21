@@ -57,10 +57,20 @@ function formatDist(m: number): string {
 }
 
 /**
- * Fits the map to show both the user and the nearest tour pin, with ~18%
- * padding on each side so neither point is close to the screen edge.
- * Falls back to MEMORIAL_CHURCH if no tour pins are loaded yet.
- * Caps automatic zoom at MAX_AUTO_ZOOM; beyond 5 miles just centres on user.
+ * Positions the map so the user is near center and the nearest tour pin is
+ * ~10% from its screen edge.
+ *
+ * When the user is close (< 0.4 mi) drift = 0: user is exactly at center,
+ * the zoom is chosen to put the pin 10% from the edge.
+ *
+ * When the user is farther away the map would have to zoom out a lot to keep
+ * them at center. Instead we allow the user's dot to drift off-center (up to
+ * 40% of screen from center at 0.8 mi+) so the zoom stays tighter. The pin
+ * always stays at 10% from its nearest edge.
+ *
+ * Implemented via asymmetric fitBounds padding:
+ *   user's side  → (50% − drift%) padding → places user at (drift%) from center
+ *   pin's side   → 10% padding            → places pin at 10% from edge
  */
 function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
   if (!map) return;
@@ -88,22 +98,46 @@ function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const g = (window as any).google;
   if (!g?.maps?.LatLngBounds) {
-    map.panTo({ lat: (userPos.lat + target.lat) / 2, lng: (userPos.lng + target.lng) / 2 });
+    map.panTo(userPos);
     map.setZoom(15);
     return;
   }
+
+  const DRIFT_START_M = 643.7; // 0.4 miles
+  const MAX_DRIFT     = 0.40;  // user can shift at most 40% from center
+  const PIN_EDGE      = 0.10;  // pin stays 10% from its nearest edge
+
+  // Drift grows linearly from 0 at DRIFT_START_M to MAX_DRIFT at 2×DRIFT_START_M
+  const drift = distM < DRIFT_START_M
+    ? 0
+    : Math.min(MAX_DRIFT, ((distM - DRIFT_START_M) / DRIFT_START_M) * MAX_DRIFT);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyMap = map as any;
+  const mapDiv = anyMap.getDiv?.();
+  const W = mapDiv?.offsetWidth  || window.innerWidth;
+  const H = mapDiv?.offsetHeight || window.innerHeight;
+
+  // User's side: (50%−drift%) keeps user at center when drift=0,
+  // shifts them toward their edge as drift grows.
+  const userPad = 0.5 - drift;
+
+  // Asymmetric padding: pin's side is always PIN_EDGE, user's side is userPad.
+  const pinIsNorth = target.lat > userPos.lat;
+  const pinIsEast  = target.lng > userPos.lng;
+
+  const topPad    = Math.round((pinIsNorth ? PIN_EDGE : userPad) * H);
+  const bottomPad = Math.round((pinIsNorth ? userPad  : PIN_EDGE) * H);
+  const rightPad  = Math.round((pinIsEast  ? PIN_EDGE : userPad) * W);
+  const leftPad   = Math.round((pinIsEast  ? userPad  : PIN_EDGE) * W);
 
   const bounds = new g.maps.LatLngBounds();
   bounds.extend(userPos);
   bounds.extend(target);
 
-  const padW = Math.round(window.innerWidth * 0.10);
-  const padH = Math.round(window.innerHeight * 0.10);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const anyMap = map as any;
-  anyMap.fitBounds(bounds, { top: padH, right: padW, bottom: padH, left: padW });
+  anyMap.fitBounds(bounds, { top: topPad, right: rightPad, bottom: bottomPad, left: leftPad });
 
-  // Cap zoom — fitBounds may zoom in too far for very close pins
+  // Cap zoom in case the pin is very close
   g.maps.event.addListenerOnce(anyMap, 'idle', () => {
     const z = anyMap.getZoom?.();
     if (typeof z === 'number' && z > MAX_AUTO_ZOOM) anyMap.setZoom(MAX_AUTO_ZOOM);
