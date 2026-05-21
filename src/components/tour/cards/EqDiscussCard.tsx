@@ -23,10 +23,6 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
         Question for you!
       </p>
 
-      <p className="text-[20px] font-semibold text-text-primary italic">
-        Please discuss...
-      </p>
-
       {/* The essential question — soft-edge blur-behind effect */}
       <div className="relative px-8 py-7 text-center">
         <div
@@ -44,7 +40,7 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
       </div>
 
       {/* Instruction */}
-      <p className="text-[18px] text-text-secondary italic leading-relaxed">
+      <p className="text-[18px] font-semibold text-text-primary text-center leading-relaxed">
         Talk this over with your group before continuing.
       </p>
 

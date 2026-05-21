@@ -29,7 +29,7 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
       </p>
 
       <p className="text-[20px] font-semibold text-text-primary">
-        Please find this:
+        Are you looking at this:
       </p>
 
       {/* Scene photo */}
