@@ -122,8 +122,8 @@ export default function MicButton({ onTranscript, size = 'sm' }: Props) {
 
   if (state === 'transcribing') {
     return (
-      <div className={`${btnSize} shrink-0 rounded-lg bg-[#D4BFA0]/50 flex items-center justify-center`}>
-        <div className="w-4 h-4 border-2 border-[#C4923A] border-t-transparent rounded-full animate-spin" />
+      <div className={`${btnSize} shrink-0 rounded-lg bg-sandstone-light/50 flex items-center justify-center`}>
+        <div className="w-4 h-4 border-2 border-aged-gold border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -143,7 +143,7 @@ export default function MicButton({ onTranscript, size = 'sm' }: Props) {
   return (
     <button
       onClick={startRecording}
-      className={`${btnSize} shrink-0 rounded-lg bg-[#C4923A] text-white flex items-center justify-center hover:bg-[#B8832E] transition-colors`}
+      className={`${btnSize} shrink-0 rounded-lg bg-aged-gold text-white flex items-center justify-center hover:bg-aged-gold-light transition-colors`}
       title="Record voice"
     >
       <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="currentColor">

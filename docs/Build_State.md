@@ -10,6 +10,7 @@ Read this instead of re-discovering the codebase.*
 Next.js 16.2.3 App Router + TypeScript + Tailwind CSS 4 + Framer Motion.
 Firebase Firestore + Firebase Storage. Google Maps. Deepgram (voice input).
 Deployed on Vercel, auto-deploys from GitHub master.
+Two switchable visual themes (Ledger / Folio) — see §9.
 
 **Repo:** `github.com/SeanHu73/memorial-church-tool`
 
@@ -64,6 +65,7 @@ Map (tour pin) → Journal Peek → Intro screens →
 | FullscreenPhoto | `cards/FullscreenPhoto.tsx` | Portal-based fullscreen with pinch zoom |
 | MicButton | `src/components/tour/MicButton.tsx` | Deepgram voice-to-text |
 | VoiceInput | `src/components/tour/VoiceInput.tsx` | Standalone voice input (prominent mode) |
+| ThemeSwitcher | `src/components/ThemeSwitcher.tsx` | Ledger/Folio toggle on the map (§9) |
 
 ### Data Layer
 
@@ -78,6 +80,7 @@ Map (tour pin) → Journal Peek → Intro screens →
 | `src/lib/photo-sync-tour.ts` | Auto-registers tour uploads in photo library |
 | `src/lib/device-capability.ts` | Detects low-end devices for blur fallback |
 | `src/context/TourContext.tsx` | React context for all tour state + actions |
+| `src/context/ThemeContext.tsx` | Theme state (Ledger/Folio) + localStorage persistence (§9) |
 
 ### Phase Types (TourPhase)
 
@@ -94,6 +97,10 @@ eq_closing_discuss → eq_closing → eq_final_reflect → eq_questions → end
 - Detection: compares `phaseHistory` previous entry's stopIndex
 
 ### Visual Design
+
+*Colours, fonts, and corner radii are theme-driven — see §9. The hex
+values below describe the original Ledger-era look; the live values
+come from `--th-*` tokens and change with the active theme.*
 
 - Card screens with rounded-2xl corners, shadow-lg, sandstone bg visible around edges
 - Background photo: tour-level default + per-stop override
@@ -230,6 +237,7 @@ Tailwind CSS 4, TypeScript 5, @vis.gl/react-google-maps 1.8.3.
 - **No authentication** on admin routes.
 - **No automated tests** — verification is manual.
 - **Viewport**: `maximumScale` and `userScalable` removed from layout.tsx to enable pinch-to-zoom on photos.
+- **Theming**: `layout.tsx` wraps the app in `ThemeProvider` and runs a pre-paint inline script that sets `data-theme` on `<html>`. Admin pages are not in theme scope — see §9.
 
 ---
 
@@ -257,4 +265,67 @@ This session built the complete v2 tour system from scratch:
 - Google Sheets logging with sendBeacon
 - Device capability detection for blur fallback
 
-*End of handoff. Latest commit on master: `8d2d75d`.*
+### Theme system (2026-05-20)
+
+Added the dual-theme system documented in §9: a `--th-*` token layer,
+the Ledger and Folio themes, `ThemeContext` + `ThemeSwitcher`, four
+Google fonts, and migration of ~514 hardcoded hex values across 30
+explorer files to theme tokens. Build and TypeScript pass.
+
+---
+
+## 9. Theme System
+
+Two switchable visual themes, added 2026-05-20. Toggled via a
+**ThemeSwitcher** at the top-right of the map. Only colours, fonts,
+and corner radii change — all functional structure (cards, frosted
+glass, transitions, background photos, progress bar) is shared.
+
+### Themes
+
+| | Ledger (default) | Folio |
+|---|---|---|
+| Persona | 1970s New Journalism | 1950s Mid-Century |
+| Display font | DM Serif Display | Cormorant Garamond |
+| Body font | Outfit | Space Grotesk |
+| Primary | #8B2538 cranberry | #A73848 cranberry |
+| Secondary | #B8752B amber | #3A8D89 teal |
+| Corner radius | softer (lg .625rem / 2xl 1rem) | crisper (lg .25rem / 2xl .5rem) |
+
+Source style guides: `docs/Style_Guide_Ledger.md`, `docs/Style_Guide_Folio.md`
+(screenshots: `docs/Style Guide - Red.png` / `Style Guide - Teal.png`).
+
+### How it works
+
+- `globals.css` defines a `--th-*` token layer in two blocks:
+  `:root, [data-theme='ledger']` and `[data-theme='folio']`. Switching
+  the `data-theme` attribute on `<html>` re-resolves every token
+  instantly — no reload.
+- Legacy palette names (`--sandstone`, `--aged-gold`, etc.) plus four
+  new ones (`--olive`, `--accent-dark`, `--journal`, `--question-red`)
+  are aliased onto `--th-*` and exposed as Tailwind tokens via
+  `@theme inline`. Colour utilities, `font-serif`/`font-sans`, and
+  `rounded-lg/xl/2xl` all flow through these.
+- `ThemeContext.tsx` holds the active theme, persists it to
+  `localStorage` (`provenance-theme`), and mirrors it to `<html>`.
+- An inline script in `layout.tsx` applies the stored theme before
+  first paint to avoid a flash of the default theme.
+
+### Adjusting colours/fonts
+
+Edit the two theme blocks in `globals.css` only — that is the single
+source of truth. Explorer components reference tokens (`var(--th-*)`
+in inline styles, Tailwind classes like `bg-aged-gold` / `text-olive`
+elsewhere); no per-component colour hexes remain in the explorer UI.
+
+### Out of scope
+
+Admin pages (`/admin/**`) were intentionally not migrated. They
+inherit themed Tailwind tokens, but their remaining hardcoded hexes
+and the `RichTextarea` content-colour picker (whose hexes are saved
+into tour content, not UI chrome) are deliberately left untouched.
+
+---
+
+*End of handoff. Latest committed: `04af60b`. The theme system (§9) is
+implemented and builds clean, but is uncommitted as of this update.*

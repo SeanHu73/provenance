@@ -22,19 +22,19 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <p className="text-2xl uppercase tracking-[0.14em] text-[#C4923A] font-semibold">
+      <p className="text-2xl uppercase tracking-[0.14em] text-aged-gold font-semibold">
         {isOpinion ? "What's your opinion?" : 'Chance to discuss...'}
       </p>
 
       {/* The question — centered in dark box */}
-      <div className="rounded-xl px-5 py-6 text-center border-3" style={{ backgroundColor: '#7A1A1A90', borderColor: '#C4923A' }}>
-        <p className="text-[28px] leading-relaxed font-serif font-bold" style={{ color: '#FFF8EE' }}>
+      <div className="rounded-xl px-5 py-6 text-center border-3" style={{ backgroundColor: 'var(--th-question-bg)', borderColor: 'var(--th-secondary)' }}>
+        <p className="text-[28px] leading-relaxed font-serif font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;{aq.question}&rdquo;
         </p>
       </div>
 
       {/* Instruction */}
-      <p className="text-[18px] text-[#6B5D4F] italic leading-relaxed text-center">
+      <p className="text-[18px] text-text-secondary italic leading-relaxed text-center">
         {isOpinion
           ? 'Share your thoughts with your group before continuing.'
           : 'Talk this over with your group before continuing.'}
@@ -45,7 +45,7 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
         <BackButton />
         <button
           onClick={onContinue}
-          className="flex-1 py-3 rounded-lg text-base font-semibold bg-[#7A7A5E] text-white"
+          className="flex-1 py-3 rounded-lg text-base font-semibold bg-olive text-white"
         >
           Let&apos;s find the first stop...
         </button>

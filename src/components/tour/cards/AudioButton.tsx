@@ -60,13 +60,13 @@ export default function AudioButton({ audioUrl, title }: Props) {
   };
 
   return (
-    <div className="rounded-lg bg-[#F0E0C8] border border-[#D4BFA0] p-4 space-y-3">
+    <div className="rounded-lg bg-sandstone border border-sandstone-light p-4 space-y-3">
       {/* Title row */}
       <div className="flex items-center gap-2">
         <button
           onClick={toggle}
           className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-            playing ? 'bg-[#C4923A] text-white' : 'bg-[#D4BFA0] text-[#5C4A35]'
+            playing ? 'bg-aged-gold text-white' : 'bg-sandstone-light text-journal'
           }`}
         >
           {playing ? (
@@ -81,10 +81,10 @@ export default function AudioButton({ audioUrl, title }: Props) {
           )}
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-[18px] font-semibold text-[#2C2418] truncate">
+          <p className="text-[18px] font-semibold text-text-primary truncate">
             {title || 'Audio narration'}
           </p>
-          <p className="text-xs text-[#6B5D4F]">
+          <p className="text-xs text-text-secondary">
             {formatTime(currentTime)} / {duration ? formatTime(duration) : '--:--'}
           </p>
         </div>
@@ -92,15 +92,15 @@ export default function AudioButton({ audioUrl, title }: Props) {
 
       {/* Timeline bar */}
       <div
-        className="h-2 bg-[#D4BFA0] rounded-full cursor-pointer relative"
+        className="h-2 bg-sandstone-light rounded-full cursor-pointer relative"
         onClick={seek}
       >
         <div
-          className="h-full bg-[#C4923A] rounded-full transition-all duration-200"
+          className="h-full bg-aged-gold rounded-full transition-all duration-200"
           style={{ width: `${progress * 100}%` }}
         />
         <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#C4923A] border-2 border-white shadow"
+          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-aged-gold border-2 border-white shadow"
           style={{ left: `${progress * 100}%`, transform: `translateX(-50%) translateY(-50%)` }}
         />
       </div>

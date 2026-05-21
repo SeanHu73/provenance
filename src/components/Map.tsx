@@ -45,10 +45,10 @@ function PinMarker({ pin, isSelected, onClick }: { pin: Pin; isSelected: boolean
           style={{
             width: size,
             height: size,
-            background: isSelected ? '#1B3A5C' : '#B8943E',
-            border: `3px solid ${isSelected ? '#D4AD52' : '#F5F0E8'}`,
+            background: isSelected ? 'var(--th-primary)' : 'var(--th-secondary)',
+            border: `3px solid ${isSelected ? 'var(--th-secondary-hover)' : 'var(--th-surface)'}`,
             boxShadow: isSelected
-              ? '0 0 0 3px rgba(212,173,82,0.3), 0 2px 8px rgba(0,0,0,0.3)'
+              ? '0 0 0 3px color-mix(in srgb, var(--th-secondary) 30%, transparent), 0 2px 8px rgba(0,0,0,0.3)'
               : '0 2px 8px rgba(0,0,0,0.25)',
           }}
         >
@@ -57,7 +57,7 @@ function PinMarker({ pin, isSelected, onClick }: { pin: Pin; isSelected: boolean
             style={{
               width: dot,
               height: dot,
-              background: isSelected ? '#D4AD52' : '#F5F0E8',
+              background: isSelected ? 'var(--th-secondary-hover)' : 'var(--th-surface)',
             }}
           />
         </div>
@@ -151,12 +151,12 @@ function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
           style={{
             width: 44,
             height: 44,
-            background: '#B8694A',
-            border: '3px solid #F0E0C8',
-            boxShadow: '0 0 0 3px rgba(184,105,74,0.25), 0 3px 10px rgba(0,0,0,0.3)',
+            background: 'var(--th-primary)',
+            border: '3px solid var(--th-surface-alt)',
+            boxShadow: '0 0 0 3px color-mix(in srgb, var(--th-primary) 25%, transparent), 0 3px 10px rgba(0,0,0,0.3)',
           }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="#F0E0C8" stroke="none">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--th-surface-alt)" stroke="none">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/>
           </svg>
         </div>
@@ -183,10 +183,10 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
           style={{
             width: size,
             height: size,
-            background: data.isCompleted ? '#7A7A5E' : '#B8694A',
-            border: `3px solid ${data.isActive ? '#FFF8EE' : '#F0E0C8'}`,
+            background: data.isCompleted ? 'var(--th-olive)' : 'var(--th-primary)',
+            border: `3px solid ${data.isActive ? 'var(--th-surface)' : 'var(--th-surface-alt)'}`,
             boxShadow: data.isActive
-              ? '0 0 0 3px rgba(184,105,74,0.3), 0 2px 8px rgba(0,0,0,0.3)'
+              ? '0 0 0 3px color-mix(in srgb, var(--th-primary) 30%, transparent), 0 2px 8px rgba(0,0,0,0.3)'
               : '0 2px 6px rgba(0,0,0,0.25)',
             opacity: data.isCompleted && !data.isActive ? 0.7 : 1,
           }}

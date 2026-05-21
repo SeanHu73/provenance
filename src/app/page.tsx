@@ -8,6 +8,7 @@ import { TourProvider, useTour } from '@/context/TourContext';
 import type { TourPinData, TourStopMarkerData } from '@/components/Map';
 import JournalPeek from '@/components/tour/JournalPeek';
 import Journal from '@/components/tour/Journal';
+import ThemeSwitcher from '@/components/ThemeSwitcher';
 
 const Map = dynamic(() => import('@/components/Map'), { ssr: false });
 
@@ -74,6 +75,13 @@ function HomeInner() {
           onTourStopSelect={() => {}}
           hidePins={true}
         />
+
+        {/* Theme switcher — top-right of the map */}
+        {(!isActive || mapPeek) && (
+          <div className="absolute top-3 right-3 z-[60]">
+            <ThemeSwitcher />
+          </div>
+        )}
       </div>
 
       {/* Bottom bar */}
@@ -99,7 +107,7 @@ function HomeInner() {
           <button
             onClick={() => setMapPeek(false)}
             className="px-5 py-3 rounded-full shadow-lg text-sm font-semibold"
-            style={{ backgroundColor: '#5C4A35', color: '#FFF8EE' }}
+            style={{ backgroundColor: 'var(--th-journal)', color: 'var(--th-surface)' }}
           >
             Return to journal
           </button>

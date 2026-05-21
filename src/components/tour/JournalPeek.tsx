@@ -20,7 +20,7 @@ export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
       <div className="absolute inset-0 bg-black/30" onClick={onDismiss} />
 
       {/* Sheet */}
-      <div className="relative animate-slide-up rounded-t-2xl overflow-hidden" style={{ backgroundColor: '#5C4A35' }}>
+      <div className="relative animate-slide-up rounded-t-2xl overflow-hidden" style={{ backgroundColor: 'var(--th-journal)' }}>
         {/* Cover photo */}
         {tour.coverPhotoUrl && (
           <div className="w-full h-36 overflow-hidden">
@@ -30,7 +30,7 @@ export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
               alt=""
               className="w-full h-full object-cover opacity-60"
             />
-            <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-transparent to-[#5C4A35]" />
+            <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-transparent to-journal" />
           </div>
         )}
 
@@ -39,37 +39,37 @@ export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
           <div className="flex items-center gap-3">
             <div
               className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-              style={{ backgroundColor: '#C4923A', color: '#FFF8EE' }}
+              style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}
             >
               {tour.guide.initials || '?'}
             </div>
             <div>
-              <p className="text-sm font-semibold" style={{ color: '#FFF8EE' }}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--th-surface)' }}>
                 {tour.guide.name || 'Your guide'}
               </p>
               {tour.guide.role && (
-                <p className="text-xs" style={{ color: '#D4BFA0' }}>{tour.guide.role}</p>
+                <p className="text-xs" style={{ color: 'var(--th-border)' }}>{tour.guide.role}</p>
               )}
             </div>
           </div>
 
           {/* Tour info */}
           <div>
-            <h2 className="text-xl font-serif font-bold" style={{ color: '#FFF8EE' }}>
+            <h2 className="text-xl font-serif font-bold" style={{ color: 'var(--th-surface)' }}>
               {tour.title}
             </h2>
             {tour.subtitle && (
-              <p className="text-sm mt-0.5" style={{ color: '#D4BFA0' }}>{tour.subtitle}</p>
+              <p className="text-sm mt-0.5" style={{ color: 'var(--th-border)' }}>{tour.subtitle}</p>
             )}
           </div>
 
           {tour.description && (
-            <p className="text-sm leading-relaxed" style={{ color: '#D4BFA0' }}>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--th-border)' }}>
               {tour.description}
             </p>
           )}
 
-          <p className="text-xs" style={{ color: '#D4BFA0' }}>
+          <p className="text-xs" style={{ color: 'var(--th-border)' }}>
             {tour.stops.length} stop{tour.stops.length !== 1 ? 's' : ''} &middot; ~{tour.stops.length * 5} min
           </p>
 
@@ -77,7 +77,7 @@ export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
           {tour.peekAudioUrl && (
             <div className="rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(255,248,238,0.15)' }}>
               {tour.peekAudioTitle && (
-                <p className="text-xs font-semibold px-3 pt-2" style={{ color: '#FFF8EE' }}>{tour.peekAudioTitle}</p>
+                <p className="text-xs font-semibold px-3 pt-2" style={{ color: 'var(--th-surface)' }}>{tour.peekAudioTitle}</p>
               )}
               <audio controls src={tour.peekAudioUrl} className="w-full h-8" style={{ filter: 'invert(1) hue-rotate(180deg)', opacity: 0.7 }} />
             </div>
@@ -87,7 +87,7 @@ export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
           <button
             onClick={onBegin}
             className="w-full py-3 rounded-lg text-sm font-semibold transition-colors"
-            style={{ backgroundColor: '#C4923A', color: '#FFF8EE' }}
+            style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}
           >
             Begin exploration
           </button>
@@ -96,7 +96,7 @@ export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
           <button
             onClick={onDismiss}
             className="w-full text-center text-xs py-1"
-            style={{ color: '#D4BFA0' }}
+            style={{ color: 'var(--th-border)' }}
           >
             Not now
           </button>

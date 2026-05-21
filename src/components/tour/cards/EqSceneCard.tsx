@@ -24,11 +24,11 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <p className="text-2xl uppercase tracking-[0.14em] text-[#C4923A] font-semibold">
+      <p className="text-2xl uppercase tracking-[0.14em] text-aged-gold font-semibold">
         Setting the scene...
       </p>
 
-      <p className="text-[20px] font-semibold text-[#2C2418]">
+      <p className="text-[20px] font-semibold text-text-primary">
         Please find this:
       </p>
 
@@ -36,7 +36,7 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
       {eq.scenePhotoUrl && (
         <button
           onClick={() => setFullscreen(true)}
-          className="w-full rounded-xl overflow-hidden shadow-md border border-[#D4BFA0] text-left bg-[#F0E0C8]"
+          className="w-full rounded-xl overflow-hidden shadow-md border border-sandstone-light text-left bg-sandstone"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={eq.scenePhotoUrl} alt="" className="w-full max-h-64 object-contain" />
@@ -45,7 +45,7 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
 
       {/* Scene description */}
       {eq.sceneDescription && (
-        <p className="text-[21px] leading-relaxed font-serif text-[#2C2418]">
+        <p className="text-[21px] leading-relaxed font-serif text-text-primary">
           {eq.sceneDescription}
         </p>
       )}
@@ -60,13 +60,13 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
         <>
           <button
             onClick={() => setFramingOpen(!framingOpen)}
-            className="text-base text-[#6B5D4F] flex items-center gap-2 py-2 px-3 rounded-lg border border-[#D4BFA0] hover:bg-[#D4BFA0]/20"
+            className="text-base text-text-secondary flex items-center gap-2 py-2 px-3 rounded-lg border border-sandstone-light hover:bg-sandstone-light/20"
           >
             <span className="text-xs">{framingOpen ? '▼' : '▶'}</span>
             {framingOpen ? 'Hide text' : 'Tap to read along'}
           </button>
           {framingOpen && (
-            <p className="text-[18px] text-[#6B5D4F] italic leading-relaxed animate-fade-in">
+            <p className="text-[18px] text-text-secondary italic leading-relaxed animate-fade-in">
               {eq.openingFraming}
             </p>
           )}
@@ -78,7 +78,7 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
         <BackButton />
         <button
           onClick={onContinue}
-          className="flex-1 py-3 rounded-lg text-base font-semibold bg-[#C4923A] text-white"
+          className="flex-1 py-3 rounded-lg text-base font-semibold bg-aged-gold text-white"
         >
           What&apos;s the question?
         </button>

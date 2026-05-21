@@ -35,7 +35,7 @@ export default function PhotoContent({
   photos,
   legacyPhotoUrl,
   legacyPhotoCaption,
-  textClass = 'text-[21px] leading-relaxed font-serif text-[#2C2418]',
+  textClass = 'text-[21px] leading-relaxed font-serif text-text-primary',
   borderColor,
 }: Props) {
   const [fullscreen, setFullscreen] = useState<Photo | null>(null);
@@ -113,7 +113,7 @@ function PhotoBlock({ photo, onTap }: { photo: Photo; onTap: () => void }) {
   return (
     <button
       onClick={onTap}
-      className="w-full rounded-lg overflow-hidden shadow-md border border-[#D4BFA0] my-3 text-left cursor-pointer bg-[#F0E0C8]"
+      className="w-full rounded-lg overflow-hidden shadow-md border border-sandstone-light my-3 text-left cursor-pointer bg-sandstone"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -122,7 +122,7 @@ function PhotoBlock({ photo, onTap }: { photo: Photo; onTap: () => void }) {
         className="w-full max-h-72 object-contain"
       />
       {photo.caption && (
-        <p className="text-xs text-[#6B5D4F] px-3 py-1.5 bg-[#F0E0C8]/50 italic">
+        <p className="text-xs text-text-secondary px-3 py-1.5 bg-sandstone/50 italic">
           {photo.caption}
         </p>
       )}

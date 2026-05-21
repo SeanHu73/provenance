@@ -43,7 +43,7 @@ export default function ProgressBar({ tour, session }: Props) {
       <div
         ref={scrollRef}
         className="shrink-0 flex items-center gap-1.5 px-3 py-3 overflow-x-auto border-b cursor-pointer"
-        style={{ borderColor: '#D4BFA0', backgroundColor: '#F0E0C8', scrollbarWidth: 'none' }}
+        style={{ borderColor: 'var(--th-border)', backgroundColor: 'var(--th-surface-alt)', scrollbarWidth: 'none' }}
         onClick={() => setTrackerOpen(true)}
       >
         {/* Intro pill — for essential question / intro phases */}
@@ -54,10 +54,10 @@ export default function ProgressBar({ tour, session }: Props) {
             <div
               className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold transition-all ${
                 isIntroActive
-                  ? 'bg-[#C4923A] text-white shadow-sm'
+                  ? 'bg-aged-gold text-white shadow-sm'
                   : isIntroDone
-                    ? 'bg-[#7A7A5E]/20 text-[#7A7A5E]'
-                    : 'bg-[#D4BFA0]/30 text-[#6B5D4F]/40'
+                    ? 'bg-olive/20 text-olive'
+                    : 'bg-sandstone-light/30 text-text-secondary/40'
               }`}
             >
               <span className="text-xs">Intro</span>
@@ -76,10 +76,10 @@ export default function ProgressBar({ tour, session }: Props) {
               ref={isCurrent ? currentRef : undefined}
               className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold transition-all ${
                 isCurrent
-                  ? 'bg-[#C4923A] text-white shadow-sm'
+                  ? 'bg-aged-gold text-white shadow-sm'
                   : isCompleted
-                    ? 'bg-[#7A7A5E]/20 text-[#7A7A5E]'
-                    : 'bg-[#D4BFA0]/30 text-[#6B5D4F]/40'
+                    ? 'bg-olive/20 text-olive'
+                    : 'bg-sandstone-light/30 text-text-secondary/40'
               }`}
             >
               <span className="text-xs">{i + 1}</span>
@@ -97,8 +97,8 @@ export default function ProgressBar({ tour, session }: Props) {
         <div
           className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${
             isClosing
-              ? 'bg-[#C4923A] text-white shadow-sm'
-              : 'bg-[#D4BFA0]/30 text-[#6B5D4F]/40'
+              ? 'bg-aged-gold text-white shadow-sm'
+              : 'bg-sandstone-light/30 text-text-secondary/40'
           }`}
         >
           <span className="text-xs">{tour.essentialQuestion ? 'Closing' : '✦'}</span>
@@ -128,9 +128,9 @@ export default function ProgressBar({ tour, session }: Props) {
         }
         pct = Math.min(Math.max(pct, 0), 100);
         return (
-          <div className="shrink-0 w-full h-2 bg-[#D4BFA0]/30">
+          <div className="shrink-0 w-full h-2 bg-sandstone-light/30">
             <div
-              className="h-full bg-[#C4923A] transition-all duration-500 ease-out rounded-r-full"
+              className="h-full bg-aged-gold transition-all duration-500 ease-out rounded-r-full"
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -172,15 +172,15 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
 
       {/* Tracker panel — drops from top */}
       <div
-        className="relative bg-[#FFF8EE] shadow-2xl rounded-b-2xl animate-slide-down-enter"
+        className="relative bg-warm-white shadow-2xl rounded-b-2xl animate-slide-down-enter"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: '#D4BFA0' }}>
-          <p className="text-sm font-semibold text-[#2C2418]">Tour Progress</p>
+        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--th-border)' }}>
+          <p className="text-sm font-semibold text-text-primary">Tour Progress</p>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[#6B5D4F] hover:bg-[#D4BFA0]/30"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:bg-sandstone-light/30"
           >
             &times;
           </button>
@@ -199,25 +199,25 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
             return (
               <div
                 className={`shrink-0 w-[200px] rounded-xl overflow-hidden border-2 transition-all ${
-                  isActive ? 'border-[#C4923A] shadow-lg' : 'border-[#7A7A5E]/30'
+                  isActive ? 'border-aged-gold shadow-lg' : 'border-olive/30'
                 }`}
                 style={{ scrollSnapAlign: 'center' }}
               >
-                <div className={`h-28 flex items-center justify-center ${isActive ? 'bg-[#C4923A]/10' : 'bg-[#F0E0C8]'}`}>
+                <div className={`h-28 flex items-center justify-center ${isActive ? 'bg-aged-gold/10' : 'bg-sandstone'}`}>
                   <span className="text-3xl">📖</span>
                 </div>
-                <div className="p-3 bg-[#FFF8EE]">
+                <div className="p-3 bg-warm-white">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-[#C4923A] text-white' : 'bg-[#7A7A5E]/20 text-[#7A7A5E]'}`}>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-aged-gold text-white' : 'bg-olive/20 text-olive'}`}>
                       ★
                     </span>
-                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#C4923A] animate-pulse" />}
-                    {isDone && !isActive && <span className="text-[#7A7A5E] text-xs">✓</span>}
+                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-aged-gold animate-pulse" />}
+                    {isDone && !isActive && <span className="text-olive text-xs">✓</span>}
                   </div>
-                  <p className={`text-sm font-semibold ${isActive ? 'text-[#C4923A]' : 'text-[#2C2418]'}`}>
+                  <p className={`text-sm font-semibold ${isActive ? 'text-aged-gold' : 'text-text-primary'}`}>
                     Discussion Question
                   </p>
-                  <p className="text-[10px] text-[#6B5D4F] mt-0.5">
+                  <p className="text-[10px] text-text-secondary mt-0.5">
                     {isActive ? 'In progress' : 'Completed'}
                   </p>
                 </div>
@@ -238,40 +238,40 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
                 ref={isCurrent ? currentRef : undefined}
                 className={`shrink-0 w-[200px] rounded-xl overflow-hidden border-2 transition-all ${
                   isCurrent
-                    ? 'border-[#C4923A] shadow-lg'
+                    ? 'border-aged-gold shadow-lg'
                     : isCompleted
-                      ? 'border-[#7A7A5E]/30'
-                      : 'border-[#D4BFA0]/50'
+                      ? 'border-olive/30'
+                      : 'border-sandstone-light/50'
                 }`}
                 style={{ scrollSnapAlign: 'center' }}
               >
                 {/* Photo or placeholder */}
-                <div className={`h-28 ${isUpcoming ? 'bg-[#D4BFA0]/20' : 'bg-[#F0E0C8]'}`}>
+                <div className={`h-28 ${isUpcoming ? 'bg-sandstone-light/20' : 'bg-sandstone'}`}>
                   {!isUpcoming && firstPhoto ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={firstPhoto} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-2xl font-bold text-[#D4BFA0]">{i + 1}</span>
+                      <span className="text-2xl font-bold text-sandstone-light">{i + 1}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Info */}
-                <div className="p-3 bg-[#FFF8EE]">
+                <div className="p-3 bg-warm-white">
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                      isCurrent ? 'bg-[#C4923A] text-white' : isCompleted ? 'bg-[#7A7A5E]/20 text-[#7A7A5E]' : 'bg-[#D4BFA0]/30 text-[#6B5D4F]/50'
+                      isCurrent ? 'bg-aged-gold text-white' : isCompleted ? 'bg-olive/20 text-olive' : 'bg-sandstone-light/30 text-text-secondary/50'
                     }`}>
                       {i + 1}
                     </span>
-                    {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-[#C4923A] animate-pulse" />}
-                    {isCompleted && <span className="text-[#7A7A5E] text-xs">✓</span>}
+                    {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-aged-gold animate-pulse" />}
+                    {isCompleted && <span className="text-olive text-xs">✓</span>}
                   </div>
-                  <p className={`text-sm font-semibold truncate ${isUpcoming ? 'text-[#6B5D4F]/40' : 'text-[#2C2418]'}`}>
+                  <p className={`text-sm font-semibold truncate ${isUpcoming ? 'text-text-secondary/40' : 'text-text-primary'}`}>
                     {isUpcoming ? `Stop ${i + 1}` : (stop.title || `Stop ${i + 1}`)}
                   </p>
-                  <p className="text-[10px] text-[#6B5D4F] mt-0.5">
+                  <p className="text-[10px] text-text-secondary mt-0.5">
                     {isCurrent ? 'In progress' : isCompleted ? 'Completed' : 'Upcoming'}
                   </p>
                 </div>
@@ -286,18 +286,18 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
             return (
               <div
                 className={`shrink-0 w-[200px] rounded-xl overflow-hidden border-2 transition-all ${
-                  isActive ? 'border-[#C4923A] shadow-lg' : 'border-[#D4BFA0]/50'
+                  isActive ? 'border-aged-gold shadow-lg' : 'border-sandstone-light/50'
                 }`}
                 style={{ scrollSnapAlign: 'center' }}
               >
-                <div className={`h-28 flex items-center justify-center ${isActive ? 'bg-[#C4923A]/10' : 'bg-[#D4BFA0]/20'}`}>
+                <div className={`h-28 flex items-center justify-center ${isActive ? 'bg-aged-gold/10' : 'bg-sandstone-light/20'}`}>
                   <span className="text-3xl">{tour.essentialQuestion ? '🔄' : '✦'}</span>
                 </div>
-                <div className="p-3 bg-[#FFF8EE]">
-                  <p className={`text-sm font-semibold ${isActive ? 'text-[#C4923A]' : 'text-[#6B5D4F]/50'}`}>
+                <div className="p-3 bg-warm-white">
+                  <p className={`text-sm font-semibold ${isActive ? 'text-aged-gold' : 'text-text-secondary/50'}`}>
                     {tour.essentialQuestion ? 'Closing Reflection' : 'Wrap Up'}
                   </p>
-                  <p className="text-[10px] text-[#6B5D4F] mt-0.5">
+                  <p className="text-[10px] text-text-secondary mt-0.5">
                     {isActive ? 'In progress' : session.currentPhase === 'end' ? 'Completed' : 'Upcoming'}
                   </p>
                 </div>

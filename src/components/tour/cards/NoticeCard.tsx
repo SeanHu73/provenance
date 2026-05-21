@@ -30,7 +30,7 @@ export default function NoticeCard({ stop, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <p className="text-2xl uppercase tracking-[0.14em] text-[#2B4C5E] font-semibold">
+      <p className="text-2xl uppercase tracking-[0.14em] text-accent-dark font-semibold">
         Look around...
       </p>
 
@@ -43,7 +43,7 @@ export default function NoticeCard({ stop, onContinue }: Props) {
         photos={stop.notice.photos || []}
         legacyPhotoUrl={stop.notice.photoUrl}
         legacyPhotoCaption={stop.notice.photoCaption}
-        textClass="text-[23px] leading-relaxed font-serif text-[#2C2418]"
+        textClass="text-[23px] leading-relaxed font-serif text-text-primary"
       />
 
       {/* Timer ring */}
@@ -53,13 +53,13 @@ export default function NoticeCard({ stop, onContinue }: Props) {
             <circle
               cx="32" cy="32" r={radius}
               fill="none"
-              stroke="#D4BFA0"
+              stroke="var(--th-border)"
               strokeWidth="3"
             />
             <circle
               cx="32" cy="32" r={radius}
               fill="none"
-              stroke="#2B4C5E"
+              stroke="var(--th-accent-dark)"
               strokeWidth="3"
               strokeLinecap="round"
               strokeDasharray={circumference}
@@ -67,11 +67,11 @@ export default function NoticeCard({ stop, onContinue }: Props) {
               className="transition-all duration-1000 ease-linear"
             />
           </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-[#2B4C5E]">
+          <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-accent-dark">
             {secondsLeft}
           </span>
         </div>
-        <p className="text-xs text-[#6B5D4F]">
+        <p className="text-xs text-text-secondary">
           {timerDone ? 'Time’s up — ready when you are' : 'Look together...'}
         </p>
       </div>
@@ -81,8 +81,8 @@ export default function NoticeCard({ stop, onContinue }: Props) {
         onClick={onContinue}
         className={`w-full py-3 rounded-lg text-base font-semibold transition-all ${
           timerDone
-            ? 'bg-[#2B4C5E] text-white'
-            : 'bg-[#2B4C5E]/20 text-[#2B4C5E]'
+            ? 'bg-accent-dark text-white'
+            : 'bg-accent-dark/20 text-accent-dark'
         }`}
       >
         We&apos;ve looked &mdash; continue

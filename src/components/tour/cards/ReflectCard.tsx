@@ -101,24 +101,24 @@ export default function ReflectCard({
     <div className="animate-fade-in flex flex-col justify-center min-h-full space-y-6">
       {!submitted ? (
         <>
-          <p className="text-2xl uppercase tracking-[0.14em] text-[#6B5D4F] font-semibold">
+          <p className="text-2xl uppercase tracking-[0.14em] text-text-secondary font-semibold">
             Reflect...
           </p>
 
           {/* Reflection photos */}
           {(reflect.photos || []).map((photo, i) => (
             photo.url && (
-              <button key={i} onClick={() => setFullscreenPhoto(photo)} className="w-full rounded-lg overflow-hidden shadow-md border border-[#D4BFA0] text-left cursor-pointer">
+              <button key={i} onClick={() => setFullscreenPhoto(photo)} className="w-full rounded-lg overflow-hidden shadow-md border border-sandstone-light text-left cursor-pointer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={photo.url} alt={photo.caption || ''} className="w-full max-h-72 object-contain" />
-                {photo.caption && <p className="text-xs text-[#6B5D4F] px-3 py-1.5 bg-[#F0E0C8]/50 italic">{photo.caption}</p>}
+                {photo.caption && <p className="text-xs text-text-secondary px-3 py-1.5 bg-sandstone/50 italic">{photo.caption}</p>}
               </button>
             )
           ))}
 
           {/* Slider */}
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-[#2C2418]">
+            <p className="text-sm font-semibold text-text-primary">
               {reflect.sliderPrompt}
             </p>
             <input
@@ -128,9 +128,9 @@ export default function ReflectCard({
               onChange={(e) => setSliderValue(parseFloat(e.target.value))}
               onMouseUp={handleSliderRelease}
               onTouchEnd={handleSliderRelease}
-              className="w-full accent-[#C4923A]"
+              className="w-full accent-aged-gold"
             />
-            <div className="flex justify-between text-[11px] text-[#6B5D4F]">
+            <div className="flex justify-between text-[11px] text-text-secondary">
               <span>{reflect.sliderLeftLabel}</span>
               <span>{reflect.sliderRightLabel}</span>
             </div>
@@ -142,7 +142,7 @@ export default function ReflectCard({
               {/* What changed? */}
               {showWhatShifted && (
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-[#2C2418]">What changed?</p>
+                  <p className="text-sm font-semibold text-text-primary">What changed?</p>
                   <div className="flex flex-wrap gap-2">
                     {whatShiftedOptions.map((opt) => (
                       <button
@@ -150,8 +150,8 @@ export default function ReflectCard({
                         onClick={() => setWhatShiftedChoices(toggleChip(whatShiftedChoices, opt))}
                         className={`px-3 py-1.5 rounded-full text-xs transition-all ${
                           whatShiftedChoices.includes(opt)
-                            ? 'bg-[#C4923A]/20 border-2 border-[#C4923A] text-[#2C2418] font-semibold'
-                            : 'bg-[#F0E0C8] border-2 border-transparent text-[#6B5D4F] hover:border-[#D4BFA0]'
+                            ? 'bg-aged-gold/20 border-2 border-aged-gold text-text-primary font-semibold'
+                            : 'bg-sandstone border-2 border-transparent text-text-secondary hover:border-sandstone-light'
                         }`}
                       >
                         {opt}
@@ -164,7 +164,7 @@ export default function ReflectCard({
               {/* Why did it change or not? */}
               {showReasoningSource && (
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-[#2C2418]">Why did it change or not?</p>
+                  <p className="text-sm font-semibold text-text-primary">Why did it change or not?</p>
                   <div className="flex flex-wrap gap-2">
                     {reasoningOptions.map((opt) => (
                       <button
@@ -172,8 +172,8 @@ export default function ReflectCard({
                         onClick={() => setReasoningChoices(toggleChip(reasoningChoices, opt))}
                         className={`px-3 py-1.5 rounded-full text-xs transition-all ${
                           reasoningChoices.includes(opt)
-                            ? 'bg-[#C4923A]/20 border-2 border-[#C4923A] text-[#2C2418] font-semibold'
-                            : 'bg-[#F0E0C8] border-2 border-transparent text-[#6B5D4F] hover:border-[#D4BFA0]'
+                            ? 'bg-aged-gold/20 border-2 border-aged-gold text-text-primary font-semibold'
+                            : 'bg-sandstone border-2 border-transparent text-text-secondary hover:border-sandstone-light'
                         }`}
                       >
                         {opt}
@@ -183,8 +183,8 @@ export default function ReflectCard({
 
                   {/* Stop drill-down for "Something we just learned on the tour" */}
                   {showStopDrillDown && completedStops.length > 0 && (
-                    <div className="animate-fade-in space-y-2 pl-3 border-l-2 border-[#C4923A]/30">
-                      <p className="text-xs text-[#6B5D4F]">Which stop(s)?</p>
+                    <div className="animate-fade-in space-y-2 pl-3 border-l-2 border-aged-gold/30">
+                      <p className="text-xs text-text-secondary">Which stop(s)?</p>
                       <div className="flex flex-wrap gap-2">
                         {completedStops.map((title) => (
                           <button
@@ -192,8 +192,8 @@ export default function ReflectCard({
                             onClick={() => setStopChoices(toggleChip(stopChoices, title))}
                             className={`px-3 py-1.5 rounded-full text-xs transition-all ${
                               stopChoices.includes(title)
-                                ? 'bg-[#C4923A]/20 border-2 border-[#C4923A] text-[#2C2418] font-semibold'
-                                : 'bg-[#F0E0C8] border-2 border-transparent text-[#6B5D4F] hover:border-[#D4BFA0]'
+                                ? 'bg-aged-gold/20 border-2 border-aged-gold text-text-primary font-semibold'
+                                : 'bg-sandstone border-2 border-transparent text-text-secondary hover:border-sandstone-light'
                             }`}
                           >
                             {title}
@@ -213,7 +213,7 @@ export default function ReflectCard({
               <BackButton />
               <button
                 onClick={handleSubmit}
-                className="flex-1 py-3 rounded-lg text-base font-semibold bg-[#6B5D4F] text-white"
+                className="flex-1 py-3 rounded-lg text-base font-semibold bg-text-secondary text-white"
               >
                 Continue
               </button>
@@ -223,7 +223,7 @@ export default function ReflectCard({
           {/* Skip */}
           <button
             onClick={handleSkip}
-            className="text-xs text-[#6B5D4F]/50 hover:text-[#6B5D4F] transition-colors"
+            className="text-xs text-text-secondary/50 hover:text-text-secondary transition-colors"
           >
             Skip reflection
           </button>
@@ -232,7 +232,7 @@ export default function ReflectCard({
         /* Final stop — skip What's Next, go straight to closing flow */
         <div className="space-y-4">
           {stop.reveal.bridgeText && (
-            <p className="text-[18px] text-[#6B5D4F] italic leading-relaxed">
+            <p className="text-[18px] text-text-secondary italic leading-relaxed">
               <FormattedText text={stop.reveal.bridgeText} />
             </p>
           )}
@@ -240,7 +240,7 @@ export default function ReflectCard({
             <BackButton />
             <button
               onClick={onContinue}
-              className="flex-1 py-3 rounded-lg text-base font-semibold bg-[#7A7A5E] text-white"
+              className="flex-1 py-3 rounded-lg text-base font-semibold bg-olive text-white"
             >
               Continue
             </button>

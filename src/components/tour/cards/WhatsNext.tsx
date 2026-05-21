@@ -50,20 +50,20 @@ export default function WhatsNext({ stop, isLastStop, onAskQuestion, onContinue 
 
   return (
     <>
-      <p className="text-2xl uppercase tracking-[0.14em] text-[#C4923A] font-semibold">
+      <p className="text-2xl uppercase tracking-[0.14em] text-aged-gold font-semibold">
         What&apos;s next...
       </p>
       {stop.reveal.bridgeText && (
-        <p className="text-[18px] text-[#6B5D4F] italic leading-relaxed">
+        <p className="text-[18px] text-text-secondary italic leading-relaxed">
           <FormattedText text={stop.reveal.bridgeText} />
         </p>
       )}
       {(stop.reveal.bridgePhotos || []).map((photo, i) => (
         photo.url && (
-          <button key={i} onClick={() => setFullscreenPhoto(photo)} className="w-full rounded-lg overflow-hidden shadow-md border border-[#D4BFA0] my-3 text-left cursor-pointer">
+          <button key={i} onClick={() => setFullscreenPhoto(photo)} className="w-full rounded-lg overflow-hidden shadow-md border border-sandstone-light my-3 text-left cursor-pointer">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photo.url} alt={photo.caption || ''} className="w-full max-h-72 object-contain" />
-            {photo.caption && <p className="text-xs text-[#6B5D4F] px-3 py-1.5 bg-[#F0E0C8]/50 italic">{photo.caption}</p>}
+            {photo.caption && <p className="text-xs text-text-secondary px-3 py-1.5 bg-sandstone/50 italic">{photo.caption}</p>}
           </button>
         )
       ))}
@@ -74,7 +74,7 @@ export default function WhatsNext({ stop, isLastStop, onAskQuestion, onContinue 
           <button
             ref={continueRef}
             onClick={onContinue}
-            className="flex-1 py-3 rounded-lg text-base font-semibold bg-[#7A7A5E] text-white"
+            className="flex-1 py-3 rounded-lg text-base font-semibold bg-olive text-white"
           >
             {isLastStop ? 'Finish the tour' : 'Continue the tour'}
           </button>
@@ -84,7 +84,7 @@ export default function WhatsNext({ stop, isLastStop, onAskQuestion, onContinue 
       {/* Related artefacts */}
       {detours.length > 0 && (
         <div className="space-y-3 pt-2">
-          <p className="text-xs text-[#6B5D4F] uppercase tracking-wide font-semibold">
+          <p className="text-xs text-text-secondary uppercase tracking-wide font-semibold">
             Related artefacts
           </p>
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
@@ -94,11 +94,11 @@ export default function WhatsNext({ stop, isLastStop, onAskQuestion, onContinue 
                 <button
                   key={detour.id}
                   onClick={() => setActiveDetour(detour)}
-                  className="shrink-0 rounded-lg overflow-hidden shadow-md border border-[#D4BFA0] text-left transition-all hover:border-[#C4923A]"
+                  className="shrink-0 rounded-lg overflow-hidden shadow-md border border-sandstone-light text-left transition-all hover:border-aged-gold"
                   style={{ width: 140, opacity: visited ? 0.7 : 1 }}
                 >
                   {detour.coverPhoto.url && (
-                    <div className="relative h-24 bg-[#F0E0C8]">
+                    <div className="relative h-24 bg-sandstone">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={detour.coverPhoto.url}
@@ -106,16 +106,16 @@ export default function WhatsNext({ stop, isLastStop, onAskQuestion, onContinue 
                         className="w-full h-full object-cover"
                       />
                       {visited && (
-                        <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#7A7A5E] flex items-center justify-center">
+                        <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-olive flex items-center justify-center">
                           <span className="text-white text-[10px]">&#10003;</span>
                         </div>
                       )}
                     </div>
                   )}
-                  <div className="p-2 bg-[#FFF8EE]">
-                    <p className="text-[11px] font-semibold text-[#2C2418] line-clamp-1">{detour.title}</p>
+                  <div className="p-2 bg-warm-white">
+                    <p className="text-[11px] font-semibold text-text-primary line-clamp-1">{detour.title}</p>
                     {detour.coverPhoto.caption && (
-                      <p className="text-[10px] text-[#6B5D4F] line-clamp-1 mt-0.5">{detour.coverPhoto.caption}</p>
+                      <p className="text-[10px] text-text-secondary line-clamp-1 mt-0.5">{detour.coverPhoto.caption}</p>
                     )}
                   </div>
                 </button>
@@ -126,7 +126,7 @@ export default function WhatsNext({ stop, isLastStop, onAskQuestion, onContinue 
           {showBottomContinue && (
             <button
               onClick={onContinue}
-              className="w-full py-3 rounded-lg text-base font-semibold bg-[#7A7A5E] text-white"
+              className="w-full py-3 rounded-lg text-base font-semibold bg-olive text-white"
             >
               {isLastStop ? 'Finish the tour' : 'Continue the tour'}
             </button>

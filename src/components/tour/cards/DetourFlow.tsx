@@ -77,8 +77,8 @@ export default function DetourFlow({ detour, onReturn }: Props) {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <p className="text-[11px] text-[#6B5D4F] uppercase tracking-wide">Detour</p>
-        <p className="text-lg font-serif font-semibold text-[#2C2418]">{detour.title}</p>
+        <p className="text-[11px] text-text-secondary uppercase tracking-wide">Detour</p>
+        <p className="text-lg font-serif font-semibold text-text-primary">{detour.title}</p>
       </div>
 
       {/* Notice phase */}
@@ -94,19 +94,19 @@ export default function DetourFlow({ detour, onReturn }: Props) {
       {/* Reveal phase */}
       {phase === 'reveal' && (
         <div className="animate-fade-in space-y-4">
-          <p className="text-2xl uppercase tracking-[0.14em] text-[#C4923A] font-semibold">
+          <p className="text-2xl uppercase tracking-[0.14em] text-aged-gold font-semibold">
             Context
           </p>
           <div className="animate-blur-reveal">
             <PhotoContent
               text={detour.reveal.text}
               photos={detour.reveal.photos || []}
-              borderColor="#C4923A"
+              borderColor="var(--th-primary)"
             />
           </div>
           <button
             onClick={advance}
-            className="w-full py-3 rounded-lg text-base font-semibold bg-[#C4923A] text-white"
+            className="w-full py-3 rounded-lg text-base font-semibold bg-aged-gold text-white"
           >
             Continue
           </button>
@@ -116,31 +116,31 @@ export default function DetourFlow({ detour, onReturn }: Props) {
       {/* "Anything else?" — end of detour */}
       {phase === 'done' && (
         <div className="animate-fade-in space-y-4">
-          <p className="text-2xl uppercase tracking-[0.14em] text-[#C4923A] font-semibold">
+          <p className="text-2xl uppercase tracking-[0.14em] text-aged-gold font-semibold">
             Anything else?
           </p>
 
           {detour.bridge && (
-            <p className="text-sm text-[#6B5D4F] italic leading-relaxed">
+            <p className="text-sm text-text-secondary italic leading-relaxed">
               <FormattedText text={detour.bridge} />
             </p>
           )}
 
           {/* Ask a question */}
           <form onSubmit={handleAsk} className="space-y-2">
-            <label className="text-sm text-[#2C2418] font-semibold">Any other questions?</label>
+            <label className="text-sm text-text-primary font-semibold">Any other questions?</label>
             <div className="flex gap-2">
               <input
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="Type or speak..."
-                className="flex-1 px-3 py-2 rounded-lg border border-[#D4BFA0] bg-white text-sm font-serif text-[#2C2418] placeholder:text-[#6B5D4F]/50 focus:outline-none focus:border-[#C4923A]"
+                className="flex-1 px-3 py-2 rounded-lg border border-sandstone-light bg-white text-sm font-serif text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-aged-gold"
               />
               <MicButton onTranscript={(t) => setQuestion((prev) => prev ? prev + ' ' + t : t)} size="sm" />
               <button
                 type="submit"
                 disabled={!question.trim() || askLoading}
-                className="px-4 py-2 rounded-lg text-base font-semibold bg-[#C4923A] text-white disabled:opacity-40"
+                className="px-4 py-2 rounded-lg text-base font-semibold bg-aged-gold text-white disabled:opacity-40"
               >
                 {askLoading ? '...' : 'Ask'}
               </button>
@@ -148,11 +148,11 @@ export default function DetourFlow({ detour, onReturn }: Props) {
           </form>
 
           {askResult && (
-            <div className="p-3 rounded-lg bg-[#C4923A]/10 border border-[#C4923A]/20 animate-fade-in">
-              <p className="text-[20px] font-serif text-[#2C2418] leading-relaxed">{askResult}</p>
+            <div className="p-3 rounded-lg bg-aged-gold/10 border border-aged-gold/20 animate-fade-in">
+              <p className="text-[20px] font-serif text-text-primary leading-relaxed">{askResult}</p>
               <button
                 onClick={() => setAskResult(null)}
-                className="text-xs text-[#6B5D4F] hover:underline mt-2"
+                className="text-xs text-text-secondary hover:underline mt-2"
               >
                 Ask another
               </button>
@@ -161,7 +161,7 @@ export default function DetourFlow({ detour, onReturn }: Props) {
 
           <button
             onClick={onReturn}
-            className="w-full py-3 rounded-lg text-base font-semibold bg-[#7A7A5E] text-white"
+            className="w-full py-3 rounded-lg text-base font-semibold bg-olive text-white"
           >
             Return to tour
           </button>

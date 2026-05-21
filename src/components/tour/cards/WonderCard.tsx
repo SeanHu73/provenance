@@ -16,7 +16,7 @@ export default function WonderCard({ stop, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <p className="text-2xl uppercase tracking-[0.14em] text-[#C4923A] font-semibold">
+      <p className="text-2xl uppercase tracking-[0.14em] text-aged-gold font-semibold">
         {stop.wonder?.questionType === 'opinion' ? "What’s your opinion?" : 'Chance to discuss...'}
       </p>
 
@@ -27,7 +27,7 @@ export default function WonderCard({ stop, onContinue }: Props) {
       <PhotoContent
         text={stop.wonder.question}
         photos={stop.wonder.photos || []}
-        textClass="text-[23px] leading-relaxed font-serif text-[#2C2418]"
+        textClass="text-[23px] leading-relaxed font-serif text-text-primary"
       />
 
       {/* Continue + Back */}
@@ -36,7 +36,7 @@ export default function WonderCard({ stop, onContinue }: Props) {
         <button
           onClick={onContinue}
           className="flex-1 py-3 rounded-lg text-base font-semibold text-white transition-colors"
-          style={{ backgroundColor: '#C4923A' }}
+          style={{ backgroundColor: 'var(--th-primary)' }}
         >
           We&apos;ve talked &mdash; show us
         </button>

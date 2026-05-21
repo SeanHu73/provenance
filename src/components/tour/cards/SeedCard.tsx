@@ -43,7 +43,7 @@ export default function SeedCard({ stop, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
       {/* Background section */}
-      <p className="text-2xl uppercase tracking-[0.14em] text-[#7A7A5E] font-semibold">
+      <p className="text-2xl uppercase tracking-[0.14em] text-olive font-semibold">
         Background...
       </p>
 
@@ -62,13 +62,13 @@ export default function SeedCard({ stop, onContinue }: Props) {
 
       {/* Divider */}
       {stop.notice.prompt && (
-        <div className="border-t border-[#D4BFA0] my-1" />
+        <div className="border-t border-sandstone-light my-1" />
       )}
 
       {/* Look Around section */}
       {stop.notice.prompt && (
         <>
-          <p className="text-2xl uppercase tracking-[0.14em] text-[#2B4C5E] font-semibold">
+          <p className="text-2xl uppercase tracking-[0.14em] text-accent-dark font-semibold">
             Look around...
           </p>
 
@@ -81,7 +81,7 @@ export default function SeedCard({ stop, onContinue }: Props) {
             photos={stop.notice.photos || []}
             legacyPhotoUrl={stop.notice.photoUrl}
             legacyPhotoCaption={stop.notice.photoCaption}
-            textClass="text-[23px] leading-relaxed font-serif text-[#2C2418]"
+            textClass="text-[23px] leading-relaxed font-serif text-text-primary"
           />
         </>
       )}
@@ -91,19 +91,19 @@ export default function SeedCard({ stop, onContinue }: Props) {
         <div className="flex flex-col items-center gap-3">
           <div className="relative w-16 h-16">
             <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
-              <circle cx="32" cy="32" r={radius} fill="none" stroke="#D4BFA0" strokeWidth="3" />
+              <circle cx="32" cy="32" r={radius} fill="none" stroke="var(--th-border)" strokeWidth="3" />
               <circle
-                cx="32" cy="32" r={radius} fill="none" stroke="#2B4C5E" strokeWidth="3"
+                cx="32" cy="32" r={radius} fill="none" stroke="var(--th-accent-dark)" strokeWidth="3"
                 strokeLinecap="round" strokeDasharray={circumference}
                 strokeDashoffset={circumference - progress}
                 className="transition-all duration-1000 ease-linear"
               />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-[#2B4C5E]">
+            <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-accent-dark">
               {secondsLeft}
             </span>
           </div>
-          <p className="text-xs text-[#6B5D4F]">
+          <p className="text-xs text-text-secondary">
             {timerDone ? 'Ready when you are' : 'Take a moment...'}
           </p>
         </div>
@@ -116,8 +116,8 @@ export default function SeedCard({ stop, onContinue }: Props) {
           onClick={onContinue}
           className={`flex-1 py-3 rounded-lg text-base font-semibold transition-all ${
             timerDone
-              ? 'bg-[#2B4C5E] text-white'
-              : 'bg-[#2B4C5E]/20 text-[#2B4C5E]'
+              ? 'bg-accent-dark text-white'
+              : 'bg-accent-dark/20 text-accent-dark'
           }`}
         >
           We&apos;ve looked &mdash; continue

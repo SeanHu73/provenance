@@ -23,20 +23,20 @@ export default function EqClosingCard({ tour, onComplete }: Props) {
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <p className="text-2xl uppercase tracking-[0.14em] text-[#C4923A] font-semibold">
+      <p className="text-2xl uppercase tracking-[0.14em] text-aged-gold font-semibold">
         Discussion Question
       </p>
 
       {/* The essential question — cardinal box */}
-      <div className="rounded-xl px-5 py-6 text-center border-3" style={{ backgroundColor: '#7A1A1A90', borderColor: '#C4923A' }}>
-        <p className="text-[28px] leading-relaxed font-serif font-bold" style={{ color: '#FFF8EE' }}>
+      <div className="rounded-xl px-5 py-6 text-center border-3" style={{ backgroundColor: 'var(--th-question-bg)', borderColor: 'var(--th-secondary)' }}>
+        <p className="text-[28px] leading-relaxed font-serif font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;{eq.question}&rdquo;
         </p>
       </div>
 
       {/* Final interpretation */}
       <div className="space-y-2">
-        <p className="text-[18px] font-semibold text-[#2C2418]">
+        <p className="text-[18px] font-semibold text-text-primary">
           {eq.finalReflectionPrompt}
         </p>
         <div className="flex gap-2">
@@ -45,7 +45,7 @@ export default function EqClosingCard({ tour, onComplete }: Props) {
             onChange={(e) => setReflection(e.target.value)}
             placeholder={eq.finalReflectionPlaceholder}
             rows={4}
-            className="flex-1 px-4 py-3 rounded-lg border-2 border-[#D4BFA0] bg-white text-[20px] font-serif text-[#2C2418] placeholder:text-[#6B5D4F]/40 focus:outline-none focus:border-[#C4923A]"
+            className="flex-1 px-4 py-3 rounded-lg border-2 border-sandstone-light bg-white text-[20px] font-serif text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-aged-gold"
           />
           <MicButton onTranscript={(t) => setReflection((prev) => prev ? prev + ' ' + t : t)} />
         </div>
@@ -53,7 +53,7 @@ export default function EqClosingCard({ tour, onComplete }: Props) {
 
       {/* Final reasoning */}
       <div className="space-y-2">
-        <p className="text-[18px] font-semibold text-[#2C2418]">
+        <p className="text-[18px] font-semibold text-text-primary">
           {eq.finalReasoningPrompt}
         </p>
         <div className="flex gap-2">
@@ -62,7 +62,7 @@ export default function EqClosingCard({ tour, onComplete }: Props) {
             onChange={(e) => setReasoning(e.target.value)}
             placeholder={eq.finalReasoningPlaceholder}
             rows={4}
-            className="flex-1 px-4 py-3 rounded-lg border-2 border-[#D4BFA0] bg-white text-[20px] font-serif text-[#2C2418] placeholder:text-[#6B5D4F]/40 focus:outline-none focus:border-[#C4923A]"
+            className="flex-1 px-4 py-3 rounded-lg border-2 border-sandstone-light bg-white text-[20px] font-serif text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-aged-gold"
           />
           <MicButton onTranscript={(t) => setReasoning((prev) => prev ? prev + ' ' + t : t)} />
         </div>
@@ -74,7 +74,7 @@ export default function EqClosingCard({ tour, onComplete }: Props) {
         <button
           onClick={() => onComplete(reflection.trim(), reasoning.trim())}
           disabled={!reflection.trim()}
-          className="flex-1 py-3 rounded-lg text-base font-semibold bg-[#7A7A5E] text-white disabled:opacity-30"
+          className="flex-1 py-3 rounded-lg text-base font-semibold bg-olive text-white disabled:opacity-30"
         >
           Continue
         </button>

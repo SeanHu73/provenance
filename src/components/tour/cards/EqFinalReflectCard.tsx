@@ -43,13 +43,13 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
 
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
-      <p className="text-2xl uppercase tracking-[0.14em] text-[#6B5D4F] font-semibold">
+      <p className="text-2xl uppercase tracking-[0.14em] text-text-secondary font-semibold">
         Final Reflections
       </p>
 
       {/* Cognitive slider */}
       <div className="space-y-3">
-        <p className="text-sm font-semibold text-[#2C2418]">
+        <p className="text-sm font-semibold text-text-primary">
           How much did this tour change your answer to the original question?
         </p>
         <input
@@ -59,9 +59,9 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
           onChange={(e) => setCognitiveSlider(parseFloat(e.target.value))}
           onMouseUp={() => setCognitiveReleased(true)}
           onTouchEnd={() => setCognitiveReleased(true)}
-          className="w-full accent-[#C4923A]"
+          className="w-full accent-aged-gold"
         />
-        <div className="flex justify-between text-[11px] text-[#6B5D4F]">
+        <div className="flex justify-between text-[11px] text-text-secondary">
           <span>Confirmed what we thought</span>
           <span>Shifted our thinking</span>
         </div>
@@ -72,7 +72,7 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
         <div className="space-y-6 animate-fade-in">
           {/* What shifted — multi-select */}
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-[#2C2418]">What changed?</p>
+            <p className="text-sm font-semibold text-text-primary">What changed?</p>
             <div className="flex flex-wrap gap-2">
               {WHAT_SHIFTED_OPTIONS.map((opt) => (
                 <button
@@ -80,8 +80,8 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
                   onClick={() => setWhatShifted(toggleChip(whatShifted, opt))}
                   className={`px-3 py-1.5 rounded-full text-xs transition-all ${
                     whatShifted.includes(opt)
-                      ? 'bg-[#C4923A]/20 border-2 border-[#C4923A] text-[#2C2418] font-semibold'
-                      : 'bg-[#F0E0C8] border-2 border-transparent text-[#6B5D4F] hover:border-[#D4BFA0]'
+                      ? 'bg-aged-gold/20 border-2 border-aged-gold text-text-primary font-semibold'
+                      : 'bg-sandstone border-2 border-transparent text-text-secondary hover:border-sandstone-light'
                   }`}
                 >
                   {opt}
@@ -92,7 +92,7 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
 
           {/* Reasoning source — multi-select */}
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-[#2C2418]">Why did it change or not?</p>
+            <p className="text-sm font-semibold text-text-primary">Why did it change or not?</p>
             <div className="flex flex-wrap gap-2">
               {REASONING_SOURCE_OPTIONS.map((opt) => (
                 <button
@@ -100,8 +100,8 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
                   onClick={() => setReasoningSource(toggleChip(reasoningSource, opt))}
                   className={`px-3 py-1.5 rounded-full text-xs transition-all ${
                     reasoningSource.includes(opt)
-                      ? 'bg-[#C4923A]/20 border-2 border-[#C4923A] text-[#2C2418] font-semibold'
-                      : 'bg-[#F0E0C8] border-2 border-transparent text-[#6B5D4F] hover:border-[#D4BFA0]'
+                      ? 'bg-aged-gold/20 border-2 border-aged-gold text-text-primary font-semibold'
+                      : 'bg-sandstone border-2 border-transparent text-text-secondary hover:border-sandstone-light'
                   }`}
                 >
                   {opt}
@@ -112,7 +112,7 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
 
           {/* Perceptual slider */}
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-[#2C2418]">
+            <p className="text-sm font-semibold text-text-primary">
               How much did this change how you see this place?
             </p>
             <input
@@ -120,9 +120,9 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
               min="0" max="1" step="0.01"
               value={perceptualSlider}
               onChange={(e) => setPerceptualSlider(parseFloat(e.target.value))}
-              className="w-full accent-[#C4923A]"
+              className="w-full accent-aged-gold"
             />
-            <div className="flex justify-between text-[11px] text-[#6B5D4F]">
+            <div className="flex justify-between text-[11px] text-text-secondary">
               <span>Same as before</span>
               <span>I see it completely differently now</span>
             </div>
@@ -138,7 +138,7 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
                 whatShifted.length > 0 ? whatShifted : null,
                 reasoningSource.length > 0 ? reasoningSource : null
               )}
-              className="flex-1 py-3 rounded-lg text-base font-semibold bg-[#6B5D4F] text-white"
+              className="flex-1 py-3 rounded-lg text-base font-semibold bg-text-secondary text-white"
             >
               Continue
             </button>

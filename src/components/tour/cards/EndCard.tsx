@@ -12,19 +12,19 @@ export default function EndCard() {
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       <div className="text-center space-y-2">
-        <p className="text-xs uppercase tracking-[0.14em] text-[#7A7A5E] font-semibold">
+        <p className="text-xs uppercase tracking-[0.14em] text-olive font-semibold">
           Tour complete
         </p>
-        <h2 className="text-xl font-serif font-bold text-[#2C2418]">{tour.title}</h2>
-        <p className="text-sm text-[#6B5D4F]">
+        <h2 className="text-xl font-serif font-bold text-text-primary">{tour.title}</h2>
+        <p className="text-sm text-text-secondary">
           {session.completedStops.length} stop{session.completedStops.length !== 1 ? 's' : ''} explored
         </p>
       </div>
 
       {/* Reflection summary */}
       {session.reflections.length > 0 && (
-        <div className="p-3 rounded-lg bg-[#F0E0C8] border border-[#D4BFA0]">
-          <p className="text-xs text-[#6B5D4F] font-semibold uppercase tracking-wide mb-2">
+        <div className="p-3 rounded-lg bg-sandstone border border-sandstone-light">
+          <p className="text-xs text-text-secondary font-semibold uppercase tracking-wide mb-2">
             Your reflections
           </p>
           <div className="flex gap-1">
@@ -39,7 +39,7 @@ export default function EndCard() {
               />
             ))}
           </div>
-          <div className="flex justify-between text-[10px] text-[#6B5D4F] mt-1">
+          <div className="flex justify-between text-[10px] text-text-secondary mt-1">
             <span>Confirmed</span>
             <span>Shifted</span>
           </div>
@@ -48,45 +48,45 @@ export default function EndCard() {
 
       {/* Learning arc takeaway */}
       {tour.essentialQuestion && session.essentialQuestionResponses && (
-        <div className="p-4 rounded-lg bg-white border border-[#D4BFA0] space-y-3">
-          <p className="text-xs text-[#C4923A] font-semibold uppercase tracking-wide">
+        <div className="p-4 rounded-lg bg-white border border-sandstone-light space-y-3">
+          <p className="text-xs text-aged-gold font-semibold uppercase tracking-wide">
             Your learning arc
           </p>
-          <p className="text-sm font-serif font-semibold text-[#2C2418]">
+          <p className="text-sm font-serif font-semibold text-text-primary">
             &ldquo;{tour.essentialQuestion.question}&rdquo;
           </p>
           <div className="space-y-1">
-            <p className="text-[10px] text-[#6B5D4F] uppercase tracking-wide">Before</p>
-            <p className="text-sm font-serif text-[#2C2418]">
+            <p className="text-[10px] text-text-secondary uppercase tracking-wide">Before</p>
+            <p className="text-sm font-serif text-text-primary">
               {session.essentialQuestionResponses.initialTheory}
             </p>
-            <p className="text-xs text-[#6B5D4F] italic">
+            <p className="text-xs text-text-secondary italic">
               Because: {session.essentialQuestionResponses.initialReasoning}
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] text-[#6B5D4F] uppercase tracking-wide">After</p>
-            <p className="text-sm font-serif text-[#2C2418]">
+            <p className="text-[10px] text-text-secondary uppercase tracking-wide">After</p>
+            <p className="text-sm font-serif text-text-primary">
               {session.essentialQuestionResponses.finalReflection}
             </p>
           </div>
           {/* Slider visualization */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-[10px] text-[#6B5D4F]">Thinking shifted</p>
-              <div className="h-1.5 bg-[#D4BFA0] rounded-full mt-1 relative">
+              <p className="text-[10px] text-text-secondary">Thinking shifted</p>
+              <div className="h-1.5 bg-sandstone-light rounded-full mt-1 relative">
                 <div
-                  className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#C4923A] border border-white shadow"
+                  className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-aged-gold border border-white shadow"
                   style={{ left: `${session.essentialQuestionResponses.finalCognitiveSlider * 100}%` }}
                 />
               </div>
             </div>
             {session.essentialQuestionResponses.finalPerceptualSlider != null && (
               <div>
-                <p className="text-[10px] text-[#6B5D4F]">Place looks different</p>
-                <div className="h-1.5 bg-[#D4BFA0] rounded-full mt-1 relative">
+                <p className="text-[10px] text-text-secondary">Place looks different</p>
+                <div className="h-1.5 bg-sandstone-light rounded-full mt-1 relative">
                   <div
-                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#C4923A] border border-white shadow"
+                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-aged-gold border border-white shadow"
                     style={{ left: `${session.essentialQuestionResponses.finalPerceptualSlider * 100}%` }}
                   />
                 </div>
@@ -99,20 +99,20 @@ export default function EndCard() {
       {/* Banked questions */}
       {banked.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs text-[#6B5D4F] font-semibold uppercase tracking-wide">
+          <p className="text-xs text-text-secondary font-semibold uppercase tracking-wide">
             Questions we couldn&apos;t answer ({banked.length})
           </p>
           <ul className="space-y-2">
             {banked.map((q) => (
               <li
                 key={q.id}
-                className="p-3 rounded-lg bg-white border border-[#D4BFA0] text-sm font-serif text-[#2C2418]"
+                className="p-3 rounded-lg bg-white border border-sandstone-light text-sm font-serif text-text-primary"
               >
                 &ldquo;{q.questionText}&rdquo;
               </li>
             ))}
           </ul>
-          <p className="text-xs text-[#6B5D4F] italic">
+          <p className="text-xs text-text-secondary italic">
             These questions help us understand what visitors are curious about.
             Thank you for asking them.
           </p>
@@ -122,7 +122,7 @@ export default function EndCard() {
       {/* Exit */}
       <button
         onClick={endTour}
-        className="w-full py-3 rounded-lg text-base font-semibold bg-[#5C4A35] text-[#FFF8EE]"
+        className="w-full py-3 rounded-lg text-base font-semibold bg-journal text-warm-white"
       >
         Explore on your own
       </button>

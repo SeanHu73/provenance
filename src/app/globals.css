@@ -1,21 +1,99 @@
-@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* ============================================================
+   THEME SYSTEM
+   Two themes — "Ledger" and "Folio" — are selected via the
+   data-theme attribute on <html>. Every themeable value lives in
+   a --th-* custom property. Components reference these (directly,
+   or through the legacy aliases / Tailwind tokens below), so
+   switching data-theme re-resolves the whole UI instantly.
+   ============================================================ */
+
+/* ---- Ledger (default) — 1970s New Journalism ---------------- */
+:root,
+[data-theme='ledger'] {
+  --th-primary: #8B2538;          /* cranberry — brand, buttons, accents */
+  --th-primary-hover: #A33147;
+  --th-secondary: #B8752B;        /* warm amber — secondary accent */
+  --th-secondary-hover: #CD8633;
+  --th-accent-dark: #7E5320;      /* dark amber — section headings, timer */
+  --th-olive: #A6A67C;            /* light accent — completed states, borders */
+  --th-journal: #4A3528;          /* journal cover / dark utility surface */
+  --th-question-bg: #6E1F2E90;    /* essential-question box (translucent) */
+  --th-question-red: #A23142;     /* the "?" question button */
+
+  --th-text: #3A3A32;             /* body text */
+  --th-text-muted: #6B6B61;       /* labels, secondary text */
+  --th-text-faint: #8A8A8C;       /* muted / disabled text */
+
+  --th-surface: #FFFFFF;          /* card interior, light text on dark */
+  --th-surface-alt: #F6F3F4;      /* panels, progress track */
+  --th-bg: #E9E4E2;               /* page background / card edge */
+  --th-bg-dark: #DAD4D1;
+  --th-border: #D8D8D8;           /* borders, dividers, scrollbars */
+
+  --th-font-display: 'DM Serif Display', 'Georgia', serif;
+  --th-font-body: 'Outfit', system-ui, sans-serif;
+
+  --th-radius-lg: 0.625rem;
+  --th-radius-xl: 0.875rem;
+  --th-radius-2xl: 1rem;
+}
+
+/* ---- Folio — 1950s Mid-Century ------------------------------ */
+[data-theme='folio'] {
+  --th-primary: #A73848;          /* cranberry — brand, buttons, accents */
+  --th-primary-hover: #BC4757;
+  --th-secondary: #3A8D89;        /* teal — secondary accent */
+  --th-secondary-hover: #46A09B;
+  --th-accent-dark: #2C6B68;      /* dark teal — section headings, timer */
+  --th-olive: #6A8A82;            /* light accent — completed states, borders */
+  --th-journal: #25342F;          /* journal cover / dark utility surface */
+  --th-question-bg: #7E2A3890;    /* essential-question box (translucent) */
+  --th-question-red: #A73848;     /* the "?" question button */
+
+  --th-text: #2D3D38;
+  --th-text-muted: #57605B;
+  --th-text-faint: #5D5D5E;
+
+  --th-surface: #FFFFFF;
+  --th-surface-alt: #F6F0F6;
+  --th-bg: #E7E1E7;
+  --th-bg-dark: #D9D2D9;
+  --th-border: #D5D5D5;
+
+  --th-font-display: 'Cormorant Garamond', 'Georgia', serif;
+  --th-font-body: 'Space Grotesk', system-ui, sans-serif;
+
+  --th-radius-lg: 0.25rem;
+  --th-radius-xl: 0.375rem;
+  --th-radius-2xl: 0.5rem;
+}
+
+/* ---- Legacy aliases ----------------------------------------
+   The original palette names are still consumed by Tailwind
+   tokens and a handful of components. They forward to the
+   themeable layer, declared once so they resolve per-theme. */
 :root {
-  --sandstone: #C4A882;
-  --sandstone-light: #D4BFA0;
-  --sandstone-dark: #A88B65;
-  --mosaic-blue: #1B3A5C;
-  --mosaic-blue-light: #2A4F7A;
-  --aged-gold: #B8943E;
-  --aged-gold-light: #D4AD52;
-  --cream: #F5F0E8;
-  --cream-dark: #EBE3D6;
-  --mosaic-teal: #2A7B6F;
-  --warm-white: #FAF8F4;
-  --text-primary: #2C2419;
-  --text-secondary: #6B5D4F;
-  --text-muted: #9B8E7E;
+  --cream: var(--th-bg);
+  --cream-dark: var(--th-bg-dark);
+  --warm-white: var(--th-surface);
+  --sandstone: var(--th-surface-alt);
+  --sandstone-light: var(--th-border);
+  --sandstone-dark: var(--th-border);
+  --mosaic-blue: var(--th-primary);
+  --mosaic-blue-light: var(--th-primary-hover);
+  --aged-gold: var(--th-primary);
+  --aged-gold-light: var(--th-primary-hover);
+  --mosaic-teal: var(--th-secondary);
+  --text-primary: var(--th-text);
+  --text-secondary: var(--th-text-muted);
+  --text-muted: var(--th-text-faint);
+  --olive: var(--th-olive);
+  --accent-dark: var(--th-accent-dark);
+  --journal: var(--th-journal);
+  --question-red: var(--th-question-red);
 }
 
 @theme inline {
@@ -33,14 +111,21 @@
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
-  --font-serif: 'Libre Baskerville', 'Georgia', serif;
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --color-olive: var(--olive);
+  --color-accent-dark: var(--accent-dark);
+  --color-journal: var(--journal);
+  --color-question-red: var(--question-red);
+  --font-serif: var(--th-font-display);
+  --font-sans: var(--th-font-body);
+  --radius-lg: var(--th-radius-lg);
+  --radius-xl: var(--th-radius-xl);
+  --radius-2xl: var(--th-radius-2xl);
 }
 
 body {
-  background: var(--cream);
-  color: var(--text-primary);
-  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--th-bg);
+  color: var(--th-text);
+  font-family: var(--th-font-body);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
   height: 100dvh;
@@ -108,8 +193,8 @@ body {
 /* Tour card scrollbar — thin but visible */
 .tour-scroll::-webkit-scrollbar { width: 4px; }
 .tour-scroll::-webkit-scrollbar-track { background: transparent; }
-.tour-scroll::-webkit-scrollbar-thumb { background: #D4BFA0; border-radius: 2px; }
-.tour-scroll { scrollbar-width: thin; scrollbar-color: #D4BFA0 transparent; }
+.tour-scroll::-webkit-scrollbar-thumb { background: var(--th-border); border-radius: 2px; }
+.tour-scroll { scrollbar-width: thin; scrollbar-color: var(--th-border) transparent; }
 
 /* Scrollbar */
 .inquiry-scroll::-webkit-scrollbar { width: 3px; }

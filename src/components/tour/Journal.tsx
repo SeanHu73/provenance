@@ -154,7 +154,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
   return (
     <div
       className="fixed inset-0 z-40 flex flex-col"
-      style={{ backgroundColor: '#FFF8EE' }}
+      style={{ backgroundColor: 'var(--th-surface)' }}
     >
       {/* Title bar — centered, above progress */}
       <div className="shrink-0 flex items-center justify-between px-4 py-2">
@@ -162,7 +162,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
           {canGoBack && phase !== 'end' && (
             <button
               onClick={goBack}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[#6B5D4F] hover:bg-[#D4BFA0]/30"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:bg-sandstone-light/30"
               title="Go back"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -171,11 +171,11 @@ export default function Journal({ onMapPeek }: JournalProps) {
             </button>
           )}
         </div>
-        <p className="text-lg font-bold text-[#2C2418] text-center">{tour.title}</p>
+        <p className="text-lg font-bold text-text-primary text-center">{tour.title}</p>
         <div className="w-8">
           <button
             onClick={endTour}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[#6B5D4F] hover:bg-[#D4BFA0]/30 text-sm"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:bg-sandstone-light/30 text-sm"
             title="Exit tour"
           >
             &times;
@@ -187,7 +187,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
       {showProgress && <ProgressBar tour={tour} session={session} />}
 
       {/* Card area — scrollable with slide transitions */}
-      <div className="flex-1 overflow-hidden relative" style={{ backgroundColor: '#E8D8C0' }}>
+      <div className="flex-1 overflow-hidden relative" style={{ backgroundColor: 'var(--th-bg)' }}>
         {/* Background photo (fixed behind cards, always visible when loaded) */}
         {bgPhoto && (
           <div
@@ -219,12 +219,12 @@ export default function Journal({ onMapPeek }: JournalProps) {
               showBgPhoto
                 ? phase === 'reveal'
                   ? blurSupported
-                    ? 'bg-[#FFF8EE]/[0.85] backdrop-blur-[10px]'
-                    : 'bg-[#FFF8EE]/[0.9]'
+                    ? 'bg-warm-white/[0.85] backdrop-blur-[10px]'
+                    : 'bg-warm-white/[0.9]'
                   : blurSupported
-                    ? 'bg-[#FFF8EE]/70 backdrop-blur-[12px]'
-                    : 'bg-[#FFF8EE]/[0.8]'
-                : 'bg-[#FFF8EE]'
+                    ? 'bg-warm-white/70 backdrop-blur-[12px]'
+                    : 'bg-warm-white/[0.8]'
+                : 'bg-warm-white'
             }`}
             >
 
@@ -299,13 +299,13 @@ export default function Journal({ onMapPeek }: JournalProps) {
             {currentStop.isFinalStop ? (
               <>
                 {currentStop.reveal.bridgeText && (
-                  <p className="text-[18px] text-[#6B5D4F] italic leading-relaxed">
+                  <p className="text-[18px] text-text-secondary italic leading-relaxed">
                     <FormattedText text={currentStop.reveal.bridgeText} />
                   </p>
                 )}
                 <button
                   onClick={advanceStop}
-                  className="w-full py-3 rounded-lg text-sm font-semibold bg-[#7A7A5E] text-white"
+                  className="w-full py-3 rounded-lg text-sm font-semibold bg-olive text-white"
                 >
                   Continue
                 </button>
@@ -363,7 +363,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
       {/* Scroll indicator — large arrow above footer */}
       {canScrollMore && (
         <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 pointer-events-none animate-gentle-pulse">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2C2418" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.5">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--th-text)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.5">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </div>
@@ -371,10 +371,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
       {/* Footer bar — Journal + Question buttons */}
       {phase !== 'end' && (
-        <div className="shrink-0 px-4 py-3 border-t flex items-center justify-center gap-3" style={{ borderColor: '#D4BFA0' }}>
+        <div className="shrink-0 px-4 py-3 border-t flex items-center justify-center gap-3" style={{ borderColor: 'var(--th-border)' }}>
           <button
             onClick={() => setShowJournal(true)}
-            className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-base font-semibold text-[#5C4A35] bg-[#D4BFA0]/40 hover:bg-[#D4BFA0]/60 transition-colors border-2 border-[#7A7A5E]"
+            className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-base font-semibold text-journal bg-sandstone-light/40 hover:bg-sandstone-light/60 transition-colors border-2 border-olive"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
@@ -384,7 +384,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
           </button>
           <button
             onClick={() => setShowQuestionInput(true)}
-            className="flex items-center justify-center px-5 py-3.5 rounded-xl text-2xl font-bold text-[#8B3A3A] bg-[#8B3A3A]/10 hover:bg-[#8B3A3A]/20 transition-colors border-2 border-[#7A7A5E]"
+            className="flex items-center justify-center px-5 py-3.5 rounded-xl text-2xl font-bold text-question-red bg-question-red/10 hover:bg-question-red/20 transition-colors border-2 border-olive"
             title="Ask a question"
           >
             ?
@@ -397,13 +397,13 @@ export default function Journal({ onMapPeek }: JournalProps) {
         <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowQuestionInput(false)}>
           <div className="absolute inset-0 bg-black/40" />
           <div
-            className="relative w-full max-w-lg bg-[#FFF8EE] rounded-t-2xl shadow-2xl animate-slide-up flex flex-col"
+            className="relative w-full max-w-lg bg-warm-white rounded-t-2xl shadow-2xl animate-slide-up flex flex-col"
             style={{ height: '50vh' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: '#D4BFA0' }}>
-              <h3 className="text-base font-semibold text-[#2C2418]">Ask a question</h3>
-              <button onClick={() => setShowQuestionInput(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-[#6B5D4F] hover:bg-[#D4BFA0]/30 text-lg">&times;</button>
+            <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: 'var(--th-border)' }}>
+              <h3 className="text-base font-semibold text-text-primary">Ask a question</h3>
+              <button onClick={() => setShowQuestionInput(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:bg-sandstone-light/30 text-lg">&times;</button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4">
               <QuestionInputPanel
@@ -449,7 +449,7 @@ function QuestionInputPanel({ onSubmit }: { onSubmit: () => void }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-[#6B5D4F] leading-relaxed">
+      <p className="text-sm text-text-secondary leading-relaxed">
         Something specific or an open-ended question to be posed to the community.
       </p>
       <div className="flex gap-2">
@@ -458,7 +458,7 @@ function QuestionInputPanel({ onSubmit }: { onSubmit: () => void }) {
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="What are you curious about?"
           rows={3}
-          className="flex-1 px-4 py-3 rounded-lg border-2 border-[#D4BFA0] bg-white text-[18px] font-serif text-[#2C2418] placeholder:text-[#6B5D4F]/40 focus:outline-none focus:border-[#C4923A]"
+          className="flex-1 px-4 py-3 rounded-lg border-2 border-sandstone-light bg-white text-[18px] font-serif text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-aged-gold"
         />
         <MicButton onTranscript={(t) => setQuestion((prev) => prev ? prev + ' ' + t : t)} />
       </div>
@@ -466,13 +466,13 @@ function QuestionInputPanel({ onSubmit }: { onSubmit: () => void }) {
         <button
           onClick={handleAdd}
           disabled={!question.trim()}
-          className="flex-1 py-3 rounded-lg text-base font-semibold bg-[#C4923A] text-white disabled:opacity-30"
+          className="flex-1 py-3 rounded-lg text-base font-semibold bg-aged-gold text-white disabled:opacity-30"
         >
           {added ? '✓ Added' : 'Add question'}
         </button>
         <button
           onClick={onSubmit}
-          className="px-4 py-3 rounded-lg text-base font-semibold text-[#6B5D4F] border border-[#D4BFA0]"
+          className="px-4 py-3 rounded-lg text-base font-semibold text-text-secondary border border-sandstone-light"
         >
           Done
         </button>
