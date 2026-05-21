@@ -37,6 +37,7 @@ import {
   loadTourSession,
   saveTourSession,
   clearTourSession,
+  getLogicalStops,
 } from '@/lib/tour-session';
 
 interface TourContextValue {
@@ -113,7 +114,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
     : null;
 
   const isLastStop = tour && session
-    ? session.currentStopIndex >= tour.stops.length - 1
+    ? tour.unstructuredMode
+      ? (session.completionOrder || []).length + 1 >= getLogicalStops(tour).length
+      : session.currentStopIndex >= tour.stops.length - 1
     : false;
 
   const startTour = useCallback((t: Tour) => {
