@@ -78,32 +78,68 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
           {tab === 'stops' && (
             <div className="space-y-3">
               {(() => {
-                // For unstructured tours, show stops in completion order first, then upcoming
                 type StopEntry = { stop: Tour['stops'][number]; i: number };
                 let stopsToShow: StopEntry[];
                 if (tour.unstructuredMode) {
                   const order: string[] = session.completionOrder || [];
-                  const completedEntries: StopEntry[] = order
-                    .map(id => {
-                      const idx = tour.stops.findIndex(s => s.id === id);
-                      return idx >= 0 ? { stop: tour.stops[idx], i: idx } : null;
-                    })
-                    .filter(Boolean) as StopEntry[];
-                  const completedSet = new Set(order);
+                  const nonStopPhases = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional',
+                    'eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end',
+                    'unstructured_map', 'midway_checkin'];
+                  const isInStopPhase = !nonStopPhases.includes(session.currentPhase);
+                  const usedIndices = new Set<number>();
+                  const orderedEntries: StopEntry[] = [];
+                  // Completed stops in visit order (completionOrder has logical/leader IDs)
+                  for (const logicalId of order) {
+                    const leaderIdx = tour.stops.findIndex(s => s.id === logicalId);
+                    if (leaderIdx < 0) continue;
+                    const group = tour.stops[leaderIdx].mergeGroup;
+                    if (group) {
+                      tour.stops.forEach((s, j) => {
+                        if (s.mergeGroup === group && !usedIndices.has(j)) {
+                          orderedEntries.push({ stop: s, i: j });
+                          usedIndices.add(j);
+                        }
+                      });
+                    } else if (!usedIndices.has(leaderIdx)) {
+                      orderedEntries.push({ stop: tour.stops[leaderIdx], i: leaderIdx });
+                      usedIndices.add(leaderIdx);
+                    }
+                  }
+                  // Current stop (if visiting) appears right after completed
+                  if (isInStopPhase && session.currentStopIndex >= 0 && !usedIndices.has(session.currentStopIndex)) {
+                    orderedEntries.push({ stop: tour.stops[session.currentStopIndex], i: session.currentStopIndex });
+                    usedIndices.add(session.currentStopIndex);
+                  }
+                  // Remaining in authored order
                   const remainingEntries: StopEntry[] = tour.stops
-                    .map((stop, i) => ({ stop, i }))
-                    .filter(({ stop }) => !completedSet.has(stop.id));
-                  stopsToShow = [...completedEntries, ...remainingEntries];
+                    .map((s, j) => ({ stop: s, i: j }))
+                    .filter(({ i: j }) => !usedIndices.has(j));
+                  stopsToShow = [...orderedEntries, ...remainingEntries];
                 } else {
                   stopsToShow = tour.stops.map((stop, i) => ({ stop, i }));
                 }
                 return stopsToShow.map(({ stop, i }) => {
                 const isCompleted = completedIds.has(stop.id);
-                const isInStop = !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end', 'unstructured_map', 'midway_checkin'].includes(session.currentPhase);
+                const isInStop = !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional',
+                  'eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end',
+                  'unstructured_map', 'midway_checkin'].includes(session.currentPhase);
                 const isCurrent = i === currentIdx && isInStop;
                 const isUpcoming = !isCompleted && !isCurrent;
                 const isExpanded = expandedStopId === stop.id;
                 const thumbnail = getStopThumbnail(stop);
+
+                // Visit-order number for unstructured mode
+                let visitNum: number | null = null;
+                if (tour.unstructuredMode) {
+                  const order = session.completionOrder || [];
+                  const logicalId = stop.mergeGroup
+                    ? (tour.stops.find(s => s.mergeGroup === stop.mergeGroup)?.id ?? stop.id)
+                    : stop.id;
+                  const posInOrder = order.indexOf(logicalId);
+                  if (posInOrder >= 0) visitNum = posInOrder + 1;
+                  else if (isCurrent) visitNum = order.length + 1;
+                }
+                const stopLabel = (tour.unstructuredMode && visitNum) ? `Stop ${visitNum}` : `Stop ${i + 1}`;
 
                 // Questions asked at this stop
                 const stopQuestions = session.bankedQuestions.filter((q) => q.askedAfterStopId === stop.id);
@@ -123,12 +159,16 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={thumbnail} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-sm font-bold text-sandstone-light">{i + 1}</div>
+                          <div className="w-full h-full flex items-center justify-center text-sm font-bold text-sandstone-light">
+                            {(tour.unstructuredMode && visitNum) ? visitNum : i + 1}
+                          </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-semibold truncate ${isUpcoming ? 'text-text-secondary/40' : isCurrent ? 'text-aged-gold' : 'text-text-primary'}`}>
-                          {isUpcoming ? `Stop ${i + 1}` : (stop.title || `Stop ${i + 1}`)}
+                          {isUpcoming
+                            ? (tour.unstructuredMode ? 'Upcoming' : stopLabel)
+                            : (stop.title || stopLabel)}
                         </p>
                         <p className="text-[10px] text-text-secondary">
                           {isCurrent ? 'In progress' : isCompleted ? 'Completed' : 'Upcoming'}

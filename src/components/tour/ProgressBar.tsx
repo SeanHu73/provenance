@@ -85,7 +85,7 @@ function UnstructuredProgressBar({ tour, session }: Props) {
       >
         {/* Fixed label */}
         <div className="shrink-0 pl-3 pr-2 py-2.5">
-          <span className="text-xs font-medium whitespace-nowrap" style={{ color: 'var(--th-text-secondary)' }}>
+          <span className="text-xs font-medium whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
             {label}
           </span>
         </div>
@@ -185,7 +185,7 @@ function LinearProgressBar({ tour, session }: Props) {
       >
         {/* Fixed label */}
         <div className="shrink-0 pl-3 pr-2 py-2.5">
-          <span className="text-xs font-medium whitespace-nowrap" style={{ color: 'var(--th-text-secondary)' }}>
+          <span className="text-xs font-medium whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
             {label}
           </span>
         </div>
@@ -206,9 +206,9 @@ function LinearProgressBar({ tour, session }: Props) {
                 className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold text-white"
                 style={{
                   backgroundColor: isIntroActive
-                    ? 'var(--th-aged-gold)'
+                    ? 'var(--aged-gold)'
                     : isIntroDone
-                      ? 'var(--th-aged-gold)'
+                      ? 'var(--aged-gold)'
                       : 'color-mix(in srgb, var(--th-border) 60%, transparent)',
                   minWidth: isIntroActive ? undefined : '20px',
                   height: '20px',
@@ -240,7 +240,7 @@ function LinearProgressBar({ tour, session }: Props) {
             className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold text-white"
             style={{
               backgroundColor: isClosing
-                ? 'var(--th-aged-gold)'
+                ? 'var(--aged-gold)'
                 : 'color-mix(in srgb, var(--th-border) 60%, transparent)',
               minWidth: '20px',
               height: '20px',
@@ -255,7 +255,7 @@ function LinearProgressBar({ tour, session }: Props) {
       <div className="shrink-0 w-full h-2" style={{ backgroundColor: 'color-mix(in srgb, var(--th-border) 40%, transparent)' }}>
         <div
           className="h-full transition-all duration-500 ease-out rounded-r-full"
-          style={{ width: `${pct}%`, backgroundColor: 'var(--th-aged-gold)' }}
+          style={{ width: `${pct}%`, backgroundColor: 'var(--aged-gold)' }}
         />
       </div>
 
@@ -281,7 +281,7 @@ const Pill = React.forwardRef<
       <div
         ref={ref}
         className="shrink-0 rounded-full transition-all duration-200"
-        style={{ width: '20px', height: '20px', backgroundColor: 'var(--th-aged-gold)' }}
+        style={{ width: '20px', height: '20px', backgroundColor: 'var(--aged-gold)' }}
       />
     );
   }
@@ -291,7 +291,7 @@ const Pill = React.forwardRef<
       <div
         ref={ref}
         className="shrink-0 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-bold"
-        style={{ backgroundColor: 'var(--th-aged-gold)', maxWidth: '160px', color: 'rgba(0,0,0,0.8)' }}
+        style={{ backgroundColor: 'var(--aged-gold)', maxWidth: '160px', color: 'rgba(0,0,0,0.8)' }}
       >
         <span className="shrink-0">{visitNumber}</span>
         {displayName && <span className="truncate">{displayName}</span>}
@@ -337,11 +337,11 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--th-border)' }}>
-          <p className="text-sm font-semibold" style={{ color: 'var(--th-text-primary)' }}>Tour Progress</p>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Tour Progress</p>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-sandstone-light/30"
-            style={{ color: 'var(--th-text-secondary)' }}
+            style={{ color: 'var(--text-secondary)' }}
           >
             &times;
           </button>

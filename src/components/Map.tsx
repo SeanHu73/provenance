@@ -373,19 +373,22 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
           <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
             {/* Pulsing ring — only for selected, sits behind the circle */}
             {data.isSelectedOverlay && (
-              <span
-                className="absolute inline-flex rounded-full animate-ping"
+              <div
+                className="absolute"
                 style={{
                   width: size + 18,
                   height: size + 18,
                   top: '50%',
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
-                  background: '#F59E0B',
-                  opacity: 0.45,
                   pointerEvents: 'none',
                 }}
-              />
+              >
+                <span
+                  className="absolute inset-0 rounded-full animate-ping"
+                  style={{ background: '#F59E0B', opacity: 0.45 }}
+                />
+              </div>
             )}
             {/* Pin circle */}
             <div
