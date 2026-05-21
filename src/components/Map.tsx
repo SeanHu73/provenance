@@ -7,6 +7,7 @@ import { Pin, Stop, Tour } from '@/lib/types';
 const MEMORIAL_CHURCH = { lat: 37.42700, lng: -122.17015 };
 const MAX_AUTO_ZOOM = 17;
 const NEAR_THRESHOLD_M = 300;
+const SHOW_PIN_RADIUS_M = 8047; // 5 miles
 
 export interface TourPinData {
   tour: Tour;
@@ -43,7 +44,9 @@ function haversineDistanceM(a: { lat: number; lng: number }, b: { lat: number; l
 }
 
 function formatDist(m: number): string {
-  return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`;
+  const miles = m * 0.000621371;
+  if (miles < 0.1) return `${Math.round(m * 3.28084)} ft`;
+  return `${miles.toFixed(1)} mi`;
 }
 
 function PinMarker({ pin, isSelected, onClick }: { pin: Pin; isSelected: boolean; onClick: () => void }) {
@@ -184,26 +187,31 @@ function MapInitializer({
           ...(tourPins ?? []).filter((tp) => tp.tour.location).map((tp) => tp.tour.location!),
         ];
 
-        if (allLocs.length === 0) {
+        // Fall back to the church if pins haven't loaded yet (async Firebase fetch).
+        const targetLoc =
+          allLocs.length > 0
+            ? allLocs.reduce((best, loc) =>
+                haversineDistanceM(userPos, loc) < haversineDistanceM(userPos, best) ? loc : best
+              )
+            : MEMORIAL_CHURCH;
+
+        const distM = haversineDistanceM(userPos, targetLoc);
+
+        if (distM > SHOW_PIN_RADIUS_M) {
+          // More than 5 miles away — just centre on the user.
           map.panTo(userPos);
           map.setZoom(MAX_AUTO_ZOOM);
-          return;
+        } else {
+          // Scale zoom to show user + target pin comfortably.
+          // At 50 m → zoom 17; every doubling of distance drops one zoom level.
+          const zoom = Math.min(MAX_AUTO_ZOOM, Math.max(12, Math.round(17 - Math.log2(Math.max(distM, 50) / 50))));
+          const center =
+            distM < 30
+              ? userPos
+              : { lat: (userPos.lat + targetLoc.lat) / 2, lng: (userPos.lng + targetLoc.lng) / 2 };
+          map.panTo(center);
+          map.setZoom(zoom);
         }
-
-        const nearest = allLocs.reduce((best, loc) =>
-          haversineDistanceM(userPos, loc) < haversineDistanceM(userPos, best) ? loc : best
-        );
-
-        const distM = haversineDistanceM(userPos, nearest);
-        // Scale zoom so both user and nearest pin are comfortably visible.
-        // At 50 m distance → zoom 17; every doubling of distance drops one zoom level.
-        const zoom = Math.min(MAX_AUTO_ZOOM, Math.max(12, Math.round(17 - Math.log2(Math.max(distM, 50) / 50))));
-        const center =
-          distM < 30
-            ? userPos
-            : { lat: (userPos.lat + nearest.lat) / 2, lng: (userPos.lng + nearest.lng) / 2 };
-        map.panTo(center);
-        map.setZoom(zoom);
       },
       () => onLocationUpdate(null),
       { enableHighAccuracy: true, timeout: 8000 }
