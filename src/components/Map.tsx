@@ -143,25 +143,44 @@ function UserLocationTracker({ following, onLocationUpdate }: { following: boole
 
 function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
   if (!tour.location) return null;
+  const size = 60;
   return (
     <AdvancedMarker position={tour.location} onClick={onClick} zIndex={5}>
-      <div className="flex flex-col items-center">
-        <div
-          className="flex items-center justify-center rounded-full shadow-lg"
-          style={{
-            width: 44,
-            height: 44,
-            background: 'var(--th-primary)',
-            border: '3px solid var(--th-surface-alt)',
-            boxShadow: '0 0 0 3px color-mix(in srgb, var(--th-primary) 25%, transparent), 0 3px 10px rgba(0,0,0,0.3)',
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--th-surface-alt)" stroke="none">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/>
-          </svg>
+      <div className="flex flex-col items-center cursor-pointer">
+        {/* Pin with an attention-drawing pulse */}
+        <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+          {/* Pulsing ring — "tap me" cue */}
+          <span
+            className="absolute inline-flex h-full w-full rounded-full animate-ping"
+            style={{ background: 'var(--th-primary)', opacity: 0.4 }}
+          />
+          {/* Pin body */}
+          <div
+            className="relative flex items-center justify-center rounded-full"
+            style={{
+              width: size,
+              height: size,
+              background: 'var(--th-primary)',
+              border: '3px solid var(--th-surface-alt)',
+              boxShadow: '0 0 0 3px color-mix(in srgb, var(--th-primary) 30%, transparent), 0 4px 12px rgba(0,0,0,0.35)',
+            }}
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="var(--th-surface-alt)" stroke="none">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/>
+            </svg>
+          </div>
         </div>
-        <div className="mt-1 px-2 py-0.5 bg-white rounded-md text-xs font-medium text-gray-900 shadow-sm border border-gray-200 max-w-[160px] truncate font-sans">
-          {tour.title}
+        {/* Tour title + tap-to-start cue */}
+        <div className="mt-1.5 flex flex-col items-center gap-1">
+          <div className="px-2.5 py-0.5 bg-white rounded-md text-xs font-semibold text-gray-900 shadow-sm border border-gray-200 max-w-[180px] truncate font-sans">
+            {tour.title}
+          </div>
+          <div
+            className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide font-sans shadow-sm"
+            style={{ background: 'var(--th-primary)', color: 'var(--th-surface)' }}
+          >
+            Tap to start
+          </div>
         </div>
       </div>
     </AdvancedMarker>

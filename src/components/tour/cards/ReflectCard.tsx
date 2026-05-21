@@ -101,7 +101,7 @@ export default function ReflectCard({
     <div className="animate-fade-in flex flex-col justify-center min-h-full space-y-6">
       {!submitted ? (
         <>
-          <p className="text-3xl uppercase tracking-[0.14em] font-display text-text-secondary font-semibold">
+          <p className="text-[26px] uppercase tracking-[0.14em] font-display text-text-secondary font-semibold">
             Reflect...
           </p>
 

@@ -15,7 +15,7 @@ export default function EndCard() {
         <p className="text-xs uppercase tracking-[0.14em] text-olive font-semibold">
           Tour complete
         </p>
-        <h2 className="text-2xl font-display font-bold text-text-primary">{tour.title}</h2>
+        <h2 className="text-xl font-display font-bold text-text-primary">{tour.title}</h2>
         <p className="text-sm text-text-secondary">
           {session.completedStops.length} stop{session.completedStops.length !== 1 ? 's' : ''} explored
         </p>
@@ -33,7 +33,7 @@ export default function EndCard() {
                 key={i}
                 className="flex-1 h-2 rounded-full"
                 style={{
-                  backgroundColor: `rgba(196, 146, 58, ${0.3 + r.sliderValue * 0.7})`,
+                  backgroundColor: `color-mix(in srgb, var(--th-secondary) ${(0.3 + r.sliderValue * 0.7) * 100}%, transparent)`,
                 }}
                 title={`Stop ${i + 1}: ${Math.round(r.sliderValue * 100)}%`}
               />

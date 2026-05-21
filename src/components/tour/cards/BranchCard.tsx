@@ -59,7 +59,7 @@ export default function BranchCard() {
   if (!result) {
     return (
       <div className="animate-fade-in space-y-4 min-h-full flex flex-col justify-center">
-        <p className="text-3xl uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
           What are you curious about?
         </p>
         <form onSubmit={handleSubmit} className="space-y-3">

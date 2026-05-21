@@ -299,6 +299,38 @@ Admin pages were intentionally left out of theme scope (see §9). Build
 and TypeScript pass; verified structurally (compiled CSS + dev server),
 not pixel-reviewed in a browser.
 
+### Palo Alto recolour & title trim (this session, 2026-05-20)
+
+A follow-up pass on the theme system:
+
+- **Teal theme → Palo Alto palette.** The second theme keeps its
+  `data-theme='teal'` id but now uses the Palo Alto colour scheme
+  (`docs/Style Guide - Palo Alto.png`): primary `#175E54` Palo Alto
+  teal, secondary `#8F993E` olive (the old cranberry secondary is
+  gone), Palo Verde `#279989` for the "?" accent. Only the
+  `[data-theme='teal']` block in `globals.css` changed.
+- **Both themes share DM Serif Display for titles.** The Teal theme's
+  Cormorant Garamond was dropped — `--th-font-display` resolves to DM
+  Serif Display in both blocks, and Cormorant is no longer loaded in
+  `layout.tsx`.
+- **Red theme limited to three colours** — cranberry, amber and
+  neutrals/ink (per an "accents + text colour" counting rule). The
+  only green token, `--th-olive` (`#A6A67C`), is now dark amber
+  `#7E5320`; the brown `--th-journal` is now deep cranberry `#3E1620`.
+  No blue or green hues remain in the Red palette. Exception: the
+  Google-style "my location" dot in `Map.tsx` is still blue — kept as
+  a deliberate, functional map convention.
+- **Titles trimmed one step** — section headings `text-3xl`→
+  `text-[26px]`, essential-question hero `text-[34px]`→`text-[30px]`,
+  tour titles down a step (Journal/JournalPeek `text-xl`→`text-lg`,
+  EndCard `text-2xl`→`text-xl`).
+- **SeedCard's two section headings** now share one colour
+  (`text-accent-dark`); EndCard's hardcoded `rgba(196,146,58)`
+  reflection-bar colour was tokenised to `var(--th-secondary)`.
+- **Tour (map) pin enlarged** 44→60px with a pulsing `animate-ping`
+  ring and a "Tap to start" label (`TourParentPin` in `Map.tsx`), to
+  make it obvious as the tour entry point.
+
 ---
 
 ## 9. Theme System
@@ -310,24 +342,26 @@ glass, transitions, background photos, progress bar) is shared.
 
 ### Themes
 
-| | Red (default) | Teal |
+| | Red (default) | Teal — Palo Alto |
 |---|---|---|
-| Persona | 1970s New Journalism | 1950s Mid-Century |
-| Title font (serif) | DM Serif Display | Cormorant Garamond |
+| Persona | 1970s New Journalism | Palo Alto palette |
+| Title font (serif) | DM Serif Display | DM Serif Display (shared) |
 | Content font | Newsreader (shared) | Newsreader (shared) |
-| Primary (dominant accent) | #8B2538 cranberry | #3A8D89 teal |
-| Secondary accent | #B8752B amber | #A73848 cranberry |
+| Primary (dominant accent) | #8B2538 cranberry | #175E54 Palo Alto teal |
+| Secondary accent | #B8752B amber | #8F993E olive |
 | Corner radius | softer (lg 1rem / 2xl 1.25rem) | crisper (lg .65rem / 2xl .9rem) |
 
 Each theme is named for its dominant accent. The dominant colour drives
 buttons, the progress bar, headings, map pins, and the title/footer bars
 (`--th-primary`); the secondary accent appears on essential-question box
 borders etc. Content text uses one shared, highly legible serif
-(Newsreader) in both themes; only titles take the per-theme display serif.
+(Newsreader); titles use one shared display serif (DM Serif Display).
+Both fonts apply in both themes.
 
 Source style guides: `docs/Style_Guide_Ledger.md` → Red theme,
-`docs/Style_Guide_Folio.md` → Teal theme (screenshots:
-`docs/Style Guide - Red.png` / `Style Guide - Teal.png`).
+`docs/Style_Guide_Folio.md` → Teal theme. Palette references:
+`docs/Style Guide - Red.png` (Red), `docs/Style Guide - Palo Alto.png`
+(Teal). The older `Style Guide - Teal.png` is superseded.
 
 ### How it works
 
@@ -336,11 +370,12 @@ Source style guides: `docs/Style_Guide_Ledger.md` → Red theme,
   the `data-theme` attribute on `<html>` re-resolves every token
   instantly — no reload.
 - Fonts are loaded with `next/font/google` in `layout.tsx` (self-hosted,
-  no external request). Content/body text uses **Newsreader** in both themes
+  no external request). Content/body text uses **Newsreader**
   (`--th-font-body`, reached via the `font-serif`/`font-sans` utilities
-  and `body`); titles use the per-theme serif (`--th-font-display`, via
-  the `font-display` utility). (An earlier CSS `@import url()` was
-  dropped — Tailwind v4's build strips external font imports.)
+  and `body`); titles use **DM Serif Display** (`--th-font-display`, via
+  the `font-display` utility). Both fonts are shared across the two
+  themes. (An earlier CSS `@import url()` was dropped — Tailwind v4's
+  build strips external font imports.)
 - Legacy palette names (`--sandstone`, `--aged-gold`, etc.) plus four
   new ones (`--olive`, `--accent-dark`, `--journal`, `--question-red`)
   are aliased onto `--th-*` and exposed as Tailwind tokens via

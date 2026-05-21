@@ -22,13 +22,13 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <p className="text-3xl uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+      <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
         {isOpinion ? "What's your opinion?" : 'Chance to discuss...'}
       </p>
 
       {/* The question — centered in dark box */}
       <div className="rounded-xl px-5 py-6 text-center border-3" style={{ backgroundColor: 'var(--th-question-bg)', borderColor: 'var(--th-secondary)' }}>
-        <p className="text-[34px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
+        <p className="text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;{aq.question}&rdquo;
         </p>
       </div>

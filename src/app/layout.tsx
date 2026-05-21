@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Newsreader, DM_Serif_Display, Cormorant_Garamond } from 'next/font/google';
+import { Newsreader, DM_Serif_Display } from 'next/font/google';
 import './globals.css';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import { ThemeProvider } from '@/context/ThemeContext';
@@ -12,7 +12,7 @@ const newsreader = Newsreader({
   display: 'swap',
 });
 
-// Title font — Red theme.
+// Title font — used by both themes.
 const dmSerifDisplay = DM_Serif_Display({
   weight: '400',
   style: ['normal', 'italic'],
@@ -21,19 +21,9 @@ const dmSerifDisplay = DM_Serif_Display({
   display: 'swap',
 });
 
-// Title font — Teal theme.
-const cormorantGaramond = Cormorant_Garamond({
-  weight: ['400', '500', '600', '700'],
-  style: ['normal', 'italic'],
-  subsets: ['latin'],
-  variable: '--font-cormorant-garamond',
-  display: 'swap',
-});
-
 const fontVariables = [
   newsreader.variable,
   dmSerifDisplay.variable,
-  cormorantGaramond.variable,
 ].join(' ');
 
 export const metadata: Metadata = {

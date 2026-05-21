@@ -50,7 +50,7 @@ export default function WhatsNext({ stop, isLastStop, onAskQuestion, onContinue 
 
   return (
     <>
-      <p className="text-3xl uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+      <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
         What&apos;s next...
       </p>
       {stop.reveal.bridgeText && (

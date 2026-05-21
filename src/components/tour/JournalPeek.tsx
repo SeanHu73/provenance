@@ -55,7 +55,7 @@ export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
 
           {/* Tour info */}
           <div>
-            <h2 className="text-xl font-serif font-bold" style={{ color: 'var(--th-surface)' }}>
+            <h2 className="text-lg font-serif font-bold" style={{ color: 'var(--th-surface)' }}>
               {tour.title}
             </h2>
             {tour.subtitle && (

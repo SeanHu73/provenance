@@ -174,7 +174,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
             </button>
           )}
         </div>
-        <p className="text-xl font-display font-bold text-warm-white text-center">{tour.title}</p>
+        <p className="text-lg font-display font-bold text-warm-white text-center">{tour.title}</p>
         <div className="w-8">
           <button
             onClick={endTour}

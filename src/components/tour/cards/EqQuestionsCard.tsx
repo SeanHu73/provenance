@@ -37,7 +37,7 @@ export default function EqQuestionsCard() {
     <div className="animate-fade-in flex flex-col justify-center min-h-full space-y-6">
       {!submitted ? (
         <>
-          <p className="text-3xl uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+          <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
             Any remaining questions?
           </p>
           <p className="text-sm text-text-secondary leading-relaxed">
@@ -91,7 +91,7 @@ export default function EqQuestionsCard() {
       ) : (
         <>
           {/* Show all questions collected throughout the tour */}
-          <p className="text-3xl uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+          <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
             Your questions from the tour
           </p>
 

@@ -20,8 +20,8 @@
   --th-secondary: #B8752B;        /* warm amber — secondary accent */
   --th-secondary-hover: #CD8633;
   --th-accent-dark: #7E5320;      /* dark amber — section headings, timer */
-  --th-olive: #A6A67C;            /* light accent — completed states, borders */
-  --th-journal: #4A3528;          /* journal cover / dark utility surface */
+  --th-olive: #7E5320;            /* dark amber — completed states, borders, advance buttons (no green) */
+  --th-journal: #3E1620;          /* deep cranberry — journal cover / dark utility surface */
   --th-question-bg: #6E1F2E90;    /* essential-question box (translucent) */
   --th-question-red: #A23142;     /* the "?" question button */
 
@@ -43,17 +43,17 @@
   --th-radius-2xl: 1.25rem;
 }
 
-/* ---- Teal — 1950s Mid-Century ------------------------------- */
+/* ---- Teal — Palo Alto palette ------------------------------- */
 [data-theme='teal'] {
-  --th-primary: #3A8D89;          /* teal — brand, buttons, accents */
-  --th-primary-hover: #327B77;
-  --th-secondary: #A73848;        /* cranberry — secondary accent */
-  --th-secondary-hover: #BC4757;
-  --th-accent-dark: #2C6B68;      /* dark teal — section headings, timer */
-  --th-olive: #6A8A82;            /* light accent — completed states, borders */
-  --th-journal: #25342F;          /* journal cover / dark utility surface */
-  --th-question-bg: #21534F90;    /* essential-question box (translucent) */
-  --th-question-red: #357F7B;     /* the "?" question button */
+  --th-primary: #175E54;          /* Palo Alto — brand, buttons, accents */
+  --th-primary-hover: #2D716F;    /* Palo Alto (light) */
+  --th-secondary: #8F993E;        /* Olive — secondary accent */
+  --th-secondary-hover: #A6B168;  /* Olive (light) */
+  --th-accent-dark: #014240;      /* Palo Alto (dark) — section headings, timer */
+  --th-olive: #7A863B;            /* Olive (dark) — completed states, borders, advance buttons */
+  --th-journal: #014240;          /* Palo Alto (dark) — journal cover / dark utility surface */
+  --th-question-bg: #01424090;    /* essential-question box (translucent) */
+  --th-question-red: #279989;     /* Palo Verde — the "?" question button */
 
   --th-text: #2D3D38;
   --th-text-muted: #57605B;
@@ -65,7 +65,9 @@
   --th-bg-dark: #D2DAD8;
   --th-border: #D5D5D5;
 
-  --th-font-display: var(--font-cormorant-garamond), 'Georgia', serif;
+  /* Titles use the Red theme's display serif; content/body text
+     stays Newsreader, shared across both themes. */
+  --th-font-display: var(--font-dm-serif-display), 'Georgia', serif;
   --th-font-body: var(--font-newsreader), 'Georgia', serif;
 
   --th-radius-lg: 0.65rem;

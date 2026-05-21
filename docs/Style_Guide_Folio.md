@@ -1,32 +1,35 @@
-# Style Guide: The Folio (1950s Mid-Century)
+# Style Guide: The Folio — Palo Alto palette
 
-*"Vibrant cranberry and teal create a contemporary dual-toned system — scholarly confidence built for outdoor clarity."*
+*Recoloured 2026-05-20 to the Palo Alto palette
+(`docs/Style Guide - Palo Alto.png`). The original 1950s Mid-Century
+cranberry/teal scheme is superseded; the values below match the
+`[data-theme='teal']` block in `globals.css`.*
 
 **Persona:** Scholarly Explorer
 
 ## Typography
-- **Display (52px):** Cormorant Garamond
-- **Heading 1 (36px):** Cormorant Garamond
-- **Heading 2 (24px):** Cormorant Garamond
-- **Lead (18px):** Space Grotesk
-- **Body (15px):** Space Grotesk
-- **Caption (12px):** Space Grotesk
-- **Overline (11px):** Space Grotesk, uppercase, tracking wide
+- **Display / headings:** DM Serif Display (shared with the Red theme)
+- **Content / body:** Newsreader (shared across both themes)
 
-**Font pairing:** Cormorant Garamond (display) + Space Grotesk (body)
+**Font pairing:** DM Serif Display (display) + Newsreader (body).
+Both themes now share these; Cormorant Garamond has been dropped.
 
-## Color Palette
+## Color Palette — Palo Alto
 
 ### Core
 | Token | Hex | Usage |
 |---|---|---|
-| Primary | #A73848 | Main brand, buttons, accents |
-| Secondary | #3A8D89 | Teal secondary accent |
+| Primary | #175E54 | Palo Alto — main brand, buttons, accents |
+| Primary (light) | #2D716F | Hover / lighter primary |
+| Secondary | #8F993E | Olive — secondary accent |
+| Secondary (light) | #A6B168 | Olive light — hover |
+| Accent dark | #014240 | Palo Alto dark — section headings, timer, journal |
+| Light accent | #7A863B | Olive dark — completed states, borders, advance buttons |
+| "?" accent | #279989 | Palo Verde — question button |
 | Text | #2D3D38 | Body text |
-| Muted | #5D5D5E | Secondary text, labels |
-| Light | #6A8A82 | Light accent |
+| Muted | #57605B | Secondary text, labels |
 | Border | #D5D5D5 | Borders, dividers |
-| Surface Alt | #F6F0F6 | Alternate surface |
+| Surface Alt | #F0F4F3 | Alternate surface |
 | Surface | #FFFFFF | Card backgrounds |
 
 ### Semantic
@@ -38,8 +41,8 @@
 | Info | #2A50A8 |
 
 ## Components
-- **Primary button:** Solid #A73848, white text, rounded
-- **Secondary button:** Outline #A73848, transparent bg
+- **Primary button:** Solid #175E54, white text, rounded
+- **Secondary button:** Outline #175E54, transparent bg
 - **Tertiary button:** Outline dark, transparent bg
 - **Badges:** Solid primary for category, outline for metadata
 - **Cards:** White bg, subtle border, rounded-lg
