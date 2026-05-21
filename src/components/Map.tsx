@@ -97,8 +97,8 @@ function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
   bounds.extend(userPos);
   bounds.extend(target);
 
-  const padW = Math.round(window.innerWidth * 0.18);
-  const padH = Math.round(window.innerHeight * 0.18);
+  const padW = Math.round(window.innerWidth * 0.10);
+  const padH = Math.round(window.innerHeight * 0.10);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const anyMap = map as any;
   anyMap.fitBounds(bounds, { top: padH, right: padW, bottom: padH, left: padW });

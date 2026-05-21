@@ -28,14 +28,14 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
       </p>
 
       {/* The essential question — soft-edge blur-behind effect */}
-      <div className="relative px-8 py-7 text-center overflow-hidden">
+      <div className="relative px-8 py-7 text-center">
         <div
           className="absolute inset-0"
           style={{
             background: 'var(--th-question-bg-solid)',
-            filter: 'blur(14px)',
-            transform: 'scale(0.85)',
-            borderRadius: '10px',
+            filter: 'blur(8px)',
+            transform: 'scale(0.93)',
+            borderRadius: '12px',
           }}
         />
         <p className="relative text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
