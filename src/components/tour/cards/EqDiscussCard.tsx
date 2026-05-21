@@ -28,8 +28,10 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
       </p>
 
       {/* The essential question — edges fade softly into background */}
-      <div className="rounded-xl px-5 py-6 text-center" style={{ backgroundColor: 'var(--th-question-bg)', maskImage: 'linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent), linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent)', maskComposite: 'intersect', WebkitMaskImage: 'linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent), linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent)', WebkitMaskComposite: 'destination-in' }}>
-        <p className="text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
+      <div className="relative rounded-xl overflow-hidden px-8 py-7" style={{ background: 'var(--th-question-bg)' }}>
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to right, var(--th-surface) 0%, transparent 22px, transparent calc(100% - 22px), var(--th-surface) 100%)' }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to bottom, var(--th-surface) 0%, transparent 22px, transparent calc(100% - 22px), var(--th-surface) 100%)' }} />
+        <p className="relative text-[30px] leading-relaxed font-display font-bold text-center" style={{ color: 'var(--th-surface)' }}>
           &ldquo;{eq.question}&rdquo;
         </p>
       </div>

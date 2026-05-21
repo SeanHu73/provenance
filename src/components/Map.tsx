@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { Pin, Stop, Tour } from '@/lib/types';
 
 const MEMORIAL_CHURCH = { lat: 37.42700, lng: -122.17015 };
+const MAX_AUTO_ZOOM = 17;
+const NEAR_THRESHOLD_M = 300;
 
 export interface TourPinData {
   tour: Tour;
@@ -28,6 +30,20 @@ interface MapProps {
   tourStops?: TourStopMarkerData[];
   onTourStopSelect?: (stop: Stop) => void;
   hidePins?: boolean;
+}
+
+function haversineDistanceM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371000;
+  const dLat = (b.lat - a.lat) * (Math.PI / 180);
+  const dLng = (b.lng - a.lng) * (Math.PI / 180);
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.lat * (Math.PI / 180)) * Math.cos(b.lat * (Math.PI / 180)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
+function formatDist(m: number): string {
+  return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`;
 }
 
 function PinMarker({ pin, isSelected, onClick }: { pin: Pin; isSelected: boolean; onClick: () => void }) {
@@ -141,6 +157,62 @@ function UserLocationTracker({ following, onLocationUpdate }: { following: boole
   return null;
 }
 
+/** Runs once on mount: gets user location and zooms the map to show user + nearest pin. */
+function MapInitializer({
+  pins,
+  tourPins,
+  onLocationUpdate,
+}: {
+  pins: Pin[];
+  tourPins?: TourPinData[];
+  onLocationUpdate: (pos: { lat: number; lng: number } | null) => void;
+}) {
+  const map = useMap();
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (initialized.current || !map || !navigator.geolocation) return;
+    initialized.current = true;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        onLocationUpdate(userPos);
+
+        const allLocs: { lat: number; lng: number }[] = [
+          ...pins.filter((p) => p.location).map((p) => p.location),
+          ...(tourPins ?? []).filter((tp) => tp.tour.location).map((tp) => tp.tour.location!),
+        ];
+
+        if (allLocs.length === 0) {
+          map.panTo(userPos);
+          map.setZoom(MAX_AUTO_ZOOM);
+          return;
+        }
+
+        const nearest = allLocs.reduce((best, loc) =>
+          haversineDistanceM(userPos, loc) < haversineDistanceM(userPos, best) ? loc : best
+        );
+
+        const distM = haversineDistanceM(userPos, nearest);
+        // Scale zoom so both user and nearest pin are comfortably visible.
+        // At 50 m distance → zoom 17; every doubling of distance drops one zoom level.
+        const zoom = Math.min(MAX_AUTO_ZOOM, Math.max(12, Math.round(17 - Math.log2(Math.max(distM, 50) / 50))));
+        const center =
+          distM < 30
+            ? userPos
+            : { lat: (userPos.lat + nearest.lat) / 2, lng: (userPos.lng + nearest.lng) / 2 };
+        map.panTo(center);
+        map.setZoom(zoom);
+      },
+      () => onLocationUpdate(null),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, [map, pins, tourPins, onLocationUpdate]);
+
+  return null;
+}
+
 function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
   if (!tour.location) return null;
   const size = 60;
@@ -220,11 +292,23 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
 export default function MapContainer({ pins, selectedPinId, onPinSelect, tourPins, onTourPinSelect, tourStops, onTourStopSelect, hidePins }: MapProps) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [following, setFollowing] = useState(false);
+  const [navPrompt, setNavPrompt] = useState<{ tour: Tour; distanceM: number } | null>(null);
 
   const handleLocationUpdate = useCallback(
     (pos: { lat: number; lng: number } | null) => setUserLocation(pos),
     []
   );
+
+  function handleTourPinClick(tour: Tour) {
+    if (userLocation && tour.location) {
+      const distM = haversineDistanceM(userLocation, tour.location);
+      if (distM > NEAR_THRESHOLD_M) {
+        setNavPrompt({ tour, distanceM: distM });
+        return;
+      }
+    }
+    onTourPinSelect?.(tour);
+  }
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (!apiKey) return <div className="w-full h-full flex items-center justify-center bg-cream-dark text-text-muted text-sm font-sans">Map requires API key</div>;
@@ -235,7 +319,7 @@ export default function MapContainer({ pins, selectedPinId, onPinSelect, tourPin
         <GoogleMap
           mapId="memorial-church-map"
           defaultCenter={MEMORIAL_CHURCH}
-          defaultZoom={19}
+          defaultZoom={17}
           defaultTilt={45}
           defaultHeading={0}
           mapTypeId="hybrid"
@@ -248,6 +332,7 @@ export default function MapContainer({ pins, selectedPinId, onPinSelect, tourPin
           rotateControl={true}
           className="w-full h-full"
         >
+          <MapInitializer pins={pins} tourPins={tourPins} onLocationUpdate={handleLocationUpdate} />
           <UserLocationTracker following={following} onLocationUpdate={handleLocationUpdate} />
           {userLocation && <UserLocationDot position={userLocation} />}
           {!hidePins && pins.map((pin) => (
@@ -262,7 +347,7 @@ export default function MapContainer({ pins, selectedPinId, onPinSelect, tourPin
             <TourParentPin
               key={tp.tour.id}
               tour={tp.tour}
-              onClick={() => onTourPinSelect?.(tp.tour)}
+              onClick={() => handleTourPinClick(tp.tour)}
             />
           ))}
           {tourStops?.map((data) => (
@@ -275,6 +360,47 @@ export default function MapContainer({ pins, selectedPinId, onPinSelect, tourPin
         </GoogleMap>
 
         <LocateButton following={following} onToggleFollow={() => setFollowing((f) => !f)} />
+
+        {navPrompt && navPrompt.tour.location && (
+          <div
+            className="absolute bottom-16 left-4 right-4 z-20 rounded-xl shadow-xl overflow-hidden animate-slide-up"
+            style={{ background: 'var(--th-surface)' }}
+          >
+            <div className="p-4 space-y-3">
+              <p className="text-sm font-semibold" style={{ color: 'var(--th-text)' }}>
+                {navPrompt.tour.title}
+              </p>
+              <p className="text-sm" style={{ color: 'var(--th-text-muted)' }}>
+                You&apos;re {formatDist(navPrompt.distanceM)} away. Want directions to get there first?
+              </p>
+              <div className="flex gap-2">
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${navPrompt.tour.location.lat},${navPrompt.tour.location.lng}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-center"
+                  style={{ background: 'var(--th-primary)', color: 'var(--th-surface)' }}
+                >
+                  Get directions
+                </a>
+                <button
+                  onClick={() => { onTourPinSelect?.(navPrompt.tour); setNavPrompt(null); }}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold border-2"
+                  style={{ borderColor: 'var(--th-border)', color: 'var(--th-text)' }}
+                >
+                  Start anyway
+                </button>
+              </div>
+              <button
+                onClick={() => setNavPrompt(null)}
+                className="w-full text-xs py-1"
+                style={{ color: 'var(--th-text-muted)' }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </APIProvider>
   );
