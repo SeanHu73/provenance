@@ -43,7 +43,7 @@ export default function SeedCard({ stop, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
       {/* Background section */}
-      <p className="text-2xl uppercase tracking-[0.14em] text-olive font-semibold">
+      <p className="text-2xl uppercase tracking-[0.14em] font-display text-olive font-semibold">
         Background...
       </p>
 
@@ -68,7 +68,7 @@ export default function SeedCard({ stop, onContinue }: Props) {
       {/* Look Around section */}
       {stop.notice.prompt && (
         <>
-          <p className="text-2xl uppercase tracking-[0.14em] text-accent-dark font-semibold">
+          <p className="text-2xl uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
             Look around...
           </p>
 

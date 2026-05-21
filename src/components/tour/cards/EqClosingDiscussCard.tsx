@@ -20,7 +20,7 @@ export default function EqClosingDiscussCard({ tour, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <p className="text-2xl uppercase tracking-[0.14em] text-aged-gold font-semibold">
+      <p className="text-2xl uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
         Going back to the discussion question...
       </p>
 
@@ -34,7 +34,7 @@ export default function EqClosingDiscussCard({ tour, onContinue }: Props) {
 
       {/* The essential question — cardinal box */}
       <div className="rounded-xl px-5 py-6 text-center border-3" style={{ backgroundColor: 'var(--th-question-bg)', borderColor: 'var(--th-secondary)' }}>
-        <p className="text-[28px] leading-relaxed font-serif font-bold" style={{ color: 'var(--th-surface)' }}>
+        <p className="text-[28px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;{eq.question}&rdquo;
         </p>
       </div>

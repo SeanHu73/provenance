@@ -36,11 +36,11 @@
   --th-border: #D8D8D8;           /* borders, dividers, scrollbars */
 
   --th-font-display: var(--font-dm-serif-display), 'Georgia', serif;
-  --th-font-body: var(--font-outfit), system-ui, sans-serif;
+  --th-font-body: var(--font-inter), system-ui, sans-serif;
 
-  --th-radius-lg: 0.625rem;
-  --th-radius-xl: 0.875rem;
-  --th-radius-2xl: 1rem;
+  --th-radius-lg: 1rem;
+  --th-radius-xl: 1.15rem;
+  --th-radius-2xl: 1.25rem;
 }
 
 /* ---- Teal — 1950s Mid-Century ------------------------------- */
@@ -66,11 +66,11 @@
   --th-border: #D5D5D5;
 
   --th-font-display: var(--font-cormorant-garamond), 'Georgia', serif;
-  --th-font-body: var(--font-space-grotesk), system-ui, sans-serif;
+  --th-font-body: var(--font-inter), system-ui, sans-serif;
 
-  --th-radius-lg: 0.25rem;
-  --th-radius-xl: 0.375rem;
-  --th-radius-2xl: 0.5rem;
+  --th-radius-lg: 0.65rem;
+  --th-radius-xl: 0.8rem;
+  --th-radius-2xl: 0.9rem;
 }
 
 /* ---- Legacy aliases ----------------------------------------
@@ -117,8 +117,9 @@
   --color-accent-dark: var(--accent-dark);
   --color-journal: var(--journal);
   --color-question-red: var(--question-red);
-  --font-serif: var(--th-font-display);
+  --font-serif: var(--th-font-body);
   --font-sans: var(--th-font-body);
+  --font-display: var(--th-font-display);
   --radius-lg: var(--th-radius-lg);
   --radius-xl: var(--th-radius-xl);
   --radius-2xl: var(--th-radius-2xl);

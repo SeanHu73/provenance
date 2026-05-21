@@ -268,8 +268,9 @@ This session built the complete v2 tour system from scratch:
 ### Theme system (2026-05-20)
 
 Added the dual-theme system documented in §9: a `--th-*` token layer,
-the Red and Teal themes, `ThemeContext` + `ThemeSwitcher`, four fonts
-loaded via `next/font`, and migration of ~514 hardcoded hex values
+the Red and Teal themes, `ThemeContext` + `ThemeSwitcher`, fonts loaded
+via `next/font` (Inter for content, a per-theme serif for titles),
+coloured title/footer bars, and migration of ~514 hardcoded hex values
 across 30 explorer files to theme tokens. Build and TypeScript pass.
 
 ---
@@ -286,15 +287,17 @@ glass, transitions, background photos, progress bar) is shared.
 | | Red (default) | Teal |
 |---|---|---|
 | Persona | 1970s New Journalism | 1950s Mid-Century |
-| Display font | DM Serif Display | Cormorant Garamond |
-| Body font | Outfit | Space Grotesk |
+| Title font (serif) | DM Serif Display | Cormorant Garamond |
+| Content font | Inter (shared) | Inter (shared) |
 | Primary (dominant accent) | #8B2538 cranberry | #3A8D89 teal |
 | Secondary accent | #B8752B amber | #A73848 cranberry |
-| Corner radius | softer (lg .625rem / 2xl 1rem) | crisper (lg .25rem / 2xl .5rem) |
+| Corner radius | softer (lg 1rem / 2xl 1.25rem) | crisper (lg .65rem / 2xl .9rem) |
 
 Each theme is named for its dominant accent. The dominant colour drives
-buttons, the progress bar, headings, and map pins (`--th-primary`); the
-secondary accent appears on essential-question box borders etc.
+buttons, the progress bar, headings, map pins, and the title/footer bars
+(`--th-primary`); the secondary accent appears on essential-question box
+borders etc. Content text uses one shared, highly legible font (Inter)
+in both themes; only titles take the per-theme serif.
 
 Source style guides: `docs/Style_Guide_Ledger.md` → Red theme,
 `docs/Style_Guide_Folio.md` → Teal theme (screenshots:
@@ -307,10 +310,11 @@ Source style guides: `docs/Style_Guide_Ledger.md` → Red theme,
   the `data-theme` attribute on `<html>` re-resolves every token
   instantly — no reload.
 - Fonts are loaded with `next/font/google` in `layout.tsx` (self-hosted,
-  no external request). Each family is exposed as a `--font-*` variable
-  on `<html>`; the theme blocks point `--th-font-display` /
-  `--th-font-body` at the right pair. (An earlier CSS `@import url()`
-  was dropped — Tailwind v4's build strips external font imports.)
+  no external request). Content/body text uses **Inter** in both themes
+  (`--th-font-body`, reached via the `font-serif`/`font-sans` utilities
+  and `body`); titles use the per-theme serif (`--th-font-display`, via
+  the `font-display` utility). (An earlier CSS `@import url()` was
+  dropped — Tailwind v4's build strips external font imports.)
 - Legacy palette names (`--sandstone`, `--aged-gold`, etc.) plus four
   new ones (`--olive`, `--accent-dark`, `--journal`, `--question-red`)
   are aliased onto `--th-*` and exposed as Tailwind tokens via

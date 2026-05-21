@@ -157,12 +157,15 @@ export default function Journal({ onMapPeek }: JournalProps) {
       style={{ backgroundColor: 'var(--th-surface)' }}
     >
       {/* Title bar — centered, above progress */}
-      <div className="shrink-0 flex items-center justify-between px-4 py-2">
+      <div
+        className="shrink-0 flex items-center justify-between px-4 py-2"
+        style={{ backgroundColor: 'var(--th-primary)' }}
+      >
         <div className="w-8">
           {canGoBack && phase !== 'end' && (
             <button
               onClick={goBack}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:bg-sandstone-light/30"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15"
               title="Go back"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -171,11 +174,11 @@ export default function Journal({ onMapPeek }: JournalProps) {
             </button>
           )}
         </div>
-        <p className="text-lg font-bold text-text-primary text-center">{tour.title}</p>
+        <p className="text-lg font-display font-bold text-warm-white text-center">{tour.title}</p>
         <div className="w-8">
           <button
             onClick={endTour}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:bg-sandstone-light/30 text-sm"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15 text-sm"
             title="Exit tour"
           >
             &times;
@@ -371,10 +374,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
       {/* Footer bar — Journal + Question buttons */}
       {phase !== 'end' && (
-        <div className="shrink-0 px-4 py-3 border-t flex items-center justify-center gap-3" style={{ borderColor: 'var(--th-border)' }}>
+        <div className="shrink-0 px-4 py-3 border-t flex items-center justify-center gap-3" style={{ backgroundColor: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
           <button
             onClick={() => setShowJournal(true)}
-            className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-base font-semibold text-journal bg-sandstone-light/40 hover:bg-sandstone-light/60 transition-colors border-2 border-olive"
+            className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-base font-semibold text-warm-white bg-white/15 hover:bg-white/25 transition-colors border-2 border-white/40"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
@@ -384,7 +387,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
           </button>
           <button
             onClick={() => setShowQuestionInput(true)}
-            className="flex items-center justify-center px-5 py-3.5 rounded-xl text-2xl font-bold text-question-red bg-question-red/10 hover:bg-question-red/20 transition-colors border-2 border-olive"
+            className="flex items-center justify-center px-5 py-3.5 rounded-xl text-2xl font-bold text-warm-white bg-white/15 hover:bg-white/25 transition-colors border-2 border-white/40"
             title="Ask a question"
           >
             ?

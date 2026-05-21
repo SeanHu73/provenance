@@ -1,10 +1,17 @@
 import type { Metadata, Viewport } from 'next';
-import { DM_Serif_Display, Outfit, Cormorant_Garamond, Space_Grotesk } from 'next/font/google';
+import { Inter, DM_Serif_Display, Cormorant_Garamond } from 'next/font/google';
 import './globals.css';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import { ThemeProvider } from '@/context/ThemeContext';
 
-// Red theme fonts
+// Shared content/body font — used for all reading text in both themes.
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+// Title font — Red theme.
 const dmSerifDisplay = DM_Serif_Display({
   weight: '400',
   style: ['normal', 'italic'],
@@ -12,13 +19,8 @@ const dmSerifDisplay = DM_Serif_Display({
   variable: '--font-dm-serif-display',
   display: 'swap',
 });
-const outfit = Outfit({
-  subsets: ['latin'],
-  variable: '--font-outfit',
-  display: 'swap',
-});
 
-// Teal theme fonts
+// Title font — Teal theme.
 const cormorantGaramond = Cormorant_Garamond({
   weight: ['400', '500', '600', '700'],
   style: ['normal', 'italic'],
@@ -26,17 +28,11 @@ const cormorantGaramond = Cormorant_Garamond({
   variable: '--font-cormorant-garamond',
   display: 'swap',
 });
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-space-grotesk',
-  display: 'swap',
-});
 
 const fontVariables = [
+  inter.variable,
   dmSerifDisplay.variable,
-  outfit.variable,
   cormorantGaramond.variable,
-  spaceGrotesk.variable,
 ].join(' ');
 
 export const metadata: Metadata = {

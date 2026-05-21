@@ -43,7 +43,7 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
 
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
-      <p className="text-2xl uppercase tracking-[0.14em] text-text-secondary font-semibold">
+      <p className="text-2xl uppercase tracking-[0.14em] font-display text-text-secondary font-semibold">
         Final Reflections
       </p>
 

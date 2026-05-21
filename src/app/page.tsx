@@ -86,14 +86,14 @@ function HomeInner() {
 
       {/* Bottom bar */}
       {!isActive && (
-        <div className="shrink-0 bg-cream border-t border-sandstone-light/40 px-4 py-3 z-10">
+        <div className="shrink-0 border-t px-4 py-3 z-10" style={{ backgroundColor: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
           <div className="flex items-center gap-3">
             <div>
-              <p className="font-serif text-sm font-bold text-text-primary leading-tight">Memorial Church</p>
-              <p className="text-[10px] text-text-muted font-sans tracking-wide uppercase">Provenance</p>
+              <p className="font-display text-sm font-bold text-warm-white leading-tight">Memorial Church</p>
+              <p className="text-[10px] text-warm-white/70 font-sans tracking-wide uppercase">Provenance</p>
             </div>
             {tours.length > 0 && !peekTour && (
-              <p className="text-xs text-text-muted ml-auto">
+              <p className="text-xs text-warm-white/80 ml-auto">
                 Tap a pin to begin
               </p>
             )}

@@ -15,7 +15,7 @@ export default function EndCard() {
         <p className="text-xs uppercase tracking-[0.14em] text-olive font-semibold">
           Tour complete
         </p>
-        <h2 className="text-xl font-serif font-bold text-text-primary">{tour.title}</h2>
+        <h2 className="text-xl font-display font-bold text-text-primary">{tour.title}</h2>
         <p className="text-sm text-text-secondary">
           {session.completedStops.length} stop{session.completedStops.length !== 1 ? 's' : ''} explored
         </p>
