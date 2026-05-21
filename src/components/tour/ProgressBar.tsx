@@ -9,6 +9,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { Tour, TourSession } from '@/lib/types';
+import { getLogicalStops } from '@/lib/tour-session';
 
 interface Props {
   tour: Tour;
@@ -16,6 +17,60 @@ interface Props {
 }
 
 export default function ProgressBar({ tour, session }: Props) {
+  // Unstructured mode: show a simple count-based strip instead of numbered pills
+  if (tour.unstructuredMode) {
+    return <UnstructuredProgressBar tour={tour} session={session} />;
+  }
+
+  return <LinearProgressBar tour={tour} session={session} />;
+}
+
+function UnstructuredProgressBar({ tour, session }: Props) {
+  const logicalStops = getLogicalStops(tour);
+  const completedCount = (session.completionOrder || []).length;
+  const total = logicalStops.length;
+  const pct = total > 0 ? (completedCount / total) * 100 : 0;
+  const isClosing = ['eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
+  const isIntro = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional'].includes(session.currentPhase);
+
+  let label = '';
+  if (isIntro) label = 'Starting the tour…';
+  else if (isClosing) label = 'Closing reflection';
+  else if (session.currentPhase === 'midway_checkin') label = 'Midway check-in';
+  else label = `${completedCount} of ${total} explored`;
+
+  return (
+    <>
+      <div
+        className="shrink-0 flex items-center justify-between px-4 py-2 border-b text-xs"
+        style={{ backgroundColor: 'var(--th-surface-alt)', borderColor: 'var(--th-border)', color: 'var(--th-text-secondary)' }}
+      >
+        <span className="font-medium">{label}</span>
+        <div className="flex gap-1">
+          {Array.from({ length: Math.min(total, 12) }).map((_, i) => (
+            <div
+              key={i}
+              className="h-1.5 w-5 rounded-full transition-colors duration-300"
+              style={{
+                backgroundColor: i < completedCount
+                  ? 'var(--th-aged-gold)'
+                  : 'color-mix(in srgb, var(--th-border) 60%, transparent)',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="shrink-0 w-full h-1.5" style={{ backgroundColor: 'color-mix(in srgb, var(--th-border) 40%, transparent)' }}>
+        <div
+          className="h-full bg-aged-gold transition-all duration-500 ease-out rounded-r-full"
+          style={{ width: isClosing ? '100%' : `${pct}%` }}
+        />
+      </div>
+    </>
+  );
+}
+
+function LinearProgressBar({ tour, session }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentRef = useRef<HTMLDivElement>(null);
   const [trackerOpen, setTrackerOpen] = useState(false);

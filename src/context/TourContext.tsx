@@ -32,6 +32,8 @@ import {
   completeEqFinalReflect as completeEqFinalReflectImpl,
   finishTour as finishTourImpl,
   bankQuestion as bankQuestionImpl,
+  selectUnstructuredStop as selectUnstructuredStopImpl,
+  completeMidwayCheckin as completeMidwayCheckinImpl,
   loadTourSession,
   saveTourSession,
   clearTourSession,
@@ -64,6 +66,11 @@ interface TourContextValue {
   completeEqFinalReflect: (cognitive: number, perceptual: number | null, whatShifted: string[] | null, reasoningSource: string[] | null) => void;
   finishTour: () => void;
   endTour: () => void;
+  // Unstructured exploration mode
+  enterUnstructuredStop: (stopIndex: number) => void;
+  completeMidwayCheckin: (responseText: string) => void;
+  selectedUnstructuredStopId: string | null;
+  setSelectedUnstructuredStopId: (id: string | null) => void;
 }
 
 const TourCtx = createContext<TourContextValue | null>(null);
@@ -77,6 +84,7 @@ export function useTour(): TourContextValue {
 export function TourProvider({ children }: { children: ReactNode }) {
   const [tour, setTour] = useState<Tour | null>(null);
   const [session, setSession] = useState<TourSession | null>(null);
+  const [selectedUnstructuredStopId, setSelectedUnstructuredStopId] = useState<string | null>(null);
 
   // On mount, restore any persisted session
   useEffect(() => {
@@ -198,9 +206,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
   }, [session, persist]);
 
   const completeEqAdditionalFn = useCallback(() => {
-    if (!session) return;
-    persist(completeEqAdditionalImpl(session));
-  }, [session, persist]);
+    if (!session || !tour) return;
+    persist(completeEqAdditionalImpl(session, tour));
+  }, [session, tour, persist]);
 
   const completeEqOpeningFn = useCallback((theory: string, reasoning: string) => {
     if (!session || !tour) return;
@@ -224,6 +232,17 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(completeEqFinalReflectImpl(session, cognitive, perceptual, whatChanged, whyChanged));
     logEqFinalReflect({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, cognitiveSlider: cognitive, perceptualSlider: perceptual, whatChanged, whyChanged });
   }, [session, tour, persist]);
+
+  const enterUnstructuredStopFn = useCallback((stopIndex: number) => {
+    if (!session) return;
+    setSelectedUnstructuredStopId(null);
+    persist(selectUnstructuredStopImpl(session, stopIndex));
+  }, [session, persist]);
+
+  const completeMidwayCheckinFn = useCallback((responseText: string) => {
+    if (!session) return;
+    persist(completeMidwayCheckinImpl(session, responseText));
+  }, [session, persist]);
 
   const finishTourFn = useCallback(() => {
     if (!session || !tour) return;
@@ -272,6 +291,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeEqFinalReflect: completeEqFinalReflectFn,
       finishTour: finishTourFn,
       endTour,
+      enterUnstructuredStop: enterUnstructuredStopFn,
+      completeMidwayCheckin: completeMidwayCheckinFn,
+      selectedUnstructuredStopId,
+      setSelectedUnstructuredStopId,
     }}>
       {children}
     </TourCtx.Provider>

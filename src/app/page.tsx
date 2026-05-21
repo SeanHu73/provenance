@@ -3,8 +3,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { getTours } from '@/lib/tours-store';
-import { Tour } from '@/lib/types';
+import { Tour, Stop } from '@/lib/types';
 import { TourProvider, useTour } from '@/context/TourContext';
+import { getLogicalStops } from '@/lib/tour-session';
 import type { TourPinData, TourStopMarkerData } from '@/components/Map';
 import JournalPeek from '@/components/tour/JournalPeek';
 import Journal from '@/components/tour/Journal';
@@ -16,7 +17,7 @@ function HomeInner() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [peekTour, setPeekTour] = useState<Tour | null>(null);
   const [mapPeek, setMapPeek] = useState(false); // temporarily show map during tour
-  const { tour: activeTour, session, isActive, startTour } = useTour();
+  const { tour: activeTour, session, isActive, startTour, selectedUnstructuredStopId, setSelectedUnstructuredStopId } = useTour();
 
   useEffect(() => {
     getTours().then(setTours).catch((err) => {
@@ -31,22 +32,48 @@ function HomeInner() {
 
   // During tour: show stop pins that have locations
   const tourStopMarkers: TourStopMarkerData[] = [];
+  const isUnstructuredMapPhase = !!(activeTour?.unstructuredMode && session?.currentPhase === 'unstructured_map');
   if (isActive && activeTour) {
-    for (let i = 0; i < activeTour.stops.length; i++) {
-      const stop = activeTour.stops[i];
-      if (!stop.location) continue;
-      tourStopMarkers.push({
-        stop,
-        index: i,
-        isActive: session?.currentStopIndex === i,
-        isCompleted: session?.completedStops.includes(stop.id) ?? false,
-      });
+    if (isUnstructuredMapPhase) {
+      // Unstructured mode: show all logical stops with locations
+      const logicalStopIds = new Set(getLogicalStops(activeTour).map((s) => s.id));
+      for (let i = 0; i < activeTour.stops.length; i++) {
+        const stop = activeTour.stops[i];
+        if (!stop.location) continue;
+        if (!logicalStopIds.has(stop.id)) continue; // skip merge-group secondaries
+        tourStopMarkers.push({
+          stop,
+          index: i,
+          isActive: false,
+          isCompleted: session?.completedStops.includes(stop.id) ?? false,
+          unstructuredMode: true,
+          isSelectedOverlay: stop.id === selectedUnstructuredStopId,
+        });
+      }
+    } else {
+      // Linear mode (existing behavior)
+      for (let i = 0; i < activeTour.stops.length; i++) {
+        const stop = activeTour.stops[i];
+        if (!stop.location) continue;
+        tourStopMarkers.push({
+          stop,
+          index: i,
+          isActive: session?.currentStopIndex === i,
+          isCompleted: session?.completedStops.includes(stop.id) ?? false,
+        });
+      }
     }
   }
 
   const handleTourPinSelect = useCallback((tour: Tour) => {
     setPeekTour(tour);
   }, []);
+
+  const handleTourStopSelect = useCallback((stop: Stop) => {
+    if (isUnstructuredMapPhase) {
+      setSelectedUnstructuredStopId(stop.id);
+    }
+  }, [isUnstructuredMapPhase, setSelectedUnstructuredStopId]);
 
   const handleBeginTour = useCallback(() => {
     if (peekTour) {
@@ -72,7 +99,7 @@ function HomeInner() {
           tourPins={tourPins}
           onTourPinSelect={handleTourPinSelect}
           tourStops={tourStopMarkers}
-          onTourStopSelect={() => {}}
+          onTourStopSelect={handleTourStopSelect}
           hidePins={true}
         />
 

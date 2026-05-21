@@ -645,6 +645,110 @@ export default function TourEditorPage() {
           )}
         </section>
 
+        {/* Unstructured exploration mode */}
+        <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-4">
+          <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Unstructured Exploration</h2>
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={tour.unstructuredMode ?? false}
+              onChange={(e) => updateField('unstructuredMode', e.target.checked)}
+              className="rounded mt-0.5"
+            />
+            <div>
+              <span className="text-xs text-stone-700 font-medium">Enable unstructured exploration</span>
+              <p className="text-[10px] text-stone-400 mt-0.5">When active, explorers choose which stops to visit in any order. The Essential Question and Closing Framing remain as fixed bookends.</p>
+            </div>
+          </label>
+
+          {/* Categories */}
+          <div className="border-t border-stone-200 pt-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-stone-600 font-medium">Categories</span>
+              <button
+                onClick={() => {
+                  const cats = [...(tour.categories || []), 'New Category'];
+                  updateField('categories', cats);
+                }}
+                className="text-[10px] text-blue-700 hover:underline"
+              >
+                + Add category
+              </button>
+            </div>
+            <p className="text-[10px] text-stone-400">Create categories to organise stops in the gallery view (e.g. &ldquo;Architecture&rdquo;, &ldquo;People&rdquo;, &ldquo;Symbolism&rdquo;).</p>
+            {(tour.categories || []).length === 0 ? (
+              <p className="text-[10px] text-stone-400 italic">No categories yet.</p>
+            ) : (
+              <ul className="space-y-1">
+                {(tour.categories || []).map((cat, i) => (
+                  <li key={i} className="flex gap-2 items-center">
+                    <button
+                      onClick={() => {
+                        const next = [...(tour.categories || [])];
+                        if (i > 0) { [next[i - 1], next[i]] = [next[i], next[i - 1]]; updateField('categories', next); }
+                      }}
+                      disabled={i === 0}
+                      className="text-[10px] text-stone-400 hover:text-stone-600 disabled:opacity-30"
+                    >&#8593;</button>
+                    <button
+                      onClick={() => {
+                        const next = [...(tour.categories || [])];
+                        if (i < next.length - 1) { [next[i], next[i + 1]] = [next[i + 1], next[i]]; updateField('categories', next); }
+                      }}
+                      disabled={i === (tour.categories || []).length - 1}
+                      className="text-[10px] text-stone-400 hover:text-stone-600 disabled:opacity-30"
+                    >&#8595;</button>
+                    <input
+                      value={cat}
+                      onChange={(e) => {
+                        const next = [...(tour.categories || [])];
+                        next[i] = e.target.value;
+                        updateField('categories', next);
+                      }}
+                      className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs"
+                    />
+                    <button
+                      onClick={() => {
+                        const next = (tour.categories || []).filter((_, j) => j !== i);
+                        updateField('categories', next);
+                      }}
+                      className="text-[10px] text-red-600 hover:underline"
+                    >Remove</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Midway check-in */}
+          <div className="border-t border-stone-200 pt-3 space-y-2">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={tour.midwayEnabled ?? false}
+                onChange={(e) => updateField('midwayEnabled', e.target.checked)}
+                className="rounded mt-0.5"
+              />
+              <div>
+                <span className="text-xs text-stone-700 font-medium">Include midway check-in</span>
+                <p className="text-[10px] text-stone-400 mt-0.5">If enabled, this question is shown to explorers once they&apos;ve completed half the stops. Use it to prompt reflection on what they&apos;ve seen so far.</p>
+              </div>
+            </label>
+            {tour.midwayEnabled && (
+              <label className="block pl-5">
+                <span className="text-xs text-stone-500">Midway check-in question</span>
+                <textarea
+                  value={tour.midwayQuestion || ''}
+                  onChange={(e) => updateField('midwayQuestion', e.target.value || null)}
+                  rows={2}
+                  className="mt-1 w-full px-3 py-1.5 border border-stone-300 rounded text-sm"
+                  placeholder="e.g. What themes are you noticing across these stops?"
+                />
+              </label>
+            )}
+          </div>
+        </section>
+
         {/* Stops list */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
@@ -713,6 +817,7 @@ export default function TourEditorPage() {
                     <StopEditor
                       stop={stop}
                       tourId={tourId}
+                      tourCategories={tour.categories || []}
                       onChange={(patch) => updateStop(stop.id, patch)}
                       onUploadPhoto={uploadPhoto}
                     />
@@ -743,11 +848,12 @@ export default function TourEditorPage() {
 interface StopEditorProps {
   stop: Stop;
   tourId: string;
+  tourCategories?: string[];
   onChange: (patch: Partial<Stop>) => void;
   onUploadPhoto: (file: File, path: string) => Promise<string>;
 }
 
-function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEditorProps) {
+function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadPhoto }: StopEditorProps) {
   // Defensive defaults for older stop data that may be missing newer fields
   const stop: Stop = {
     ...rawStop,
@@ -844,6 +950,34 @@ function StopEditor({ stop: rawStop, tourId, onChange, onUploadPhoto }: StopEdit
           This stop ends the tour. After reflection, learners go to the closing guiding question and final questions — no &ldquo;What&apos;s next&rdquo; screen.
         </p>
       )}
+
+      {/* ── Unstructured mode fields ── */}
+      <div className="flex gap-4">
+        {tourCategories && tourCategories.length > 0 && (
+          <label className="block flex-1">
+            <span className="text-xs text-stone-600">Category (unstructured mode)</span>
+            <select
+              value={stop.category || ''}
+              onChange={(e) => onChange({ category: e.target.value || null })}
+              className="mt-1 w-full px-2 py-1.5 border border-stone-300 rounded text-sm"
+            >
+              <option value="">No category</option>
+              {tourCategories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label className="block flex-1">
+          <span className="text-xs text-stone-600">Merge group (unstructured mode)</span>
+          <input
+            value={stop.mergeGroup || ''}
+            onChange={(e) => onChange({ mergeGroup: e.target.value || null })}
+            className="mt-1 w-full px-2 py-1.5 border border-stone-300 rounded text-sm"
+            placeholder="e.g. group-1 (shared string = sequence)"
+          />
+        </label>
+      </div>
 
       {/* ── Background photo override ── */}
       <BgPhotoOverride stop={stop} tourId={tourId} onChange={onChange} onUploadPhoto={onUploadPhoto} />

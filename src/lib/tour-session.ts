@@ -125,6 +125,30 @@ export function goBack(session: TourSession): TourSession | null {
 
 // ── Session CRUD ────────────────────────────────────────────────
 
+// ── Unstructured mode helpers ───────────────────────────────────
+
+/**
+ * Returns the "logical stops" for unstructured mode — standalone stops plus
+ * the first stop of each merge group. These are what count toward progress
+ * and the midway check-in threshold.
+ */
+export function getLogicalStops(tour: Tour): Stop[] {
+  const seenGroups = new Set<string>();
+  const result: Stop[] = [];
+  for (const stop of tour.stops) {
+    const g = stop.mergeGroup;
+    if (g) {
+      if (!seenGroups.has(g)) {
+        seenGroups.add(g);
+        result.push(stop);
+      }
+    } else {
+      result.push(stop);
+    }
+  }
+  return result;
+}
+
 export function createSession(tour: Tour): TourSession {
   return {
     id: `ts_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
@@ -134,6 +158,9 @@ export function createSession(tour: Tour): TourSession {
     currentRound: 0,
     currentPhase: 'intro',
     completedStops: [],
+    completionOrder: [],
+    midwayResponseText: null,
+    midwayShownAt: null,
     reflections: [],
     bankedQuestions: [],
     detourVisits: [],
@@ -149,6 +176,8 @@ export function advancePhase(session: TourSession, stop: Stop): TourSession {
 }
 
 export function advanceToNextStop(session: TourSession, tour: Tour): TourSession {
+  if (tour.unstructuredMode) return advanceToNextStopUnstructured(session, tour);
+
   const currentStop = tour.stops[session.currentStopIndex];
   const isFinal = currentStop?.isFinalStop || false;
   const nextIndex = session.currentStopIndex + 1;
@@ -175,6 +204,106 @@ export function advanceToNextStop(session: TourSession, tour: Tour): TourSession
     completedStops: currentStop
       ? [...session.completedStops, currentStop.id]
       : session.completedStops,
+  };
+}
+
+/** Called after a stop completes in unstructured mode. */
+function advanceToNextStopUnstructured(session: TourSession, tour: Tour): TourSession {
+  const stop = tour.stops[session.currentStopIndex];
+  if (!stop) return session;
+
+  const newCompletedStops = [...session.completedStops, stop.id];
+  const currentGroup = stop.mergeGroup || null;
+
+  // If in a merge group, check whether the next stop continues the group
+  if (currentGroup) {
+    const nextIdx = session.currentStopIndex + 1;
+    if (nextIdx < tour.stops.length && tour.stops[nextIdx].mergeGroup === currentGroup) {
+      return {
+        ...session,
+        phaseHistory: pushHistory(session),
+        currentStopIndex: nextIdx,
+        currentRound: 0,
+        currentPhase: 'seed',
+        completedStops: newCompletedStops,
+      };
+    }
+    // End of merge group — treat as completing one logical stop (the group leader)
+    const leader = tour.stops.find((s) => s.mergeGroup === currentGroup)!;
+    return finishLogicalStop(session, tour, leader.id, newCompletedStops);
+  }
+
+  // Standalone stop
+  return finishLogicalStop(session, tour, stop.id, newCompletedStops);
+}
+
+function finishLogicalStop(
+  session: TourSession,
+  tour: Tour,
+  logicalStopId: string,
+  newCompletedStops: string[]
+): TourSession {
+  const completionOrder = [...(session.completionOrder || []), logicalStopId];
+  const logicalTotal = getLogicalStops(tour).length;
+
+  // All logical stops done → closing
+  if (completionOrder.length >= logicalTotal) {
+    const endPhase = tour.essentialQuestion ? 'eq_closing_discuss' : 'eq_questions';
+    return {
+      ...session,
+      phaseHistory: pushHistory(session),
+      completedStops: newCompletedStops,
+      completionOrder,
+      currentPhase: endPhase,
+      completedAt: new Date().toISOString(),
+    };
+  }
+
+  // Midway check — only once, after completing ceil(total/2) logical stops
+  const midwayThreshold = Math.ceil(logicalTotal / 2);
+  if (
+    tour.midwayEnabled &&
+    tour.midwayQuestion &&
+    completionOrder.length >= midwayThreshold &&
+    (session.midwayShownAt === null || session.midwayShownAt === undefined)
+  ) {
+    return {
+      ...session,
+      phaseHistory: pushHistory(session),
+      completedStops: newCompletedStops,
+      completionOrder,
+      currentPhase: 'midway_checkin',
+      midwayShownAt: completionOrder.length,
+    };
+  }
+
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    completedStops: newCompletedStops,
+    completionOrder,
+    currentPhase: 'unstructured_map',
+  };
+}
+
+/** In unstructured mode: explorer taps a pin and enters that stop. */
+export function selectUnstructuredStop(session: TourSession, stopIndex: number): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentStopIndex: stopIndex,
+    currentRound: 0,
+    currentPhase: 'seed',
+  };
+}
+
+/** Explorer submits their midway check-in response and returns to the map. */
+export function completeMidwayCheckin(session: TourSession, responseText: string): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    midwayResponseText: responseText,
+    currentPhase: 'unstructured_map',
   };
 }
 
@@ -214,10 +343,15 @@ export function recordDetourVisit(
 }
 
 export function completeIntro(session: TourSession, tour: Tour): TourSession {
+  const afterIntro: TourPhase = tour.essentialQuestion
+    ? 'eq_scene'
+    : tour.unstructuredMode
+      ? 'unstructured_map'
+      : 'seed';
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: tour.essentialQuestion ? 'eq_scene' : 'seed',
+    currentPhase: afterIntro,
   };
 }
 
@@ -244,10 +378,11 @@ export function completeEqOpening(
   tour: Tour
 ): TourSession {
   const hasAdditional = !!tour.essentialQuestion?.additionalQuestion;
+  const afterEq: TourPhase = tour.unstructuredMode ? 'unstructured_map' : 'seed';
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: hasAdditional ? 'eq_additional' : 'seed',
+    currentPhase: hasAdditional ? 'eq_additional' : afterEq,
     essentialQuestionResponses: {
       initialTheory: theory,
       initialReasoning: reasoning,
@@ -261,11 +396,11 @@ export function completeEqOpening(
   };
 }
 
-export function completeEqAdditional(session: TourSession): TourSession {
+export function completeEqAdditional(session: TourSession, tour: Tour): TourSession {
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: 'seed',
+    currentPhase: tour.unstructuredMode ? 'unstructured_map' : 'seed',
   };
 }
 

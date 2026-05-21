@@ -18,6 +18,8 @@ export interface TourStopMarkerData {
   index: number;
   isActive: boolean;
   isCompleted: boolean;
+  unstructuredMode?: boolean;
+  isSelectedOverlay?: boolean;
 }
 
 interface MapProps {
@@ -347,6 +349,65 @@ function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
 
 function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () => void }) {
   if (!data.stop.location) return null;
+
+  // Unstructured mode rendering
+  if (data.unstructuredMode) {
+    const baseSize = 36;
+    const size = data.isCompleted ? Math.round(baseSize * 0.6) : baseSize;
+    return (
+      <AdvancedMarker
+        position={data.stop.location}
+        onClick={onClick}
+        zIndex={data.isSelectedOverlay ? 10 : data.isCompleted ? 1 : 5}
+      >
+        <div className="flex flex-col items-center" style={{ transform: 'translateY(calc(50% - 18px))' }}>
+          {/* Pulsing ring for selected state */}
+          {data.isSelectedOverlay && (
+            <div
+              className="absolute rounded-full animate-ping"
+              style={{
+                width: baseSize + 20,
+                height: baseSize + 20,
+                top: -(10),
+                left: -(10),
+                background: 'var(--th-primary)',
+                opacity: 0.25,
+              }}
+            />
+          )}
+          <div
+            className="flex items-center justify-center rounded-full shadow-md transition-all duration-200"
+            style={{
+              width: size,
+              height: size,
+              background: data.isCompleted
+                ? 'color-mix(in srgb, var(--th-text-secondary) 60%, transparent)'
+                : data.isSelectedOverlay
+                  ? 'var(--th-aged-gold)'
+                  : 'var(--th-primary)',
+              border: `2px solid rgba(255,255,255,0.7)`,
+              opacity: data.isCompleted ? 0.75 : 1,
+            }}
+          >
+            {data.isCompleted ? (
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="2 6 5 9 10 3" />
+              </svg>
+            ) : (
+              <div className="w-2 h-2 rounded-full bg-white" />
+            )}
+          </div>
+          {!data.isCompleted && data.stop.title && (
+            <div className="mt-1 px-2 py-0.5 bg-white rounded-md text-[9px] font-semibold text-gray-800 shadow-sm max-w-[110px] text-center leading-tight truncate">
+              {data.stop.title}
+            </div>
+          )}
+        </div>
+      </AdvancedMarker>
+    );
+  }
+
+  // Linear mode rendering (unchanged)
   const size = data.isActive ? 40 : 32;
   return (
     <AdvancedMarker

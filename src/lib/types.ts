@@ -226,6 +226,12 @@ export interface Tour {
     finalReasoningPrompt: string;      // "What did you discuss or see..."
     finalReasoningPlaceholder: string;
   } | null;
+  // Unstructured exploration mode
+  unstructuredMode?: boolean;        // Default false — when true, explorer chooses stop order
+  categories?: string[];             // Author-defined category list for organising stops
+  midwayEnabled?: boolean;           // Default false
+  midwayQuestion?: string | null;    // Shown once the explorer completes half the stops
+
   createdAt: string;                 // ISO 8601
   updatedAt: string;                 // ISO 8601
 }
@@ -317,6 +323,10 @@ export interface Stop {
   // Related artefacts — optional side-path detours
   detours: Detour[];
 
+  // Unstructured mode metadata
+  category?: string | null;          // From the tour's categories list
+  mergeGroup?: string | null;        // Stops with the same value form a sequence; null = standalone
+
   // Metadata
   physicalLocationTag: string;       // Where in the site this stop is
   relatedEntryIds: string[];         // Knowledge base entries this stop draws from
@@ -357,7 +367,7 @@ export interface WebNode {
   y: number;
 }
 
-export type TourPhase = 'intro' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_final_reflect' | 'eq_questions' | 'end';
+export type TourPhase = 'intro' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_final_reflect' | 'eq_questions' | 'end' | 'unstructured_map' | 'midway_checkin';
 
 export interface TourSession {
   id: string;
@@ -367,6 +377,9 @@ export interface TourSession {
   currentPhase: TourPhase;
   currentRound: number;               // 0 = main wonder+reveal, 1+ = extra rounds
   completedStops: string[];
+  completionOrder: string[];           // Stop IDs in the order the explorer completed them (unstructured mode)
+  midwayResponseText: string | null;   // Explorer's response to the midway check-in question
+  midwayShownAt: number | null;        // Index in completionOrder when midway check-in was shown
   reflections: Array<{
     stopId: string;
     sliderValue: number;              // 0–1
