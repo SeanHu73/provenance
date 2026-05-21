@@ -37,7 +37,16 @@
       "Bash(node --input-type=module -e ':*)",
       "Bash(ls D:/Provenance/memorial-church-tool/.env*)",
       "Bash(node --env-file=.env.local scripts/patch-missaved-photos.mjs)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(sed -n '29,35p;63p' src/components/tour/cards/EqOpeningCard.tsx)",
+      "Bash(sed -n '46p;71p;84p;119,121p' src/components/tour/cards/SeedCard.tsx)",
+      "Bash(sed -n '218,228p' src/components/tour/Journal.tsx)",
+      "Bash(sed -n '46p;55,61p' src/components/tour/ProgressBar.tsx)",
+      "Bash(node scripts/_title-fonts.js)",
+      "PowerShell(npm run *)",
+      "Bash(git -C \"D:/Provenance/memorial-church-tool\" add src/components/tour/cards/EqAdditionalCard.tsx src/components/tour/cards/EqClosingCard.tsx src/components/tour/cards/EqClosingDiscussCard.tsx src/components/tour/cards/EqDiscussCard.tsx src/components/tour/cards/EqOpeningCard.tsx)",
+      "Bash(git -C D:/Provenance/memorial-church-tool commit -m ' *)",
+      "Bash(git *)"
     ]
   }
 }
