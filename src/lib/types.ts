@@ -236,6 +236,13 @@ export interface Tour {
   updatedAt: string;                 // ISO 8601
 }
 
+export interface StopPhoto {
+  url: string;
+  caption: string | null;
+  displayMode?: 'cover' | 'contain';
+  focalPoint?: { x: number; y: number };
+}
+
 export interface Stop {
   id: string;
   order: number;                     // Position in the tour sequence
@@ -259,7 +266,7 @@ export interface Stop {
     text: string;                    // 2–3 sentences of context
     photoUrl: string | null;         // Legacy single photo
     photoCaption: string | null;
-    photos: Array<{ url: string; caption: string | null }>; // Multiple photos
+    photos: StopPhoto[]; // Multiple photos
     ttsText: string | null;          // Optional override for TTS
     timerSeconds: number | null;     // Optional reading timer (null = no timer)
     audioUrl: string | null;         // Optional audio narration
@@ -272,7 +279,7 @@ export interface Stop {
     timerSeconds: number;            // Default 30
     photoUrl: string | null;         // Legacy single photo
     photoCaption: string | null;
-    photos: Array<{ url: string; caption: string | null }>; // Multiple photos
+    photos: StopPhoto[]; // Multiple photos
     audioUrl: string | null;
     audioTitle: string | null;
   };
@@ -281,7 +288,7 @@ export interface Stop {
   wonder: {
     question: string;                // Discussion prompt (no options)
     questionType: 'discuss' | 'opinion';  // 'discuss' = "Chance to discuss...", 'opinion' = "What's your opinion?"
-    photos: Array<{ url: string; caption: string | null }>;
+    photos: StopPhoto[];
     audioUrl: string | null;
     audioTitle: string | null;
   } | null;
@@ -291,19 +298,19 @@ export interface Stop {
     text: string;                    // The authored insight
     photoUrl: string | null;         // Legacy single photo (kept for backward compat)
     photoCaption: string | null;
-    photos: Array<{ url: string; caption: string | null }>; // Multiple photos
+    photos: StopPhoto[]; // Multiple photos
     bridgeText: string;              // Forward-pointing sentence to next stop
-    bridgePhotos: Array<{ url: string; caption: string | null }>;
+    bridgePhotos: StopPhoto[];
     audioUrl: string | null;
     audioTitle: string | null;
   };
 
   // Extra wonder + context rounds (optional, after the initial reveal, before the bridge)
   extraRounds: Array<{
-    wonder: { question: string; questionType: 'discuss' | 'opinion'; photos: Array<{ url: string; caption: string | null }>; audioUrl: string | null; audioTitle: string | null } | null;
+    wonder: { question: string; questionType: 'discuss' | 'opinion'; photos: StopPhoto[]; audioUrl: string | null; audioTitle: string | null } | null;
     reveal: {
       text: string;
-      photos: Array<{ url: string; caption: string | null }>;
+      photos: StopPhoto[];
       audioUrl: string | null;
       audioTitle: string | null;
     } | null;
@@ -317,7 +324,7 @@ export interface Stop {
     followUps: Array<'what_shifted' | 'reasoning_source'>;  // can select multiple (or empty for none)
     followUpOptions: string[] | null;          // custom options for what_shifted
     reasoningSourceOptions: string[] | null;   // custom options for reasoning_source
-    photos: Array<{ url: string; caption: string | null }>;
+    photos: StopPhoto[];
   } | null;
 
   // Related artefacts — optional side-path detours
@@ -352,7 +359,7 @@ export interface Detour {
   } | null;
   reveal: {
     text: string;
-    photos: Array<{ url: string; caption: string | null }>;
+    photos: StopPhoto[];
   };
   bridge: string | null;
 }

@@ -16,6 +16,8 @@ import FullscreenPhoto from './FullscreenPhoto';
 interface Photo {
   url: string;
   caption: string | null;
+  displayMode?: 'cover' | 'contain';
+  focalPoint?: { x: number; y: number };
 }
 
 interface Props {
@@ -110,19 +112,26 @@ export default function PhotoContent({
 }
 
 function PhotoBlock({ photo, onTap }: { photo: Photo; onTap: () => void }) {
+  const isCover = photo.displayMode === 'cover';
+  const isLetterbox = photo.displayMode === 'contain';
+  const objectPosition = isCover && photo.focalPoint
+    ? `${photo.focalPoint.x}% ${photo.focalPoint.y}%`
+    : '50% 50%';
+
   return (
     <button
       onClick={onTap}
-      className="w-full rounded-lg overflow-hidden shadow-md border border-sandstone-light my-3 text-left cursor-pointer bg-sandstone"
+      className={`w-full rounded-lg overflow-hidden shadow-md border border-sandstone-light my-3 text-left cursor-pointer ${isLetterbox ? 'bg-black' : 'bg-sandstone'}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={photo.url}
         alt={photo.caption || ''}
-        className="w-full max-h-72 object-contain"
+        className={`w-full ${isCover ? 'h-72 object-cover' : 'max-h-72 object-contain'}`}
+        style={isCover ? { objectPosition } : undefined}
       />
       {photo.caption && (
-        <p className="text-xs text-text-secondary px-3 py-1.5 bg-sandstone/50 italic">
+        <p className={`text-xs px-3 py-1.5 italic ${isLetterbox ? 'text-white/70 bg-black/50' : 'text-text-secondary bg-sandstone/50'}`}>
           {photo.caption}
         </p>
       )}
