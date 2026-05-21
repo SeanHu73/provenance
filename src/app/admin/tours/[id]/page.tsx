@@ -15,7 +15,7 @@
  * Auto-saves to Firestore on every blur / change so work is never lost.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-google-maps';
@@ -94,6 +94,16 @@ export default function TourEditorPage() {
   const [expandedStopId, setExpandedStopId] = useState<string | null>(null);
   const [previewStopId, setPreviewStopId] = useState<string | null>(null);
   const [previewPhase, setPreviewPhase] = useState(0);
+
+  const stopRefs = useRef<Record<string, HTMLLIElement | null>>({});
+  useEffect(() => {
+    if (!expandedStopId) return;
+    const el = stopRefs.current[expandedStopId];
+    if (!el) return;
+    // Slight delay lets React paint the expanded content before we scroll
+    const id = setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    return () => clearTimeout(id);
+  }, [expandedStopId]);
 
   useEffect(() => {
     getTour(tourId).then((t) => {
@@ -768,7 +778,7 @@ export default function TourEditorPage() {
           ) : (
             <ul className="space-y-2">
               {tour.stops.map((stop, idx) => (
-                <li key={stop.id} className="border border-stone-300 rounded bg-white">
+                <li key={stop.id} ref={(el) => { stopRefs.current[stop.id] = el; }} className="border border-stone-300 rounded bg-white">
                   {/* Stop summary bar */}
                   <div
                     className="flex items-center gap-3 p-3 cursor-pointer hover:bg-stone-50"
@@ -1967,79 +1977,83 @@ function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto, showThum
                   ))}
                 </div>
 
-                {/* Crop mode: phone-ratio preview + zoom slider */}
-                {photo.displayMode === 'cover' && (() => {
+                {/* Content preview — always visible, style reflects display mode */}
+                {(() => {
+                  const isCover = photo.displayMode === 'cover';
+                  const isContain = photo.displayMode === 'contain';
                   const fp = photo.focalPoint;
                   const zoom = photo.zoom ?? 1;
                   const objPos = fp ? `${fp.x}% ${fp.y}%` : '50% 50%';
                   const origin = fp ? `${fp.x}% ${fp.y}%` : 'center';
                   return (
                     <div className="space-y-1.5">
-                      <p className="text-[10px] text-stone-400">Click image to set focal point. Preview matches phone proportions.</p>
-                      {/* Phone-ratio preview (h-72 / ~320px card ≈ 4:3) */}
-                      <div
-                        className="relative w-full rounded border border-stone-300 cursor-crosshair bg-black"
-                        style={{ aspectRatio: '4/3', overflow: 'clip' }}
-                        onClick={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
-                          const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
-                          const next = [...photos];
-                          next[i] = { ...next[i], focalPoint: { x, y } };
-                          onChange(next);
-                        }}
-                      >
-                        {/* Scale wrapper — lets the outer overflow:clip reliably clip the zoom */}
+                      {isCover && (
+                        <p className="text-[10px] text-stone-400">Click image to set focal point. Preview is 4:3 (content area on phone).</p>
+                      )}
+                      {isCover ? (
+                        /* Crop preview: 4:3, click-to-focal-point, zoom-wrapper */
                         <div
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            transform: zoom > 1 ? `scale(${zoom})` : undefined,
-                            transformOrigin: zoom > 1 ? origin : undefined,
-                          }}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={photo.url}
-                            alt=""
-                            className="w-full h-full object-cover select-none"
-                            style={{ objectPosition: objPos }}
-                            draggable={false}
-                          />
-                        </div>
-                        {fp && (
-                          <div
-                            className="absolute w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none"
-                            style={{ left: `${fp.x}%`, top: `${fp.y}%`, transform: 'translate(-50%,-50%)', background: '#F59E0B', zIndex: 1 }}
-                          />
-                        )}
-                      </div>
-                      {/* Zoom slider */}
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-stone-400 shrink-0">Zoom:</span>
-                        <input
-                          type="range"
-                          min={1} max={3} step={0.05}
-                          value={zoom}
-                          onChange={(e) => {
+                          className="relative w-full rounded border border-stone-300 cursor-crosshair bg-black"
+                          style={{ aspectRatio: '4/3', overflow: 'clip' }}
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+                            const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
                             const next = [...photos];
-                            next[i] = { ...next[i], zoom: parseFloat(e.target.value) };
+                            next[i] = { ...next[i], focalPoint: { x, y } };
                             onChange(next);
                           }}
-                          className="flex-1 h-1 accent-amber-500"
-                        />
-                        <span className="text-[10px] text-stone-500 w-8 text-right">{zoom.toFixed(2)}×</span>
-                        {zoom !== 1 && (
-                          <button
-                            type="button"
-                            onClick={() => { const next = [...photos]; next[i] = { ...next[i], zoom: 1 }; onChange(next); }}
-                            className="text-[10px] text-blue-600 hover:underline"
-                          >reset</button>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-stone-400">
-                        {fp ? `Focal point: ${fp.x}%, ${fp.y}%` : 'No focal point — defaults to centre'}
-                      </p>
+                        >
+                          <div
+                            style={{
+                              position: 'absolute', inset: 0,
+                              transform: zoom > 1 ? `scale(${zoom})` : undefined,
+                              transformOrigin: zoom > 1 ? origin : undefined,
+                            }}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={photo.url} alt="" className="w-full h-full object-cover select-none" style={{ objectPosition: objPos }} draggable={false} />
+                          </div>
+                          {fp && (
+                            <div className="absolute w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `${fp.x}%`, top: `${fp.y}%`, transform: 'translate(-50%,-50%)', background: '#F59E0B', zIndex: 1 }} />
+                          )}
+                        </div>
+                      ) : isContain ? (
+                        /* Letterbox preview */
+                        <div className="w-full bg-black rounded border border-stone-300 flex items-center justify-center" style={{ maxHeight: 200 }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photo.url} alt="" className="max-w-full select-none" style={{ maxHeight: 200, objectFit: 'contain' }} draggable={false} />
+                        </div>
+                      ) : (
+                        /* Auto preview: natural aspect ratio */
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={photo.url} alt="" className="w-full rounded border border-stone-300 select-none" style={{ maxHeight: 200, objectFit: 'contain' }} draggable={false} />
+                      )}
+
+                      {/* Zoom slider — only in crop mode */}
+                      {isCover && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-stone-400 shrink-0">Zoom:</span>
+                          <input
+                            type="range" min={1} max={3} step={0.05} value={zoom}
+                            onChange={(e) => {
+                              const next = [...photos];
+                              next[i] = { ...next[i], zoom: parseFloat(e.target.value) };
+                              onChange(next);
+                            }}
+                            className="flex-1 h-1 accent-amber-500"
+                          />
+                          <span className="text-[10px] text-stone-500 w-8 text-right">{zoom.toFixed(2)}×</span>
+                          {zoom !== 1 && (
+                            <button type="button" onClick={() => { const next = [...photos]; next[i] = { ...next[i], zoom: 1 }; onChange(next); }} className="text-[10px] text-blue-600 hover:underline">reset</button>
+                          )}
+                        </div>
+                      )}
+                      {isCover && (
+                        <p className="text-[10px] text-stone-400">
+                          {fp ? `Focal point: ${fp.x}%, ${fp.y}%` : 'No focal point — defaults to centre'}
+                        </p>
+                      )}
                     </div>
                   );
                 })()}
