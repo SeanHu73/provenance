@@ -23,6 +23,7 @@
   --th-olive: #7E5320;            /* dark amber — completed states, borders, advance buttons (no green) */
   --th-journal: #3E1620;          /* deep cranberry — journal cover / dark utility surface */
   --th-question-bg: #6E1F2ED0;    /* essential-question box */
+  --th-question-shadow: rgba(110, 31, 46, 0.38); /* soft glow around question box */
   --th-question-red: #A23142;     /* the "?" question button */
 
   --th-text: #3A3A32;             /* body text */
@@ -53,6 +54,7 @@
   --th-olive: #7A863B;            /* Olive (dark) — completed states, borders, advance buttons */
   --th-journal: #014240;          /* Palo Alto (dark) — journal cover / dark utility surface */
   --th-question-bg: #014240D0;    /* essential-question box */
+  --th-question-shadow: rgba(1, 66, 64, 0.38);   /* soft glow around question box */
   --th-question-red: #279989;     /* Palo Verde — the "?" question button */
 
   --th-text: #2D3D38;

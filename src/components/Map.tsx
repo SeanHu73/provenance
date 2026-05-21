@@ -33,7 +33,14 @@ interface MapProps {
   hidePins?: boolean;
 }
 
-function haversineDistanceM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+type Loc = { lat: number; lng: number };
+
+type MapInstance = {
+  panTo: (pos: Loc) => void;
+  setZoom: (zoom: number) => void;
+} | null;
+
+function haversineDistanceM(a: Loc, b: Loc): number {
   const R = 6371000;
   const dLat = (b.lat - a.lat) * (Math.PI / 180);
   const dLng = (b.lng - a.lng) * (Math.PI / 180);
@@ -47,6 +54,36 @@ function formatDist(m: number): string {
   const miles = m * 0.000621371;
   if (miles < 0.1) return `${Math.round(m * 3.28084)} ft`;
   return `${miles.toFixed(1)} mi`;
+}
+
+/**
+ * Centres the map on the user and zooms to show the nearest tour pin.
+ * Falls back to MEMORIAL_CHURCH if no tour pins are available yet.
+ * Caps automatic zoom at MAX_AUTO_ZOOM; beyond 5 miles just centres on user.
+ */
+function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
+  if (!map) return;
+  const target =
+    tourLocs.length > 0
+      ? tourLocs.reduce((best, loc) =>
+          haversineDistanceM(userPos, loc) < haversineDistanceM(userPos, best) ? loc : best
+        )
+      : MEMORIAL_CHURCH;
+
+  const distM = haversineDistanceM(userPos, target);
+
+  if (distM > SHOW_PIN_RADIUS_M) {
+    map.panTo(userPos);
+    map.setZoom(MAX_AUTO_ZOOM);
+  } else {
+    const zoom = Math.min(MAX_AUTO_ZOOM, Math.max(12, Math.round(17 - Math.log2(Math.max(distM, 50) / 50))));
+    const center =
+      distM < 30
+        ? userPos
+        : { lat: (userPos.lat + target.lat) / 2, lng: (userPos.lng + target.lng) / 2 };
+    map.panTo(center);
+    map.setZoom(zoom);
+  }
 }
 
 function PinMarker({ pin, isSelected, onClick }: { pin: Pin; isSelected: boolean; onClick: () => void }) {
@@ -90,7 +127,7 @@ function PinMarker({ pin, isSelected, onClick }: { pin: Pin; isSelected: boolean
   );
 }
 
-function UserLocationDot({ position }: { position: { lat: number; lng: number } }) {
+function UserLocationDot({ position }: { position: Loc }) {
   return (
     <AdvancedMarker position={position} zIndex={20}>
       <div className="relative flex items-center justify-center">
@@ -102,7 +139,15 @@ function UserLocationDot({ position }: { position: { lat: number; lng: number } 
   );
 }
 
-function LocateButton({ following, onToggleFollow }: { following: boolean; onToggleFollow: () => void }) {
+function LocateButton({
+  following,
+  onToggleFollow,
+  tourLocs,
+}: {
+  following: boolean;
+  onToggleFollow: () => void;
+  tourLocs: Loc[];
+}) {
   const map = useMap();
   const [locating, setLocating] = useState(false);
 
@@ -112,8 +157,8 @@ function LocateButton({ following, onToggleFollow }: { following: boolean; onTog
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        map.panTo({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        map.setZoom(19);
+        const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        fitToNearestTourPin(map as MapInstance, userPos, tourLocs);
         setLocating(false);
         onToggleFollow();
       },
@@ -140,7 +185,7 @@ function LocateButton({ following, onToggleFollow }: { following: boolean; onTog
   );
 }
 
-function UserLocationTracker({ following, onLocationUpdate }: { following: boolean; onLocationUpdate: (pos: { lat: number; lng: number } | null) => void }) {
+function UserLocationTracker({ following, onLocationUpdate }: { following: boolean; onLocationUpdate: (pos: Loc | null) => void }) {
   const map = useMap();
 
   useEffect(() => {
@@ -160,15 +205,13 @@ function UserLocationTracker({ following, onLocationUpdate }: { following: boole
   return null;
 }
 
-/** Runs once on mount: gets user location and zooms the map to show user + nearest pin. */
+/** Runs once on mount: gets user location and fits the map to show user + nearest tour pin. */
 function MapInitializer({
-  pins,
   tourPins,
   onLocationUpdate,
 }: {
-  pins: Pin[];
   tourPins?: TourPinData[];
-  onLocationUpdate: (pos: { lat: number; lng: number } | null) => void;
+  onLocationUpdate: (pos: Loc | null) => void;
 }) {
   const map = useMap();
   const initialized = useRef(false);
@@ -177,46 +220,18 @@ function MapInitializer({
     if (initialized.current || !map || !navigator.geolocation) return;
     initialized.current = true;
 
+    const tourLocs = (tourPins ?? []).filter((tp) => tp.tour.location).map((tp) => tp.tour.location!);
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         onLocationUpdate(userPos);
-
-        const allLocs: { lat: number; lng: number }[] = [
-          ...pins.filter((p) => p.location).map((p) => p.location),
-          ...(tourPins ?? []).filter((tp) => tp.tour.location).map((tp) => tp.tour.location!),
-        ];
-
-        // Fall back to the church if pins haven't loaded yet (async Firebase fetch).
-        const targetLoc =
-          allLocs.length > 0
-            ? allLocs.reduce((best, loc) =>
-                haversineDistanceM(userPos, loc) < haversineDistanceM(userPos, best) ? loc : best
-              )
-            : MEMORIAL_CHURCH;
-
-        const distM = haversineDistanceM(userPos, targetLoc);
-
-        if (distM > SHOW_PIN_RADIUS_M) {
-          // More than 5 miles away — just centre on the user.
-          map.panTo(userPos);
-          map.setZoom(MAX_AUTO_ZOOM);
-        } else {
-          // Scale zoom to show user + target pin comfortably.
-          // At 50 m → zoom 17; every doubling of distance drops one zoom level.
-          const zoom = Math.min(MAX_AUTO_ZOOM, Math.max(12, Math.round(17 - Math.log2(Math.max(distM, 50) / 50))));
-          const center =
-            distM < 30
-              ? userPos
-              : { lat: (userPos.lat + targetLoc.lat) / 2, lng: (userPos.lng + targetLoc.lng) / 2 };
-          map.panTo(center);
-          map.setZoom(zoom);
-        }
+        fitToNearestTourPin(map as MapInstance, userPos, tourLocs);
       },
       () => onLocationUpdate(null),
       { enableHighAccuracy: true, timeout: 8000 }
     );
-  }, [map, pins, tourPins, onLocationUpdate]);
+  }, [map, tourPins, onLocationUpdate]);
 
   return null;
 }
@@ -227,14 +242,11 @@ function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
   return (
     <AdvancedMarker position={tour.location} onClick={onClick} zIndex={5}>
       <div className="flex flex-col items-center cursor-pointer">
-        {/* Pin with an attention-drawing pulse */}
         <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-          {/* Pulsing ring — "tap me" cue */}
           <span
             className="absolute inline-flex h-full w-full rounded-full animate-ping"
             style={{ background: 'var(--th-primary)', opacity: 0.4 }}
           />
-          {/* Pin body */}
           <div
             className="relative flex items-center justify-center rounded-full"
             style={{
@@ -250,7 +262,6 @@ function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
             </svg>
           </div>
         </div>
-        {/* Tour title + tap-to-start cue */}
         <div className="mt-1.5 flex flex-col items-center gap-1">
           <div className="px-2.5 py-0.5 bg-white rounded-md text-xs font-semibold text-gray-900 shadow-sm border border-gray-200 max-w-[180px] truncate font-sans">
             {tour.title}
@@ -298,14 +309,13 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
 }
 
 export default function MapContainer({ pins, selectedPinId, onPinSelect, tourPins, onTourPinSelect, tourStops, onTourStopSelect, hidePins }: MapProps) {
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<Loc | null>(null);
   const [following, setFollowing] = useState(false);
   const [navPrompt, setNavPrompt] = useState<{ tour: Tour; distanceM: number } | null>(null);
 
-  const handleLocationUpdate = useCallback(
-    (pos: { lat: number; lng: number } | null) => setUserLocation(pos),
-    []
-  );
+  const handleLocationUpdate = useCallback((pos: Loc | null) => setUserLocation(pos), []);
+
+  const tourLocs = (tourPins ?? []).filter((tp) => tp.tour.location).map((tp) => tp.tour.location!);
 
   function handleTourPinClick(tour: Tour) {
     if (userLocation && tour.location) {
@@ -340,7 +350,7 @@ export default function MapContainer({ pins, selectedPinId, onPinSelect, tourPin
           rotateControl={true}
           className="w-full h-full"
         >
-          <MapInitializer pins={pins} tourPins={tourPins} onLocationUpdate={handleLocationUpdate} />
+          <MapInitializer tourPins={tourPins} onLocationUpdate={handleLocationUpdate} />
           <UserLocationTracker following={following} onLocationUpdate={handleLocationUpdate} />
           {userLocation && <UserLocationDot position={userLocation} />}
           {!hidePins && pins.map((pin) => (
@@ -367,7 +377,11 @@ export default function MapContainer({ pins, selectedPinId, onPinSelect, tourPin
           ))}
         </GoogleMap>
 
-        <LocateButton following={following} onToggleFollow={() => setFollowing((f) => !f)} />
+        <LocateButton
+          following={following}
+          onToggleFollow={() => setFollowing((f) => !f)}
+          tourLocs={tourLocs}
+        />
 
         {navPrompt && navPrompt.tour.location && (
           <div

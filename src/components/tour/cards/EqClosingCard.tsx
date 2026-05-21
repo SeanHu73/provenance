@@ -35,13 +35,7 @@ export default function EqClosingCard({ tour, onComplete }: Props) {
       {/* The essential question — edges fade softly into background */}
       <div
         className="rounded-xl px-8 py-7 text-center"
-        style={{
-          background: 'var(--th-question-bg)',
-          maskImage: 'linear-gradient(to right, transparent 0, black 6px, black calc(100% - 6px), transparent), linear-gradient(to bottom, transparent 0, black 6px, black calc(100% - 6px), transparent)',
-          maskComposite: 'intersect',
-          WebkitMaskImage: 'linear-gradient(to right, transparent 0, black 6px, black calc(100% - 6px), transparent), linear-gradient(to bottom, transparent 0, black 6px, black calc(100% - 6px), transparent)',
-          WebkitMaskComposite: 'destination-in',
-        }}
+        style={{ background: 'var(--th-question-bg)', boxShadow: '0 0 18px 5px var(--th-question-shadow)' }}
       >
         <p className="text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;{eq.question}&rdquo;

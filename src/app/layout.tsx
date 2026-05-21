@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Newsreader, DM_Serif_Display } from 'next/font/google';
 import './globals.css';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
+import ThemeColorMeta from '@/components/ThemeColorMeta';
 import { ThemeProvider } from '@/context/ThemeContext';
 
 // Shared content/body font — used for all reading text in both themes.
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="h-full">
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeProvider>
+          <ThemeColorMeta />
           {children}
           <ServiceWorkerRegistrar />
         </ThemeProvider>
