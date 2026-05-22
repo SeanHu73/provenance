@@ -55,16 +55,16 @@ export default function MeetGuideCard({ tour, onContinue }: Props) {
         )}
       </div>
 
+      {/* Audio */}
+      {g.introAudioUrl && (
+        <AudioButton audioUrl={g.introAudioUrl} title={g.introAudioTitle ?? null} />
+      )}
+
       {/* Intro text */}
       {g.intro && (
         <p className="text-[21px] leading-relaxed font-serif text-text-primary">
           {g.intro}
         </p>
-      )}
-
-      {/* Audio */}
-      {g.introAudioUrl && (
-        <AudioButton audioUrl={g.introAudioUrl} title={g.introAudioTitle ?? null} />
       )}
 
       {/* Continue */}
