@@ -32,6 +32,7 @@ import {
   completeEqClosing as completeEqClosingImpl,
   completeEqFinalReflect as completeEqFinalReflectImpl,
   finishTour as finishTourImpl,
+  completeGuideOutro as completeGuideOutroImpl,
   bankQuestion as bankQuestionImpl,
   selectUnstructuredStop as selectUnstructuredStopImpl,
   completeMidwayCheckin as completeMidwayCheckinImpl,
@@ -68,6 +69,7 @@ interface TourContextValue {
   completeEqClosing: (finalReflection: string, finalReasoning: string) => void;
   completeEqFinalReflect: (cognitive: number, perceptual: number | null, whatShifted: string[] | null, reasoningSource: string[] | null) => void;
   finishTour: () => void;
+  completeGuideOutro: () => void;
   endTour: () => void;
   // Unstructured exploration mode
   enterUnstructuredStop: (stopIndex: number) => void;
@@ -290,7 +292,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const finishTourFn = useCallback(() => {
     if (!session || !tour) return;
-    persist(finishTourImpl(session));
+    persist(finishTourImpl(session, tour));
     logTourComplete({
       tourId: tour.id,
       sessionId: session.id,
@@ -300,6 +302,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
       startedAt: session.startedAt,
     });
   }, [session, tour, persist]);
+
+  const completeGuideOutroFn = useCallback(() => {
+    if (!session) return;
+    persist(completeGuideOutroImpl(session));
+  }, [session, persist]);
 
   const endTour = useCallback(() => {
     setTour(null);
@@ -335,6 +342,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeEqClosing: completeEqClosingFn,
       completeEqFinalReflect: completeEqFinalReflectFn,
       finishTour: finishTourFn,
+      completeGuideOutro: completeGuideOutroFn,
       endTour,
       enterUnstructuredStop: enterUnstructuredStopFn,
       completeMidwayCheckin: completeMidwayCheckinFn,

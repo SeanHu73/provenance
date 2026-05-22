@@ -48,7 +48,7 @@ function HomeInner() {
   const tourStopMarkers: TourStopMarkerData[] = [];
   const isUnstructuredMapPhase = !!(activeTour?.unstructuredMode && session?.currentPhase === 'unstructured_map');
   const isMidwayCheckin = !!(activeTour?.unstructuredMode && session?.currentPhase === 'midway_checkin');
-  const isUnstructuredClosing = !!(activeTour?.unstructuredMode && session && ['eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase));
+  const isUnstructuredClosing = !!(activeTour?.unstructuredMode && session && ['eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'guide_outro', 'end'].includes(session.currentPhase));
   if (isActive && activeTour) {
     if (isUnstructuredMapPhase) {
       // Unstructured mode: show all logical stops with locations

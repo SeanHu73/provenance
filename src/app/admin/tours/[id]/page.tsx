@@ -434,6 +434,21 @@ export default function TourEditorPage() {
               uploadPath={`memorial-church/audio/tours/${tourId}/guide`}
               onUploadFile={uploadPhoto}
             />
+            <label className="block">
+              <span className="text-xs text-stone-600">
+                Closing &ldquo;Last words&rdquo; message (optional)
+              </span>
+              <textarea
+                value={tour.guide.thankYouMessage ?? ''}
+                onChange={(e) => updateGuidePartial({ thankYouMessage: e.target.value })}
+                rows={3}
+                className="mt-1 w-full px-3 py-1.5 border border-stone-300 rounded text-sm"
+                placeholder="A closing thank-you from the guide, shown near the end of the tour…"
+              />
+              <span className="text-[11px] text-stone-400 block mt-1">
+                Shown as &ldquo;Last words from {tour.guide.name || 'the guide'}&rdquo; before the end screen.
+              </span>
+            </label>
           </div>
 
           <label className="block">

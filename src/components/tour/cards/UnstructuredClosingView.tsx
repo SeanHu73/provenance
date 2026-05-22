@@ -11,6 +11,7 @@ import EqClosingDiscussCard from './EqClosingDiscussCard';
 import EqClosingCard from './EqClosingCard';
 import EqFinalReflectCard from './EqFinalReflectCard';
 import EqQuestionsCard from './EqQuestionsCard';
+import GuideOutroCard from './GuideOutroCard';
 import EndCard from './EndCard';
 
 export default function UnstructuredClosingView() {
@@ -20,6 +21,7 @@ export default function UnstructuredClosingView() {
     completeEqClosingDiscuss,
     completeEqClosing,
     completeEqFinalReflect,
+    completeGuideOutro,
   } = useTour();
 
   if (!tour || !session) return null;
@@ -39,6 +41,9 @@ export default function UnstructuredClosingView() {
         )}
         {phase === 'eq_questions' && (
           <EqQuestionsCard />
+        )}
+        {phase === 'guide_outro' && (
+          <GuideOutroCard tour={tour} onContinue={completeGuideOutro} />
         )}
         {phase === 'end' && (
           <EndCard />

@@ -16,6 +16,7 @@ import { useTour } from '@/context/TourContext';
 import { canUseBlur } from '@/lib/device-capability';
 import IntroScreens from './cards/IntroScreens';
 import MeetGuideCard from './cards/MeetGuideCard';
+import GuideOutroCard from './cards/GuideOutroCard';
 import EqSceneCard from './cards/EqSceneCard';
 import EqDiscussCard from './cards/EqDiscussCard';
 import EqOpeningCard from './cards/EqOpeningCard';
@@ -55,6 +56,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
     addReflection,
     completeIntro,
     completeMeetGuide,
+    completeGuideOutro,
     completeEqScene,
     completeEqDiscuss,
     completeEqOpening,
@@ -98,7 +100,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const stopNum = session.currentStopIndex + 1;
 
   // Progress bar visibility — show during stops, hide on pre-tour/end screens
-  const showProgress = !['intro', 'meet_guide', 'end'].includes(phase);
+  const showProgress = !['intro', 'meet_guide', 'guide_outro', 'end'].includes(phase);
 
   // Determine transition type from the phase history.
   // Look at the previous entry — if it was in the same stop, slide. Otherwise fade.
@@ -359,6 +361,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
         {phase === 'eq_questions' && (
           <EqQuestionsCard />
+        )}
+
+        {phase === 'guide_outro' && (
+          <GuideOutroCard tour={tour} onContinue={completeGuideOutro} />
         )}
 
         {phase === 'end' && (

@@ -463,12 +463,21 @@ export function completeEqFinalReflect(
   };
 }
 
-export function finishTour(session: TourSession): TourSession {
+export function finishTour(session: TourSession, tour: Tour): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    // The guide's optional closing message comes just before the end card.
+    currentPhase: tour.guide?.thankYouMessage ? 'guide_outro' : 'end',
+    completedAt: new Date().toISOString(),
+  };
+}
+
+export function completeGuideOutro(session: TourSession): TourSession {
   return {
     ...session,
     phaseHistory: pushHistory(session),
     currentPhase: 'end',
-    completedAt: new Date().toISOString(),
   };
 }
 
