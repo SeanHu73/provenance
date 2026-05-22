@@ -277,7 +277,11 @@ export default function Journal({ onMapPeek }: JournalProps) {
           if (!wonder) return null;
           // Build a minimal stop-like object for WonderCard
           const virtualStop = { ...currentStop, wonder: { ...wonder, questionType: wonder.questionType || 'discuss' } };
-          return <WonderCard key={`wonder-${round}`} stop={virtualStop} onContinue={advancePhase} />;
+          // Round 0's main context always follows; an extra round may have none.
+          const hasContext = round === 0
+            ? true
+            : ((currentStop.extraRounds || [])[round - 1]?.reveal ?? null) !== null;
+          return <WonderCard key={`wonder-${round}`} stop={virtualStop} onContinue={advancePhase} hasContext={hasContext} />;
         })()}
 
         {phase === 'reveal' && currentStop && (() => {

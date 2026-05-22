@@ -8,10 +8,16 @@ import BackButton from './BackButton';
 interface Props {
   stop: Stop;
   onContinue: () => void;
+  /** Whether a context (reveal) screen follows this discussion question. */
+  hasContext?: boolean;
 }
 
-export default function WonderCard({ stop, onContinue }: Props) {
+export default function WonderCard({ stop, onContinue, hasContext = true }: Props) {
   if (!stop.wonder) return null;
+
+  const buttonLabel = hasContext
+    ? "We've talked — show us"
+    : "We've talked — what's next?";
 
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
@@ -38,7 +44,7 @@ export default function WonderCard({ stop, onContinue }: Props) {
           className="flex-1 py-3 rounded-lg text-base font-semibold text-white transition-colors"
           style={{ backgroundColor: 'var(--th-primary)' }}
         >
-          We&apos;ve talked &mdash; show us
+          {buttonLabel}
         </button>
       </div>
     </div>
