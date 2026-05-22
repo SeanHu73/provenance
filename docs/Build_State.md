@@ -30,19 +30,19 @@ admin (see §10).
 **Linear mode (default):**
 
 ```
-Map (tour pin) → Journal Peek → Intro screens →
+Map (tour pin) → Journal Peek → Intro screens → [Meet Your Guide] →
   Setting the Scene → Question for you! → Written prompts → [Additional Q] →
   Stop 1: Background+Notice → [Discussion] → Context → [Extra rounds] →
     [Reflect] → What's Next → ... →
   Stop N (final) → Closing Discuss → Closing Written → Final Reflect →
-  Any Remaining Questions → Question List → End Card
+  Any Remaining Questions → Question List → [Last words] → End Card
 ```
 
 **Unstructured mode:** the explorer chooses stop order from a full-screen
 map overlay (see §10).
 
 ```
-Map (tour pin) → Journal Peek → Intro screens →
+Map (tour pin) → Journal Peek → Intro screens → [Meet Your Guide] →
   Setting the Scene → Question for you! → Written prompts → [Additional Q] →
   Unstructured Map (tap any stop pin) →
     Stop: Background+Notice → [Discussion] → Context → [Extra] → [Reflect] →
@@ -50,7 +50,7 @@ Map (tour pin) → Journal Peek → Intro screens →
   [Midway check-in once half the logical stops are done] →
   ... repeat until all logical stops complete →
   Unstructured Closing (Closing Discuss → Closing Written → Final Reflect →
-    Any Remaining Questions → End Card)
+    Any Remaining Questions → [Last words] → End Card)
 ```
 
 ### Key Components
@@ -76,7 +76,9 @@ Map (tour pin) → Journal Peek → Intro screens →
 | EqFinalReflectCard | `cards/EqFinalReflectCard.tsx` | Final sliders + chips |
 | EqQuestionsCard | `cards/EqQuestionsCard.tsx` | Final questions + question list |
 | EndCard | `cards/EndCard.tsx` | Learning arc + explore on your own |
-| IntroScreens | `cards/IntroScreens.tsx` | Onboarding intro sequence |
+| IntroScreens | `cards/IntroScreens.tsx` | Onboarding sequence (5 screens, ? cue arrow, phone-setup choice) |
+| MeetGuideCard | `cards/MeetGuideCard.tsx` | "Meet Your Guide" — photo, name, title, audio, intro |
+| GuideOutroCard | `cards/GuideOutroCard.tsx` | "Last words from &lt;guide&gt;" — closing photo + audio + message |
 | DetourFlow | `cards/DetourFlow.tsx` | Artefact side-paths |
 | UnstructuredMapOverlay | `cards/UnstructuredMapOverlay.tsx` | Unstructured-mode map UI — stop overlay card, stop gallery, exported `MidwayCheckinCard` |
 | UnstructuredClosingView | `cards/UnstructuredClosingView.tsx` | Full-screen closing sequence for unstructured tours (rendered by `page.tsx`, not Journal) |
@@ -108,10 +110,14 @@ Map (tour pin) → Journal Peek → Intro screens →
 ### Phase Types (TourPhase)
 
 ```
-intro → eq_scene → eq_discuss → eq_opening → eq_additional →
+intro → meet_guide → eq_scene → eq_discuss → eq_opening → eq_additional →
 seed → notice → wonder → reveal → reflect → whats_next → branch → off_path →
-eq_closing_discuss → eq_closing → eq_final_reflect → eq_questions → end
+eq_closing_discuss → eq_closing → eq_final_reflect → eq_questions →
+guide_outro → end
 ```
+
+`meet_guide` and `guide_outro` are the optional guide bookends — shown
+only when the tour's guide has the relevant content (see §8).
 
 Plus two unstructured-mode phases: `unstructured_map` (the stop-picker
 overlay) and `midway_checkin` (the optional halfway prompt). Both are
@@ -141,6 +147,8 @@ come from `--th-*` tokens and change with the active theme.*
 - Footer: Journal button + ? button, olive borders (#7A7A5E)
 - Back button: olive border, 2px, matches footer
 - Scroll indicator: large arrow, sandstone scrollbar
+- Map pins: themed circular discs with the Provenance logo glyph inside
+  (white pin + speech-bubble "P"), built from CSS-mask assets; see §8
 
 ### Discussion Question Types
 
@@ -165,8 +173,10 @@ Each wonder (main, extra rounds, additional EQ) has a `questionType`:
 
 ### Tour Editor Structure
 
-Tour metadata: title, subtitle, guide (name/role/initials), description,
-cover photo, peek audio, tour-level background photo, map pin location,
+Tour metadata: title, subtitle, guide (name/role/initials, photo with
+focal-point + zoom framing, intro text + audio, closing "Last words"
+message + audio), description, cover photo, peek audio, tour-level
+background photo, map pin location,
 **unstructured mode toggle**, **midway check-in** (toggle + question),
 essential question (with scene photo/description/audio, opening framing,
 theory/reasoning prompts, additional question, closing framing/audio,
@@ -283,7 +293,7 @@ Tailwind CSS 4, TypeScript 5, @vis.gl/react-google-maps 1.8.3.
 - **Viewport**: `maximumScale` and `userScalable` removed from layout.tsx to enable pinch-to-zoom on photos.
 - **Theming**: `layout.tsx` wraps the app in `ThemeProvider` and runs a pre-paint inline script that sets `data-theme` on `<html>`. Admin pages are not in theme scope — see §9.
 - **CSS token names**: only `--th-primary`, `--th-secondary`, `--th-surface`, `--th-border` etc. exist as `--th-*`. Palette aliases like `--aged-gold`, `--text-primary`, `--text-secondary` live in `:root` *without* the `--th-` prefix. `var(--th-aged-gold)` resolves to nothing (caused transparent progress pills once).
-- **`animate-ping` + `transform`**: the Tailwind `animate-ping` keyframe sets `transform: scale(2)`, clobbering any inline `transform: translate(...)` on the *same* element. Put the translate on a wrapper div and `animate-ping` on an `absolute inset-0` child (see the selected-pin ring in `Map.tsx`).
+- **`animate-ping` / `animate-bounce` + `transform`**: these Tailwind keyframes animate `transform`, clobbering any inline `transform` (e.g. `translate(...)`) on the *same* element. Put positioning transforms on a wrapper div and the animation class on an inner child (see the selected-pin ring in `Map.tsx` and the onboarding `?` cue arrow).
 - **`isFinalStop`** only governs linear tours. In unstructured mode `advanceToNextStopUnstructured` ignores it; the final stop is whichever logical stop the explorer completes last. Code that branches on `isFinalStop` must also check `!tour.unstructuredMode`.
 - **Logical stops**: in unstructured mode count `getLogicalStops(tour)` (standalone stops + the leader of each merge group), not `tour.stops.length`. `completionOrder` holds *logical* stop IDs and is populated only when a stop is completed.
 
@@ -423,6 +433,49 @@ Admin: stop editor scrolls to the top of a stop when expanded.
 **Lessons captured** in §7: the `--th-aged-gold` non-existent-token bug,
 the `animate-ping` / `transform` collision, and `isFinalStop` only
 applying to linear tours.
+
+### App identity, logo map pins & guide bookends (2026-05-22)
+
+A session of branding and guide-experience work. All committed and live
+on `master` (commits `4506087` → `26484cc`).
+
+**App identity / PWA.** The installable app now uses the Provenance pin
+logo: PWA icons (`icon-192/512` + a maskable variant), `apple-icon`, and
+favicon are generated from `docs/Logo.png`. `manifest.json` and the iOS
+`appleWebApp` metadata name the installed app **"Provenance"**;
+`theme_color` corrected from a stale blue to the red theme.
+
+**Map pins → logo glyph.** Tour-entry and stop pins are now themed
+circular discs with the Provenance logo inside. The tour-entry disc
+shows the full logo glyph (white pin + recessed "P"); stop discs show
+just the white speech-bubble "P" with theme-coloured dots. Built from
+CSS-mask assets (`public/pin-glyph-base|p|bubble.png`) so the glyph
+recolours with the theme. New `LogoGlyph`, `BubbleGlyph`, `DiscMarker`
+components in `Map.tsx`; stop discs carry a number / completed-check
+corner badge, pulsing ring when active/selected, dim when done.
+
+**Meet Your Guide.** New `meet_guide` phase + `MeetGuideCard`, shown
+after the intro screens when the tour has a named guide — round photo,
+name, italic title, audio, then intro text. The guide photo has admin
+focal-point + zoom framing (`guidePhotoStyle` helper in
+`src/lib/guide-photo.ts`); it also replaces the initials avatar on the
+journal peek.
+
+**Last words.** New `guide_outro` phase + `GuideOutroCard` — an optional
+"Last words from <guide>" closing screen (photo + audio + message) shown
+after the final questions and before the end card. `finishTour` routes
+through it when the guide has a closing message or audio. Rendered by
+both `Journal` and `UnstructuredClosingView`.
+
+**Onboarding rewrite.** `IntroScreens` got new copy across all five
+screens, an animated arrow (pinned inside the footer `?` button via an
+`onPointAtQuestion` callback) cueing question-asking on screen 3, and an
+interactive "Who has a phone?" choice on the Set Up screen that gates
+the Next button.
+
+**Smaller fixes.** The discussion-question button reads "We've talked —
+what's next?" instead of "show us" when no context follows (extra rounds
+whose reveal is empty).
 
 ---
 
