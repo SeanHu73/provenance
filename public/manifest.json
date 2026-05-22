@@ -1,12 +1,12 @@
 {
-  "name": "Memorial Church — Provenance",
-  "short_name": "MemChurch",
+  "name": "Provenance",
+  "short_name": "Provenance",
   "description": "A place-based learning tool for Stanford Memorial Church",
   "id": "/",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F5F0E8",
-  "theme_color": "#1B3A5C",
+  "background_color": "#FBF8F2",
+  "theme_color": "#8B2538",
   "orientation": "portrait",
   "icons": [
     {
@@ -20,6 +20,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

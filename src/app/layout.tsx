@@ -31,6 +31,13 @@ export const metadata: Metadata = {
   title: 'Memorial Church — Provenance',
   description: 'A place-based learning tool for Stanford Memorial Church. Look carefully. Discuss what you see.',
   manifest: '/manifest.json',
+  applicationName: 'Provenance',
+  // Name shown under the icon when added to the iOS home screen.
+  appleWebApp: {
+    capable: true,
+    title: 'Provenance',
+    statusBarStyle: 'default',
+  },
 };
 
 export const viewport: Viewport = {
