@@ -6,12 +6,14 @@
  * how the phone is shared, and what to expect.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tour } from '@/lib/types';
 
 interface Props {
   tour: Tour;
   onComplete: () => void;
+  /** Called with `true` while the screen that cues the footer ? button is shown. */
+  onPointAtQuestion?: (show: boolean) => void;
 }
 
 const TITLES = ['Welcome', 'How it works', 'Your thinking matters', 'Set Up', 'One last thing'];
@@ -19,12 +21,18 @@ const TOTAL = TITLES.length;
 
 const bodyClass = 'text-[21px] leading-relaxed font-serif text-text-primary animate-fade-in';
 
-export default function IntroScreens({ onComplete }: Props) {
+export default function IntroScreens({ onComplete, onPointAtQuestion }: Props) {
   const [current, setCurrent] = useState(0);
   const [phoneSetup, setPhoneSetup] = useState<'me' | 'everyone' | null>(null);
   const isLast = current === TOTAL - 1;
   // The "Set Up" screen (index 3) needs a phone choice before advancing.
   const canAdvance = current !== 3 || phoneSetup !== null;
+
+  // Cue the footer ? button while the "Your thinking matters" screen (index 2) shows.
+  useEffect(() => {
+    onPointAtQuestion?.(current === 2);
+    return () => onPointAtQuestion?.(false);
+  }, [current, onPointAtQuestion]);
 
   return (
     <div className="animate-fade-in flex flex-col justify-center min-h-full space-y-8 text-center">
@@ -71,25 +79,6 @@ export default function IntroScreens({ onComplete }: Props) {
               Your questions get saved for you to revisit and they&apos;ll help
               future explorers too!
             </p>
-            {/* Animated arrow pointing toward the ? button in the footer */}
-            <div className="flex justify-center pt-1">
-              <div style={{ transform: 'translateX(52px)' }}>
-                <svg
-                  className="animate-bounce"
-                  width="30"
-                  height="30"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--th-primary)"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="12" y1="3" x2="12" y2="19" />
-                  <polyline points="6 13 12 19 18 13" />
-                </svg>
-              </div>
-            </div>
           </>
         )}
 

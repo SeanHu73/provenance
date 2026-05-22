@@ -71,6 +71,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const [showJournal, setShowJournal] = useState(false);
   const [showQuestionInput, setShowQuestionInput] = useState(false);
   const [canScrollMore, setCanScrollMore] = useState(false);
+  const [pointAtQuestion, setPointAtQuestion] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   const checkScroll = useCallback(() => {
@@ -237,7 +238,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
             >
 
         {phase === 'intro' && (
-          <IntroScreens tour={tour} onComplete={completeIntro} />
+          <IntroScreens tour={tour} onComplete={completeIntro} onPointAtQuestion={setPointAtQuestion} />
         )}
 
         {phase === 'meet_guide' && (
@@ -418,11 +419,31 @@ export default function Journal({ onMapPeek }: JournalProps) {
           </button>
           <button
             onClick={() => setShowQuestionInput(true)}
-            className="flex items-center justify-center px-5 py-3.5 rounded-xl text-xl leading-none font-bold text-warm-white bg-white/25 hover:bg-white/35 transition-colors border border-white/50"
+            className="relative flex items-center justify-center px-5 py-3.5 rounded-xl text-xl leading-none font-bold text-warm-white bg-white/25 hover:bg-white/35 transition-colors border border-white/50"
             style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' }}
             title="Ask a question"
           >
             ?
+            {/* Onboarding cue — animated arrow pinned directly above this button */}
+            {pointAtQuestion && (
+              <span className="absolute left-1/2 bottom-full mb-1.5 -translate-x-1/2 pointer-events-none">
+                <svg
+                  className="animate-bounce"
+                  width="46"
+                  height="46"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--th-secondary)"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))' }}
+                >
+                  <line x1="12" y1="3" x2="12" y2="17" />
+                  <polyline points="5 11 12 18 19 11" />
+                </svg>
+              </span>
+            )}
           </button>
         </div>
       )}
