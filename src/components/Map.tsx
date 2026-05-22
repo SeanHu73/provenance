@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { Pin, Stop, Tour } from '@/lib/types';
 
@@ -8,7 +8,8 @@ const MEMORIAL_CHURCH = { lat: 37.42700, lng: -122.17015 };
 const MAX_AUTO_ZOOM = 17;
 const NEAR_THRESHOLD_M = 300;
 const SHOW_PIN_RADIUS_M = 8047; // 5 miles
-const PIN_ASPECT = 319 / 450; // logo glyph width / height
+const PIN_ASPECT = 319 / 450; // full logo glyph width / height
+const BUBBLE_ASPECT = 319 / 225; // speech-bubble glyph width / height
 
 export interface TourPinData {
   tour: Tour;
@@ -297,44 +298,23 @@ function MapInitializer({
   return null;
 }
 
-/**
- * The Provenance logo rendered as a map-pin glyph: a white outer pin with
- * the speech-bubble "P" in the active theme colour. Built from two CSS masks
- * (`/pin-glyph-base.png` + `/pin-glyph-p.png`) so the "P" recolours itself
- * when the theme switches between Red and Teal — no per-theme image needed.
- */
-function LogoPin({
-  height,
-  dim = false,
-  badge,
-}: {
-  height: number;
-  dim?: boolean;
-  badge?: { text?: string; check?: boolean };
-}) {
-  const width = height * PIN_ASPECT;
-  const maskBase = {
-    maskSize: 'contain',
-    WebkitMaskSize: 'contain',
-    maskRepeat: 'no-repeat',
-    WebkitMaskRepeat: 'no-repeat',
-    maskPosition: 'center',
-    WebkitMaskPosition: 'center',
-  } as const;
-  const bs = Math.max(15, Math.round(height * 0.42)); // badge size
-  const glyph = Math.max(8, Math.round(bs * 0.6));
+const GLYPH_MASK = {
+  maskSize: 'contain',
+  WebkitMaskSize: 'contain',
+  maskRepeat: 'no-repeat',
+  WebkitMaskRepeat: 'no-repeat',
+  maskPosition: 'center',
+  WebkitMaskPosition: 'center',
+} as const;
 
+/**
+ * Full Provenance logo glyph — white outer pin + theme-coloured speech-bubble
+ * "P" — built from two CSS masks so the "P" recolours when the theme switches
+ * between Red and Teal. Sits inside the tour-entry disc.
+ */
+function LogoGlyph({ height }: { height: number }) {
   return (
-    <div
-      style={{
-        position: 'relative',
-        width,
-        height,
-        opacity: dim ? 0.5 : 1,
-        transition: 'width 0.18s ease, height 0.18s ease, opacity 0.18s ease',
-      }}
-    >
-      {/* white outer pin */}
+    <div style={{ position: 'relative', width: height * PIN_ASPECT, height }}>
       <div
         style={{
           position: 'absolute',
@@ -342,12 +322,9 @@ function LogoPin({
           background: '#fff',
           WebkitMaskImage: 'url(/pin-glyph-base.png)',
           maskImage: 'url(/pin-glyph-base.png)',
-          ...maskBase,
-          filter:
-            'drop-shadow(0 2px 3px rgba(0,0,0,0.45)) drop-shadow(0 0 1px rgba(0,0,0,0.35))',
+          ...GLYPH_MASK,
         }}
       />
-      {/* theme-coloured speech-bubble "P" */}
       <div
         style={{
           position: 'absolute',
@@ -355,9 +332,94 @@ function LogoPin({
           background: 'var(--th-primary)',
           WebkitMaskImage: 'url(/pin-glyph-p.png)',
           maskImage: 'url(/pin-glyph-p.png)',
-          ...maskBase,
+          ...GLYPH_MASK,
         }}
       />
+    </div>
+  );
+}
+
+/**
+ * Speech-bubble "P" glyph — a white bubble whose three dots are punched-out
+ * holes, so they reveal the theme-coloured disc behind. Sits inside stop discs.
+ */
+function BubbleGlyph({ height }: { height: number }) {
+  return (
+    <div
+      style={{
+        width: height * BUBBLE_ASPECT,
+        height,
+        background: '#fff',
+        WebkitMaskImage: 'url(/pin-glyph-bubble.png)',
+        maskImage: 'url(/pin-glyph-bubble.png)',
+        ...GLYPH_MASK,
+      }}
+    />
+  );
+}
+
+/**
+ * Circular map marker — a theme-coloured disc with a white border, an optional
+ * pulsing ring, a centred glyph, and an optional corner badge.
+ */
+function DiscMarker({
+  diameter,
+  glyph,
+  ring = false,
+  ringColor = 'var(--th-primary)',
+  badge,
+  dim = false,
+}: {
+  diameter: number;
+  glyph: ReactNode;
+  ring?: boolean;
+  ringColor?: string;
+  badge?: { text?: string; check?: boolean };
+  dim?: boolean;
+}) {
+  const border = Math.max(2, Math.round(diameter * 0.06));
+  const bs = Math.max(16, Math.round(diameter * 0.46)); // badge size
+  return (
+    <div
+      style={{
+        position: 'relative',
+        width: diameter,
+        height: diameter,
+        opacity: dim ? 0.5 : 1,
+        transition: 'width 0.18s ease, height 0.18s ease, opacity 0.18s ease',
+      }}
+    >
+      {/* pulsing ring — wrapper carries the translate so `animate-ping`'s own
+          keyframe transform doesn't clobber the centring */}
+      {ring && (
+        <div
+          className="absolute"
+          style={{
+            width: diameter * 1.4,
+            height: diameter * 1.4,
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+          }}
+        >
+          <span
+            className="absolute inset-0 rounded-full animate-ping"
+            style={{ background: ringColor, opacity: 0.4 }}
+          />
+        </div>
+      )}
+      {/* disc */}
+      <div
+        className="absolute inset-0 rounded-full flex items-center justify-center"
+        style={{
+          background: 'var(--th-primary)',
+          border: `${border}px solid #fff`,
+          boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+        }}
+      >
+        {glyph}
+      </div>
       {/* corner badge — stop number or completed check */}
       {badge && (
         <div
@@ -365,7 +427,7 @@ function LogoPin({
           style={{
             position: 'absolute',
             top: -2,
-            right: -4,
+            right: -2,
             minWidth: bs,
             height: bs,
             padding: '0 3px',
@@ -373,7 +435,7 @@ function LogoPin({
             background: '#fff',
             border: '1.5px solid var(--th-primary)',
             color: 'var(--th-primary)',
-            fontSize: Math.max(9, Math.round(bs * 0.6)),
+            fontSize: Math.max(9, Math.round(bs * 0.56)),
             fontWeight: 800,
             lineHeight: 1,
             display: 'flex',
@@ -384,8 +446,8 @@ function LogoPin({
         >
           {badge.check ? (
             <svg
-              width={glyph}
-              height={glyph}
+              width={Math.round(bs * 0.6)}
+              height={Math.round(bs * 0.6)}
               viewBox="0 0 12 12"
               fill="none"
               stroke="var(--th-primary)"
@@ -404,50 +466,20 @@ function LogoPin({
   );
 }
 
-/** Pulsing "sonar" ring, centred behind the head of a LogoPin glyph. */
-function PulseRing({ glyphW, glyphH, color }: { glyphW: number; glyphH: number; color: string }) {
-  const d = glyphW * 1.55;
-  return (
-    // Wrapper carries the translate — `animate-ping`'s keyframe sets its own
-    // `transform`, so it must live on a separate inner element.
-    <div
-      className="absolute"
-      style={{
-        width: d,
-        height: d,
-        left: '50%',
-        top: glyphH * 0.36,
-        transform: 'translate(-50%, -50%)',
-        pointerEvents: 'none',
-      }}
-    >
-      <span
-        className="absolute inset-0 rounded-full animate-ping"
-        style={{ background: color, opacity: 0.4 }}
-      />
-    </div>
-  );
-}
-
 function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
   if (!tour.location) return null;
-  const gh = 66; // glyph height
-  const gw = gh * PIN_ASPECT;
+  const D = 60; // disc diameter
   return (
     <AdvancedMarker position={tour.location} onClick={onClick} zIndex={5}>
       {/*
-        translateY(calc(50% - <gh>px)) drops the element so the pin TIP
-        (bottom of the glyph) lands on the geographic coordinate, with the
-        labels hanging below it.
+        translateY(calc(50% - <D/2>px)) lifts the element so the disc centre
+        sits on the geographic coordinate, with the labels hanging below.
       */}
       <div
         className="flex flex-col items-center cursor-pointer"
-        style={{ transform: `translateY(calc(50% - ${gh}px))` }}
+        style={{ transform: `translateY(calc(50% - ${D / 2}px))` }}
       >
-        <div className="relative flex items-center justify-center" style={{ width: gw, height: gh }}>
-          <PulseRing glyphW={gw} glyphH={gh} color="var(--th-primary)" />
-          <LogoPin height={gh} />
-        </div>
+        <DiscMarker diameter={D} ring glyph={<LogoGlyph height={D * 0.66} />} />
         <div className="mt-2 flex flex-col items-center gap-1.5">
           <div className="px-3 py-1 bg-white rounded-lg text-sm font-semibold text-gray-900 shadow-md border border-gray-200 max-w-[200px] text-center font-sans leading-snug">
             {tour.title}
@@ -467,10 +499,9 @@ function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
 function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () => void }) {
   if (!data.stop.location) return null;
 
-  // Unstructured mode — selected pin grows, completed pin shrinks + dims.
+  // Unstructured mode — selected disc grows, completed disc shrinks + dims.
   if (data.unstructuredMode) {
-    const gh = data.isCompleted ? 34 : data.isSelectedOverlay ? 58 : 42;
-    const gw = gh * PIN_ASPECT;
+    const D = data.isCompleted ? 30 : data.isSelectedOverlay ? 54 : 36;
     const displayTitle = data.stop.mergeGroup || data.stop.title;
     return (
       <AdvancedMarker
@@ -478,15 +509,15 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
         onClick={onClick}
         zIndex={data.isSelectedOverlay ? 10 : data.isCompleted ? 1 : 5}
       >
-        <div className="flex flex-col items-center" style={{ transform: `translateY(calc(50% - ${gh}px))` }}>
-          <div className="relative flex items-center justify-center" style={{ width: gw, height: gh }}>
-            {data.isSelectedOverlay && <PulseRing glyphW={gw} glyphH={gh} color="#F59E0B" />}
-            <LogoPin
-              height={gh}
-              dim={data.isCompleted}
-              badge={data.isCompleted ? { check: true } : undefined}
-            />
-          </div>
+        <div className="flex flex-col items-center" style={{ transform: `translateY(calc(50% - ${D / 2}px))` }}>
+          <DiscMarker
+            diameter={D}
+            ring={data.isSelectedOverlay}
+            ringColor="#F59E0B"
+            dim={data.isCompleted}
+            badge={data.isCompleted ? { check: true } : undefined}
+            glyph={<BubbleGlyph height={D * 0.56} />}
+          />
           {!data.isCompleted && displayTitle && (
             <div className="mt-1 px-2 py-0.5 bg-white rounded-md text-[9px] font-semibold text-gray-800 shadow-sm max-w-[110px] text-center leading-tight truncate">
               {displayTitle}
@@ -497,24 +528,22 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
     );
   }
 
-  // Linear mode — every stop pin carries its number; completed pins dim.
-  const gh = data.isActive ? 48 : 38;
-  const gw = gh * PIN_ASPECT;
+  // Linear mode — every stop disc carries its number; completed discs dim.
+  const D = data.isActive ? 40 : 32;
   return (
     <AdvancedMarker
       position={data.stop.location}
       onClick={onClick}
       zIndex={data.isActive ? 10 : 2}
     >
-      <div className="flex flex-col items-center" style={{ transform: `translateY(calc(50% - ${gh}px))` }}>
-        <div className="relative flex items-center justify-center" style={{ width: gw, height: gh }}>
-          {data.isActive && <PulseRing glyphW={gw} glyphH={gh} color="var(--th-primary)" />}
-          <LogoPin
-            height={gh}
-            dim={data.isCompleted && !data.isActive}
-            badge={{ text: String(data.index + 1) }}
-          />
-        </div>
+      <div className="flex flex-col items-center" style={{ transform: `translateY(calc(50% - ${D / 2}px))` }}>
+        <DiscMarker
+          diameter={D}
+          ring={data.isActive}
+          dim={data.isCompleted && !data.isActive}
+          badge={{ text: String(data.index + 1) }}
+          glyph={<BubbleGlyph height={D * 0.56} />}
+        />
       </div>
     </AdvancedMarker>
   );
