@@ -38,10 +38,15 @@ export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
           {/* Guide avatar + info */}
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
+              className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold shrink-0"
               style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}
             >
-              {tour.guide.initials || '?'}
+              {tour.guide.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={tour.guide.photoUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                tour.guide.initials || '?'
+              )}
             </div>
             <div>
               <p className="text-sm font-semibold" style={{ color: 'var(--th-surface)' }}>

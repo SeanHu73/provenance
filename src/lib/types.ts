@@ -187,6 +187,10 @@ export interface Tour {
     name: string;                    // "Prof. Elena Ruiz"
     role: string;                    // "Art History · Stanford"
     initials: string;                // "ER"
+    photoUrl?: string;               // Round photo — "Meet Your Guide" screen + journal peek
+    intro?: string;                  // Brief intro shown on the "Meet Your Guide" screen
+    introAudioUrl?: string | null;   // Optional narration on the "Meet Your Guide" screen
+    introAudioTitle?: string | null;
   };
   description: string;               // Brief intro shown on journal peek
   coverPhotoUrl: string;             // Photo for the journal peek
@@ -376,7 +380,7 @@ export interface WebNode {
   y: number;
 }
 
-export type TourPhase = 'intro' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_final_reflect' | 'eq_questions' | 'end' | 'unstructured_map' | 'midway_checkin';
+export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_final_reflect' | 'eq_questions' | 'end' | 'unstructured_map' | 'midway_checkin';
 
 export interface TourSession {
   id: string;

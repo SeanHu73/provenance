@@ -140,6 +140,13 @@ export default function TourEditorPage() {
     persist(next);
   };
 
+  const updateGuidePartial = (partial: Partial<Tour['guide']>) => {
+    if (!tour) return;
+    const next = { ...tour, guide: { ...tour.guide, ...partial } };
+    setTour(next);
+    persist(next);
+  };
+
   // ── Stop helpers ──
 
   const updateStop = (stopId: string, patch: Partial<Stop>) => {
@@ -302,6 +309,67 @@ export default function TourEditorPage() {
                 maxLength={3}
               />
             </label>
+          </div>
+
+          {/* "Meet Your Guide" screen — photo, intro, audio */}
+          <div className="space-y-3 rounded border border-stone-200 bg-stone-50 p-3">
+            <p className="text-xs font-semibold text-stone-600">&ldquo;Meet Your Guide&rdquo; screen</p>
+            <div className="flex gap-3 items-start">
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-stone-200 border border-stone-300 shrink-0 flex items-center justify-center">
+                {tour.guide.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={tour.guide.photoUrl} alt="guide" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[10px] text-stone-400 text-center px-1">No photo</span>
+                )}
+              </div>
+              <div className="flex-1">
+                <span className="text-xs text-stone-600">Guide photo URL</span>
+                <div className="flex gap-2 mt-1">
+                  <input
+                    value={tour.guide.photoUrl ?? ''}
+                    onChange={(e) => updateGuidePartial({ photoUrl: e.target.value })}
+                    className="flex-1 px-3 py-1.5 border border-stone-300 rounded text-sm"
+                    placeholder="/photos/... or upload"
+                  />
+                  <label className="px-3 py-1.5 rounded bg-stone-200 text-stone-700 text-sm cursor-pointer hover:bg-stone-300">
+                    Upload
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const url = await uploadPhoto(file, `memorial-church/photos/tours/${tourId}/guide_${file.name}`);
+                        updateGuidePartial({ photoUrl: url });
+                      }}
+                    />
+                  </label>
+                </div>
+                <span className="text-[11px] text-stone-400 block mt-1">
+                  Round photo shown on the guide screen and the journal peek.
+                </span>
+              </div>
+            </div>
+            <label className="block">
+              <span className="text-xs text-stone-600">Guide intro text</span>
+              <textarea
+                value={tour.guide.intro ?? ''}
+                onChange={(e) => updateGuidePartial({ intro: e.target.value })}
+                rows={3}
+                className="mt-1 w-full px-3 py-1.5 border border-stone-300 rounded text-sm"
+                placeholder="A brief introduction from the guide…"
+              />
+            </label>
+            <AudioUpload
+              audioUrl={tour.guide.introAudioUrl ?? null}
+              audioTitle={tour.guide.introAudioTitle ?? null}
+              onChange={(url) => updateGuidePartial({ introAudioUrl: url })}
+              onTitleChange={(title) => updateGuidePartial({ introAudioTitle: title })}
+              uploadPath={`memorial-church/audio/tours/${tourId}/guide`}
+              onUploadFile={uploadPhoto}
+            />
           </div>
 
           <label className="block">

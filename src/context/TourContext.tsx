@@ -23,6 +23,7 @@ import {
   recordDetourVisit as recordDetourVisitImpl,
   goBack as goBackImpl,
   completeIntro as completeIntroImpl,
+  completeMeetGuide as completeMeetGuideImpl,
   completeEqScene as completeEqSceneImpl,
   completeEqDiscuss as completeEqDiscussImpl,
   completeEqAdditional as completeEqAdditionalImpl,
@@ -58,6 +59,7 @@ interface TourContextValue {
   recordDetourVisit: (detourId: string) => void;
   isDetourVisited: (detourId: string) => boolean;
   completeIntro: () => void;
+  completeMeetGuide: () => void;
   completeEqScene: () => void;
   completeEqDiscuss: () => void;
   completeEqOpening: (theory: string, reasoning: string) => void;
@@ -212,6 +214,19 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }
   }, [session, tour, persist]);
 
+  const completeMeetGuideFn = useCallback(() => {
+    if (!session || !tour) return;
+    const next = completeMeetGuideImpl(session, tour);
+    persist(next);
+    // Log the first stop when this transitions directly to seed (a tour with no EQ).
+    if (next.currentPhase === 'seed' && next.currentStopIndex >= 0) {
+      const stop = tour.stops[next.currentStopIndex];
+      if (stop) {
+        logStopEntered({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, stopIndex: next.currentStopIndex, stopTitle: stop.mergeGroup || stop.title || `Stop ${next.currentStopIndex + 1}` });
+      }
+    }
+  }, [session, tour, persist]);
+
   const completeEqSceneFn = useCallback(() => {
     if (!session) return;
     persist(completeEqSceneImpl(session));
@@ -311,6 +326,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       recordDetourVisit: recordDetourVisitFn,
       isDetourVisited,
       completeIntro: completeIntroFn,
+      completeMeetGuide: completeMeetGuideFn,
       completeEqScene: completeEqSceneFn,
       completeEqDiscuss: completeEqDiscussFn,
       completeEqOpening: completeEqOpeningFn,

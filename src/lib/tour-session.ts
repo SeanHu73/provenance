@@ -342,16 +342,29 @@ export function recordDetourVisit(
   };
 }
 
-export function completeIntro(session: TourSession, tour: Tour): TourSession {
-  const afterIntro: TourPhase = tour.essentialQuestion
+/** Phase that follows the "Meet Your Guide" screen. */
+function afterGuide(tour: Tour): TourPhase {
+  return tour.essentialQuestion
     ? 'eq_scene'
     : tour.unstructuredMode
       ? 'unstructured_map'
       : 'seed';
+}
+
+export function completeIntro(session: TourSession, tour: Tour): TourSession {
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: afterIntro,
+    // "Meet Your Guide" shows whenever the tour has a named guide.
+    currentPhase: tour.guide?.name ? 'meet_guide' : afterGuide(tour),
+  };
+}
+
+export function completeMeetGuide(session: TourSession, tour: Tour): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: afterGuide(tour),
   };
 }
 
