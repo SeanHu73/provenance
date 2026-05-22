@@ -8,6 +8,7 @@ const MEMORIAL_CHURCH = { lat: 37.42700, lng: -122.17015 };
 const MAX_AUTO_ZOOM = 17;
 const NEAR_THRESHOLD_M = 300;
 const SHOW_PIN_RADIUS_M = 8047; // 5 miles
+const PIN_ASPECT = 319 / 450; // logo glyph width / height
 
 export interface TourPinData {
   tour: Tour;
@@ -296,40 +297,156 @@ function MapInitializer({
   return null;
 }
 
+/**
+ * The Provenance logo rendered as a map-pin glyph: a white outer pin with
+ * the speech-bubble "P" in the active theme colour. Built from two CSS masks
+ * (`/pin-glyph-base.png` + `/pin-glyph-p.png`) so the "P" recolours itself
+ * when the theme switches between Red and Teal — no per-theme image needed.
+ */
+function LogoPin({
+  height,
+  dim = false,
+  badge,
+}: {
+  height: number;
+  dim?: boolean;
+  badge?: { text?: string; check?: boolean };
+}) {
+  const width = height * PIN_ASPECT;
+  const maskBase = {
+    maskSize: 'contain',
+    WebkitMaskSize: 'contain',
+    maskRepeat: 'no-repeat',
+    WebkitMaskRepeat: 'no-repeat',
+    maskPosition: 'center',
+    WebkitMaskPosition: 'center',
+  } as const;
+  const bs = Math.max(15, Math.round(height * 0.42)); // badge size
+  const glyph = Math.max(8, Math.round(bs * 0.6));
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        width,
+        height,
+        opacity: dim ? 0.5 : 1,
+        transition: 'width 0.18s ease, height 0.18s ease, opacity 0.18s ease',
+      }}
+    >
+      {/* white outer pin */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: '#fff',
+          WebkitMaskImage: 'url(/pin-glyph-base.png)',
+          maskImage: 'url(/pin-glyph-base.png)',
+          ...maskBase,
+          filter:
+            'drop-shadow(0 2px 3px rgba(0,0,0,0.45)) drop-shadow(0 0 1px rgba(0,0,0,0.35))',
+        }}
+      />
+      {/* theme-coloured speech-bubble "P" */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'var(--th-primary)',
+          WebkitMaskImage: 'url(/pin-glyph-p.png)',
+          maskImage: 'url(/pin-glyph-p.png)',
+          ...maskBase,
+        }}
+      />
+      {/* corner badge — stop number or completed check */}
+      {badge && (
+        <div
+          className="font-sans"
+          style={{
+            position: 'absolute',
+            top: -2,
+            right: -4,
+            minWidth: bs,
+            height: bs,
+            padding: '0 3px',
+            borderRadius: 999,
+            background: '#fff',
+            border: '1.5px solid var(--th-primary)',
+            color: 'var(--th-primary)',
+            fontSize: Math.max(9, Math.round(bs * 0.6)),
+            fontWeight: 800,
+            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+          }}
+        >
+          {badge.check ? (
+            <svg
+              width={glyph}
+              height={glyph}
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="var(--th-primary)"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="2 6 5 9 10 3" />
+            </svg>
+          ) : (
+            badge.text
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Pulsing "sonar" ring, centred behind the head of a LogoPin glyph. */
+function PulseRing({ glyphW, glyphH, color }: { glyphW: number; glyphH: number; color: string }) {
+  const d = glyphW * 1.55;
+  return (
+    // Wrapper carries the translate — `animate-ping`'s keyframe sets its own
+    // `transform`, so it must live on a separate inner element.
+    <div
+      className="absolute"
+      style={{
+        width: d,
+        height: d,
+        left: '50%',
+        top: glyphH * 0.36,
+        transform: 'translate(-50%, -50%)',
+        pointerEvents: 'none',
+      }}
+    >
+      <span
+        className="absolute inset-0 rounded-full animate-ping"
+        style={{ background: color, opacity: 0.4 }}
+      />
+    </div>
+  );
+}
+
 function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
   if (!tour.location) return null;
-  const size = 60;
+  const gh = 66; // glyph height
+  const gw = gh * PIN_ASPECT;
   return (
     <AdvancedMarker position={tour.location} onClick={onClick} zIndex={5}>
       {/*
-        translateY(calc(50% - 30px)) shifts the element down until the circle
-        centre (30px from the element top) aligns with the geographic position,
-        so the label always hangs below the pin and into the screen rather than
-        behind/above it.
+        translateY(calc(50% - <gh>px)) drops the element so the pin TIP
+        (bottom of the glyph) lands on the geographic coordinate, with the
+        labels hanging below it.
       */}
       <div
         className="flex flex-col items-center cursor-pointer"
-        style={{ transform: 'translateY(calc(50% - 30px))' }}
+        style={{ transform: `translateY(calc(50% - ${gh}px))` }}
       >
-        <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-          <span
-            className="absolute inline-flex h-full w-full rounded-full animate-ping"
-            style={{ background: 'var(--th-primary)', opacity: 0.4 }}
-          />
-          <div
-            className="relative flex items-center justify-center rounded-full"
-            style={{
-              width: size,
-              height: size,
-              background: 'var(--th-primary)',
-              border: '3px solid var(--th-surface-alt)',
-              boxShadow: '0 0 0 3px color-mix(in srgb, var(--th-primary) 30%, transparent), 0 4px 12px rgba(0,0,0,0.35)',
-            }}
-          >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="var(--th-surface-alt)" stroke="none">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/>
-            </svg>
-          </div>
+        <div className="relative flex items-center justify-center" style={{ width: gw, height: gh }}>
+          <PulseRing glyphW={gw} glyphH={gh} color="var(--th-primary)" />
+          <LogoPin height={gh} />
         </div>
         <div className="mt-2 flex flex-col items-center gap-1.5">
           <div className="px-3 py-1 bg-white rounded-lg text-sm font-semibold text-gray-900 shadow-md border border-gray-200 max-w-[200px] text-center font-sans leading-snug">
@@ -350,76 +467,26 @@ function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
 function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () => void }) {
   if (!data.stop.location) return null;
 
-  // Unstructured mode rendering
+  // Unstructured mode — selected pin grows, completed pin shrinks + dims.
   if (data.unstructuredMode) {
-    const baseSize = 36;
-    const size = data.isCompleted
-      ? Math.round(baseSize * 0.85)      // slightly smaller when done but still visible
-      : data.isSelectedOverlay
-        ? Math.round(baseSize * 1.5)     // larger when selected
-        : baseSize;
+    const gh = data.isCompleted ? 34 : data.isSelectedOverlay ? 58 : 42;
+    const gw = gh * PIN_ASPECT;
     const displayTitle = data.stop.mergeGroup || data.stop.title;
-
-    // Completed pin: use a muted version of the surface-alt color so it reads as "done"
-    const completedBg = 'color-mix(in srgb, var(--th-primary) 22%, white)';
-
     return (
       <AdvancedMarker
         position={data.stop.location}
         onClick={onClick}
         zIndex={data.isSelectedOverlay ? 10 : data.isCompleted ? 1 : 5}
       >
-        <div className="flex flex-col items-center" style={{ transform: 'translateY(calc(50% - 18px))' }}>
-          <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-            {/* Pulsing ring — only for selected, sits behind the circle */}
-            {data.isSelectedOverlay && (
-              <div
-                className="absolute"
-                style={{
-                  width: size + 18,
-                  height: size + 18,
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  pointerEvents: 'none',
-                }}
-              >
-                <span
-                  className="absolute inset-0 rounded-full animate-ping"
-                  style={{ background: '#F59E0B', opacity: 0.45 }}
-                />
-              </div>
-            )}
-            {/* Pin circle */}
-            <div
-              className="flex items-center justify-center rounded-full shadow-md transition-all duration-200 w-full h-full"
-              style={{
-                background: data.isCompleted
-                  ? completedBg
-                  : data.isSelectedOverlay
-                    ? '#F59E0B'
-                    : 'var(--th-primary)',
-                border: data.isSelectedOverlay
-                  ? '3px solid rgba(255,255,255,0.95)'
-                  : data.isCompleted
-                    ? '2px solid rgba(255,255,255,0.8)'
-                    : '2px solid rgba(255,255,255,0.7)',
-                boxShadow: data.isSelectedOverlay
-                  ? '0 0 0 3px rgba(245,158,11,0.3), 0 4px 14px rgba(0,0,0,0.4)'
-                  : '0 2px 6px rgba(0,0,0,0.3)',
-              }}
-            >
-              {data.isCompleted ? (
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--th-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="2 6 5 9 10 3" />
-                </svg>
-              ) : (
-                <div className="w-2 h-2 rounded-full bg-white opacity-90" />
-              )}
-            </div>
+        <div className="flex flex-col items-center" style={{ transform: `translateY(calc(50% - ${gh}px))` }}>
+          <div className="relative flex items-center justify-center" style={{ width: gw, height: gh }}>
+            {data.isSelectedOverlay && <PulseRing glyphW={gw} glyphH={gh} color="#F59E0B" />}
+            <LogoPin
+              height={gh}
+              dim={data.isCompleted}
+              badge={data.isCompleted ? { check: true } : undefined}
+            />
           </div>
-
-          {/* Title label — show for selected and incomplete pins */}
           {!data.isCompleted && displayTitle && (
             <div className="mt-1 px-2 py-0.5 bg-white rounded-md text-[9px] font-semibold text-gray-800 shadow-sm max-w-[110px] text-center leading-tight truncate">
               {displayTitle}
@@ -430,29 +497,23 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
     );
   }
 
-  // Linear mode rendering (unchanged)
-  const size = data.isActive ? 40 : 32;
+  // Linear mode — every stop pin carries its number; completed pins dim.
+  const gh = data.isActive ? 48 : 38;
+  const gw = gh * PIN_ASPECT;
   return (
     <AdvancedMarker
       position={data.stop.location}
       onClick={onClick}
       zIndex={data.isActive ? 10 : 2}
     >
-      <div className="flex flex-col items-center">
-        <div
-          className="flex items-center justify-center rounded-full shadow-md transition-all duration-200"
-          style={{
-            width: size,
-            height: size,
-            background: data.isCompleted ? 'var(--th-olive)' : 'var(--th-primary)',
-            border: `3px solid ${data.isActive ? 'var(--th-surface)' : 'var(--th-surface-alt)'}`,
-            boxShadow: data.isActive
-              ? '0 0 0 3px color-mix(in srgb, var(--th-primary) 30%, transparent), 0 2px 8px rgba(0,0,0,0.3)'
-              : '0 2px 6px rgba(0,0,0,0.25)',
-            opacity: data.isCompleted && !data.isActive ? 0.7 : 1,
-          }}
-        >
-          <span className="text-[11px] font-bold text-white">{data.index + 1}</span>
+      <div className="flex flex-col items-center" style={{ transform: `translateY(calc(50% - ${gh}px))` }}>
+        <div className="relative flex items-center justify-center" style={{ width: gw, height: gh }}>
+          {data.isActive && <PulseRing glyphW={gw} glyphH={gh} color="var(--th-primary)" />}
+          <LogoPin
+            height={gh}
+            dim={data.isCompleted && !data.isActive}
+            badge={{ text: String(data.index + 1) }}
+          />
         </div>
       </div>
     </AdvancedMarker>
