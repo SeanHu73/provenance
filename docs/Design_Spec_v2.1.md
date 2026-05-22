@@ -1,11 +1,17 @@
 # Provenance v2 — Current Design Spec
 
-*Last updated 2026-05-20. This supersedes the original
+*Last updated 2026-05-22. This supersedes the original
 `Provenance_v2_Iteration_Summary.md` for any features that have changed.*
 
 ---
 
 ## Explorer Flow (what learners experience)
+
+A tour plays in one of two modes, set per-tour in admin:
+**Linear** (default — the authored sequence below) or
+**Unstructured** (the explorer picks stop order — see *Unstructured Mode*
+at the end of this section). The essential-question opening and closing
+are identical in both modes; only the per-stop middle differs.
 
 ### Pre-tour
 1. Map with a single terracotta pin per tour
@@ -38,6 +44,27 @@
 
 ### End
 18. **End card** — learning arc artifact (before/after), reflection summary, banked questions, "Explore on your own"
+
+### Unstructured Mode
+
+When a tour has unstructured mode enabled, steps 8–13 (the per-stop
+loop) are replaced by an explorer-driven flow:
+
+- After the EQ opening, the explorer lands on a **full-screen map
+  overlay** — every stop is a pin; tapping one opens a stop card and
+  begins that stop.
+- Each stop still runs Background+Notice → [Discussion] → Context →
+  [Extra rounds] → [Reflect] → [What's Next], then returns to the map.
+- **Merge groups** — stops the author has grouped play as one
+  sequential unit (tapped once, walked in order).
+- **Midway check-in** (optional) — once the explorer has completed half
+  the stops, a full-screen reflection question appears before they
+  continue picking.
+- Once every stop is done, the EQ closing sequence (steps 14–18) runs
+  as normal. "Finish the tour" appears only on the genuinely last stop
+  the explorer chooses.
+- Progress is shown in *visit* order, not authored order — "Stop 1" is
+  the first stop the explorer picked.
 
 ---
 
@@ -86,9 +113,27 @@
 
 ### Persistent UI
 - **Title bar**: centered tour title, back chevron (left), exit × (right)
-- **Progress bar**: stop pills (scrollable) + amber fill bar
+- **Progress bar**: "N of M explored" count + filled/empty circular pills; the current stop's pill expands to show its number + name and is tappable to open the swipeable stop tracker. Completed pills fill amber `#F59E0B`. Linear mode adds an amber fill bar; unstructured mode omits it.
 - **Footer**: Journal button + ? button (olive borders, centered)
 - **Scroll indicator**: large arrow above footer, sandstone scrollbar on right
+
+---
+
+## Photo Display Modes
+
+Each photo carries an admin-set display mode that the explorer honours:
+
+- **Auto (fit)** — photo shown whole, scaled to fit its slot.
+- **Crop (fill)** — photo fills its slot; the author sets a focal point
+  (click-to-place) and an optional 1×–3× zoom so the important part
+  stays in frame.
+- **Full (letterbox)** — photo shown whole on a black background.
+
+A separate **thumbnail focal point** controls the small, wide (3:1)
+thumbnails used on map overlay cards, the stop gallery, and the journal
+— cropped independently of the main display since the aspect ratio
+differs. Authored in the admin photo editor; the crop previews there use
+the same CSS the explorer renders with, so the preview is accurate.
 
 ---
 
@@ -178,6 +223,6 @@ Accessed via the Journal button in footer. Three tabs:
 
 ---
 
-*This document reflects the built state as of 2026-05-20.
+*This document reflects the built state as of 2026-05-22.
 For the original design vision, see `Provenance_v2_Iteration_Summary.md`.
 For technical implementation details, see `Build_State.md`.*

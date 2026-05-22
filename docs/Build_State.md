@@ -1,6 +1,6 @@
 # Build State — Memorial Church Tool (Provenance v2)
 
-*Handoff document for the next Claude Code session. Last updated 2026-05-20.
+*Handoff document for the next Claude Code session. Last updated 2026-05-22.
 Read this instead of re-discovering the codebase.*
 
 ---
@@ -24,6 +24,11 @@ Tours are authored in `/admin/tours` and played back on the main page.
 
 ### Explorer Flow
 
+A tour runs in one of two modes, set by the `unstructuredMode` toggle in
+admin (see §10).
+
+**Linear mode (default):**
+
 ```
 Map (tour pin) → Journal Peek → Intro screens →
   Setting the Scene → Question for you! → Written prompts → [Additional Q] →
@@ -31,6 +36,21 @@ Map (tour pin) → Journal Peek → Intro screens →
     [Reflect] → What's Next → ... →
   Stop N (final) → Closing Discuss → Closing Written → Final Reflect →
   Any Remaining Questions → Question List → End Card
+```
+
+**Unstructured mode:** the explorer chooses stop order from a full-screen
+map overlay (see §10).
+
+```
+Map (tour pin) → Journal Peek → Intro screens →
+  Setting the Scene → Question for you! → Written prompts → [Additional Q] →
+  Unstructured Map (tap any stop pin) →
+    Stop: Background+Notice → [Discussion] → Context → [Extra] → [Reflect] →
+      [What's Next] → back to Unstructured Map →
+  [Midway check-in once half the logical stops are done] →
+  ... repeat until all logical stops complete →
+  Unstructured Closing (Closing Discuss → Closing Written → Final Reflect →
+    Any Remaining Questions → End Card)
 ```
 
 ### Key Components
@@ -58,6 +78,9 @@ Map (tour pin) → Journal Peek → Intro screens →
 | EndCard | `cards/EndCard.tsx` | Learning arc + explore on your own |
 | IntroScreens | `cards/IntroScreens.tsx` | Onboarding intro sequence |
 | DetourFlow | `cards/DetourFlow.tsx` | Artefact side-paths |
+| UnstructuredMapOverlay | `cards/UnstructuredMapOverlay.tsx` | Unstructured-mode map UI — stop overlay card, stop gallery, exported `MidwayCheckinCard` |
+| UnstructuredClosingView | `cards/UnstructuredClosingView.tsx` | Full-screen closing sequence for unstructured tours (rendered by `page.tsx`, not Journal) |
+| ThemeColorMeta | `src/components/ThemeColorMeta.tsx` | Syncs the browser `<meta theme-color>` chrome to the active theme |
 | AudioButton | `cards/AudioButton.tsx` | Audio player with timeline |
 | BackButton | `cards/BackButton.tsx` | Back navigation (olive border) |
 | PhotoContent | `cards/PhotoContent.tsx` | Text + [photo:N] markers + fullscreen |
@@ -86,9 +109,13 @@ Map (tour pin) → Journal Peek → Intro screens →
 
 ```
 intro → eq_scene → eq_discuss → eq_opening → eq_additional →
-seed → notice → wonder → reveal → reflect → whats_next → branch →
+seed → notice → wonder → reveal → reflect → whats_next → branch → off_path →
 eq_closing_discuss → eq_closing → eq_final_reflect → eq_questions → end
 ```
+
+Plus two unstructured-mode phases: `unstructured_map` (the stop-picker
+overlay) and `midway_checkin` (the optional halfway prompt). Both are
+rendered by `page.tsx` outside the `Journal` overlay — see §10.
 
 ### Transitions
 
@@ -106,7 +133,11 @@ come from `--th-*` tokens and change with the active theme.*
 - Background photo: tour-level default + per-stop override
 - Card opacity: 70% (most screens) / 85% (context/reveal) with backdrop-blur
 - Question boxes: faded cardinal red (#7A1A1A at 56% opacity), amber border (#C4923A, 3px), light text (#FFF8EE)
-- Progress bar: sandstone bg with amber pills, amber fill bar
+- Progress bar: "N of M explored" count + filled/empty pills; current
+  stop pill expands to number + name; tappable to open the swipeable
+  stop tracker. Completed pills fill amber `#F59E0B` (matches map pin
+  rings). Linear mode also shows the amber fill bar; unstructured mode
+  omits the fill bar (order is not fixed).
 - Footer: Journal button + ? button, olive borders (#7A7A5E)
 - Back button: olive border, 2px, matches footer
 - Scroll indicator: large arrow, sandstone scrollbar
@@ -136,17 +167,29 @@ Each wonder (main, extra rounds, additional EQ) has a `questionType`:
 
 Tour metadata: title, subtitle, guide (name/role/initials), description,
 cover photo, peek audio, tour-level background photo, map pin location,
+**unstructured mode toggle**, **midway check-in** (toggle + question),
 essential question (with scene photo/description/audio, opening framing,
 theory/reasoning prompts, additional question, closing framing/audio,
 final prompts).
 
-Per stop: title, isFinalStop toggle, background photo override,
-seed (text/photos/audio/timer), notice (prompt/photos/audio/timer),
+Per stop: title, isFinalStop toggle, **merge group** (stops sharing a
+value form one sequential unit in unstructured mode), background photo
+override, seed (text/photos/audio/timer), notice (prompt/photos/audio/timer),
 discussion question (toggle + discuss/opinion type + photos/audio),
 reveal (text/photos/audio with [photo:N] markers), extra rounds
 (discussion + context, each toggleable), bridge (toggle + text/photos),
 reflection (toggle + slider labels + follow-up type + custom options + photos),
 detours/artefacts, map pin (optional), metadata (location tag, entries, topics).
+
+### Photo Editing
+
+Every photo list (`PhotoListEditor`) supports per-photo display modes:
+**Auto** (fit), **Crop** (fill — 4:3 preview with click-to-set focal
+point + 1×–3× zoom slider), and **Full** (letterbox with black bars).
+A separate **thumbnail crop** control (3:1 preview matching the map
+overlay card) sets `thumbnailFocalPoint` for the small thumbnails shown
+on map overlay cards, the stop gallery, and the journal. Stored on the
+`StopPhoto` type; the explorer honours all of it.
 
 ### Rich Text
 
@@ -166,7 +209,7 @@ Explorer photos are tappable for fullscreen (portal, pinch-zoom, close button at
 | Collection | Purpose |
 |---|---|
 | `memorial-church-tours` | Tour documents with stops array |
-| `memorial-church-tour-sessions` | Session persistence (backup) |
+| `memorial-church-tour-sessions` | Session persistence (backup) — `TourSession` now also carries `completionOrder`, `midwayShownAt`, `midwayResponseText` for unstructured tours |
 | `memorial-church-pins` | Legacy pins (still used by admin) |
 | `memorial-church-photos` | Photo library |
 | `memorial-church-contributions` | Learner contributions |
@@ -186,7 +229,8 @@ All tour events log to Google Sheets via `/api/log-tour` → `SHEETS_WEBHOOK_URL
 Uses `navigator.sendBeacon` for mobile reliability.
 
 Events: reflection, question_banked, question_routed, eq_opening, eq_closing,
-eq_final_reflect, tour_complete. Each row includes sessionId for grouping.
+eq_final_reflect, stop_entered, tour_complete. Each row includes sessionId
+for grouping.
 
 Apps Script columns (24): Logged At, Timestamp, Session ID, Source, Event/Type,
 Tour Title, Stop Title, Stop #, Reflection Score, Follow-Up Response,
@@ -238,6 +282,10 @@ Tailwind CSS 4, TypeScript 5, @vis.gl/react-google-maps 1.8.3.
 - **No automated tests** — verification is manual.
 - **Viewport**: `maximumScale` and `userScalable` removed from layout.tsx to enable pinch-to-zoom on photos.
 - **Theming**: `layout.tsx` wraps the app in `ThemeProvider` and runs a pre-paint inline script that sets `data-theme` on `<html>`. Admin pages are not in theme scope — see §9.
+- **CSS token names**: only `--th-primary`, `--th-secondary`, `--th-surface`, `--th-border` etc. exist as `--th-*`. Palette aliases like `--aged-gold`, `--text-primary`, `--text-secondary` live in `:root` *without* the `--th-` prefix. `var(--th-aged-gold)` resolves to nothing (caused transparent progress pills once).
+- **`animate-ping` + `transform`**: the Tailwind `animate-ping` keyframe sets `transform: scale(2)`, clobbering any inline `transform: translate(...)` on the *same* element. Put the translate on a wrapper div and `animate-ping` on an `absolute inset-0` child (see the selected-pin ring in `Map.tsx`).
+- **`isFinalStop`** only governs linear tours. In unstructured mode `advanceToNextStopUnstructured` ignores it; the final stop is whichever logical stop the explorer completes last. Code that branches on `isFinalStop` must also check `!tour.unstructuredMode`.
+- **Logical stops**: in unstructured mode count `getLogicalStops(tour)` (standalone stops + the leader of each merge group), not `tour.stops.length`. `completionOrder` holds *logical* stop IDs and is populated only when a stop is completed.
 
 ---
 
@@ -267,7 +315,7 @@ An earlier session built the complete v2 tour system from scratch:
 - Google Sheets logging with sendBeacon
 - Device capability detection for blur fallback
 
-### Theme system — Red & Teal (this session, 2026-05-20)
+### Theme system — Red & Teal (2026-05-20)
 
 Added the dual-theme system (full reference in §9). Shipped to
 production `master` over several commits.
@@ -299,7 +347,7 @@ Admin pages were intentionally left out of theme scope (see §9). Build
 and TypeScript pass; verified structurally (compiled CSS + dev server),
 not pixel-reviewed in a browser.
 
-### Palo Alto recolour & title trim (this session, 2026-05-20)
+### Palo Alto recolour & title trim (2026-05-20)
 
 A follow-up pass on the theme system:
 
@@ -330,6 +378,51 @@ A follow-up pass on the theme system:
 - **Tour (map) pin enlarged** 44→60px with a pulsing `animate-ping`
   ring and a "Tap to start" label (`TourParentPin` in `Map.tsx`), to
   make it obvious as the tour entry point.
+
+### Unstructured Exploration Mode + UI polish (2026-05-21 → 2026-05-22)
+
+A long multi-part session. All work is committed and live on `master`
+(commits `c79490d` → `09cf81a`).
+
+**Unstructured Exploration Mode — new major feature.** A tour-level
+mode where the explorer picks stop order instead of following a fixed
+sequence. Full reference in §10. Shipped with admin authoring (mode
+toggle, midway check-in, per-stop merge groups), the `unstructured_map`
+stop-picker overlay, the `midway_checkin` halfway prompt, and the
+`UnstructuredClosingView` closing sequence. Several follow-up commits
+fixed crashes and ordering bugs (see §10).
+
+**Progress bar redesign.** Replaced the old pill strip with a
+"N of M explored" count, filled/empty circular pills, and a current-stop
+pill that expands to show number + name. Tapping it opens the swipeable
+stop tracker. Completed pills fill amber `#F59E0B` (matching the map pin
+rings). Unstructured mode drops the fill bar.
+
+**Photo display modes & cropping.** New `StopPhoto` type
+(`displayMode`, `focalPoint`, `zoom`, `thumbnailFocalPoint`) replacing
+the old inline `{ url, caption }` photo shape across the `Stop` type.
+Admin `PhotoListEditor` gained Auto / Crop / Full display modes, a 4:3
+crop preview with click-to-set focal point and a 1×–3× zoom slider, and
+a separate 3:1 thumbnail-crop control. The explorer's `PhotoContent` and
+all three thumbnail surfaces (map overlay card, gallery, journal) honour
+the new fields.
+
+**Map dynamic zoom.** The map now `fitBounds` to center the user with
+the nearest tour pin in frame: distances in **miles**, nearest pin
+shown within a 5-mile radius, a navigation prompt when the user is far,
+and up to 25% center drift to keep the zoom comfortable. Enlarged,
+circle-anchored pin labels ("Tap to start").
+
+**UI polish.** EQ discussion question box went through many fade
+iterations and ended as a sharp rounded rectangle with a drop shadow
+(no blur). Softer footer Journal / `?` buttons. Larger MicButton.
+Scene/discuss copy tweaks ("Are you looking at this:"). Browser chrome
+`<meta theme-color>` now tracks the active theme via `ThemeColorMeta`.
+Admin: stop editor scrolls to the top of a stop when expanded.
+
+**Lessons captured** in §7: the `--th-aged-gold` non-existent-token bug,
+the `animate-ping` / `transform` collision, and `isFinalStop` only
+applying to linear tours.
 
 ---
 
@@ -385,6 +478,8 @@ Source style guides: `docs/Style_Guide_Ledger.md` → Red theme,
   `localStorage` (`provenance-theme`), and mirrors it to `<html>`.
 - An inline script in `layout.tsx` applies the stored theme before
   first paint to avoid a flash of the default theme.
+- `ThemeColorMeta` keeps the browser's `<meta name="theme-color">`
+  (mobile address-bar / status-bar tint) in sync with the active theme.
 
 ### Adjusting colours/fonts
 
@@ -402,4 +497,76 @@ into tour content, not UI chrome) are deliberately left untouched.
 
 ---
 
-*End of handoff. The theme system (§9) is live on `master`.*
+## 10. Unstructured Exploration Mode
+
+Added 2026-05-21. A tour-level mode (`Tour.unstructuredMode`) where the
+explorer chooses which stop to visit next instead of following the
+authored sequence. The essential-question opening and closing bookends
+are unchanged — only the per-stop middle becomes explorer-driven.
+
+### Authoring
+
+- **Mode toggle** on the tour: `unstructuredMode`.
+- **Midway check-in** (`midwayEnabled` + `midwayQuestion`): an optional
+  reflection prompt shown once the explorer has completed half the
+  logical stops.
+- **Merge groups** (`Stop.mergeGroup`): stops sharing a non-null
+  `mergeGroup` string behave as one sequential unit — the explorer taps
+  in once and walks the group in authored order. A standalone stop has
+  `mergeGroup: null`.
+
+### Logical stops
+
+`getLogicalStops(tour)` (in `tour-session.ts`) returns the pickable
+units: every standalone stop plus the *leader* (first authored stop) of
+each merge group. Counts and progress are measured in logical stops,
+**not** `tour.stops.length`.
+
+### Session state
+
+- `completionOrder: string[]` — logical stop IDs in the order the
+  explorer completed them. Populated on completion, not on entry. Drives
+  journal ordering and "Stop N" visit-number labels.
+- `midwayShownAt: number | null` — `completionOrder` length when the
+  midway check-in fired.
+- `midwayResponseText: string | null` — the explorer's midway answer.
+
+### Phases & rendering
+
+- `unstructured_map` — the stop-picker. Renders `UnstructuredMapControls`
+  + `UnstructuredMapOverlay` (stop overlay card on pin tap, stop gallery).
+- `midway_checkin` — renders `MidwayCheckinCard` (exported from
+  `UnstructuredMapOverlay.tsx`).
+- Closing — `UnstructuredClosingView` runs the closing-discuss → closing
+  → final-reflect → questions → end sequence full-screen.
+
+All three are rendered by `src/app/page.tsx` **outside** the `Journal`
+overlay (Journal early-returns on these phases caused the original
+"This page couldn't load" `AnimatePresence` crash).
+
+### Advancement
+
+`advanceToNextStopUnstructured` (in `tour-session.ts`) runs after a stop
+completes: it walks merge-group members in order, appends the logical
+stop ID to `completionOrder`, fires the midway check-in if due, and
+returns to `unstructured_map` — or to the closing once
+`completionOrder.length >= getLogicalStops(tour).length`. `isFinalStop`
+is ignored in this mode.
+
+### Bug-fix history (follow-up commits)
+
+- `unstructured_map`/`midway_checkin` transitions crashed Journal's
+  `AnimatePresence` — moved rendering to `page.tsx`.
+- Map cut off at the bottom during the tour — fixed overlay covered the map.
+- Journal/progress order corrected to *visit* order (`completionOrder`),
+  with merge-group siblings kept in authored order.
+- Selected-pin pulse ring re-centered (`animate-ping`/`transform` fix).
+- Transparent progress pills fixed (`--th-aged-gold` → `--aged-gold`).
+- "Oval" stop blank `whats_next` screen — caused by `isFinalStop: true`
+  in its data; guarded with `!tour.unstructuredMode`.
+- "Finish the tour" button shown only on the genuine last logical stop.
+
+---
+
+*End of handoff. The unstructured exploration mode (§10) and theme
+system (§9) are live on `master`.*
