@@ -314,44 +314,108 @@ export default function TourEditorPage() {
           {/* "Meet Your Guide" screen — photo, intro, audio */}
           <div className="space-y-3 rounded border border-stone-200 bg-stone-50 p-3">
             <p className="text-xs font-semibold text-stone-600">&ldquo;Meet Your Guide&rdquo; screen</p>
-            <div className="flex gap-3 items-start">
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-stone-200 border border-stone-300 shrink-0 flex items-center justify-center">
-                {tour.guide.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={tour.guide.photoUrl} alt="guide" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-[10px] text-stone-400 text-center px-1">No photo</span>
-                )}
-              </div>
-              <div className="flex-1">
-                <span className="text-xs text-stone-600">Guide photo URL</span>
-                <div className="flex gap-2 mt-1">
+            <div>
+              <span className="text-xs text-stone-600">Guide photo URL</span>
+              <div className="flex gap-2 mt-1">
+                <input
+                  value={tour.guide.photoUrl ?? ''}
+                  onChange={(e) => updateGuidePartial({ photoUrl: e.target.value })}
+                  className="flex-1 px-3 py-1.5 border border-stone-300 rounded text-sm"
+                  placeholder="/photos/... or upload"
+                />
+                <label className="px-3 py-1.5 rounded bg-stone-200 text-stone-700 text-sm cursor-pointer hover:bg-stone-300">
+                  Upload
                   <input
-                    value={tour.guide.photoUrl ?? ''}
-                    onChange={(e) => updateGuidePartial({ photoUrl: e.target.value })}
-                    className="flex-1 px-3 py-1.5 border border-stone-300 rounded text-sm"
-                    placeholder="/photos/... or upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const url = await uploadPhoto(file, `memorial-church/photos/tours/${tourId}/guide_${file.name}`);
+                      updateGuidePartial({ photoUrl: url });
+                    }}
                   />
-                  <label className="px-3 py-1.5 rounded bg-stone-200 text-stone-700 text-sm cursor-pointer hover:bg-stone-300">
-                    Upload
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const url = await uploadPhoto(file, `memorial-church/photos/tours/${tourId}/guide_${file.name}`);
-                        updateGuidePartial({ photoUrl: url });
-                      }}
-                    />
-                  </label>
-                </div>
-                <span className="text-[11px] text-stone-400 block mt-1">
-                  Round photo shown on the guide screen and the journal peek.
-                </span>
+                </label>
               </div>
+              <span className="text-[11px] text-stone-400 block mt-1">
+                Round photo shown on the guide screen and the journal peek.
+              </span>
             </div>
+
+            {/* Round-photo framing — focal point + zoom */}
+            {tour.guide.photoUrl && (() => {
+              const fp = tour.guide.photoFocalPoint;
+              const zoom = tour.guide.photoZoom ?? 1;
+              const objPos = fp ? `${fp.x}% ${fp.y}%` : '50% 50%';
+              const origin = fp ? `${fp.x}% ${fp.y}%` : 'center';
+              return (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-stone-400">
+                    Click the photo to set the focal point — it is shown in a circle on the tour.
+                  </p>
+                  <div className="flex gap-3 items-start">
+                    <div
+                      className="relative rounded-full border border-stone-300 cursor-crosshair shrink-0 bg-stone-200 overflow-hidden"
+                      style={{ width: 132, height: 132 }}
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+                        const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+                        updateGuidePartial({ photoFocalPoint: { x, y } });
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          transform: zoom > 1 ? `scale(${zoom})` : undefined,
+                          transformOrigin: zoom > 1 ? origin : undefined,
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={tour.guide.photoUrl}
+                          alt="guide"
+                          className="w-full h-full object-cover select-none"
+                          style={{ objectPosition: objPos }}
+                          draggable={false}
+                        />
+                      </div>
+                      {fp && (
+                        <div
+                          className="absolute w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none"
+                          style={{ left: `${fp.x}%`, top: `${fp.y}%`, transform: 'translate(-50%,-50%)', background: '#F59E0B' }}
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-stone-400 shrink-0">Zoom:</span>
+                        <input
+                          type="range" min={1} max={3} step={0.05} value={zoom}
+                          onChange={(e) => updateGuidePartial({ photoZoom: parseFloat(e.target.value) })}
+                          className="flex-1 h-1 accent-amber-500"
+                        />
+                        <span className="text-[10px] text-stone-500 w-9 text-right">{zoom.toFixed(2)}×</span>
+                      </div>
+                      <p className="text-[10px] text-stone-400">
+                        {fp ? `Focal point: ${fp.x}%, ${fp.y}%` : 'No focal point — defaults to centre'}
+                      </p>
+                      {(fp || zoom !== 1) && (
+                        <button
+                          type="button"
+                          onClick={() => updateGuidePartial({ photoFocalPoint: undefined, photoZoom: 1 })}
+                          className="text-[10px] text-blue-600 hover:underline"
+                        >
+                          Reset framing
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <label className="block">
               <span className="text-xs text-stone-600">Guide intro text</span>
               <textarea

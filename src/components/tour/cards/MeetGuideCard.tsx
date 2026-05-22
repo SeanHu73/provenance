@@ -7,6 +7,7 @@
  */
 
 import { Tour } from '@/lib/types';
+import { guidePhotoStyle } from '@/lib/guide-photo';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 
@@ -30,7 +31,12 @@ export default function MeetGuideCard({ tour, onContinue }: Props) {
         <div className="w-32 h-32 rounded-full overflow-hidden shadow-md border-[3px] border-aged-gold flex items-center justify-center bg-[var(--th-primary)]">
           {g.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={g.photoUrl} alt={g.name} className="w-full h-full object-cover" />
+            <img
+              src={g.photoUrl}
+              alt={g.name}
+              className="w-full h-full object-cover"
+              style={guidePhotoStyle(g)}
+            />
           ) : (
             <span className="text-3xl font-bold" style={{ color: 'var(--th-surface)' }}>
               {g.initials || '?'}

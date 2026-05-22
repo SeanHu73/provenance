@@ -188,6 +188,8 @@ export interface Tour {
     role: string;                    // "Art History · Stanford"
     initials: string;                // "ER"
     photoUrl?: string;               // Round photo — "Meet Your Guide" screen + journal peek
+    photoFocalPoint?: { x: number; y: number }; // Crop focal point for the round photo
+    photoZoom?: number;              // 1–3× zoom for the round photo
     intro?: string;                  // Brief intro shown on the "Meet Your Guide" screen
     introAudioUrl?: string | null;   // Optional narration on the "Meet Your Guide" screen
     introAudioTitle?: string | null;

@@ -6,6 +6,7 @@
  */
 
 import { Tour } from '@/lib/types';
+import { guidePhotoStyle } from '@/lib/guide-photo';
 
 interface Props {
   tour: Tour;
@@ -43,7 +44,12 @@ export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
             >
               {tour.guide.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={tour.guide.photoUrl} alt="" className="w-full h-full object-cover" />
+                <img
+                  src={tour.guide.photoUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  style={guidePhotoStyle(tour.guide)}
+                />
               ) : (
                 tour.guide.initials || '?'
               )}
