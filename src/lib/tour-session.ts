@@ -468,7 +468,9 @@ export function finishTour(session: TourSession, tour: Tour): TourSession {
     ...session,
     phaseHistory: pushHistory(session),
     // The guide's optional closing message comes just before the end card.
-    currentPhase: tour.guide?.thankYouMessage ? 'guide_outro' : 'end',
+    currentPhase: (tour.guide?.thankYouMessage || tour.guide?.thankYouAudioUrl)
+      ? 'guide_outro'
+      : 'end',
     completedAt: new Date().toISOString(),
   };
 }

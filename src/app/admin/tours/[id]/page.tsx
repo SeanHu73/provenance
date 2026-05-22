@@ -449,6 +449,14 @@ export default function TourEditorPage() {
                 Shown as &ldquo;Last words from {tour.guide.name || 'the guide'}&rdquo; before the end screen.
               </span>
             </label>
+            <AudioUpload
+              audioUrl={tour.guide.thankYouAudioUrl ?? null}
+              audioTitle={tour.guide.thankYouAudioTitle ?? null}
+              onChange={(url) => updateGuidePartial({ thankYouAudioUrl: url })}
+              onTitleChange={(title) => updateGuidePartial({ thankYouAudioTitle: title })}
+              uploadPath={`memorial-church/audio/tours/${tourId}/guide-outro`}
+              onUploadFile={uploadPhoto}
+            />
           </div>
 
           <label className="block">

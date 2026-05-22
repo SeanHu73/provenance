@@ -194,6 +194,8 @@ export interface Tour {
     introAudioUrl?: string | null;   // Optional narration on the "Meet Your Guide" screen
     introAudioTitle?: string | null;
     thankYouMessage?: string;        // Closing "Last words from <guide>" message
+    thankYouAudioUrl?: string | null;   // Optional narration on the "Last words" screen
+    thankYouAudioTitle?: string | null;
   };
   description: string;               // Brief intro shown on journal peek
   coverPhotoUrl: string;             // Photo for the journal peek

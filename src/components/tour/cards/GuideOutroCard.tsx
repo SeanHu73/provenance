@@ -7,6 +7,7 @@
 
 import { Tour } from '@/lib/types';
 import { guidePhotoStyle } from '@/lib/guide-photo';
+import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 
 interface Props {
@@ -25,18 +26,27 @@ export default function GuideOutroCard({ tour, onContinue }: Props) {
       </p>
 
       {/* Round photo */}
-      {g.photoUrl && (
-        <div className="flex justify-center">
-          <div className="w-24 h-24 rounded-full overflow-hidden shadow-md border-[3px] border-aged-gold">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div className="flex justify-center">
+        <div className="w-32 h-32 rounded-full overflow-hidden shadow-md border-[3px] border-aged-gold flex items-center justify-center bg-[var(--th-primary)]">
+          {g.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={g.photoUrl}
               alt={g.name}
               className="w-full h-full object-cover"
               style={guidePhotoStyle(g)}
             />
-          </div>
+          ) : (
+            <span className="text-3xl font-bold" style={{ color: 'var(--th-surface)' }}>
+              {g.initials || '?'}
+            </span>
+          )}
         </div>
+      </div>
+
+      {/* Audio */}
+      {g.thankYouAudioUrl && (
+        <AudioButton audioUrl={g.thankYouAudioUrl} title={g.thankYouAudioTitle ?? null} />
       )}
 
       {/* Message */}
