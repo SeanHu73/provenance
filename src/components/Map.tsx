@@ -10,7 +10,7 @@ const NEAR_THRESHOLD_M = 300;
 const SHOW_PIN_RADIUS_M = 8047; // 5 miles
 const PIN_ASPECT = 319 / 450; // full logo glyph width / height
 const BUBBLE_ASPECT = 319 / 225; // speech-bubble glyph width / height
-const ARROW_SIZE = 36; // px — off-screen direction arrow
+const ARROW_SIZE = 46; // px — off-screen direction arrow
 
 export interface TourPinData {
   tour: Tour;
@@ -385,8 +385,10 @@ function BoundsTracker({
 
 /**
  * Animates to a gallery-selected stop:
- * 1. panTo the stop (Google Maps smooth pan)
- * 2. On idle: fitBounds to show both the stop and the user's location
+ * 1. Small settle delay so the gallery close animation finishes
+ * 2. panTo the stop (smooth Google Maps animation)
+ * 3. 500ms pause once the pan lands
+ * 4. fitBounds to show both the stop and the user's location
  */
 function MapFlyer({
   flyTarget,
@@ -401,6 +403,7 @@ function MapFlyer({
   const prevTarget = useRef<{ stopLocation: Loc } | null>(null);
   const onFlyCompleteRef = useRef(onFlyComplete);
   onFlyCompleteRef.current = onFlyComplete;
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
     if (!flyTarget || !map || flyTarget === prevTarget.current) return;
@@ -411,11 +414,15 @@ function MapFlyer({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const g = (window as any).google;
 
-    // Step 1: pan to the stop
-    anyMap.panTo(flyTarget.stopLocation);
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
 
-    // Step 2: after pan settles, zoom out to fit user + stop
-    const idleListener = g?.maps?.event.addListenerOnce(anyMap, 'idle', () => {
+    const after = (fn: () => void, ms: number) => {
+      const t = setTimeout(fn, ms);
+      timers.current.push(t);
+    };
+
+    const doFitBounds = () => {
       if (userLocation && g?.maps?.LatLngBounds) {
         const bounds = new g.maps.LatLngBounds();
         bounds.extend(userLocation);
@@ -427,12 +434,33 @@ function MapFlyer({
           onFlyCompleteRef.current();
         });
       } else {
-        anyMap.setZoom(16);
         onFlyCompleteRef.current();
       }
-    });
+    };
 
-    return () => idleListener?.remove();
+    // Wait for gallery to finish closing before starting the pan
+    after(() => {
+      anyMap.panTo(flyTarget.stopLocation);
+
+      // Wait for pan to land: listen for idle with a 1200ms safety fallback
+      let panSettled = false;
+      const idleListener = g?.maps?.event.addListenerOnce(anyMap, 'idle', () => {
+        if (panSettled) return;
+        panSettled = true;
+        after(doFitBounds, 500); // 500ms pause before zooming out
+      });
+      after(() => {
+        if (panSettled) return;
+        panSettled = true;
+        idleListener?.remove();
+        after(doFitBounds, 500);
+      }, 1200);
+    }, 120); // settle delay
+
+    return () => {
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+    };
   }, [flyTarget, map, userLocation]);
 
   return null;
