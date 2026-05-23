@@ -116,7 +116,7 @@ function StopOverlayCard({
   const displayTitle = stop.mergeGroup || stop.title;
 
   return (
-    <div className="rounded-2xl shadow-2xl overflow-hidden border" style={{ backgroundColor: 'var(--th-surface)', borderColor: 'var(--th-border)' }}>
+    <div className="rounded-2xl shadow-2xl overflow-hidden border" style={{ backgroundColor: 'var(--th-surface)', borderColor: 'var(--th-primary)' }}>
       {thumbPhoto && (
         <div className="h-28 bg-sandstone">
           {/* eslint-disable-next-line @next/next/no-img-element */}
