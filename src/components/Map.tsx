@@ -383,12 +383,39 @@ function BoundsTracker({
   return null;
 }
 
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+}
+function lerpNum(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
 /**
- * Animates to a gallery-selected stop:
- * 1. Small settle delay so the gallery close animation finishes
- * 2. panTo the stop (smooth Google Maps animation)
- * 3. 500ms pause once the pan lands
- * 4. fitBounds to show both the stop and the user's location
+ * Estimates the zoom level that fits two points on screen using the
+ * Mercator projection. Used to compute the target zoom for phase 3.
+ */
+function estimateFitZoom(p1: Loc, p2: Loc, W: number, H: number): number {
+  const TILE = 256;
+  const PAD = 1.5; // padding factor so pins aren't on the edge
+  const lngSpan = Math.abs(p1.lng - p2.lng) * PAD || 0.001;
+  const zLng = Math.log2((W / TILE) * (360 / lngSpan));
+  const toMerc = (lat: number) =>
+    Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+  const mercSpan =
+    Math.abs(toMerc(Math.max(p1.lat, p2.lat)) - toMerc(Math.min(p1.lat, p2.lat))) * PAD || 0.001;
+  const zLat = Math.log2((H / TILE) * ((2 * Math.PI) / mercSpan));
+  return Math.max(Math.min(zLng, zLat, MAX_AUTO_ZOOM), 13);
+}
+
+/**
+ * Three-phase fly animation driven by requestAnimationFrame:
+ *
+ * Phase 1 — Pan (1 200 ms): smoothly moves the map centre from the
+ *   current position to the selected stop, centring it on screen.
+ * Phase 2 — Pause (500 ms): holds the view so the user can see the pin.
+ * Phase 3 — Zoom out (1 200 ms): simultaneously pans to the midpoint
+ *   between the stop and the user's location while zooming out so both
+ *   pins are visible.
  */
 function MapFlyer({
   flyTarget,
@@ -403,7 +430,8 @@ function MapFlyer({
   const prevTarget = useRef<{ stopLocation: Loc } | null>(null);
   const onFlyCompleteRef = useRef(onFlyComplete);
   onFlyCompleteRef.current = onFlyComplete;
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const rafRef = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!flyTarget || !map || flyTarget === prevTarget.current) return;
@@ -411,55 +439,66 @@ function MapFlyer({
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const anyMap = map as any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const g = (window as any).google;
 
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (timerRef.current) clearTimeout(timerRef.current);
 
-    const after = (fn: () => void, ms: number) => {
-      const t = setTimeout(fn, ms);
-      timers.current.push(t);
-    };
+    // Small delay so the gallery close animation finishes before we start.
+    timerRef.current = setTimeout(() => {
+      const startLat: number = anyMap.getCenter().lat();
+      const startLng: number = anyMap.getCenter().lng();
+      const startZoom: number = anyMap.getZoom() ?? 17;
+      const { lat: stopLat, lng: stopLng } = flyTarget.stopLocation;
 
-    const doFitBounds = () => {
-      if (userLocation && g?.maps?.LatLngBounds) {
-        const bounds = new g.maps.LatLngBounds();
-        bounds.extend(userLocation);
-        bounds.extend(flyTarget.stopLocation);
-        anyMap.fitBounds(bounds, { top: 100, right: 80, bottom: 100, left: 80 });
-        g.maps.event.addListenerOnce(anyMap, 'idle', () => {
-          const z = anyMap.getZoom?.();
-          if (typeof z === 'number' && z > MAX_AUTO_ZOOM) anyMap.setZoom(MAX_AUTO_ZOOM);
-          onFlyCompleteRef.current();
-        });
-      } else {
-        onFlyCompleteRef.current();
+      // Precompute phase-3 targets
+      const div = anyMap.getDiv?.();
+      const W: number = div?.offsetWidth  || window.innerWidth;
+      const H: number = div?.offsetHeight || window.innerHeight;
+      const fitZoom = userLocation
+        ? estimateFitZoom(flyTarget.stopLocation, userLocation, W, H)
+        : Math.max(startZoom - 2, 14);
+      const fitLat = userLocation ? (stopLat + userLocation.lat) / 2 : stopLat;
+      const fitLng = userLocation ? (stopLng + userLocation.lng) / 2 : stopLng;
+
+      const PAN_MS  = 1200;
+      const ZOOM_MS = 1200;
+
+      // ── Phase 1: pan to stop ──────────────────────────────────────
+      let panStart = 0;
+      function phase1(now: number) {
+        if (!panStart) panStart = now;
+        const t = Math.min((now - panStart) / PAN_MS, 1);
+        const e = easeInOutCubic(t);
+        anyMap.setCenter({ lat: lerpNum(startLat, stopLat, e), lng: lerpNum(startLng, stopLng, e) });
+        if (t < 1) {
+          rafRef.current = requestAnimationFrame(phase1);
+        } else {
+          // ── Phase 2: pause 500 ms ─────────────────────────────────
+          timerRef.current = setTimeout(() => {
+            // ── Phase 3: zoom out to show user + stop ────────────────
+            let zoomStart = 0;
+            function phase3(now: number) {
+              if (!zoomStart) zoomStart = now;
+              const t = Math.min((now - zoomStart) / ZOOM_MS, 1);
+              const e = easeInOutCubic(t);
+              anyMap.setZoom(lerpNum(startZoom, fitZoom, e));
+              anyMap.setCenter({ lat: lerpNum(stopLat, fitLat, e), lng: lerpNum(stopLng, fitLng, e) });
+              if (t < 1) {
+                rafRef.current = requestAnimationFrame(phase3);
+              } else {
+                onFlyCompleteRef.current();
+              }
+            }
+            rafRef.current = requestAnimationFrame(phase3);
+          }, 500);
+        }
       }
-    };
-
-    // Wait for gallery to finish closing before starting the pan
-    after(() => {
-      anyMap.panTo(flyTarget.stopLocation);
-
-      // Wait for pan to land: listen for idle with a 1200ms safety fallback
-      let panSettled = false;
-      const idleListener = g?.maps?.event.addListenerOnce(anyMap, 'idle', () => {
-        if (panSettled) return;
-        panSettled = true;
-        after(doFitBounds, 500); // 500ms pause before zooming out
-      });
-      after(() => {
-        if (panSettled) return;
-        panSettled = true;
-        idleListener?.remove();
-        after(doFitBounds, 500);
-      }, 1200);
-    }, 120); // settle delay
+      rafRef.current = requestAnimationFrame(phase1);
+    }, 120);
 
     return () => {
-      timers.current.forEach(clearTimeout);
-      timers.current = [];
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [flyTarget, map, userLocation]);
 
