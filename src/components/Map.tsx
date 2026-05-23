@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { APIProvider, Map as GoogleMap, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { Pin, Stop, Tour } from '@/lib/types';
 
-const MEMORIAL_CHURCH = { lat: 37.42700, lng: -122.17015 };
+const CHURCH_LOCATION = { lat: 37.42700, lng: -122.17015 }; // Stanford Memorial Church
 const MAX_AUTO_ZOOM = 17;
 const NEAR_THRESHOLD_M = 300;
 const SHOW_PIN_RADIUS_M = 8047; // 5 miles
@@ -84,7 +84,7 @@ function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
       ? tourLocs.reduce((best, loc) =>
           haversineDistanceM(userPos, loc) < haversineDistanceM(userPos, best) ? loc : best
         )
-      : MEMORIAL_CHURCH;
+      : CHURCH_LOCATION;
 
   const distM = haversineDistanceM(userPos, target);
 
@@ -330,7 +330,7 @@ function MapZoomer({
   useEffect(() => {
     if (!isUnstructuredMap || fired.current || !map) return;
     fired.current = true;
-    const target = userLocation || MEMORIAL_CHURCH;
+    const target = userLocation || CHURCH_LOCATION;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const anyMap = map as any;
     anyMap.panTo(target);
@@ -833,8 +833,8 @@ export default function MapContainer({
     <APIProvider apiKey={apiKey}>
       <div className="relative w-full h-full">
         <GoogleMap
-          mapId="memorial-church-map"
-          defaultCenter={MEMORIAL_CHURCH}
+          mapId="provenance-map"
+          defaultCenter={CHURCH_LOCATION}
           defaultZoom={17}
           defaultTilt={45}
           defaultHeading={0}

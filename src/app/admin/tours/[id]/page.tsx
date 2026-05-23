@@ -27,7 +27,7 @@ import RichTextarea from '@/components/admin/RichTextarea';
 import AudioUpload from '@/components/admin/AudioUpload';
 import { registerPhotoInLibrary } from '@/lib/photo-sync-tour';
 
-const MEMORIAL_CHURCH = { lat: 37.42700, lng: -122.17015 };
+const CHURCH_LOCATION = { lat: 37.42700, lng: -122.17015 };
 const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
 const DEFAULT_WHAT_SHIFTED_ADMIN = [
@@ -2478,7 +2478,7 @@ interface StopMapPickerProps {
 }
 
 function StopMapPicker({ location, onLocationChange }: StopMapPickerProps) {
-  const center = location || MEMORIAL_CHURCH;
+  const center = location || CHURCH_LOCATION;
 
   return (
     <GoogleMap

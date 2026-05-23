@@ -1,7 +1,7 @@
 {
   "name": "Provenance",
   "short_name": "Provenance",
-  "description": "A place-based learning tool for Stanford Memorial Church",
+  "description": "A place-based learning experience by Provenance",
   "id": "/",
   "start_url": "/",
   "display": "standalone",

@@ -28,8 +28,8 @@ const fontVariables = [
 ].join(' ');
 
 export const metadata: Metadata = {
-  title: 'Memorial Church — Provenance',
-  description: 'A place-based learning tool for Stanford Memorial Church. Look carefully. Discuss what you see.',
+  title: 'Provenance',
+  description: 'A place-based learning experience. Look carefully. Discuss what you see.',
   manifest: '/manifest.json',
   applicationName: 'Provenance',
   // Name shown under the icon when added to the iOS home screen.

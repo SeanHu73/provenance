@@ -152,7 +152,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-stone-50 text-stone-900 p-6 font-sans">
       <div className="max-w-4xl mx-auto">
         <header className="mb-6 border-b border-stone-300 pb-3">
-          <h1 className="text-2xl font-bold">Memorial Church Admin</h1>
+          <h1 className="text-2xl font-bold">Provenance Admin</h1>
           <p className="text-sm text-stone-600 mt-1">
             Upload photos and annotations. Writes to <code className="bg-stone-200 px-1 rounded">memorial-church-pins</code> in Firestore.
             Not linked from the main app — accessed by URL only.

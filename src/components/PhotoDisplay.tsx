@@ -86,7 +86,7 @@ export default function PhotoDisplay({ photo, categories }: Props) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={photo.url}
-          alt={photo.caption || 'Memorial Church photograph'}
+          alt={photo.caption || 'Provenance photograph'}
           className="w-full h-auto max-h-[50vh] object-contain block"
           loading="lazy"
         />
