@@ -180,6 +180,7 @@ function HomeInner() {
             isUnstructuredMap={isUnstructuredMapPhase}
             flyTarget={flyTarget}
             onFlyComplete={() => setFlyTarget(null)}
+            isTourActive={isActive}
           />
 
           {/* Theme switcher — top-right of the map */}

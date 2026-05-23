@@ -46,6 +46,8 @@ interface MapProps {
   /** Pan+fitBounds animation target from gallery selection */
   flyTarget?: { stopLocation: Loc } | null;
   onFlyComplete?: () => void;
+  /** Hide Google POI/transit pins while tour is active */
+  isTourActive?: boolean;
 }
 
 type Loc = { lat: number; lng: number };
@@ -257,6 +259,24 @@ function UserLocationTracker({ following, onLocationUpdate }: { following: boole
     return () => navigator.geolocation.clearWatch(watchId);
   }, [onLocationUpdate, following, map]);
 
+  return null;
+}
+
+/** Applies/removes POI + transit styles at runtime via setOptions (works with mapId). */
+function PoiStyler({ isTourActive }: { isTourActive: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (map as any).setOptions({
+      styles: isTourActive
+        ? [
+            { featureType: 'poi',     stylers: [{ visibility: 'off' }] },
+            { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+          ]
+        : [],
+    });
+  }, [map, isTourActive]);
   return null;
 }
 
@@ -773,6 +793,7 @@ export default function MapContainer({
   isUnstructuredMap,
   flyTarget,
   onFlyComplete,
+  isTourActive,
 }: MapProps) {
   const [userLocation, setUserLocation] = useState<Loc | null>(null);
   const [following, setFollowing] = useState(false);
@@ -827,6 +848,7 @@ export default function MapContainer({
           rotateControl={true}
           className="w-full h-full"
         >
+          <PoiStyler isTourActive={!!isTourActive} />
           <MapInitializer tourPins={tourPins} onLocationUpdate={handleLocationUpdate} />
           <UserLocationTracker following={following} onLocationUpdate={handleLocationUpdate} />
           <BoundsTracker onChange={handleBoundsChange} />
