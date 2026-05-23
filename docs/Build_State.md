@@ -1,6 +1,6 @@
-# Build State — Memorial Church Tool (Provenance v2)
+# Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-05-22.
+*Handoff document for the next Claude Code session. Last updated 2026-05-23.
 Read this instead of re-discovering the codebase.*
 
 ---
@@ -12,7 +12,7 @@ Firebase Firestore + Firebase Storage. Google Maps. Deepgram (voice input).
 Deployed on Vercel, auto-deploys from GitHub master.
 Two switchable visual themes (Red / Teal) — see §9.
 
-**Repo:** `github.com/SeanHu73/memorial-church-tool`
+**Repo:** `github.com/SeanHu73/provenance`
 
 ---
 
@@ -176,7 +176,8 @@ Each wonder (main, extra rounds, additional EQ) has a `questionType`:
 Tour metadata: title, subtitle, guide (name/role/initials, photo with
 focal-point + zoom framing, intro text + audio, closing "Last words"
 message + audio), description, cover photo, peek audio, tour-level
-background photo, map pin location,
+background photo (with **contrast slider** 50–200%), map pin location,
+**default map zoom** (13–20 slider, used when unstructured mode starts),
 **unstructured mode toggle**, **midway check-in** (toggle + question),
 essential question (with scene photo/description/audio, opening framing,
 theory/reasoning prompts, additional question, closing framing/audio,
@@ -294,6 +295,8 @@ Tailwind CSS 4, TypeScript 5, @vis.gl/react-google-maps 1.8.3.
 - **Theming**: `layout.tsx` wraps the app in `ThemeProvider` and runs a pre-paint inline script that sets `data-theme` on `<html>`. Admin pages are not in theme scope — see §9.
 - **CSS token names**: only `--th-primary`, `--th-secondary`, `--th-surface`, `--th-border` etc. exist as `--th-*`. Palette aliases like `--aged-gold`, `--text-primary`, `--text-secondary` live in `:root` *without* the `--th-` prefix. `var(--th-aged-gold)` resolves to nothing (caused transparent progress pills once).
 - **`animate-ping` / `animate-bounce` + `transform`**: these Tailwind keyframes animate `transform`, clobbering any inline `transform` (e.g. `translate(...)`) on the *same* element. Put positioning transforms on a wrapper div and the animation class on an inner child (see the selected-pin ring in `Map.tsx` and the onboarding `?` cue arrow).
+- **Google Maps `mapId` + vector rendering**: the map uses `mapId="b8f339c02d8c7d5bd3f12d1b"` (Cloud Console). This is required for `AdvancedMarker` in `@vis.gl/react-google-maps` 1.8.3 — removing it breaks the map. However, `mapId` forces vector rendering, which silently ignores both the `styles` prop and `map.setOptions({styles})` at runtime. POI / transit pin hiding **must** be configured via Google Cloud Console → Map Styles linked to the map ID. A `PoiStyler` component exists in `Map.tsx` but is a no-op with the current setup.
+- **`panTo()` range limit**: Google Maps only animates `panTo()` smoothly when the destination is within roughly one screen's width/height. For larger distances it jumps immediately. The fly animation therefore uses a `requestAnimationFrame` loop with `setCenter()` each frame for phase 1 (pan), and `setZoom()` each frame for phase 3 (zoom out). See `MapFlyer` in `Map.tsx`.
 - **`isFinalStop`** only governs linear tours. In unstructured mode `advanceToNextStopUnstructured` ignores it; the final stop is whichever logical stop the explorer completes last. Code that branches on `isFinalStop` must also check `!tour.unstructuredMode`.
 - **Logical stops**: in unstructured mode count `getLogicalStops(tour)` (standalone stops + the leader of each merge group), not `tour.stops.length`. `completionOrder` holds *logical* stop IDs and is populated only when a stop is completed.
 
@@ -618,6 +621,61 @@ is ignored in this mode.
 - "Oval" stop blank `whats_next` screen — caused by `isFinalStop: true`
   in its data; guarded with `!tour.unstructuredMode`.
 - "Finish the tour" button shown only on the genuine last logical stop.
+
+---
+
+### Project rename + map overhaul + bg contrast (2026-05-23)
+
+**Project renamed to Provenance.** `package.json` name, app `<title>`,
+admin heading, `PhotoDisplay` alt text, `manifest.json` description, and
+GitHub repo all changed to "Provenance". Firestore collection names and
+Firebase Storage paths were intentionally left unchanged (live data).
+Vercel project renamed; domain is `provenance-history.vercel.app`.
+
+**Card opacity tightened.** Standard cards 70%→80%, reveal/context
+cards 85%→90%; no-blur fallbacks bumped proportionally (`Journal.tsx`
+lines ~230–235).
+
+**Audio files committed.** `public/audio/Meet Your Guide.m4a` and
+`public/audio/Setting the Scene.m4a` added to the repo.
+
+**Map improvements — all in `src/components/Map.tsx`:**
+
+- `MEMORIAL_CHURCH` constant renamed `CHURCH_LOCATION`.
+- `mapId="b8f339c02d8c7d5bd3f12d1b"` — real Cloud Console ID (see §7 note on POI hiding).
+- **Admin-adjustable default zoom.** `Tour.defaultZoom?: number` (13–20).
+  `MapZoomer` fires once when unstructured mode starts, centering on the
+  user at this zoom. Slider in the tour editor.
+- **Off-screen direction arrows.** `OffScreenArrows` / `DirectionArrow`
+  — 8-sector grouping (N/NE/E/SE/S/SW/W/NW), amber `#F59E0B`,
+  `animate-pulse`, 46px, with a counter badge when multiple stops share a
+  sector. Rendered as absolute divs over the map, outside `GoogleMap`.
+- **Gallery → map fly animation.** `MapFlyer` component, three phases driven
+  by `requestAnimationFrame`:
+  - Phase 1 (900 ms): RAF `setCenter` loop, `easeInOutCubic`, pans from
+    current center to selected stop. (Native `panTo()` was tried but jumps
+    for distances > ~one screen width.)
+  - Phase 2 (400 ms): `setTimeout` pause so the user sees the pin centred.
+  - Phase 3 (1 400 ms): RAF `setZoom` loop, zooms out in place (stop stays
+    centred). Zoom target computed by `fitZoomCenteredOnStop` — Mercator
+    math to find the maximum zoom where the user's location dot is visible
+    with the stop pinned at screen centre.
+  - Triggered by `flyTarget` prop in `page.tsx`; cleared via `onFlyComplete`.
+  - `handleStopSelectedFromGallery` in `page.tsx` sets `flyTarget`; gallery
+    passes the full `Stop` object (not just ID) to `onStopSelectedFromGallery`.
+- **`OverlayAwarePanner`.** When a stop overlay card appears (after
+  animation completes), projects the stop pin to screen Y via Mercator
+  math and calls `panBy(0, n)` to lift it above the overlay card. Capped
+  at 180 px. Only considers the stop pin, not the user dot (including user
+  caused excessive panning at high zoom). Resets on overlay dismiss so
+  re-tapping the same pin re-triggers it.
+
+**Background photo contrast.** `Tour.backgroundPhotoContrast?: number`
+(50–200, default 100 = unchanged). Admin: contrast slider below the bg
+photo preview, with live preview on the image. Explorer: `filter:
+contrast(N%)` applied to the bg photo `<img>` in `Journal.tsx`. Admin
+preview also fixed from a narrow `h-20` cropped strip to full photo
+(`object-contain`, `max-h-72`).
 
 ---
 
