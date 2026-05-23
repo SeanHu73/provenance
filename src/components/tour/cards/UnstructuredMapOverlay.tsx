@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Tour, TourSession, Stop } from '@/lib/types';
-import { getLogicalStops, getStopsInGroup } from '@/lib/tour-session';
+import { getLogicalStops, getStopsInGroup, getActiveGroupId, getNextStopInGroup } from '@/lib/tour-session';
 import { getActiveStops } from '@/lib/tours-store';
 import { useTour } from '@/context/TourContext';
 import MicButton from '../MicButton';
@@ -11,11 +11,13 @@ interface Props {
   tour: Tour;
   session: TourSession;
   onStopSelectedFromGallery?: (stop: Stop) => void;
+  /** Pans the map to the given stop's location (used by the locked-stop card). */
+  onFlyToStop?: (stop: Stop) => void;
 }
 
 // Transparent controls overlay rendered absolutely within the map container.
 // Title bar and progress strip are rendered by the parent (HomeInner) in document flow.
-export default function UnstructuredMapControls({ tour, session, onStopSelectedFromGallery }: Props) {
+export default function UnstructuredMapControls({ tour, session, onStopSelectedFromGallery, onFlyToStop }: Props) {
   const { selectedUnstructuredStopId, setSelectedUnstructuredStopId, enterUnstructuredStop } = useTour();
   const [view, setView] = useState<'map' | 'gallery'>('map');
 
@@ -41,6 +43,23 @@ export default function UnstructuredMapControls({ tour, session, onStopSelectedF
     : false;
   const showCluster = !!groupStops && groupStops.length > 1 && !groupAnyStarted;
 
+  // Mini-map state — if a group is mid-progress, identify the next-due
+  // sub-stop. Lets us render LockedStopOverlayCard for tapped locked pins
+  // and target the "Show me next stop" pan.
+  const activeGroupId = getActiveGroupId(tour, session);
+  const nextStopInGroup = activeGroupId ? getNextStopInGroup(tour, activeGroupId, session) : null;
+  const isSelectedLocked = !!(
+    selectedStop &&
+    activeGroupId &&
+    selectedStop.mergeGroup === activeGroupId &&
+    !completedIds.has(selectedStop.id) &&
+    selectedStop.id !== nextStopInGroup?.id
+  );
+
+  // First uncompleted stop of the selected group (for the cluster banner
+  // and Begin handler).
+  const firstUncompletedInGroup = groupStops?.find((s) => !completedIds.has(s.id)) ?? null;
+
   const handleBeginStop = () => {
     if (selectedStopIndex >= 0) {
       enterUnstructuredStop(selectedStopIndex);
@@ -48,11 +67,15 @@ export default function UnstructuredMapControls({ tour, session, onStopSelectedF
   };
 
   const handleBeginCluster = () => {
-    if (!groupStops || groupStops.length === 0) return;
-    const firstUncompleted = groupStops.find((s) => !completedIds.has(s.id));
-    if (!firstUncompleted) return;
-    const idx = activeStops.indexOf(firstUncompleted);
+    if (!firstUncompletedInGroup) return;
+    const idx = activeStops.indexOf(firstUncompletedInGroup);
     if (idx >= 0) enterUnstructuredStop(idx);
+  };
+
+  const handleShowNextStop = () => {
+    if (!nextStopInGroup) return;
+    setSelectedUnstructuredStopId(null);
+    onFlyToStop?.(nextStopInGroup);
   };
 
   return (
@@ -99,7 +122,14 @@ export default function UnstructuredMapControls({ tour, session, onStopSelectedF
                 groupName={selectedGroupId || selectedStop.title}
                 stops={groupStops}
                 completedIds={completedIds}
+                firstUncompleted={firstUncompletedInGroup}
                 onBegin={handleBeginCluster}
+                onDismiss={() => setSelectedUnstructuredStopId(null)}
+              />
+            ) : isSelectedLocked ? (
+              <LockedStopOverlayCard
+                stop={selectedStop}
+                onShowNext={handleShowNextStop}
                 onDismiss={() => setSelectedUnstructuredStopId(null)}
               />
             ) : (
@@ -138,16 +168,11 @@ function StopOverlayCard({
   onBegin: () => void;
   onDismiss: () => void;
 }) {
-  const thumbPhoto =
-    (stop.notice.photos || []).find(p => p.url) ||
-    (stop.notice.photoUrl ? { url: stop.notice.photoUrl, caption: stop.notice.photoCaption } : null) ||
-    (stop.seed.photos || []).find(p => p.url) ||
-    (stop.seed.photoUrl ? { url: stop.seed.photoUrl, caption: stop.seed.photoCaption } : null) ||
-    null;
+  const thumbPhoto = pickStopThumb(stop);
   const seedPreview = stop.seed.text
     ? stop.seed.text.replace(/\[photo:\d+\]/g, '').trim().slice(0, 100)
     : null;
-  const displayTitle = stop.mergeGroup || stop.title;
+  const displayTitle = stop.title || stop.mergeGroup || '';
 
   return (
     <div className="rounded-2xl shadow-2xl overflow-hidden" style={{ backgroundColor: 'var(--th-surface)' }}>
@@ -166,10 +191,12 @@ function StopOverlayCard({
       )}
       <div className="p-4 space-y-3">
         <div>
-          <p className="text-base font-semibold text-text-primary leading-snug">{displayTitle}</p>
           {stop.category && (
-            <p className="text-xs text-text-secondary mt-0.5 uppercase tracking-wide">{stop.category}</p>
+            <p className="text-xs font-bold tracking-wider uppercase mb-1" style={{ color: 'var(--th-text-secondary)' }}>
+              {stop.category}
+            </p>
           )}
+          <p className="text-xl font-semibold text-text-primary leading-snug">{displayTitle}</p>
         </div>
         {seedPreview && (
           <p className="text-sm text-text-secondary leading-relaxed line-clamp-2">{seedPreview}</p>
@@ -207,6 +234,78 @@ function StopOverlayCard({
   );
 }
 
+function LockedStopOverlayCard({
+  stop,
+  onShowNext,
+  onDismiss,
+}: {
+  stop: Stop;
+  onShowNext: () => void;
+  onDismiss: () => void;
+}) {
+  const thumbPhoto = pickStopThumb(stop);
+  const displayTitle = stop.title || '';
+  return (
+    <div className="rounded-2xl shadow-2xl overflow-hidden" style={{ backgroundColor: 'var(--th-surface)' }}>
+      {thumbPhoto && (
+        <div className="h-28 bg-sandstone relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={thumbPhoto.url}
+            alt=""
+            className="w-full h-full object-cover"
+            style={{
+              filter: 'grayscale(0.6)',
+              ...(thumbPhoto.thumbnailFocalPoint
+                ? { objectPosition: `${thumbPhoto.thumbnailFocalPoint.x}% ${thumbPhoto.thumbnailFocalPoint.y}%` }
+                : {}),
+            }}
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div
+              className="w-11 h-11 rounded-full flex items-center justify-center shadow-md"
+              style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="11" width="16" height="9" rx="2" />
+                <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="p-4 space-y-3">
+        <div>
+          {stop.category && (
+            <p className="text-xs font-bold tracking-wider uppercase mb-1" style={{ color: 'var(--th-text-secondary)' }}>
+              {stop.category}
+            </p>
+          )}
+          <p className="text-xl font-semibold text-text-primary leading-snug">{displayTitle}</p>
+          <p className="text-sm italic mt-1" style={{ color: 'var(--th-text-secondary)' }}>
+            Please complete prior stops first
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={onDismiss}
+            className="px-4 py-2.5 rounded-lg text-sm text-text-secondary border"
+            style={{ borderColor: 'var(--th-border)' }}
+          >
+            Dismiss
+          </button>
+          <button
+            onClick={onShowNext}
+            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-aged-gold"
+          >
+            Show me next stop
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function pickStopThumb(stop: Stop) {
   return (
     (stop.notice.photos || []).find((p) => p.url) ||
@@ -225,31 +324,36 @@ function GroupClusterOverlayCard({
   groupName,
   stops,
   completedIds,
+  firstUncompleted,
   onBegin,
   onDismiss,
 }: {
   groupName: string;
   stops: Stop[];
   completedIds: Set<string>;
+  firstUncompleted: Stop | null;
   onBegin: () => void;
   onDismiss: () => void;
 }) {
   const total = stops.length;
+  const headlineTitle = firstUncompleted?.title || groupName;
   return (
     <div
       className="rounded-2xl shadow-2xl overflow-hidden"
       style={{ backgroundColor: 'var(--th-surface)' }}
     >
-      {/* Cluster banner */}
+      {/* Cluster banner — tiny "STOP CLUSTER · <group>" label, then the
+          first uncompleted stop's name in big type so the explorer knows
+          exactly what Begin will start. */}
       <div
-        className="px-4 pt-3 pb-2"
+        className="px-4 pt-3 pb-2.5"
         style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}
       >
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] opacity-90">
-          Stop cluster
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] opacity-85">
+          Stop cluster · {groupName}
         </p>
-        <p className="text-lg font-semibold leading-tight">{groupName}</p>
-        <p className="text-xs opacity-85 mt-0.5">{total} places to explore here · go in order</p>
+        <p className="text-xl font-semibold leading-tight mt-1">{headlineTitle}</p>
+        <p className="text-xs opacity-85 mt-1">{total} stops · go in order</p>
       </div>
 
       {/* Swipeable carousel — peek next card on right */}
@@ -270,8 +374,8 @@ function GroupClusterOverlayCard({
                 index={i}
                 total={total}
                 isDone={isDone}
+                isActive={isFirstUncompleted}
                 isLocked={isLocked}
-                onBegin={isFirstUncompleted ? onBegin : undefined}
               />
             );
           })}
@@ -303,15 +407,15 @@ function ClusterCarouselCard({
   index,
   total,
   isDone,
+  isActive,
   isLocked,
-  onBegin,
 }: {
   stop: Stop;
   index: number;
   total: number;
   isDone: boolean;
+  isActive: boolean;
   isLocked: boolean;
-  onBegin?: () => void;
 }) {
   const thumb = pickStopThumb(stop);
   const displayTitle = stop.title || `Stop ${index + 1}`;
@@ -320,9 +424,10 @@ function ClusterCarouselCard({
       className="snap-start shrink-0 rounded-xl overflow-hidden border"
       style={{
         width: '76%',
-        borderColor: 'var(--th-border)',
+        borderColor: isActive ? 'var(--th-primary)' : 'var(--th-border)',
+        borderWidth: isActive ? 2 : 1,
         backgroundColor: 'var(--th-surface)',
-        opacity: isLocked ? 0.55 : 1,
+        opacity: isLocked ? 0.6 : 1,
       }}
     >
       <div className="relative h-24 bg-sandstone">
@@ -356,25 +461,23 @@ function ClusterCarouselCard({
           </div>
         )}
       </div>
-      <div className="px-3 py-2 space-y-1">
-        <p className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--th-text-secondary)' }}>
+      <div className="px-3 py-2.5 space-y-1">
+        <p className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: isActive ? 'var(--th-primary)' : 'var(--th-text-secondary)' }}>
           {index + 1} of {total}
           {isDone && ' · Explored'}
+          {isActive && ' · Up next'}
           {isLocked && ' · Locked'}
         </p>
         <p
-          className="text-sm font-semibold leading-snug line-clamp-2"
+          className="text-base font-semibold leading-snug line-clamp-2"
           style={{ color: 'var(--th-text-primary)' }}
         >
           {displayTitle}
         </p>
-        {onBegin && (
-          <button
-            onClick={onBegin}
-            className="mt-1 w-full py-1.5 rounded-md text-xs font-semibold text-white bg-aged-gold"
-          >
-            Begin this stop
-          </button>
+        {stop.category && (
+          <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--th-text-secondary)' }}>
+            {stop.category}
+          </p>
         )}
       </div>
     </div>

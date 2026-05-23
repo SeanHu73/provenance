@@ -266,6 +266,7 @@ function HomeInner() {
               tour={activeTour}
               session={session}
               onStopSelectedFromGallery={handleStopSelectedFromGallery}
+              onFlyToStop={handleStopSelectedFromGallery}
             />
           )}
         </div>

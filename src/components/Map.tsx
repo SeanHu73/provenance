@@ -689,55 +689,43 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
   if (!data.stop.location) return null;
 
   if (data.unstructuredMode) {
-    // Size and styling follow the pin role:
-    //   group leader   → large, with sub-stop count badge
-    //   next-in-group  → largest, animated ring (the "flashing" cue)
-    //   selected overlay → enlarged
-    //   locked sub-stop → smallest, dimmed, no click
-    //   completed      → small, dim, check badge
-    //   default        → medium
+    // Sizes
+    //   main-map standalone / cluster leader → 42 (unified)
+    //   mini-map next sub-stop → 56 + animated ring (the "flashing" cue)
+    //   mini-map completed → 28, dim, check badge
+    //   mini-map locked → 30, normal colour, clickable (overlay tells the
+    //     explorer to finish prior stops; button pans them to the next pin)
     const D = data.isNextInGroup
-      ? 58
-      : data.isGroupLeader
+      ? 56
+      : data.isSelectedOverlay
         ? 50
-        : data.isSelectedOverlay
-          ? 54
+        : data.isCompleted
+          ? 28
           : data.isLockedInGroup
-            ? 26
-            : data.isCompleted
-              ? 30
-              : 36;
-    const displayTitle = data.stop.mergeGroup || data.stop.title;
+            ? 30
+            : 42;
     const ring = data.isNextInGroup || data.isSelectedOverlay;
-    const zIndex = data.isNextInGroup ? 11 : data.isSelectedOverlay ? 10 : data.isGroupLeader ? 6 : data.isCompleted ? 1 : data.isLockedInGroup ? 1 : 5;
+    const zIndex = data.isNextInGroup ? 11 : data.isSelectedOverlay ? 10 : data.isGroupLeader ? 6 : data.isCompleted ? 1 : data.isLockedInGroup ? 2 : 5;
     const badge = data.isCompleted
       ? { check: true }
       : data.isGroupLeader && data.subStopCount
         ? { text: String(data.subStopCount) }
         : undefined;
-    const clickHandler = data.isLockedInGroup ? undefined : onClick;
     return (
       <AdvancedMarker
         position={data.stop.location}
-        onClick={clickHandler}
+        onClick={onClick}
         zIndex={zIndex}
       >
-        <div className="flex flex-col items-center" style={{ transform: `translateY(calc(50% - ${D / 2}px))`, pointerEvents: data.isLockedInGroup ? 'none' : undefined }}>
+        <div className="flex flex-col items-center" style={{ transform: `translateY(calc(50% - ${D / 2}px))` }}>
           <DiscMarker
             diameter={D}
             ring={ring}
             ringColor="#F59E0B"
-            dim={data.isCompleted || data.isLockedInGroup}
+            dim={data.isCompleted}
             badge={badge}
             glyph={<BubbleGlyph height={D * 0.56} />}
           />
-          {!data.isCompleted && !data.isLockedInGroup && displayTitle && (
-            <div className="mt-1 px-2 py-0.5 bg-white rounded-md text-[9px] font-semibold text-gray-800 shadow-sm max-w-[110px] text-center leading-tight truncate">
-              {data.isGroupLeader && data.subStopCount
-                ? `${displayTitle} · ${data.subStopCount} stops`
-                : displayTitle}
-            </div>
-          )}
         </div>
       </AdvancedMarker>
     );
