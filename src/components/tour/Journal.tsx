@@ -228,11 +228,11 @@ export default function Journal({ onMapPeek }: JournalProps) {
               showBgPhoto
                 ? phase === 'reveal'
                   ? blurSupported
-                    ? 'bg-warm-white/[0.85] backdrop-blur-[10px]'
-                    : 'bg-warm-white/[0.9]'
+                    ? 'bg-warm-white/90 backdrop-blur-[10px]'
+                    : 'bg-warm-white/[0.95]'
                   : blurSupported
-                    ? 'bg-warm-white/70 backdrop-blur-[12px]'
-                    : 'bg-warm-white/[0.8]'
+                    ? 'bg-warm-white/80 backdrop-blur-[12px]'
+                    : 'bg-warm-white/[0.85]'
                 : 'bg-warm-white'
             }`}
             >
