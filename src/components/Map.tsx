@@ -833,7 +833,7 @@ export default function MapContainer({
     <APIProvider apiKey={apiKey}>
       <div className="relative w-full h-full">
         <GoogleMap
-          mapId="provenance-map"
+          mapId="b8f339c02d8c7d5bd3f12d1b"
           defaultCenter={CHURCH_LOCATION}
           defaultZoom={17}
           defaultTilt={45}
