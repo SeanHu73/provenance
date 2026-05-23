@@ -460,7 +460,7 @@ function MapFlyer({
         : Math.max(startZoom - 2, 14);
 
       const PAN_MS  = 900;
-      const ZOOM_MS = 900;
+      const ZOOM_MS = 1400;
 
       // ── Phase 1: pan to stop ──────────────────────────────────────
       let panStart = 0;
@@ -731,6 +731,65 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
   );
 }
 
+/**
+ * After a stop overlay card appears, pans the map so the selected stop pin
+ * and user location dot are both above the overlay card. Uses Mercator math
+ * to calculate actual screen positions rather than a fixed offset.
+ * Defers until any fly animation finishes. Resets when overlay is dismissed.
+ */
+function OverlayAwarePanner({
+  tourStops,
+  flyTarget,
+  userLocation,
+}: {
+  tourStops?: TourStopMarkerData[];
+  flyTarget?: { stopLocation: Loc } | null;
+  userLocation: Loc | null;
+}) {
+  const map = useMap();
+  const pannedForRef = useRef<string | null>(null);
+
+  const selected = tourStops?.find(ts => ts.isSelectedOverlay) ?? null;
+  const selectedId = selected?.stop.id ?? null;
+  const isAnimating = !!flyTarget;
+
+  useEffect(() => {
+    if (!selectedId) { pannedForRef.current = null; return; }
+    if (!map || isAnimating || pannedForRef.current === selectedId) return;
+    if (!selected?.stop.location) return;
+    pannedForRef.current = selectedId;
+    const stopLoc = selected.stop.location;
+
+    setTimeout(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const anyMap = map as any;
+      const div = anyMap.getDiv?.();
+      if (!div) return;
+      const H: number = div.offsetHeight;
+      const zoom: number = anyMap.getZoom() ?? 17;
+      const center = anyMap.getCenter();
+      const toMerc = (lat: number) => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+      const scale = 256 * Math.pow(2, zoom);
+      const screenY = (lat: number) =>
+        H / 2 - (toMerc(lat) - toMerc(center.lat())) * scale / (2 * Math.PI);
+
+      // Overlay card: ~260px tall, anchored bottom-16 (64px) from bottom
+      const overlayTop = H - 340;
+      const stopY  = screenY(stopLoc.lat);
+      const userY  = userLocation ? screenY(userLocation.lat) : stopY;
+      const worstY = Math.max(stopY, userY);
+
+      // panBy(0, +n) moves center south → content rises on screen
+      if (worstY > overlayTop - 20) {
+        anyMap.panBy(0, worstY - overlayTop + 40);
+      }
+    }, 150);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, selectedId, isAnimating]);
+
+  return null;
+}
+
 // ─── Off-screen direction arrows ────────────────────────────────────────────
 
 const SECTOR_ANGLES_DEG = [0, 45, 90, 135, 180, -135, -90, -45];
@@ -926,6 +985,11 @@ export default function MapContainer({
             flyTarget={flyTarget ?? null}
             userLocation={userLocation}
             onFlyComplete={onFlyComplete ?? (() => {})}
+          />
+          <OverlayAwarePanner
+            tourStops={tourStops}
+            flyTarget={flyTarget}
+            userLocation={userLocation}
           />
           {userLocation && <UserLocationDot position={userLocation} />}
           {!hidePins && pins.map((pin) => (
