@@ -740,11 +740,9 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
 function OverlayAwarePanner({
   tourStops,
   flyTarget,
-  userLocation,
 }: {
   tourStops?: TourStopMarkerData[];
   flyTarget?: { stopLocation: Loc } | null;
-  userLocation: Loc | null;
 }) {
   const map = useMap();
   const pannedForRef = useRef<string | null>(null);
@@ -775,13 +773,13 @@ function OverlayAwarePanner({
 
       // Overlay card: ~260px tall, anchored bottom-16 (64px) from bottom
       const overlayTop = H - 340;
-      const stopY  = screenY(stopLoc.lat);
-      const userY  = userLocation ? screenY(userLocation.lat) : stopY;
-      const worstY = Math.max(stopY, userY);
+      const stopY = screenY(stopLoc.lat);
 
-      // panBy(0, +n) moves center south → content rises on screen
-      if (worstY > overlayTop - 20) {
-        anyMap.panBy(0, worstY - overlayTop + 40);
+      // Only lift the stop pin above the overlay — including the user location
+      // dot causes excessive panning at high zoom (user can be 300+ px below).
+      // Cap at 180px so no pin can fly off the top of the screen.
+      if (stopY > overlayTop - 20) {
+        anyMap.panBy(0, Math.min(stopY - overlayTop + 40, 180));
       }
     }, 150);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -986,11 +984,7 @@ export default function MapContainer({
             userLocation={userLocation}
             onFlyComplete={onFlyComplete ?? (() => {})}
           />
-          <OverlayAwarePanner
-            tourStops={tourStops}
-            flyTarget={flyTarget}
-            userLocation={userLocation}
-          />
+          <OverlayAwarePanner tourStops={tourStops} flyTarget={flyTarget} />
           {userLocation && <UserLocationDot position={userLocation} />}
           {!hidePins && pins.map((pin) => (
             <PinMarker
