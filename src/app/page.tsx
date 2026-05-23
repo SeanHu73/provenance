@@ -70,15 +70,15 @@ function HomeInner() {
         });
       }
     } else {
-      // Linear mode: only show the currently active stop to keep the map clean
-      const activeIndex = session?.currentStopIndex ?? 0;
-      const activeStop = activeTour.stops[activeIndex];
-      if (activeStop?.location) {
+      // Linear mode: show all stops with locations
+      for (let i = 0; i < activeTour.stops.length; i++) {
+        const stop = activeTour.stops[i];
+        if (!stop.location) continue;
         tourStopMarkers.push({
-          stop: activeStop,
-          index: activeIndex,
-          isActive: true,
-          isCompleted: false,
+          stop,
+          index: i,
+          isActive: session?.currentStopIndex === i,
+          isCompleted: session?.completedStops.includes(stop.id) ?? false,
         });
       }
     }
