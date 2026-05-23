@@ -8,6 +8,7 @@
  */
 
 import type { Tour, Stop, TourSession, TourPhase, BankedQuestion } from './types';
+import { getActiveStops } from './tours-store';
 
 export type { TourPhase };
 
@@ -135,7 +136,7 @@ export function goBack(session: TourSession): TourSession | null {
 export function getLogicalStops(tour: Tour): Stop[] {
   const seenGroups = new Set<string>();
   const result: Stop[] = [];
-  for (const stop of tour.stops) {
+  for (const stop of getActiveStops(tour)) {
     const g = stop.mergeGroup;
     if (g) {
       if (!seenGroups.has(g)) {
@@ -178,12 +179,13 @@ export function advancePhase(session: TourSession, stop: Stop): TourSession {
 export function advanceToNextStop(session: TourSession, tour: Tour): TourSession {
   if (tour.unstructuredMode) return advanceToNextStopUnstructured(session, tour);
 
-  const currentStop = tour.stops[session.currentStopIndex];
+  const stops = getActiveStops(tour);
+  const currentStop = stops[session.currentStopIndex];
   const isFinal = currentStop?.isFinalStop || false;
   const nextIndex = session.currentStopIndex + 1;
 
   // If this is marked as final stop OR there are no more stops, go to closing flow
-  if (isFinal || nextIndex >= tour.stops.length) {
+  if (isFinal || nextIndex >= stops.length) {
     const endPhase = tour.essentialQuestion ? 'eq_closing_discuss' : 'eq_questions';
     return {
       ...session,
@@ -209,7 +211,8 @@ export function advanceToNextStop(session: TourSession, tour: Tour): TourSession
 
 /** Called after a stop completes in unstructured mode. */
 function advanceToNextStopUnstructured(session: TourSession, tour: Tour): TourSession {
-  const stop = tour.stops[session.currentStopIndex];
+  const stops = getActiveStops(tour);
+  const stop = stops[session.currentStopIndex];
   if (!stop) return session;
 
   const newCompletedStops = [...session.completedStops, stop.id];
@@ -218,7 +221,7 @@ function advanceToNextStopUnstructured(session: TourSession, tour: Tour): TourSe
   // If in a merge group, check whether the next stop continues the group
   if (currentGroup) {
     const nextIdx = session.currentStopIndex + 1;
-    if (nextIdx < tour.stops.length && tour.stops[nextIdx].mergeGroup === currentGroup) {
+    if (nextIdx < stops.length && stops[nextIdx].mergeGroup === currentGroup) {
       return {
         ...session,
         phaseHistory: pushHistory(session),
@@ -229,7 +232,7 @@ function advanceToNextStopUnstructured(session: TourSession, tour: Tour): TourSe
       };
     }
     // End of merge group — treat as completing one logical stop (the group leader)
-    const leader = tour.stops.find((s) => s.mergeGroup === currentGroup)!;
+    const leader = stops.find((s) => s.mergeGroup === currentGroup)!;
     return finishLogicalStop(session, tour, leader.id, newCompletedStops);
   }
 

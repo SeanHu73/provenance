@@ -238,6 +238,12 @@ export interface Tour {
   } | null;
   // Unstructured exploration mode
   unstructuredMode?: boolean;        // Default false — when true, explorer chooses stop order
+  // Parallel stops array used when unstructuredMode is true. Authored
+  // independently of `stops` (linear) so the writing for each mode can
+  // diverge. First populated by deep-cloning `stops` when the author
+  // enables unstructuredMode for the first time. Falls back to `stops`
+  // if missing (legacy tours).
+  unstructuredStops?: Stop[];
   defaultZoom?: number;              // Starting map zoom level (14–20). Default 17 if unset.
   categories?: string[];             // Author-defined category list for organising stops
   midwayEnabled?: boolean;           // Default false

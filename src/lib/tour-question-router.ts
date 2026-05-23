@@ -9,6 +9,7 @@
  */
 
 import { Tour, TourSession, AskResponse } from './types';
+import { getActiveStops } from './tours-store';
 
 export type RouteResult =
   | { type: 'coming_up'; matchedStopOrder: number }
@@ -25,8 +26,9 @@ function checkUpcoming(
   session: TourSession
 ): { type: 'coming_up'; matchedStopOrder: number } | null {
   const q = question.toLowerCase();
-  for (let i = session.currentStopIndex + 1; i < tour.stops.length; i++) {
-    const stop = tour.stops[i];
+  const stops = getActiveStops(tour);
+  for (let i = session.currentStopIndex + 1; i < stops.length; i++) {
+    const stop = stops[i];
     for (const topic of stop.upcomingTopics) {
       if (topic && q.includes(topic.toLowerCase())) {
         return { type: 'coming_up', matchedStopOrder: stop.order + 1 };
@@ -77,7 +79,7 @@ export async function routeQuestion(
   /*
   // Step 2: AI response (currently disabled)
   try {
-    const currentStop = tour.stops[session.currentStopIndex];
+    const currentStop = getActiveStops(tour)[session.currentStopIndex];
     const res = await fetch('/api/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

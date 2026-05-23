@@ -20,7 +20,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { Tour, Stop, Detour, StopPhoto } from '@/lib/types';
-import { getTour, saveTour, deleteTour, blankStop, blankDetour } from '@/lib/tours-store';
+import { getTour, saveTour, deleteTour, blankStop, blankDetour, getActiveStops, setActiveStops, duplicateStopsForUnstructured } from '@/lib/tours-store';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import RichTextarea from '@/components/admin/RichTextarea';
@@ -148,21 +148,23 @@ export default function TourEditorPage() {
   };
 
   // ── Stop helpers ──
+  // All stop edits read/write through getActiveStops/setActiveStops so
+  // linear and unstructured tours each maintain their own stops array.
 
   const updateStop = (stopId: string, patch: Partial<Stop>) => {
     if (!tour) return;
-    const next = {
-      ...tour,
-      stops: tour.stops.map((s) => (s.id === stopId ? { ...s, ...patch } : s)),
-    };
+    const active = getActiveStops(tour);
+    const nextStops = active.map((s) => (s.id === stopId ? { ...s, ...patch } : s));
+    const next = setActiveStops(tour, nextStops);
     setTour(next);
     persist(next);
   };
 
   const addStop = () => {
     if (!tour) return;
-    const stop = blankStop(tour.stops.length);
-    const next = { ...tour, stops: [...tour.stops, stop] };
+    const active = getActiveStops(tour);
+    const stop = blankStop(active.length);
+    const next = setActiveStops(tour, [...active, stop]);
     setTour(next);
     setExpandedStopId(stop.id);
     persist(next);
@@ -171,12 +173,11 @@ export default function TourEditorPage() {
   const removeStop = (stopId: string) => {
     if (!tour) return;
     if (!confirm('Delete this stop?')) return;
-    const next = {
-      ...tour,
-      stops: tour.stops
-        .filter((s) => s.id !== stopId)
-        .map((s, i) => ({ ...s, order: i })),
-    };
+    const active = getActiveStops(tour);
+    const nextStops = active
+      .filter((s) => s.id !== stopId)
+      .map((s, i) => ({ ...s, order: i }));
+    const next = setActiveStops(tour, nextStops);
     setTour(next);
     if (expandedStopId === stopId) setExpandedStopId(null);
     persist(next);
@@ -184,15 +185,13 @@ export default function TourEditorPage() {
 
   const moveStop = (stopId: string, direction: -1 | 1) => {
     if (!tour) return;
-    const idx = tour.stops.findIndex((s) => s.id === stopId);
+    const active = getActiveStops(tour);
+    const idx = active.findIndex((s) => s.id === stopId);
     const newIdx = idx + direction;
-    if (newIdx < 0 || newIdx >= tour.stops.length) return;
-    const reordered = [...tour.stops];
+    if (newIdx < 0 || newIdx >= active.length) return;
+    const reordered = [...active];
     [reordered[idx], reordered[newIdx]] = [reordered[newIdx], reordered[idx]];
-    const next = {
-      ...tour,
-      stops: reordered.map((s, i) => ({ ...s, order: i })),
-    };
+    const next = setActiveStops(tour, reordered.map((s, i) => ({ ...s, order: i })));
     setTour(next);
     persist(next);
   };
@@ -235,7 +234,8 @@ export default function TourEditorPage() {
     );
   }
 
-  const previewStop = previewStopId ? tour.stops.find((s) => s.id === previewStopId) : null;
+  const activeStops = getActiveStops(tour);
+  const previewStop = previewStopId ? activeStops.find((s) => s.id === previewStopId) : null;
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 p-6 font-sans">
@@ -834,7 +834,27 @@ export default function TourEditorPage() {
             <input
               type="checkbox"
               checked={tour.unstructuredMode ?? false}
-              onChange={(e) => updateField('unstructuredMode', e.target.checked)}
+              onChange={(e) => {
+                const turningOn = e.target.checked;
+                if (
+                  turningOn &&
+                  (!tour.unstructuredStops || tour.unstructuredStops.length === 0) &&
+                  tour.stops.length > 0
+                ) {
+                  // First time turning unstructured on for this tour —
+                  // seed the parallel stops array with a deep copy of
+                  // the linear stops (new IDs) so the author can edit
+                  // one set without affecting the other.
+                  const duped = duplicateStopsForUnstructured(tour.stops);
+                  const next = { ...tour, unstructuredMode: true, unstructuredStops: duped };
+                  setTour(next);
+                  persist(next);
+                  setExpandedStopId(null);
+                  return;
+                }
+                updateField('unstructuredMode', turningOn);
+                setExpandedStopId(null);
+              }}
               className="rounded mt-0.5"
             />
             <div>
@@ -955,7 +975,7 @@ export default function TourEditorPage() {
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">
-              Stops ({tour.stops.length})
+              Stops ({activeStops.length}){tour.unstructuredMode ? ' — Unstructured set' : ''}
             </h2>
             <button
               onClick={addStop}
@@ -965,11 +985,11 @@ export default function TourEditorPage() {
             </button>
           </div>
 
-          {tour.stops.length === 0 ? (
+          {activeStops.length === 0 ? (
             <p className="text-stone-500 text-sm italic">No stops yet. Add one to start building the tour.</p>
           ) : (
             <ul className="space-y-2">
-              {tour.stops.map((stop, idx) => (
+              {activeStops.map((stop, idx) => (
                 <li key={stop.id} ref={(el) => { stopRefs.current[stop.id] = el; }} className="border border-stone-300 rounded bg-white">
                   {/* Stop summary bar */}
                   <div
@@ -997,7 +1017,7 @@ export default function TourEditorPage() {
                       >&uarr;</button>
                       <button
                         onClick={(e) => { e.stopPropagation(); moveStop(stop.id, 1); }}
-                        disabled={idx === tour.stops.length - 1}
+                        disabled={idx === activeStops.length - 1}
                         className="px-1.5 py-0.5 text-xs rounded bg-stone-100 hover:bg-stone-200 disabled:opacity-30"
                         title="Move down"
                       >&darr;</button>

@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Tour, TourSession } from '@/lib/types';
 import { getLogicalStops } from '@/lib/tour-session';
+import { getActiveStops } from '@/lib/tours-store';
 
 interface Props {
   tour: Tour;
@@ -42,7 +43,7 @@ function UnstructuredProgressBar({ tour, session }: Props) {
   // Current logical stop during a stop phase
   const currentLogicalStop = isInStopPhase && session.currentStopIndex >= 0
     ? (() => {
-        const cur = tour.stops[session.currentStopIndex];
+        const cur = getActiveStops(tour)[session.currentStopIndex];
         if (!cur) return null;
         return logicalStops.find(
           ls => ls.id === cur.id || (cur.mergeGroup && ls.mergeGroup === cur.mergeGroup)
@@ -139,7 +140,7 @@ function LinearProgressBar({ tour, session }: Props) {
   // Which logical stop is currently active
   const currentLogicalIdx = (() => {
     if (!isInStopPhase || session.currentStopIndex < 0) return -1;
-    const cur = tour.stops[session.currentStopIndex];
+    const cur = getActiveStops(tour)[session.currentStopIndex];
     if (!cur) return -1;
     return logicalStops.findIndex(
       ls => ls.id === cur.id || (cur.mergeGroup && ls.mergeGroup === cur.mergeGroup)
@@ -378,7 +379,7 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
             );
           })()}
 
-          {tour.stops.map((stop, i) => {
+          {getActiveStops(tour).map((stop, i) => {
             const isCompleted = completedIds.has(stop.id);
             const isCurrent = i === session.currentStopIndex &&
               !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end', 'unstructured_map', 'midway_checkin'].includes(session.currentPhase);

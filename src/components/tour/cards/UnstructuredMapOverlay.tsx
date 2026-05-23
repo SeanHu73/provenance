@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Tour, TourSession, Stop } from '@/lib/types';
 import { getLogicalStops } from '@/lib/tour-session';
+import { getActiveStops } from '@/lib/tours-store';
 import { useTour } from '@/context/TourContext';
 import MicButton from '../MicButton';
 
@@ -18,11 +19,12 @@ export default function UnstructuredMapControls({ tour, session, onStopSelectedF
   const { selectedUnstructuredStopId, setSelectedUnstructuredStopId, enterUnstructuredStop } = useTour();
   const [view, setView] = useState<'map' | 'gallery'>('map');
 
+  const activeStops = getActiveStops(tour);
   const selectedStop = selectedUnstructuredStopId
-    ? tour.stops.find((s) => s.id === selectedUnstructuredStopId) ?? null
+    ? activeStops.find((s) => s.id === selectedUnstructuredStopId) ?? null
     : null;
   const selectedStopIndex = selectedStop
-    ? tour.stops.findIndex((s) => s.id === selectedUnstructuredStopId)
+    ? activeStops.findIndex((s) => s.id === selectedUnstructuredStopId)
     : -1;
 
   const completedIds = new Set(session.completedStops);
@@ -217,7 +219,7 @@ function GalleryView({
   const stopsByCategory: Record<string, Stop[]> = {};
   const uncategorized: Stop[] = [];
 
-  for (const stop of tour.stops) {
+  for (const stop of getActiveStops(tour)) {
     if (!logicalStopIds.has(stop.id)) continue; // skip merge-group secondaries
     const cat = stop.category;
     if (cat && categories.includes(cat)) {

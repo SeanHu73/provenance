@@ -14,6 +14,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { canUseBlur } from '@/lib/device-capability';
+import { getActiveStops } from '@/lib/tours-store';
 import IntroScreens from './cards/IntroScreens';
 import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
@@ -116,9 +117,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const bgPhoto = useMemo(() => {
     if (!tour) return null;
     let photo = tour.backgroundPhotoUrl || null;
+    const stops = getActiveStops(tour);
     // Walk stops up to current index, applying overrides
     for (let i = 0; i <= (session?.currentStopIndex ?? -1); i++) {
-      const s = tour.stops[i];
+      const s = stops[i];
       // Check new field name; only fall back to legacy if new field is undefined (never set)
       const override = s?.backgroundPhotoOverride !== undefined
         ? s.backgroundPhotoOverride

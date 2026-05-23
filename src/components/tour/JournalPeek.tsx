@@ -7,6 +7,7 @@
 
 import { Tour } from '@/lib/types';
 import { guidePhotoStyle } from '@/lib/guide-photo';
+import { getActiveStops } from '@/lib/tours-store';
 
 interface Props {
   tour: Tour;
@@ -81,7 +82,10 @@ export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
           )}
 
           <p className="text-xs" style={{ color: 'var(--th-border)' }}>
-            {tour.stops.length} stop{tour.stops.length !== 1 ? 's' : ''} &middot; ~{tour.stops.length * 5} min
+            {(() => {
+              const count = getActiveStops(tour).length;
+              return `${count} stop${count !== 1 ? 's' : ''} · ~${count * 5} min`;
+            })()}
           </p>
 
           {/* Audio */}

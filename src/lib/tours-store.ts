@@ -19,7 +19,7 @@ import {
   deleteDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Tour, Detour } from './types';
+import { Tour, Stop, Detour } from './types';
 
 const TOURS_COLLECTION = 'memorial-church-tours';
 
@@ -115,6 +115,46 @@ export function newDetourId(): string {
     return crypto.randomUUID();
   }
   return `detour_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Returns the stops array the tour is currently operating on.
+ *
+ * Unstructured mode uses a parallel `unstructuredStops` array so its
+ * writing can diverge from the linear set. If unstructured mode is on
+ * but no parallel array has been authored yet (legacy tours), we fall
+ * back to the linear `stops` so the tour still plays.
+ */
+export function getActiveStops(tour: Tour): Stop[] {
+  if (tour.unstructuredMode && tour.unstructuredStops && tour.unstructuredStops.length > 0) {
+    return tour.unstructuredStops;
+  }
+  return tour.stops;
+}
+
+/**
+ * Returns a new Tour with the active stops array replaced. Writes to
+ * `unstructuredStops` when unstructured mode is on, otherwise `stops`.
+ */
+export function setActiveStops(tour: Tour, stops: Stop[]): Tour {
+  if (tour.unstructuredMode) {
+    return { ...tour, unstructuredStops: stops };
+  }
+  return { ...tour, stops };
+}
+
+/**
+ * Deep-clone a stops array for use as the unstructured parallel set.
+ * All stop and detour IDs are re-minted so the two arrays never share
+ * IDs — keeps session references unambiguous.
+ */
+export function duplicateStopsForUnstructured(stops: Stop[]): Stop[] {
+  const cloned = JSON.parse(JSON.stringify(stops)) as Stop[];
+  return cloned.map((s) => ({
+    ...s,
+    id: newStopId(),
+    detours: (s.detours || []).map((d) => ({ ...d, id: newDetourId() })),
+  }));
 }
 
 export function blankDetour(): Detour {

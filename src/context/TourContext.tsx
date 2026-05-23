@@ -10,7 +10,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { Tour, Stop, TourSession, BankedQuestion } from '@/lib/types';
-import { getTour } from '@/lib/tours-store';
+import { getTour, getActiveStops } from '@/lib/tours-store';
 import { persistTourSession } from '@/lib/tour-sessions-store';
 import { logReflection, logQuestionRouted, logTourComplete, logEqOpening, logEqClosing, logEqFinalReflect, logStopEntered } from '@/lib/tour-logger';
 import {
@@ -114,13 +114,13 @@ export function TourProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const currentStop = tour && session
-    ? tour.stops[session.currentStopIndex] ?? null
+    ? getActiveStops(tour)[session.currentStopIndex] ?? null
     : null;
 
   const isLastStop = tour && session
     ? tour.unstructuredMode
       ? (session.completionOrder || []).length + 1 >= getLogicalStops(tour).length
-      : session.currentStopIndex >= tour.stops.length - 1
+      : session.currentStopIndex >= getActiveStops(tour).length - 1
     : false;
 
   const startTour = useCallback((t: Tour) => {
@@ -148,7 +148,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(next);
     // Log when we actually enter a new stop (linear mode)
     if (next.currentPhase === 'seed' && next.currentStopIndex !== session.currentStopIndex && next.currentStopIndex >= 0) {
-      const stop = tour.stops[next.currentStopIndex];
+      const stop = getActiveStops(tour)[next.currentStopIndex];
       if (stop) {
         logStopEntered({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, stopIndex: next.currentStopIndex, stopTitle: stop.mergeGroup || stop.title || `Stop ${next.currentStopIndex + 1}` });
       }
@@ -209,7 +209,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(next);
     // Log the first stop when intro transitions directly to seed phase (no EQ)
     if (next.currentPhase === 'seed' && next.currentStopIndex >= 0) {
-      const stop = tour.stops[next.currentStopIndex];
+      const stop = getActiveStops(tour)[next.currentStopIndex];
       if (stop) {
         logStopEntered({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, stopIndex: next.currentStopIndex, stopTitle: stop.mergeGroup || stop.title || `Stop ${next.currentStopIndex + 1}` });
       }
@@ -222,7 +222,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(next);
     // Log the first stop when this transitions directly to seed (a tour with no EQ).
     if (next.currentPhase === 'seed' && next.currentStopIndex >= 0) {
-      const stop = tour.stops[next.currentStopIndex];
+      const stop = getActiveStops(tour)[next.currentStopIndex];
       if (stop) {
         logStopEntered({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, stopIndex: next.currentStopIndex, stopTitle: stop.mergeGroup || stop.title || `Stop ${next.currentStopIndex + 1}` });
       }
@@ -245,7 +245,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(next);
     // Log first stop for EQ tours (linear mode only) — unstructured goes to map
     if (next.currentPhase === 'seed' && next.currentStopIndex >= 0) {
-      const stop = tour.stops[next.currentStopIndex];
+      const stop = getActiveStops(tour)[next.currentStopIndex];
       if (stop) {
         logStopEntered({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, stopIndex: next.currentStopIndex, stopTitle: stop.mergeGroup || stop.title || `Stop ${next.currentStopIndex + 1}` });
       }
@@ -279,7 +279,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     if (!session || !tour) return;
     setSelectedUnstructuredStopId(null);
     persist(selectUnstructuredStopImpl(session, stopIndex));
-    const stop = tour.stops[stopIndex];
+    const stop = getActiveStops(tour)[stopIndex];
     if (stop) {
       logStopEntered({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, stopIndex, stopTitle: stop.mergeGroup || stop.title || `Stop ${stopIndex + 1}` });
     }
@@ -298,7 +298,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       sessionId: session.id,
       tourTitle: tour.title,
       stopsCompleted: session.completedStops.length,
-      totalStops: tour.stops.length,
+      totalStops: getActiveStops(tour).length,
       startedAt: session.startedAt,
     });
   }, [session, tour, persist]);

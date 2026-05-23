@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { getTours } from '@/lib/tours-store';
+import { getTours, getActiveStops } from '@/lib/tours-store';
 import { Tour, Stop } from '@/lib/types';
 import { TourProvider, useTour } from '@/context/TourContext';
 import { getLogicalStops } from '@/lib/tour-session';
@@ -53,11 +53,12 @@ function HomeInner() {
   const isMidwayCheckin = !!(activeTour?.unstructuredMode && session?.currentPhase === 'midway_checkin');
   const isUnstructuredClosing = !!(activeTour?.unstructuredMode && session && ['eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'guide_outro', 'end'].includes(session.currentPhase));
   if (isActive && activeTour) {
+    const activeStops = getActiveStops(activeTour);
     if (isUnstructuredMapPhase) {
       // Unstructured mode: show all logical stops with locations
       const logicalStopIds = new Set(getLogicalStops(activeTour).map((s) => s.id));
-      for (let i = 0; i < activeTour.stops.length; i++) {
-        const stop = activeTour.stops[i];
+      for (let i = 0; i < activeStops.length; i++) {
+        const stop = activeStops[i];
         if (!stop.location) continue;
         if (!logicalStopIds.has(stop.id)) continue; // skip merge-group secondaries
         tourStopMarkers.push({
@@ -71,8 +72,8 @@ function HomeInner() {
       }
     } else {
       // Linear mode: show all stops with locations
-      for (let i = 0; i < activeTour.stops.length; i++) {
-        const stop = activeTour.stops[i];
+      for (let i = 0; i < activeStops.length; i++) {
+        const stop = activeStops[i];
         if (!stop.location) continue;
         tourStopMarkers.push({
           stop,
@@ -109,7 +110,7 @@ function HomeInner() {
 
   // Current stop has a location → allow map peek
   const currentStop = activeTour && session
-    ? activeTour.stops[session.currentStopIndex] ?? null
+    ? getActiveStops(activeTour)[session.currentStopIndex] ?? null
     : null;
   const currentStopHasLocation = currentStop?.location !== null && currentStop?.location !== undefined;
 

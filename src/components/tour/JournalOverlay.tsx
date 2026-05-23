@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { Tour, TourSession } from '@/lib/types';
+import { getActiveStops } from '@/lib/tours-store';
 import PhotoContent from './cards/PhotoContent';
 import FullscreenPhoto from './cards/FullscreenPhoto';
 
@@ -83,6 +84,7 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
               {(() => {
                 type StopEntry = { stop: Tour['stops'][number]; i: number };
                 let stopsToShow: StopEntry[];
+                const activeStops = getActiveStops(tour);
                 if (tour.unstructuredMode) {
                   const order: string[] = session.completionOrder || [];
                   const nonStopPhases = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional',
@@ -93,33 +95,33 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                   const orderedEntries: StopEntry[] = [];
                   // Completed stops in visit order (completionOrder has logical/leader IDs)
                   for (const logicalId of order) {
-                    const leaderIdx = tour.stops.findIndex(s => s.id === logicalId);
+                    const leaderIdx = activeStops.findIndex(s => s.id === logicalId);
                     if (leaderIdx < 0) continue;
-                    const group = tour.stops[leaderIdx].mergeGroup;
+                    const group = activeStops[leaderIdx].mergeGroup;
                     if (group) {
-                      tour.stops.forEach((s, j) => {
+                      activeStops.forEach((s, j) => {
                         if (s.mergeGroup === group && !usedIndices.has(j)) {
                           orderedEntries.push({ stop: s, i: j });
                           usedIndices.add(j);
                         }
                       });
                     } else if (!usedIndices.has(leaderIdx)) {
-                      orderedEntries.push({ stop: tour.stops[leaderIdx], i: leaderIdx });
+                      orderedEntries.push({ stop: activeStops[leaderIdx], i: leaderIdx });
                       usedIndices.add(leaderIdx);
                     }
                   }
                   // Current stop (if visiting) appears right after completed
                   if (isInStopPhase && session.currentStopIndex >= 0 && !usedIndices.has(session.currentStopIndex)) {
-                    orderedEntries.push({ stop: tour.stops[session.currentStopIndex], i: session.currentStopIndex });
+                    orderedEntries.push({ stop: activeStops[session.currentStopIndex], i: session.currentStopIndex });
                     usedIndices.add(session.currentStopIndex);
                   }
                   // Remaining in authored order
-                  const remainingEntries: StopEntry[] = tour.stops
+                  const remainingEntries: StopEntry[] = activeStops
                     .map((s, j) => ({ stop: s, i: j }))
                     .filter(({ i: j }) => !usedIndices.has(j));
                   stopsToShow = [...orderedEntries, ...remainingEntries];
                 } else {
-                  stopsToShow = tour.stops.map((stop, i) => ({ stop, i }));
+                  stopsToShow = activeStops.map((stop, i) => ({ stop, i }));
                 }
                 return stopsToShow.map(({ stop, i }) => {
                 const isCompleted = completedIds.has(stop.id);
@@ -136,7 +138,7 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                 if (tour.unstructuredMode) {
                   const order = session.completionOrder || [];
                   const logicalId = stop.mergeGroup
-                    ? (tour.stops.find(s => s.mergeGroup === stop.mergeGroup)?.id ?? stop.id)
+                    ? (activeStops.find(s => s.mergeGroup === stop.mergeGroup)?.id ?? stop.id)
                     : stop.id;
                   const posInOrder = order.indexOf(logicalId);
                   if (posInOrder >= 0) visitNum = posInOrder + 1;
@@ -251,7 +253,7 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                 </p>
               ) : (
                 session.bankedQuestions.map((q) => {
-                  const stop = tour.stops.find((s) => s.id === q.askedAfterStopId);
+                  const stop = getActiveStops(tour).find((s) => s.id === q.askedAfterStopId);
                   return (
                     <div key={q.id} className="p-3 rounded-lg bg-white border border-sandstone-light">
                       <p className="text-sm font-serif text-text-primary">&ldquo;{q.questionText}&rdquo;</p>
@@ -305,7 +307,7 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
               {/* Per-stop reflections */}
               {session.reflections.length > 0 ? (
                 session.reflections.map((r, i) => {
-                  const stop = tour.stops.find((s) => s.id === r.stopId);
+                  const stop = getActiveStops(tour).find((s) => s.id === r.stopId);
                   return (
                     <div key={i} className="p-3 rounded-lg bg-white border border-sandstone-light">
                       <p className="text-xs font-semibold text-text-primary">{stop?.title || `Stop ${i + 1}`}</p>
