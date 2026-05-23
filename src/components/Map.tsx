@@ -446,11 +446,9 @@ function MapFlyer({
     if (timerRef.current) clearTimeout(timerRef.current);
 
     // Small delay so the gallery close animation finishes before we start.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let idleListener: any = null;
-    let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
-
     timerRef.current = setTimeout(() => {
+      const startLat: number = anyMap.getCenter().lat();
+      const startLng: number = anyMap.getCenter().lng();
       const startZoom: number = anyMap.getZoom() ?? 17;
       const { lat: stopLat, lng: stopLng } = flyTarget.stopLocation;
 
@@ -461,45 +459,44 @@ function MapFlyer({
         ? fitZoomCenteredOnStop(flyTarget.stopLocation, userLocation, W, H)
         : Math.max(startZoom - 2, 14);
 
-      const ZOOM_MS = 1000;
+      const PAN_MS  = 900;
+      const ZOOM_MS = 900;
 
-      // ── Phases 2 + 3: run once panTo signals idle ─────────────────
-      let phaseDone = false;
-      const beginPhase2 = () => {
-        if (phaseDone) return;
-        phaseDone = true;
-        if (fallbackTimer !== undefined) clearTimeout(fallbackTimer);
-        timerRef.current = setTimeout(() => {
-          const currentZoom: number = anyMap.getZoom() ?? startZoom;
-          let zoomStart = 0;
-          function phase3(now: number) {
-            if (!zoomStart) zoomStart = now;
-            const t = Math.min((now - zoomStart) / ZOOM_MS, 1);
-            const e = easeInOutCubic(t);
-            anyMap.setZoom(lerpNum(currentZoom, fitZoom, e));
-            if (t < 1) {
-              rafRef.current = requestAnimationFrame(phase3);
-            } else {
-              onFlyCompleteRef.current();
+      // ── Phase 1: pan to stop ──────────────────────────────────────
+      let panStart = 0;
+      function phase1(now: number) {
+        if (!panStart) panStart = now;
+        const t = Math.min((now - panStart) / PAN_MS, 1);
+        const e = easeInOutCubic(t);
+        anyMap.setCenter({ lat: lerpNum(startLat, stopLat, e), lng: lerpNum(startLng, stopLng, e) });
+        if (t < 1) {
+          rafRef.current = requestAnimationFrame(phase1);
+        } else {
+          // ── Phase 2: pause 400 ms ─────────────────────────────────
+          timerRef.current = setTimeout(() => {
+            // ── Phase 3: zoom out in place ────────────────────────────
+            let zoomStart = 0;
+            function phase3(now: number) {
+              if (!zoomStart) zoomStart = now;
+              const t = Math.min((now - zoomStart) / ZOOM_MS, 1);
+              const e = easeInOutCubic(t);
+              anyMap.setZoom(lerpNum(startZoom, fitZoom, e));
+              if (t < 1) {
+                rafRef.current = requestAnimationFrame(phase3);
+              } else {
+                onFlyCompleteRef.current();
+              }
             }
-          }
-          rafRef.current = requestAnimationFrame(phase3);
-        }, 300);
-      };
-
-      // ── Phase 1: native panTo manages tile loading + animation ─────
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const g = (window as any).google;
-      anyMap.panTo({ lat: stopLat, lng: stopLng });
-      idleListener = g?.maps?.event.addListenerOnce(anyMap, 'idle', beginPhase2);
-      fallbackTimer = setTimeout(() => { idleListener?.remove(); beginPhase2(); }, 1500);
+            rafRef.current = requestAnimationFrame(phase3);
+          }, 400);
+        }
+      }
+      rafRef.current = requestAnimationFrame(phase1);
     }, 120);
 
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (timerRef.current) clearTimeout(timerRef.current);
-      idleListener?.remove();
-      if (fallbackTimer !== undefined) clearTimeout(fallbackTimer);
     };
   }, [flyTarget, map, userLocation]);
 
