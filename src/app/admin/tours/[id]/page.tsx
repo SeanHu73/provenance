@@ -573,11 +573,28 @@ export default function TourEditorPage() {
             )}
           </div>
           {tour.backgroundPhotoUrl && (
-            <div className="w-full h-20 rounded overflow-hidden border border-stone-200">
+            <div className="w-full rounded overflow-hidden border border-stone-200 bg-stone-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={tour.backgroundPhotoUrl} alt="background" className="w-full h-full object-cover" />
+              <img
+                src={tour.backgroundPhotoUrl}
+                alt="background"
+                className="w-full h-auto max-h-72 object-contain"
+                style={{ filter: `contrast(${tour.backgroundPhotoContrast ?? 100}%)` }}
+              />
             </div>
           )}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-stone-600">Contrast</label>
+              <span className="text-xs text-stone-400">{tour.backgroundPhotoContrast ?? 100}%</span>
+            </div>
+            <input
+              type="range" min={50} max={200} step={5}
+              value={tour.backgroundPhotoContrast ?? 100}
+              onChange={(e) => updateField('backgroundPhotoContrast', Number(e.target.value))}
+              className="w-full accent-stone-600"
+            />
+          </div>
         </section>
 
         {/* Essential question */}

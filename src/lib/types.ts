@@ -207,6 +207,7 @@ export interface Tour {
   // Default background photo — shown behind all screens (including intro).
   // Individual stops can override this from their stop onward.
   backgroundPhotoUrl: string | null;
+  backgroundPhotoContrast?: number;   // CSS contrast % (50–200). Default 100 = unchanged.
   stops: Stop[];                     // Ordered array of stops
   connectionWeb: WebNode[];          // Pre-authored node/connection structure
   // Essential question — optional framing that bookends the tour

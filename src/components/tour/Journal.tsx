@@ -203,7 +203,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
             className={`absolute inset-0 transition-opacity duration-500 ${bgLoaded ? 'opacity-100' : 'opacity-0'}`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={bgPhoto} alt="" className="w-full h-full object-cover" />
+            <img src={bgPhoto} alt="" className="w-full h-full object-cover" style={{ filter: `contrast(${tour.backgroundPhotoContrast ?? 100}%)` }} />
           </div>
         )}
 
