@@ -812,6 +812,7 @@ export default function MapContainer({
     <APIProvider apiKey={apiKey}>
       <div className="relative w-full h-full">
         <GoogleMap
+          mapId="memorial-church-map"
           defaultCenter={MEMORIAL_CHURCH}
           defaultZoom={17}
           defaultTilt={45}
@@ -825,10 +826,6 @@ export default function MapContainer({
           fullscreenControl={false}
           rotateControl={true}
           className="w-full h-full"
-          styles={[
-            { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-            { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-          ]}
         >
           <MapInitializer tourPins={tourPins} onLocationUpdate={handleLocationUpdate} />
           <UserLocationTracker following={following} onLocationUpdate={handleLocationUpdate} />
