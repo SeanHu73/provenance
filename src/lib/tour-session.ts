@@ -150,6 +150,44 @@ export function getLogicalStops(tour: Tour): Stop[] {
   return result;
 }
 
+/** All stops in a merge group, in authored order. */
+export function getStopsInGroup(tour: Tour, groupId: string): Stop[] {
+  return getActiveStops(tour).filter((s) => s.mergeGroup === groupId);
+}
+
+/**
+ * Returns the group ID currently "mid-tour" — at least one of its sub-stops
+ * has been completed, but not all. When non-null, the explorer is in
+ * mini-map mode: only this group's pins are shown and the next sub-stop
+ * flashes. When null, we're either on the main map (no group in progress)
+ * or in another phase entirely.
+ */
+export function getActiveGroupId(tour: Tour, session: TourSession): string | null {
+  const stops = getActiveStops(tour);
+  const completedSet = new Set(session.completedStops);
+  const seenGroups = new Set<string>();
+  for (const stop of stops) {
+    const g = stop.mergeGroup;
+    if (!g || seenGroups.has(g)) continue;
+    seenGroups.add(g);
+    const groupStops = stops.filter((s) => s.mergeGroup === g);
+    const anyDone = groupStops.some((s) => completedSet.has(s.id));
+    const allDone = groupStops.every((s) => completedSet.has(s.id));
+    if (anyDone && !allDone) return g;
+  }
+  return null;
+}
+
+/** The next sub-stop in a group that hasn't been completed yet. */
+export function getNextStopInGroup(
+  tour: Tour,
+  groupId: string,
+  session: TourSession
+): Stop | null {
+  const completedSet = new Set(session.completedStops);
+  return getStopsInGroup(tour, groupId).find((s) => !completedSet.has(s.id)) ?? null;
+}
+
 export function createSession(tour: Tour): TourSession {
   return {
     id: `ts_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
@@ -218,22 +256,28 @@ function advanceToNextStopUnstructured(session: TourSession, tour: Tour): TourSe
   const newCompletedStops = [...session.completedStops, stop.id];
   const currentGroup = stop.mergeGroup || null;
 
-  // If in a merge group, check whether the next stop continues the group
+  // In a merge group, every sub-stop completion bounces back to the
+  // mini-map (derived from getActiveGroupId) until the LAST sub-stop is
+  // done — then we count it as one logical-stop completion and
+  // continue to the full main map (or midway / closing).
   if (currentGroup) {
-    const nextIdx = session.currentStopIndex + 1;
-    if (nextIdx < stops.length && stops[nextIdx].mergeGroup === currentGroup) {
-      return {
-        ...session,
-        phaseHistory: pushHistory(session),
-        currentStopIndex: nextIdx,
-        currentRound: 0,
-        currentPhase: 'seed',
-        completedStops: newCompletedStops,
-      };
+    const groupStops = stops.filter((s) => s.mergeGroup === currentGroup);
+    const completedSet = new Set(newCompletedStops);
+    const allGroupDone = groupStops.every((s) => completedSet.has(s.id));
+
+    if (allGroupDone) {
+      const leader = groupStops[0];
+      return finishLogicalStop(session, tour, leader.id, newCompletedStops);
     }
-    // End of merge group — treat as completing one logical stop (the group leader)
-    const leader = stops.find((s) => s.mergeGroup === currentGroup)!;
-    return finishLogicalStop(session, tour, leader.id, newCompletedStops);
+
+    // Group still in progress — back to the map. The mini-map view is
+    // derived from getActiveGroupId so the next sub-stop pin flashes.
+    return {
+      ...session,
+      phaseHistory: pushHistory(session),
+      completedStops: newCompletedStops,
+      currentPhase: 'unstructured_map',
+    };
   }
 
   // Standalone stop

@@ -209,3 +209,7 @@ body {
 .inquiry-scroll::-webkit-scrollbar { width: 3px; }
 .inquiry-scroll::-webkit-scrollbar-track { background: transparent; }
 .inquiry-scroll::-webkit-scrollbar-thumb { background: var(--sandstone-light); border-radius: 2px; }
+
+/* Hide scrollbar (for swipeable carousels) */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }

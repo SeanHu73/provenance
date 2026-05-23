@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { getTours, getActiveStops } from '@/lib/tours-store';
 import { Tour, Stop } from '@/lib/types';
 import { TourProvider, useTour } from '@/context/TourContext';
-import { getLogicalStops } from '@/lib/tour-session';
+import { getActiveGroupId, getNextStopInGroup, getStopsInGroup } from '@/lib/tour-session';
 import type { TourPinData, TourStopMarkerData } from '@/components/Map';
 import JournalPeek from '@/components/tour/JournalPeek';
 import Journal from '@/components/tour/Journal';
@@ -54,21 +54,90 @@ function HomeInner() {
   const isUnstructuredClosing = !!(activeTour?.unstructuredMode && session && ['eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'guide_outro', 'end'].includes(session.currentPhase));
   if (isActive && activeTour) {
     const activeStops = getActiveStops(activeTour);
-    if (isUnstructuredMapPhase) {
-      // Unstructured mode: show all logical stops with locations
-      const logicalStopIds = new Set(getLogicalStops(activeTour).map((s) => s.id));
-      for (let i = 0; i < activeStops.length; i++) {
-        const stop = activeStops[i];
-        if (!stop.location) continue;
-        if (!logicalStopIds.has(stop.id)) continue; // skip merge-group secondaries
-        tourStopMarkers.push({
-          stop,
-          index: i,
-          isActive: false,
-          isCompleted: session?.completedStops.includes(stop.id) ?? false,
-          unstructuredMode: true,
-          isSelectedOverlay: stop.id === selectedUnstructuredStopId,
-        });
+    if (isUnstructuredMapPhase && session) {
+      const completedSet = new Set(session.completedStops);
+      const activeGroupId = getActiveGroupId(activeTour, session);
+      const nextInGroupId = activeGroupId
+        ? getNextStopInGroup(activeTour, activeGroupId, session)?.id ?? null
+        : null;
+
+      if (activeGroupId) {
+        // ── Mini-map: only this group's pins ──
+        const groupStops = getStopsInGroup(activeTour, activeGroupId);
+        for (const stop of groupStops) {
+          if (!stop.location) continue;
+          const i = activeStops.indexOf(stop);
+          const isStopCompleted = completedSet.has(stop.id);
+          const isNext = stop.id === nextInGroupId;
+          tourStopMarkers.push({
+            stop,
+            index: i,
+            isActive: false,
+            isCompleted: isStopCompleted,
+            unstructuredMode: true,
+            isSelectedOverlay: stop.id === selectedUnstructuredStopId,
+            isNextInGroup: isNext,
+            // Future sub-stops (not next, not completed) are locked
+            isLockedInGroup: !isStopCompleted && !isNext,
+          });
+        }
+      } else {
+        // ── Main map ──
+        // For each group: leader pin if not started; every member as a
+        // toured indicator if fully done; (mid-progress → mini-map, not here).
+        const seenGroups = new Set<string>();
+        for (let i = 0; i < activeStops.length; i++) {
+          const stop = activeStops[i];
+          if (!stop.location) continue;
+          const groupId = stop.mergeGroup || null;
+
+          if (groupId) {
+            if (seenGroups.has(groupId)) continue;
+            seenGroups.add(groupId);
+            const groupStops = getStopsInGroup(activeTour, groupId);
+            const allDone = groupStops.every((s) => completedSet.has(s.id));
+
+            if (allDone) {
+              // Show every member as a small toured pin
+              for (const sub of groupStops) {
+                if (!sub.location) continue;
+                tourStopMarkers.push({
+                  stop: sub,
+                  index: activeStops.indexOf(sub),
+                  isActive: false,
+                  isCompleted: true,
+                  unstructuredMode: true,
+                  isSelectedOverlay: sub.id === selectedUnstructuredStopId,
+                });
+              }
+            } else {
+              // Not started — show leader as a cluster entry
+              const leader = groupStops[0];
+              if (leader.location) {
+                tourStopMarkers.push({
+                  stop: leader,
+                  index: activeStops.indexOf(leader),
+                  isActive: false,
+                  isCompleted: false,
+                  unstructuredMode: true,
+                  isSelectedOverlay: leader.id === selectedUnstructuredStopId,
+                  isGroupLeader: true,
+                  subStopCount: groupStops.length,
+                });
+              }
+            }
+          } else {
+            // Standalone stop
+            tourStopMarkers.push({
+              stop,
+              index: i,
+              isActive: false,
+              isCompleted: completedSet.has(stop.id),
+              unstructuredMode: true,
+              isSelectedOverlay: stop.id === selectedUnstructuredStopId,
+            });
+          }
+        }
       }
     } else {
       // Linear mode: show all stops with locations
