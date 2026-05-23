@@ -391,19 +391,22 @@ function lerpNum(a: number, b: number, t: number): number {
 }
 
 /**
- * Estimates the zoom level that fits two points on screen using the
- * Mercator projection. Used to compute the target zoom for phase 3.
+ * Maximum zoom where `user` is fully visible when the map is centred on `stop`.
+ * Keeps the stop pin at screen centre and zooms out just enough that the user
+ * location dot appears within the viewport with `PAD` pixels of margin.
  */
-function estimateFitZoom(p1: Loc, p2: Loc, W: number, H: number): number {
+function fitZoomCenteredOnStop(stop: Loc, user: Loc, W: number, H: number): number {
   const TILE = 256;
-  const PAD = 1.5; // padding factor so pins aren't on the edge
-  const lngSpan = Math.abs(p1.lng - p2.lng) * PAD || 0.001;
-  const zLng = Math.log2((W / TILE) * (360 / lngSpan));
+  const PAD = 56; // pixel padding from each edge
   const toMerc = (lat: number) =>
     Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
-  const mercSpan =
-    Math.abs(toMerc(Math.max(p1.lat, p2.lat)) - toMerc(Math.min(p1.lat, p2.lat))) * PAD || 0.001;
-  const zLat = Math.log2((H / TILE) * ((2 * Math.PI) / mercSpan));
+
+  const lngDelta = Math.abs(user.lng - stop.lng) || 0.0001;
+  const mercDelta = Math.abs(toMerc(user.lat) - toMerc(stop.lat)) || 0.0001;
+
+  const zLng = Math.log2(((W / 2) - PAD) * 360 / (TILE * lngDelta));
+  const zLat = Math.log2(((H / 2) - PAD) * (2 * Math.PI) / (TILE * mercDelta));
+
   return Math.max(Math.min(zLng, zLat, MAX_AUTO_ZOOM), 13);
 }
 
@@ -413,9 +416,8 @@ function estimateFitZoom(p1: Loc, p2: Loc, W: number, H: number): number {
  * Phase 1 — Pan (1 200 ms): smoothly moves the map centre from the
  *   current position to the selected stop, centring it on screen.
  * Phase 2 — Pause (500 ms): holds the view so the user can see the pin.
- * Phase 3 — Zoom out (1 200 ms): simultaneously pans to the midpoint
- *   between the stop and the user's location while zooming out so both
- *   pins are visible.
+ * Phase 3 — Zoom out (1 200 ms): zooms out in place (stop stays centred)
+ *   to the level where the user's location dot becomes visible on screen.
  */
 function MapFlyer({
   flyTarget,
@@ -444,61 +446,60 @@ function MapFlyer({
     if (timerRef.current) clearTimeout(timerRef.current);
 
     // Small delay so the gallery close animation finishes before we start.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let idleListener: any = null;
+    let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+
     timerRef.current = setTimeout(() => {
-      const startLat: number = anyMap.getCenter().lat();
-      const startLng: number = anyMap.getCenter().lng();
       const startZoom: number = anyMap.getZoom() ?? 17;
       const { lat: stopLat, lng: stopLng } = flyTarget.stopLocation;
 
-      // Precompute phase-3 targets
       const div = anyMap.getDiv?.();
       const W: number = div?.offsetWidth  || window.innerWidth;
       const H: number = div?.offsetHeight || window.innerHeight;
       const fitZoom = userLocation
-        ? estimateFitZoom(flyTarget.stopLocation, userLocation, W, H)
+        ? fitZoomCenteredOnStop(flyTarget.stopLocation, userLocation, W, H)
         : Math.max(startZoom - 2, 14);
-      const fitLat = userLocation ? (stopLat + userLocation.lat) / 2 : stopLat;
-      const fitLng = userLocation ? (stopLng + userLocation.lng) / 2 : stopLng;
 
-      const PAN_MS  = 1200;
-      const ZOOM_MS = 1200;
+      const ZOOM_MS = 1000;
 
-      // ── Phase 1: pan to stop ──────────────────────────────────────
-      let panStart = 0;
-      function phase1(now: number) {
-        if (!panStart) panStart = now;
-        const t = Math.min((now - panStart) / PAN_MS, 1);
-        const e = easeInOutCubic(t);
-        anyMap.setCenter({ lat: lerpNum(startLat, stopLat, e), lng: lerpNum(startLng, stopLng, e) });
-        if (t < 1) {
-          rafRef.current = requestAnimationFrame(phase1);
-        } else {
-          // ── Phase 2: pause 500 ms ─────────────────────────────────
-          timerRef.current = setTimeout(() => {
-            // ── Phase 3: zoom out to show user + stop ────────────────
-            let zoomStart = 0;
-            function phase3(now: number) {
-              if (!zoomStart) zoomStart = now;
-              const t = Math.min((now - zoomStart) / ZOOM_MS, 1);
-              const e = easeInOutCubic(t);
-              anyMap.setZoom(lerpNum(startZoom, fitZoom, e));
-              anyMap.setCenter({ lat: lerpNum(stopLat, fitLat, e), lng: lerpNum(stopLng, fitLng, e) });
-              if (t < 1) {
-                rafRef.current = requestAnimationFrame(phase3);
-              } else {
-                onFlyCompleteRef.current();
-              }
+      // ── Phases 2 + 3: run once panTo signals idle ─────────────────
+      let phaseDone = false;
+      const beginPhase2 = () => {
+        if (phaseDone) return;
+        phaseDone = true;
+        if (fallbackTimer !== undefined) clearTimeout(fallbackTimer);
+        timerRef.current = setTimeout(() => {
+          const currentZoom: number = anyMap.getZoom() ?? startZoom;
+          let zoomStart = 0;
+          function phase3(now: number) {
+            if (!zoomStart) zoomStart = now;
+            const t = Math.min((now - zoomStart) / ZOOM_MS, 1);
+            const e = easeInOutCubic(t);
+            anyMap.setZoom(lerpNum(currentZoom, fitZoom, e));
+            if (t < 1) {
+              rafRef.current = requestAnimationFrame(phase3);
+            } else {
+              onFlyCompleteRef.current();
             }
-            rafRef.current = requestAnimationFrame(phase3);
-          }, 500);
-        }
-      }
-      rafRef.current = requestAnimationFrame(phase1);
+          }
+          rafRef.current = requestAnimationFrame(phase3);
+        }, 300);
+      };
+
+      // ── Phase 1: native panTo manages tile loading + animation ─────
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const g = (window as any).google;
+      anyMap.panTo({ lat: stopLat, lng: stopLng });
+      idleListener = g?.maps?.event.addListenerOnce(anyMap, 'idle', beginPhase2);
+      fallbackTimer = setTimeout(() => { idleListener?.remove(); beginPhase2(); }, 1500);
     }, 120);
 
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (timerRef.current) clearTimeout(timerRef.current);
+      idleListener?.remove();
+      if (fallbackTimer !== undefined) clearTimeout(fallbackTimer);
     };
   }, [flyTarget, map, userLocation]);
 
