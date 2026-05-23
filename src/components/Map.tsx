@@ -10,6 +10,7 @@ const NEAR_THRESHOLD_M = 300;
 const SHOW_PIN_RADIUS_M = 8047; // 5 miles
 const PIN_ASPECT = 319 / 450; // full logo glyph width / height
 const BUBBLE_ASPECT = 319 / 225; // speech-bubble glyph width / height
+const ARROW_SIZE = 36; // px — off-screen direction arrow
 
 export interface TourPinData {
   tour: Tour;
@@ -24,6 +25,9 @@ export interface TourStopMarkerData {
   isSelectedOverlay?: boolean;
 }
 
+type Bounds = { north: number; south: number; east: number; west: number };
+type ContainerSize = { W: number; H: number };
+
 interface MapProps {
   pins: Pin[];
   selectedPinId: string | null;
@@ -35,6 +39,13 @@ interface MapProps {
   tourStops?: TourStopMarkerData[];
   onTourStopSelect?: (stop: Stop) => void;
   hidePins?: boolean;
+  /** Admin-configured zoom level to use when the unstructured map phase starts */
+  tourDefaultZoom?: number;
+  /** True when the explorer is in the unstructured stop-picker phase */
+  isUnstructuredMap?: boolean;
+  /** Pan+fitBounds animation target from gallery selection */
+  flyTarget?: { stopLocation: Loc } | null;
+  onFlyComplete?: () => void;
 }
 
 type Loc = { lat: number; lng: number };
@@ -63,18 +74,6 @@ function formatDist(m: number): string {
 /**
  * Positions the map so the user is near center and the nearest tour pin is
  * ~10% from its screen edge.
- *
- * When the user is close (< 0.4 mi) drift = 0: user is exactly at center,
- * the zoom is chosen to put the pin 10% from the edge.
- *
- * When the user is farther away the map would have to zoom out a lot to keep
- * them at center. Instead we allow the user's dot to drift off-center (up to
- * 40% of screen from center at 0.8 mi+) so the zoom stays tighter. The pin
- * always stays at 10% from its nearest edge.
- *
- * Implemented via asymmetric fitBounds padding:
- *   user's side  → (50% − drift%) padding → places user at (drift%) from center
- *   pin's side   → 10% padding            → places pin at 10% from edge
  */
 function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
   if (!map) return;
@@ -107,11 +106,10 @@ function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
     return;
   }
 
-  const DRIFT_START_M = 643.7; // 0.4 miles
-  const MAX_DRIFT     = 0.25;  // user can shift at most 25% from center
-  const PIN_EDGE      = 0.10;  // pin stays 10% from its nearest edge
+  const DRIFT_START_M = 643.7;
+  const MAX_DRIFT     = 0.25;
+  const PIN_EDGE      = 0.10;
 
-  // Drift grows linearly from 0 at DRIFT_START_M to MAX_DRIFT at 2×DRIFT_START_M
   const drift = distM < DRIFT_START_M
     ? 0
     : Math.min(MAX_DRIFT, ((distM - DRIFT_START_M) / DRIFT_START_M) * MAX_DRIFT);
@@ -122,11 +120,7 @@ function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
   const W = mapDiv?.offsetWidth  || window.innerWidth;
   const H = mapDiv?.offsetHeight || window.innerHeight;
 
-  // User's side: (50%−drift%) keeps user at center when drift=0,
-  // shifts them toward their edge as drift grows.
   const userPad = 0.5 - drift;
-
-  // Asymmetric padding: pin's side is always PIN_EDGE, user's side is userPad.
   const pinIsNorth = target.lat > userPos.lat;
   const pinIsEast  = target.lng > userPos.lng;
 
@@ -141,7 +135,6 @@ function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
 
   anyMap.fitBounds(bounds, { top: topPad, right: rightPad, bottom: bottomPad, left: leftPad });
 
-  // Cap zoom in case the pin is very close
   g.maps.event.addListenerOnce(anyMap, 'idle', () => {
     const z = anyMap.getZoom?.();
     if (typeof z === 'number' && z > MAX_AUTO_ZOOM) anyMap.setZoom(MAX_AUTO_ZOOM);
@@ -298,6 +291,133 @@ function MapInitializer({
   return null;
 }
 
+/**
+ * When isUnstructuredMap first becomes true, center the map on the user at
+ * the tour's configured zoom level. Runs at most once per map mount.
+ */
+function MapZoomer({
+  isUnstructuredMap,
+  defaultZoom,
+  userLocation,
+}: {
+  isUnstructuredMap: boolean;
+  defaultZoom: number;
+  userLocation: Loc | null;
+}) {
+  const map = useMap();
+  const fired = useRef(false);
+
+  useEffect(() => {
+    if (!isUnstructuredMap || fired.current || !map) return;
+    fired.current = true;
+    const target = userLocation || MEMORIAL_CHURCH;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyMap = map as any;
+    anyMap.panTo(target);
+    anyMap.setZoom(defaultZoom);
+  }, [isUnstructuredMap, map, userLocation, defaultZoom]);
+
+  return null;
+}
+
+/**
+ * Tracks the map's current viewport bounds and container size.
+ * Calls onChange whenever the visible area changes.
+ */
+function BoundsTracker({
+  onChange,
+}: {
+  onChange: (bounds: Bounds, size: ContainerSize) => void;
+}) {
+  const map = useMap();
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  useEffect(() => {
+    if (!map) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyMap = map as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = (window as any).google;
+
+    const update = () => {
+      const b = anyMap.getBounds?.();
+      const div = anyMap.getDiv?.();
+      if (!b || !div) return;
+      onChangeRef.current(
+        {
+          north: b.getNorthEast().lat(),
+          south: b.getSouthWest().lat(),
+          east:  b.getNorthEast().lng(),
+          west:  b.getSouthWest().lng(),
+        },
+        { W: div.offsetWidth, H: div.offsetHeight }
+      );
+    };
+
+    const listener = g?.maps?.event.addListener(anyMap, 'bounds_changed', update);
+    update();
+    return () => listener?.remove();
+  }, [map]);
+
+  return null;
+}
+
+/**
+ * Animates to a gallery-selected stop:
+ * 1. panTo the stop (Google Maps smooth pan)
+ * 2. On idle: fitBounds to show both the stop and the user's location
+ */
+function MapFlyer({
+  flyTarget,
+  userLocation,
+  onFlyComplete,
+}: {
+  flyTarget: { stopLocation: Loc } | null;
+  userLocation: Loc | null;
+  onFlyComplete: () => void;
+}) {
+  const map = useMap();
+  const prevTarget = useRef<{ stopLocation: Loc } | null>(null);
+  const onFlyCompleteRef = useRef(onFlyComplete);
+  onFlyCompleteRef.current = onFlyComplete;
+
+  useEffect(() => {
+    if (!flyTarget || !map || flyTarget === prevTarget.current) return;
+    prevTarget.current = flyTarget;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyMap = map as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = (window as any).google;
+
+    // Step 1: pan to the stop
+    anyMap.panTo(flyTarget.stopLocation);
+
+    // Step 2: after pan settles, zoom out to fit user + stop
+    const idleListener = g?.maps?.event.addListenerOnce(anyMap, 'idle', () => {
+      if (userLocation && g?.maps?.LatLngBounds) {
+        const bounds = new g.maps.LatLngBounds();
+        bounds.extend(userLocation);
+        bounds.extend(flyTarget.stopLocation);
+        anyMap.fitBounds(bounds, { top: 100, right: 80, bottom: 100, left: 80 });
+        g.maps.event.addListenerOnce(anyMap, 'idle', () => {
+          const z = anyMap.getZoom?.();
+          if (typeof z === 'number' && z > MAX_AUTO_ZOOM) anyMap.setZoom(MAX_AUTO_ZOOM);
+          onFlyCompleteRef.current();
+        });
+      } else {
+        anyMap.setZoom(16);
+        onFlyCompleteRef.current();
+      }
+    });
+
+    return () => idleListener?.remove();
+  }, [flyTarget, map, userLocation]);
+
+  return null;
+}
+
 const GLYPH_MASK = {
   maskSize: 'contain',
   WebkitMaskSize: 'contain',
@@ -307,11 +427,6 @@ const GLYPH_MASK = {
   WebkitMaskPosition: 'center',
 } as const;
 
-/**
- * Full Provenance logo glyph — white outer pin + theme-coloured speech-bubble
- * "P" — built from two CSS masks so the "P" recolours when the theme switches
- * between Red and Teal. Sits inside the tour-entry disc.
- */
 function LogoGlyph({ height }: { height: number }) {
   return (
     <div style={{ position: 'relative', width: height * PIN_ASPECT, height }}>
@@ -339,10 +454,6 @@ function LogoGlyph({ height }: { height: number }) {
   );
 }
 
-/**
- * Speech-bubble "P" glyph — a white bubble whose three dots are punched-out
- * holes, so they reveal the theme-coloured disc behind. Sits inside stop discs.
- */
 function BubbleGlyph({ height }: { height: number }) {
   return (
     <div
@@ -358,10 +469,6 @@ function BubbleGlyph({ height }: { height: number }) {
   );
 }
 
-/**
- * Circular map marker — a theme-coloured disc with a white border, an optional
- * pulsing ring, a centred glyph, and an optional corner badge.
- */
 function DiscMarker({
   diameter,
   glyph,
@@ -378,7 +485,7 @@ function DiscMarker({
   dim?: boolean;
 }) {
   const border = Math.max(2, Math.round(diameter * 0.06));
-  const bs = Math.max(16, Math.round(diameter * 0.46)); // badge size
+  const bs = Math.max(16, Math.round(diameter * 0.46));
   return (
     <div
       style={{
@@ -389,8 +496,6 @@ function DiscMarker({
         transition: 'width 0.18s ease, height 0.18s ease, opacity 0.18s ease',
       }}
     >
-      {/* pulsing ring — wrapper carries the translate so `animate-ping`'s own
-          keyframe transform doesn't clobber the centring */}
       {ring && (
         <div
           className="absolute"
@@ -409,7 +514,6 @@ function DiscMarker({
           />
         </div>
       )}
-      {/* disc */}
       <div
         className="absolute inset-0 rounded-full flex items-center justify-center"
         style={{
@@ -420,7 +524,6 @@ function DiscMarker({
       >
         {glyph}
       </div>
-      {/* corner badge — stop number or completed check */}
       {badge && (
         <div
           className="font-sans"
@@ -468,13 +571,9 @@ function DiscMarker({
 
 function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
   if (!tour.location) return null;
-  const D = 60; // disc diameter
+  const D = 60;
   return (
     <AdvancedMarker position={tour.location} onClick={onClick} zIndex={5}>
-      {/*
-        translateY(calc(50% - <D/2>px)) lifts the element so the disc centre
-        sits on the geographic coordinate, with the labels hanging below.
-      */}
       <div
         className="flex flex-col items-center cursor-pointer"
         style={{ transform: `translateY(calc(50% - ${D / 2}px))` }}
@@ -499,7 +598,6 @@ function TourParentPin({ tour, onClick }: { tour: Tour; onClick: () => void }) {
 function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () => void }) {
   if (!data.stop.location) return null;
 
-  // Unstructured mode — selected disc grows, completed disc shrinks + dims.
   if (data.unstructuredMode) {
     const D = data.isCompleted ? 30 : data.isSelectedOverlay ? 54 : 36;
     const displayTitle = data.stop.mergeGroup || data.stop.title;
@@ -528,7 +626,6 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
     );
   }
 
-  // Linear mode — every stop disc carries its number; completed discs dim.
   const D = data.isActive ? 40 : 32;
   return (
     <AdvancedMarker
@@ -549,12 +646,145 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
   );
 }
 
-export default function MapContainer({ pins, selectedPinId, onPinSelect, tourPins, onTourPinSelect, tourStops, onTourStopSelect, hidePins }: MapProps) {
+// ─── Off-screen direction arrows ────────────────────────────────────────────
+
+const SECTOR_ANGLES_DEG = [0, 45, 90, 135, 180, -135, -90, -45];
+
+function computeOffScreenArrows(
+  tourStops: TourStopMarkerData[],
+  bounds: Bounds,
+  size: ContainerSize,
+): Array<{ angleDeg: number; edgeX: number; edgeY: number; count: number }> {
+  const { north, south, east, west } = bounds;
+  const { W, H } = size;
+  const cLat = (north + south) / 2;
+  const cLng = (east + west) / 2;
+  const lngSpan = east - west || 0.001;
+  const latSpan = north - south || 0.001;
+
+  // Sector counts indexed by SECTOR_ANGLES_DEG
+  const counts = new Array(8).fill(0);
+
+  for (const ts of tourStops) {
+    const loc = ts.stop.location;
+    if (!loc) continue;
+    // Is this stop outside the current viewport?
+    if (loc.lat >= south && loc.lat <= north && loc.lng >= west && loc.lng <= east) continue;
+
+    // Screen delta from center
+    const sdx = (loc.lng - cLng) / lngSpan * W;
+    const sdy = -(loc.lat - cLat) / latSpan * H; // negative: lat up = screen y down
+
+    // Angle from up, clockwise (degrees)
+    const angleDeg = Math.atan2(sdx, -sdy) * (180 / Math.PI);
+
+    // Find nearest sector
+    let bestSector = 0;
+    let bestDiff = Infinity;
+    for (let i = 0; i < SECTOR_ANGLES_DEG.length; i++) {
+      let diff = Math.abs(angleDeg - SECTOR_ANGLES_DEG[i]);
+      if (diff > 180) diff = 360 - diff;
+      if (diff < bestDiff) { bestDiff = diff; bestSector = i; }
+    }
+    counts[bestSector]++;
+  }
+
+  const margin = ARROW_SIZE / 2 + 12;
+  const halfW = W / 2;
+  const halfH = H / 2;
+
+  return SECTOR_ANGLES_DEG.flatMap((deg, i) => {
+    if (counts[i] === 0) return [];
+    const rad = deg * (Math.PI / 180);
+    // Direction vector in screen space (from up, clockwise)
+    const dx = Math.sin(rad);
+    const dy = -Math.cos(rad);
+
+    // t to hit the inner rectangle (W - 2*margin) × (H - 2*margin)
+    const tX = Math.abs(dx) > 1e-6 ? (halfW - margin) / Math.abs(dx) : Infinity;
+    const tY = Math.abs(dy) > 1e-6 ? (halfH - margin) / Math.abs(dy) : Infinity;
+    const t = Math.min(tX, tY);
+
+    return [{ angleDeg: deg, edgeX: halfW + dx * t, edgeY: halfH + dy * t, count: counts[i] }];
+  });
+}
+
+// Arrow SVG pointing upward (tip at top). Rotated per angleDeg.
+function DirectionArrow({ angleDeg, edgeX, edgeY, count }: { angleDeg: number; edgeX: number; edgeY: number; count: number }) {
+  const half = ARROW_SIZE / 2;
+  return (
+    <div
+      className="absolute pointer-events-none animate-pulse"
+      style={{
+        left: edgeX - half,
+        top: edgeY - half,
+        width: ARROW_SIZE,
+        height: ARROW_SIZE,
+        transform: `rotate(${angleDeg}deg)`,
+      }}
+    >
+      <svg width={ARROW_SIZE} height={ARROW_SIZE} viewBox="0 0 36 36" fill="none">
+        {/* Drop shadow */}
+        <path d="M18 3 L31 30 L18 23 L5 30 Z" fill="rgba(0,0,0,0.35)" transform="translate(0,2)" />
+        {/* Arrow body */}
+        <path d="M18 3 L31 30 L18 23 L5 30 Z" fill="#F59E0B" stroke="white" strokeWidth="2" strokeLinejoin="round" />
+      </svg>
+      {count > 1 && (
+        <div
+          className="absolute font-sans font-bold"
+          style={{
+            top: -4,
+            right: -4,
+            minWidth: 16,
+            height: 16,
+            borderRadius: 999,
+            background: 'white',
+            color: '#B45309',
+            fontSize: 9,
+            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0 3px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+            // Counter-rotate so the badge text stays upright
+            transform: `rotate(${-angleDeg}deg)`,
+          }}
+        >
+          {count}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main container ──────────────────────────────────────────────────────────
+
+export default function MapContainer({
+  pins,
+  selectedPinId,
+  onPinSelect,
+  tourPins,
+  onTourPinSelect,
+  tourStops,
+  onTourStopSelect,
+  hidePins,
+  tourDefaultZoom,
+  isUnstructuredMap,
+  flyTarget,
+  onFlyComplete,
+}: MapProps) {
   const [userLocation, setUserLocation] = useState<Loc | null>(null);
   const [following, setFollowing] = useState(false);
   const [navPrompt, setNavPrompt] = useState<{ tour: Tour; distanceM: number } | null>(null);
+  const [mapBounds, setMapBounds] = useState<Bounds | null>(null);
+  const [containerSize, setContainerSize] = useState<ContainerSize>({ W: window?.innerWidth ?? 400, H: window?.innerHeight ?? 600 });
 
   const handleLocationUpdate = useCallback((pos: Loc | null) => setUserLocation(pos), []);
+  const handleBoundsChange = useCallback((b: Bounds, s: ContainerSize) => {
+    setMapBounds(b);
+    setContainerSize(s);
+  }, []);
 
   const tourLocs = (tourPins ?? []).filter((tp) => tp.tour.location).map((tp) => tp.tour.location!);
 
@@ -568,6 +798,12 @@ export default function MapContainer({ pins, selectedPinId, onPinSelect, tourPin
     }
     onTourPinSelect?.(tour);
   }
+
+  // Compute off-screen arrows for unstructured map phase
+  const offScreenArrows =
+    isUnstructuredMap && mapBounds && tourStops
+      ? computeOffScreenArrows(tourStops, mapBounds, containerSize)
+      : [];
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (!apiKey) return <div className="w-full h-full flex items-center justify-center bg-cream-dark text-text-muted text-sm font-sans">Map requires API key</div>;
@@ -593,6 +829,17 @@ export default function MapContainer({ pins, selectedPinId, onPinSelect, tourPin
         >
           <MapInitializer tourPins={tourPins} onLocationUpdate={handleLocationUpdate} />
           <UserLocationTracker following={following} onLocationUpdate={handleLocationUpdate} />
+          <BoundsTracker onChange={handleBoundsChange} />
+          <MapZoomer
+            isUnstructuredMap={!!isUnstructuredMap}
+            defaultZoom={tourDefaultZoom ?? 17}
+            userLocation={userLocation}
+          />
+          <MapFlyer
+            flyTarget={flyTarget ?? null}
+            userLocation={userLocation}
+            onFlyComplete={onFlyComplete ?? (() => {})}
+          />
           {userLocation && <UserLocationDot position={userLocation} />}
           {!hidePins && pins.map((pin) => (
             <PinMarker
@@ -617,6 +864,11 @@ export default function MapContainer({ pins, selectedPinId, onPinSelect, tourPin
             />
           ))}
         </GoogleMap>
+
+        {/* Off-screen direction arrows */}
+        {offScreenArrows.map((arrow) => (
+          <DirectionArrow key={arrow.angleDeg} {...arrow} />
+        ))}
 
         <LocateButton
           following={following}

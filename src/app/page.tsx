@@ -14,12 +14,15 @@ import ProgressBar from '@/components/tour/ProgressBar';
 import UnstructuredMapControls, { MidwayCheckinCard } from '@/components/tour/cards/UnstructuredMapOverlay';
 import UnstructuredClosingView from '@/components/tour/cards/UnstructuredClosingView';
 
+type FlyTarget = { stopLocation: { lat: number; lng: number } };
+
 const Map = dynamic(() => import('@/components/Map'), { ssr: false });
 
 function HomeInner() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [peekTour, setPeekTour] = useState<Tour | null>(null);
   const [mapPeek, setMapPeek] = useState(false); // temporarily show map during tour
+  const [flyTarget, setFlyTarget] = useState<FlyTarget | null>(null);
   const {
     tour: activeTour,
     session,
@@ -67,15 +70,15 @@ function HomeInner() {
         });
       }
     } else {
-      // Linear mode (existing behavior)
-      for (let i = 0; i < activeTour.stops.length; i++) {
-        const stop = activeTour.stops[i];
-        if (!stop.location) continue;
+      // Linear mode: only show the currently active stop to keep the map clean
+      const activeIndex = session?.currentStopIndex ?? 0;
+      const activeStop = activeTour.stops[activeIndex];
+      if (activeStop?.location) {
         tourStopMarkers.push({
-          stop,
-          index: i,
-          isActive: session?.currentStopIndex === i,
-          isCompleted: session?.completedStops.includes(stop.id) ?? false,
+          stop: activeStop,
+          index: activeIndex,
+          isActive: true,
+          isCompleted: false,
         });
       }
     }
@@ -90,6 +93,12 @@ function HomeInner() {
       setSelectedUnstructuredStopId(stop.id);
     }
   }, [isUnstructuredMapPhase, setSelectedUnstructuredStopId]);
+
+  const handleStopSelectedFromGallery = useCallback((stop: Stop) => {
+    if (stop.location) {
+      setFlyTarget({ stopLocation: stop.location });
+    }
+  }, []);
 
   const handleBeginTour = useCallback(() => {
     if (peekTour) {
@@ -167,6 +176,10 @@ function HomeInner() {
             tourStops={tourStopMarkers}
             onTourStopSelect={handleTourStopSelect}
             hidePins={true}
+            tourDefaultZoom={activeTour?.defaultZoom}
+            isUnstructuredMap={isUnstructuredMapPhase}
+            flyTarget={flyTarget}
+            onFlyComplete={() => setFlyTarget(null)}
           />
 
           {/* Theme switcher — top-right of the map */}
@@ -178,7 +191,11 @@ function HomeInner() {
 
           {/* Unstructured map controls — gallery / stop card / toggle */}
           {isUnstructuredMapPhase && activeTour && session && (
-            <UnstructuredMapControls tour={activeTour} session={session} />
+            <UnstructuredMapControls
+              tour={activeTour}
+              session={session}
+              onStopSelectedFromGallery={handleStopSelectedFromGallery}
+            />
           )}
         </div>
       )}

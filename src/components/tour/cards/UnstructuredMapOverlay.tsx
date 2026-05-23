@@ -9,11 +9,12 @@ import MicButton from '../MicButton';
 interface Props {
   tour: Tour;
   session: TourSession;
+  onStopSelectedFromGallery?: (stop: Stop) => void;
 }
 
 // Transparent controls overlay rendered absolutely within the map container.
 // Title bar and progress strip are rendered by the parent (HomeInner) in document flow.
-export default function UnstructuredMapControls({ tour, session }: Props) {
+export default function UnstructuredMapControls({ tour, session, onStopSelectedFromGallery }: Props) {
   const { selectedUnstructuredStopId, setSelectedUnstructuredStopId, enterUnstructuredStop } = useTour();
   const [view, setView] = useState<'map' | 'gallery'>('map');
 
@@ -54,7 +55,11 @@ export default function UnstructuredMapControls({ tour, session }: Props) {
             <GalleryView
               tour={tour}
               completedIds={completedIds}
-              onSelectStop={(stopId) => { setSelectedUnstructuredStopId(stopId); setView('map'); }}
+              onSelectStop={(stop) => {
+                setSelectedUnstructuredStopId(stop.id);
+                setView('map');
+                onStopSelectedFromGallery?.(stop);
+              }}
             />
           </div>
         )}
@@ -205,7 +210,7 @@ function GalleryView({
 }: {
   tour: Tour;
   completedIds: Set<string>;
-  onSelectStop: (stopId: string) => void;
+  onSelectStop: (stop: Stop) => void;
 }) {
   const categories = tour.categories || [];
   const logicalStopIds = new Set(getLogicalStops(tour).map((s) => s.id));
@@ -242,7 +247,7 @@ function GalleryView({
                   key={stop.id}
                   stop={stop}
                   isCompleted={completedIds.has(stop.id)}
-                  onSelect={() => onSelectStop(stop.id)}
+                  onSelect={() => onSelectStop(stop)}
                 />
               ))}
             </div>
@@ -261,7 +266,7 @@ function GalleryView({
                 key={stop.id}
                 stop={stop}
                 isCompleted={completedIds.has(stop.id)}
-                onSelect={() => onSelectStop(stop.id)}
+                onSelect={() => onSelectStop(stop)}
               />
             ))}
           </div>

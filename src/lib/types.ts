@@ -237,6 +237,7 @@ export interface Tour {
   } | null;
   // Unstructured exploration mode
   unstructuredMode?: boolean;        // Default false — when true, explorer chooses stop order
+  defaultZoom?: number;              // Starting map zoom level (14–20). Default 17 if unset.
   categories?: string[];             // Author-defined category list for organising stops
   midwayEnabled?: boolean;           // Default false
   midwayQuestion?: string | null;    // Shown once the explorer completes half the stops

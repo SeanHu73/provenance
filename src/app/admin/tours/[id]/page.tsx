@@ -826,6 +826,26 @@ export default function TourEditorPage() {
             </div>
           </label>
 
+          {/* Default map zoom */}
+          <div className="border-t border-stone-200 pt-3">
+            <label className="block">
+              <span className="text-xs text-stone-700 font-medium">Default map zoom</span>
+              <p className="text-[10px] text-stone-400 mt-0.5 mb-1.5">Starting zoom when the map opens. Higher = closer. 17 is a good default for a building; 15 shows a wider area.</p>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={13}
+                  max={20}
+                  step={1}
+                  value={tour.defaultZoom ?? 17}
+                  onChange={(e) => updateField('defaultZoom', Number(e.target.value))}
+                  className="flex-1"
+                />
+                <span className="text-xs text-stone-600 font-mono w-6 text-center">{tour.defaultZoom ?? 17}</span>
+              </div>
+            </label>
+          </div>
+
           {/* Categories */}
           <div className="border-t border-stone-200 pt-3 space-y-2">
             <div className="flex items-center justify-between">
