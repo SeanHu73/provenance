@@ -7,7 +7,6 @@
  */
 
 import { useTour } from '@/context/TourContext';
-import EqClosingDiscussCard from './EqClosingDiscussCard';
 import EqClosingCard from './EqClosingCard';
 import EqFinalReflectCard from './EqFinalReflectCard';
 import EqQuestionsCard from './EqQuestionsCard';
@@ -18,7 +17,6 @@ export default function UnstructuredClosingView() {
   const {
     tour,
     session,
-    completeEqClosingDiscuss,
     completeEqClosing,
     completeEqFinalReflect,
     completeGuideOutro,
@@ -30,11 +28,8 @@ export default function UnstructuredClosingView() {
   return (
     <div className="flex-1 overflow-y-auto p-4" style={{ backgroundColor: 'var(--th-surface)' }}>
       <div className="min-h-full rounded-2xl bg-warm-white shadow-lg px-5 py-6">
-        {phase === 'eq_closing_discuss' && tour.essentialQuestion && (
-          <EqClosingDiscussCard tour={tour} onContinue={completeEqClosingDiscuss} />
-        )}
-        {phase === 'eq_closing' && tour.essentialQuestion && (
-          <EqClosingCard tour={tour} onComplete={completeEqClosing} />
+        {(phase === 'eq_closing_discuss' || phase === 'eq_closing') && tour.essentialQuestion && (
+          <EqClosingCard tour={tour} session={session} onComplete={completeEqClosing} />
         )}
         {phase === 'eq_final_reflect' && (
           <EqFinalReflectCard onComplete={completeEqFinalReflect} />

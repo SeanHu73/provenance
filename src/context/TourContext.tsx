@@ -27,7 +27,6 @@ import {
   completeEqScene as completeEqSceneImpl,
   completeEqDiscuss as completeEqDiscussImpl,
   completeEqAdditional as completeEqAdditionalImpl,
-  completeEqClosingDiscuss as completeEqClosingDiscussImpl,
   completeEqOpening as completeEqOpeningImpl,
   completeEqClosing as completeEqClosingImpl,
   completeEqFinalReflect as completeEqFinalReflectImpl,
@@ -65,7 +64,6 @@ interface TourContextValue {
   completeEqDiscuss: () => void;
   completeEqOpening: (theory: string, reasoning: string) => void;
   completeEqAdditional: () => void;
-  completeEqClosingDiscuss: () => void;
   completeEqClosing: (finalReflection: string, finalReasoning: string) => void;
   completeEqFinalReflect: (cognitive: number, perceptual: number | null, whatShifted: string[] | null, reasoningSource: string[] | null) => void;
   finishTour: () => void;
@@ -258,11 +256,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
     logEqOpening({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, theory, reasoning });
   }, [session, tour, persist]);
 
-  const completeEqClosingDiscussFn = useCallback(() => {
-    if (!session) return;
-    persist(completeEqClosingDiscussImpl(session));
-  }, [session, persist]);
-
   const completeEqClosingFn = useCallback((finalReflection: string, finalReasoning: string) => {
     if (!session || !tour) return;
     persist(completeEqClosingImpl(session, finalReflection, finalReasoning));
@@ -338,7 +331,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeEqDiscuss: completeEqDiscussFn,
       completeEqOpening: completeEqOpeningFn,
       completeEqAdditional: completeEqAdditionalFn,
-      completeEqClosingDiscuss: completeEqClosingDiscussFn,
       completeEqClosing: completeEqClosingFn,
       completeEqFinalReflect: completeEqFinalReflectFn,
       finishTour: finishTourFn,
