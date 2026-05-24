@@ -10,6 +10,7 @@ import { Tour } from '@/lib/types';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import FullscreenPhoto from './FullscreenPhoto';
+import FormattedText from './FormattedText';
 
 interface Props {
   tour: Tour;
@@ -46,7 +47,7 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
       {/* Scene description */}
       {eq.sceneDescription && (
         <p className="text-[21px] leading-relaxed font-serif text-text-primary">
-          {eq.sceneDescription}
+          <FormattedText text={eq.sceneDescription} />
         </p>
       )}
 
@@ -67,7 +68,7 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
           </button>
           {framingOpen && (
             <p className="text-[18px] text-text-secondary italic leading-relaxed animate-fade-in">
-              {eq.openingFraming}
+              <FormattedText text={eq.openingFraming} />
             </p>
           )}
         </>

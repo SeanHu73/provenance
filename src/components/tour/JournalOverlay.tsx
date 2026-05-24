@@ -10,6 +10,7 @@ import { Tour, TourSession } from '@/lib/types';
 import { getActiveStops } from '@/lib/tours-store';
 import PhotoContent from './cards/PhotoContent';
 import FullscreenPhoto from './cards/FullscreenPhoto';
+import FormattedText from './cards/FormattedText';
 
 type Tab = 'stops' | 'questions' | 'theory';
 
@@ -275,7 +276,7 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                 <div className="p-4 rounded-xl bg-white border border-sandstone-light space-y-3">
                   <p className="text-[10px] text-aged-gold uppercase tracking-wide font-semibold">Discussion Question</p>
                   <p className="text-sm font-serif font-semibold text-text-primary">
-                    &ldquo;{tour.essentialQuestion.question}&rdquo;
+                    &ldquo;<FormattedText text={tour.essentialQuestion.question} />&rdquo;
                   </p>
                   {session.essentialQuestionResponses.initialTheory && (
                     <div>

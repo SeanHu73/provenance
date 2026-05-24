@@ -636,14 +636,14 @@ export default function TourEditorPage() {
           </label>
           {tour.essentialQuestion && (
             <div className="space-y-3">
-              <label className="block">
-                <span className="text-xs text-stone-500">The question</span>
-                <input
+              <div className="block">
+                <RichTextarea
+                  label="The question"
                   value={tour.essentialQuestion.question}
-                  onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, question: e.target.value })}
-                  className="mt-1 w-full px-3 py-1.5 border border-stone-300 rounded text-sm"
+                  onChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, question: v })}
+                  rows={2}
                 />
-              </label>
+              </div>
 
               <p className="text-xs text-stone-700 font-semibold mt-2">Scene-setting screen</p>
               <label className="block">
@@ -671,16 +671,15 @@ export default function TourEditorPage() {
                   </label>
                 </div>
               </label>
-              <label className="block">
-                <span className="text-xs text-stone-500">Scene description (directions to find it)</span>
-                <textarea
+              <div className="block">
+                <RichTextarea
+                  label="Scene description (directions to find it)"
                   value={tour.essentialQuestion.sceneDescription || ''}
-                  onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, sceneDescription: e.target.value })}
+                  onChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, sceneDescription: v })}
                   rows={2}
-                  className="mt-1 w-full px-3 py-1.5 border border-stone-300 rounded text-sm"
                   placeholder="Find the stone plaque on the north wall..."
                 />
-              </label>
+              </div>
               <AudioUpload
                 audioUrl={tour.essentialQuestion.sceneAudioUrl ?? null}
                 audioTitle={tour.essentialQuestion.sceneAudioTitle ?? null}
@@ -690,15 +689,14 @@ export default function TourEditorPage() {
                 onUploadFile={uploadPhoto}
               />
 
-              <label className="block">
-                <span className="text-xs text-stone-500">Opening framing (toggle text on scene screen)</span>
-                <textarea
+              <div className="block">
+                <RichTextarea
+                  label="Opening framing (toggle text on scene screen)"
                   value={tour.essentialQuestion.openingFraming}
-                  onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, openingFraming: e.target.value })}
+                  onChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, openingFraming: v })}
                   rows={2}
-                  className="mt-1 w-full px-3 py-1.5 border border-stone-300 rounded text-sm"
                 />
-              </label>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                   <span className="text-xs text-stone-500">Theory prompt</span>
@@ -762,25 +760,24 @@ export default function TourEditorPage() {
                         <span className="text-xs text-stone-600">Discuss Opinion</span>
                       </label>
                     </div>
-                    <input
+                    <RichTextarea
                       value={tour.essentialQuestion.additionalQuestion.question}
-                      onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, question: e.target.value } })}
-                      className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      onChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, question: v } })}
+                      rows={2}
                       placeholder="The follow-up question..."
                     />
                   </div>
                 )}
               </div>
 
-              <label className="block">
-                <span className="text-xs text-stone-500">Closing framing (after tour ends)</span>
-                <textarea
+              <div className="block">
+                <RichTextarea
+                  label="Closing framing (after tour ends)"
                   value={tour.essentialQuestion.closingFraming}
-                  onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, closingFraming: e.target.value })}
+                  onChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, closingFraming: v })}
                   rows={2}
-                  className="mt-1 w-full px-3 py-1.5 border border-stone-300 rounded text-sm"
                 />
-              </label>
+              </div>
               <AudioUpload
                 audioUrl={tour.essentialQuestion.closingAudioUrl ?? null}
                 audioTitle={tour.essentialQuestion.closingAudioTitle ?? null}
@@ -957,16 +954,15 @@ export default function TourEditorPage() {
               </div>
             </label>
             {tour.midwayEnabled && (
-              <label className="block pl-5">
-                <span className="text-xs text-stone-500">Midway check-in question</span>
-                <textarea
+              <div className="block pl-5">
+                <RichTextarea
+                  label="Midway check-in question"
                   value={tour.midwayQuestion || ''}
-                  onChange={(e) => updateField('midwayQuestion', e.target.value || null)}
+                  onChange={(v) => updateField('midwayQuestion', v || null)}
                   rows={2}
-                  className="mt-1 w-full px-3 py-1.5 border border-stone-300 rounded text-sm"
                   placeholder="e.g. What themes are you noticing across these stops?"
                 />
-              </label>
+              </div>
             )}
           </div>
         </section>

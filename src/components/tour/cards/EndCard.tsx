@@ -1,6 +1,7 @@
 'use client';
 
 import { useTour } from '@/context/TourContext';
+import FormattedText from './FormattedText';
 
 export default function EndCard() {
   const { tour, session, endTour } = useTour();
@@ -53,7 +54,7 @@ export default function EndCard() {
             Your learning arc
           </p>
           <p className="text-sm font-serif font-semibold text-text-primary">
-            &ldquo;{tour.essentialQuestion.question}&rdquo;
+            &ldquo;<FormattedText text={tour.essentialQuestion.question} />&rdquo;
           </p>
           <div className="space-y-1">
             <p className="text-[10px] text-text-secondary uppercase tracking-wide">Before</p>

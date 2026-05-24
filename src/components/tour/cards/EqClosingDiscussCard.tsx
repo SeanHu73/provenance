@@ -8,6 +8,7 @@
 import { Tour } from '@/lib/types';
 import BackButton from './BackButton';
 import AudioButton from './AudioButton';
+import FormattedText from './FormattedText';
 
 interface Props {
   tour: Tour;
@@ -29,7 +30,7 @@ export default function EqClosingDiscussCard({ tour, onContinue }: Props) {
 
       {/* Closing framing */}
       <p className="text-[18px] text-text-secondary italic leading-relaxed">
-        {eq.closingFraming}
+        <FormattedText text={eq.closingFraming} />
       </p>
 
       {/* The essential question — soft-edge blur-behind effect */}
@@ -44,7 +45,7 @@ export default function EqClosingDiscussCard({ tour, onContinue }: Props) {
           }}
         />
         <p className="relative text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
-          &ldquo;{eq.question}&rdquo;
+          &ldquo;<FormattedText text={eq.question} />&rdquo;
         </p>
       </div>
 

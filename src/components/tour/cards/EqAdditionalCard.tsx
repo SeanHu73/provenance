@@ -7,6 +7,7 @@
 
 import { Tour } from '@/lib/types';
 import BackButton from './BackButton';
+import FormattedText from './FormattedText';
 
 interface Props {
   tour: Tour;
@@ -38,7 +39,7 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
           }}
         />
         <p className="relative text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
-          &ldquo;{aq.question}&rdquo;
+          &ldquo;<FormattedText text={aq.question} />&rdquo;
         </p>
       </div>
 
