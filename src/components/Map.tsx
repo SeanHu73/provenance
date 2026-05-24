@@ -694,18 +694,20 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
     //   mini-map next sub-stop → 56 + animated ring (the "flashing" cue)
     //   mini-map completed → 28, dim, check badge
     //   mini-map locked → 30, normal colour, clickable (overlay tells the
-    //     explorer to finish prior stops; button pans them to the next pin)
-    const D = data.isNextInGroup
-      ? 56
-      : data.isSelectedOverlay
-        ? 50
-        : data.isCompleted
-          ? 28
-          : data.isLockedInGroup
-            ? 30
+    //     explorer to finish prior stops; button pans them to the next pin).
+    //     Locked pins keep their small size and no ring even when selected,
+    //     so taps don't visually promote them above the flashing next pin.
+    const D = data.isLockedInGroup
+      ? 30
+      : data.isNextInGroup
+        ? 56
+        : data.isSelectedOverlay
+          ? 50
+          : data.isCompleted
+            ? 28
             : 42;
-    const ring = data.isNextInGroup || data.isSelectedOverlay;
-    const zIndex = data.isNextInGroup ? 11 : data.isSelectedOverlay ? 10 : data.isGroupLeader ? 6 : data.isCompleted ? 1 : data.isLockedInGroup ? 2 : 5;
+    const ring = !data.isLockedInGroup && (data.isNextInGroup || data.isSelectedOverlay);
+    const zIndex = data.isNextInGroup ? 11 : data.isLockedInGroup ? 2 : data.isSelectedOverlay ? 10 : data.isGroupLeader ? 6 : data.isCompleted ? 1 : 5;
     const badge = data.isCompleted
       ? { check: true }
       : data.isGroupLeader && data.subStopCount

@@ -245,6 +245,7 @@ function LockedStopOverlayCard({
 }) {
   const thumbPhoto = pickStopThumb(stop);
   const displayTitle = stop.title || '';
+  const LOCKED_RED = '#B91C1C';
   return (
     <div className="rounded-2xl shadow-2xl overflow-hidden" style={{ backgroundColor: 'var(--th-surface)' }}>
       {thumbPhoto && (
@@ -255,7 +256,7 @@ function LockedStopOverlayCard({
             alt=""
             className="w-full h-full object-cover"
             style={{
-              filter: 'grayscale(0.6)',
+              filter: 'grayscale(0.85) brightness(0.7)',
               ...(thumbPhoto.thumbnailFocalPoint
                 ? { objectPosition: `${thumbPhoto.thumbnailFocalPoint.x}% ${thumbPhoto.thumbnailFocalPoint.y}%` }
                 : {}),
@@ -263,10 +264,10 @@ function LockedStopOverlayCard({
           />
           <div className="absolute inset-0 flex items-center justify-center">
             <div
-              className="w-11 h-11 rounded-full flex items-center justify-center shadow-md"
-              style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+              className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg"
+              style={{ backgroundColor: 'rgba(0,0,0,0.7)', border: '3px solid #fff' }}
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="4" y="11" width="16" height="9" rx="2" />
                 <path d="M8 11V8a4 4 0 0 1 8 0v3" />
               </svg>
@@ -282,7 +283,10 @@ function LockedStopOverlayCard({
             </p>
           )}
           <p className="text-xl font-semibold text-text-primary leading-snug">{displayTitle}</p>
-          <p className="text-sm italic mt-1" style={{ color: 'var(--th-text-secondary)' }}>
+          <p
+            className="text-base font-semibold mt-2"
+            style={{ color: LOCKED_RED }}
+          >
             Please complete prior stops first
           </p>
         </div>
@@ -296,7 +300,12 @@ function LockedStopOverlayCard({
           </button>
           <button
             onClick={onShowNext}
-            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-aged-gold"
+            className="flex-1 py-2.5 rounded-lg text-sm font-semibold"
+            style={{
+              backgroundColor: 'var(--th-surface)',
+              border: '2px solid var(--th-primary)',
+              color: 'var(--th-primary)',
+            }}
           >
             Show me next stop
           </button>
@@ -336,23 +345,24 @@ function GroupClusterOverlayCard({
   onDismiss: () => void;
 }) {
   const total = stops.length;
-  const headlineTitle = firstUncompleted?.title || groupName;
+  // Unused now that the headline is the group name; keep the prop wired
+  // for parity with handleBeginCluster.
+  void firstUncompleted;
   return (
     <div
       className="rounded-2xl shadow-2xl overflow-hidden"
       style={{ backgroundColor: 'var(--th-surface)' }}
     >
-      {/* Cluster banner — tiny "STOP CLUSTER · <group>" label, then the
-          first uncompleted stop's name in big type so the explorer knows
-          exactly what Begin will start. */}
+      {/* Cluster banner — small "STOP CLUSTER" label, then the group's
+          own title (carousel cards below show each sub-stop's name). */}
       <div
         className="px-4 pt-3 pb-2.5"
         style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}
       >
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] opacity-85">
-          Stop cluster · {groupName}
+          Stop cluster
         </p>
-        <p className="text-xl font-semibold leading-tight mt-1">{headlineTitle}</p>
+        <p className="text-xl font-semibold leading-tight mt-1">{groupName}</p>
         <p className="text-xs opacity-85 mt-1">{total} stops · go in order</p>
       </div>
 
