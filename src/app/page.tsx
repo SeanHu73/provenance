@@ -223,10 +223,10 @@ function HomeInner() {
       )}
 
       {/* Midway check-in content (replaces map area) */}
-      {isMidwayCheckin && activeTour && (
+      {isMidwayCheckin && activeTour && session && (
         <div className="flex-1 overflow-y-auto p-4" style={{ backgroundColor: 'var(--th-surface)' }}>
           <div className="min-h-full rounded-2xl bg-warm-white shadow-lg px-5 py-6">
-            <MidwayCheckinCard tour={activeTour} onComplete={completeMidwayCheckin} />
+            <MidwayCheckinCard tour={activeTour} session={session} onComplete={completeMidwayCheckin} />
           </div>
         </div>
       )}

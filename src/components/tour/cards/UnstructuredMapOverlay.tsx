@@ -6,6 +6,7 @@ import { getLogicalStops, getStopsInGroup, getActiveGroupId, getNextStopInGroup 
 import { getActiveStops } from '@/lib/tours-store';
 import { useTour } from '@/context/TourContext';
 import MicButton from '../MicButton';
+import FormattedText from './FormattedText';
 
 interface Props {
   tour: Tour;
@@ -661,27 +662,60 @@ function GalleryCard({
   );
 }
 
-// ─── Midway Check-In Card ────────────────────────────────────────
+// ─── Mid Point Check-In Card ─────────────────────────────────────
 
-export function MidwayCheckinCard({ tour, onComplete }: { tour: Tour; onComplete: (response: string) => void }) {
+export function MidwayCheckinCard({
+  tour,
+  session,
+  onComplete,
+}: {
+  tour: Tour;
+  session: TourSession;
+  onComplete: (response: string) => void;
+}) {
   const [response, setResponse] = useState('');
+  const activeStops = getActiveStops(tour);
+  // Logical stop IDs the explorer has completed, in visit order.
+  const visitedStops = (session.completionOrder || [])
+    .map((id) => activeStops.find((s) => s.id === id))
+    .filter((s): s is Stop => !!s);
 
   return (
-    <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
+    <div className="animate-fade-in space-y-6 min-h-full">
+      {/* Header */}
       <div>
-        <p className="text-[22px] uppercase tracking-[0.12em] font-display font-semibold text-aged-gold mb-3">
-          Halfway there
+        <p className="text-[22px] uppercase tracking-[0.12em] font-display font-semibold text-aged-gold mb-1">
+          Mid point check-in
         </p>
-        <p className="text-[24px] leading-snug font-display font-bold text-text-primary">
-          {tour.midwayQuestion}
+        <p className="text-[18px] font-serif text-text-primary leading-relaxed">
+          So these are the stops you have seen so far...
         </p>
       </div>
+
+      {/* Visited stop thumbnails */}
+      {visitedStops.length > 0 && (
+        <div className="space-y-2">
+          {visitedStops.map((stop, idx) => (
+            <VisitedStopThumb key={stop.id} stop={stop} visitNumber={idx + 1} />
+          ))}
+        </div>
+      )}
+
+      {/* Divider + deliberate gap so the question feels like a separate
+          beat after reviewing what they've explored. */}
+      <hr className="border-0 h-px" style={{ backgroundColor: 'var(--th-border)' }} />
+      <div className="h-32" aria-hidden="true" />
+
+      {/* The midway question */}
+      <p className="text-[24px] leading-snug font-display font-bold text-text-primary">
+        <FormattedText text={tour.midwayQuestion || ''} />
+      </p>
 
       <div className="flex gap-2 items-start">
         <textarea
           value={response}
           onChange={(e) => setResponse(e.target.value)}
-          placeholder="Your thoughts so far..."
+          placeholder="Discuss this, but optional to write down"
           rows={4}
           className="flex-1 px-4 py-3 rounded-lg text-base font-serif text-text-primary resize-none focus:outline-none"
           style={{
@@ -696,8 +730,57 @@ export function MidwayCheckinCard({ tour, onComplete }: { tour: Tour; onComplete
         onClick={() => onComplete(response)}
         className="w-full py-3 rounded-lg text-base font-semibold text-white bg-aged-gold"
       >
-        Continue exploring
+        Continue tour
       </button>
+    </div>
+  );
+}
+
+function VisitedStopThumb({ stop, visitNumber }: { stop: Stop; visitNumber: number }) {
+  const thumb = pickStopThumb(stop);
+  const displayTitle = stop.title || stop.mergeGroup || `Stop ${visitNumber}`;
+  return (
+    <div
+      className="flex gap-3 p-3 rounded-xl border"
+      style={{ borderColor: 'var(--th-border)', backgroundColor: 'var(--th-surface)' }}
+    >
+      {thumb ? (
+        <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 bg-sandstone">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={thumb.url}
+            alt=""
+            className="w-full h-full object-cover"
+            style={
+              thumb.thumbnailFocalPoint
+                ? { objectPosition: `${thumb.thumbnailFocalPoint.x}% ${thumb.thumbnailFocalPoint.y}%` }
+                : undefined
+            }
+          />
+        </div>
+      ) : (
+        <div
+          className="w-20 h-20 rounded-lg shrink-0 flex items-center justify-center"
+          style={{ backgroundColor: 'var(--th-surface-alt)' }}
+        >
+          <span className="text-lg font-semibold" style={{ color: 'var(--th-text-secondary)' }}>
+            {visitNumber}
+          </span>
+        </div>
+      )}
+      <div className="flex-1 min-w-0 flex flex-col justify-center">
+        <p className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: 'var(--th-text-secondary)' }}>
+          Stop {visitNumber}
+        </p>
+        <p className="text-base font-semibold leading-snug" style={{ color: 'var(--th-text-primary)' }}>
+          {displayTitle}
+        </p>
+        {stop.category && (
+          <p className="text-xs uppercase tracking-wide mt-0.5" style={{ color: 'var(--th-text-secondary)' }}>
+            {stop.category}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
