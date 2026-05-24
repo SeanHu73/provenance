@@ -1,6 +1,7 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-05-23.
+*Handoff document for the next Claude Code session. Last updated 2026-05-23
+(later in the day — see §8 final entry).
 Read this instead of re-discovering the codebase.*
 
 ---
@@ -71,8 +72,7 @@ Map (tour pin) → Journal Peek → Intro screens → [Meet Your Guide] →
 | EqDiscussCard | `cards/EqDiscussCard.tsx` | "Question for you! Please discuss..." |
 | EqOpeningCard | `cards/EqOpeningCard.tsx` | Written theory + reasoning prompts |
 | EqAdditionalCard | `cards/EqAdditionalCard.tsx` | Optional follow-up discussion/opinion question |
-| EqClosingDiscussCard | `cards/EqClosingDiscussCard.tsx` | Closing verbal discussion with audio |
-| EqClosingCard | `cards/EqClosingCard.tsx` | Closing written response |
+| EqClosingCard | `cards/EqClosingCard.tsx` | Combined closing arc (header + framing/audio + restated question + opening echo + midway echo + "Where are you now?" prompts). Replaces the old discuss→written two-step. |
 | EqFinalReflectCard | `cards/EqFinalReflectCard.tsx` | Final sliders + chips |
 | EqQuestionsCard | `cards/EqQuestionsCard.tsx` | Final questions + question list |
 | EndCard | `cards/EndCard.tsx` | Learning arc + explore on your own |
@@ -567,9 +567,19 @@ are unchanged — only the per-stop middle becomes explorer-driven.
   reflection prompt shown once the explorer has completed half the
   logical stops.
 - **Merge groups** (`Stop.mergeGroup`): stops sharing a non-null
-  `mergeGroup` string behave as one sequential unit — the explorer taps
-  in once and walks the group in authored order. A standalone stop has
-  `mergeGroup: null`.
+  `mergeGroup` string form a *cluster* that plays as a mini-linear tour
+  inside the unstructured one. The main map shows the leader pin only
+  (with a sub-stop count badge); tapping it opens a swipeable
+  "Stop cluster" carousel. After each sub-stop completes the explorer
+  returns to a **mini-map** that filters down to just that group's pins
+  with the next sub-stop enlarged and flashing. When the final sub-stop
+  is done, the main map returns with every group member shown as a
+  small toured indicator (no leader). Locked sub-stops are tappable
+  with a "Please complete prior stops first" overlay whose
+  "Show me next stop" button pans the map to the flashing pin. A
+  standalone stop has `mergeGroup: null`. See §8's final entry for
+  details and the cluster-rendering helpers (`getActiveGroupId`,
+  `getNextStopInGroup`, `getStopsInGroup` in `tour-session.ts`).
 
 ### Logical stops
 
@@ -590,11 +600,20 @@ each merge group. Counts and progress are measured in logical stops,
 ### Phases & rendering
 
 - `unstructured_map` — the stop-picker. Renders `UnstructuredMapControls`
-  + `UnstructuredMapOverlay` (stop overlay card on pin tap, stop gallery).
+  + `UnstructuredMapOverlay`. The overlay card auto-switches between
+  three variants based on the selected pin: `GroupClusterOverlayCard`
+  (group leader, un-started), `LockedStopOverlayCard` (locked sub-stop
+  on the mini-map), or the standard `StopOverlayCard` (everything else).
+  The same phase covers both the main map and the mid-group mini-map —
+  the distinction is derived from `getActiveGroupId(tour, session)`.
 - `midway_checkin` — renders `MidwayCheckinCard` (exported from
-  `UnstructuredMapOverlay.tsx`).
-- Closing — `UnstructuredClosingView` runs the closing-discuss → closing
-  → final-reflect → questions → end sequence full-screen.
+  `UnstructuredMapOverlay.tsx`). Now a scrollable arc: visited-stop
+  thumbnails, divider + deliberate gap, then the question with an
+  optional textbox + mic (see §8's final entry).
+- Closing — `UnstructuredClosingView` runs the combined-closing →
+  final-reflect → questions → end sequence full-screen. The legacy
+  `eq_closing_discuss` phase still renders the new combined card as
+  a fallback for in-flight sessions.
 
 All three are rendered by `src/app/page.tsx` **outside** the `Journal`
 overlay (Journal early-returns on these phases caused the original
@@ -603,11 +622,14 @@ overlay (Journal early-returns on these phases caused the original
 ### Advancement
 
 `advanceToNextStopUnstructured` (in `tour-session.ts`) runs after a stop
-completes: it walks merge-group members in order, appends the logical
-stop ID to `completionOrder`, fires the midway check-in if due, and
-returns to `unstructured_map` — or to the closing once
-`completionOrder.length >= getLogicalStops(tour).length`. `isFinalStop`
-is ignored in this mode.
+completes: completing any sub-stop in a group **always** returns to
+`unstructured_map` (the mini-map is derived from session state). Only
+when the last group member is completed does it append the leader ID to
+`completionOrder`, fire the midway check-in if due, and either return
+to the main map or advance to the closing once
+`completionOrder.length >= getLogicalStops(tour).length`. Standalone
+stops `finishLogicalStop` immediately. `isFinalStop` is ignored in this
+mode.
 
 ### Bug-fix history (follow-up commits)
 
@@ -679,5 +701,130 @@ preview also fixed from a narrow `h-20` cropped strip to full photo
 
 ---
 
-*End of handoff. The unstructured exploration mode (§10) and theme
-system (§9) are live on `master`.*
+### Independent unstructured authoring, cluster mini-tour, rich text, redesigned midway + closing (2026-05-23, later)
+
+A long evening session — seven commits (`2895b90` → `0461aa8`), all
+live on `master`.
+
+**Independent stops authoring for unstructured mode.** New
+`Tour.unstructuredStops?: Stop[]` parallel array, so the writing for a
+tour's linear and unstructured modes can diverge without touching each
+other. Toggling unstructured on for the first time deep-clones the
+linear stops (with newly minted stop and detour IDs) into the parallel
+array; both arrays persist after that, so flipping the toggle later
+keeps your unstructured edits. Admin and explorer both go through
+new helpers in `tours-store.ts`:
+
+- `getActiveStops(tour)` — returns `unstructuredStops` when mode is on
+  (and present), else `stops`. Falls back to `stops` for legacy tours
+  that pre-date the parallel array.
+- `setActiveStops(tour, stops)` — writes to the right array.
+- `duplicateStopsForUnstructured(stops)` — deep clone + new IDs.
+
+All `tour.stops` reads in admin, `TourContext`, `tour-session`,
+`tour-question-router`, `Journal`, `JournalOverlay`, `JournalPeek`,
+`ProgressBar`, `UnstructuredMapOverlay`, and `page.tsx` were routed
+through `getActiveStops`. The two remaining literal `tour.stops`
+references (admin tour list count and the unstructured toggle's
+"is there anything to copy?" check) are intentional.
+
+**Mini-tour flow for merge groups.** Merge groups stopped behaving as
+one tap-and-walk sequence and became a true mini-linear tour with its
+own map in between sub-stops (see §10 for the full description).
+Implementation:
+
+- `tour-session.ts` gained `getStopsInGroup`, `getActiveGroupId`, and
+  `getNextStopInGroup`. `advanceToNextStopUnstructured` was rewritten:
+  completing any sub-stop in a group always returns to
+  `unstructured_map`; only the last sub-stop calls `finishLogicalStop`.
+  No new session fields — the mini-map is derived from
+  `completedStops` and the active stop list.
+- `TourStopMarkerData` (in `Map.tsx`) gained `isGroupLeader`,
+  `subStopCount`, `isNextInGroup`, `isLockedInGroup`. `TourStopPin` was
+  redone with role-driven sizing: main-map standalone and leader pins
+  share a unified 42 px (count badge on the leader); mini-map next-in-
+  group is 56 px with the amber animated ring; locked sub-stops are
+  30 px in the normal primary colour (not dim); completed sub-stops
+  stay 28 px dim with a check badge. Locked pins are clickable; their
+  selected state deliberately does NOT promote them past the flashing
+  next pin (no size bump, no ring).
+- White text labels under unstructured pins were removed across the
+  board. Titles and categories moved into the overlay cards in larger
+  type.
+- `page.tsx` `tourStopMarkers` was rewritten: main map shows leader
+  pins for un-started groups and every sub-stop as a small toured
+  indicator for fully done groups (no leader pin). Mid-progress groups
+  trigger mini-map mode and the standard markers are filtered to that
+  group only.
+- New overlay variants in `UnstructuredMapOverlay.tsx`:
+  - `GroupClusterOverlayCard` — "STOP CLUSTER" banner with the group's
+    own name, a swipeable carousel of sub-stop cards with peek
+    (`scrollbar-hide` utility added to `globals.css`), locked cards
+    greyed with a lock icon, "Up next" outlined for the active one.
+    Single footer "Begin first stop" button (per-card Begin removed
+    after iteration).
+  - `LockedStopOverlayCard` — desaturated thumb with a large white-
+    bordered lock badge, "Please complete prior stops first" in red,
+    and an outlined "Show me next stop" button. The handler dismisses
+    the overlay and pans the map to the flashing pin via the existing
+    `flyTarget` mechanism (wired through a new `onFlyToStop` prop on
+    `UnstructuredMapControls`).
+  - `StopOverlayCard` got bigger title (text-xl) with category bold-
+    uppercase above it.
+
+**Rich text on essential question and midway fields.** Admin inputs
+for `essentialQuestion.{question, sceneDescription, openingFraming,
+closingFraming, additionalQuestion.question}` and `tour.midwayQuestion`
+were swapped to `RichTextarea` so authors get the B/I/Color toolbar.
+Explorer renders (`EqDiscussCard`, `EqOpeningCard`, `EqClosingDiscussCard`-now-deleted,
+`EqClosingCard`, `EqAdditionalCard`, `EqSceneCard`, `MidwayCheckinCard`,
+`JournalOverlay` theory tab, `EndCard` learning arc) all switched to
+`FormattedText` so the markup is interpreted at display.
+
+**Mid point check-in redesign.** `MidwayCheckinCard` is now a vertical
+scrollable arc: "Mid point check-in" header, intro line "So these are
+the stops you have seen so far…", a vertical list of thumbnail cards
+for each visited logical stop (from `completionOrder`), a divider, a
+deliberate 128 px gap, then the question with a textbox whose
+placeholder reads "Discuss this, but optional to write down". The
+Continue button always fires `onComplete` regardless of whether the
+explorer typed anything (response is optional). Renamed "Continue
+exploring" → "Continue tour". The card now takes a `session` prop —
+threaded from `page.tsx`.
+
+**Combined closing arc.** The two-step closing (`eq_closing_discuss`
+verbal-only → `eq_closing` written) became a single scrollable
+`EqClosingCard`:
+
+1. "TOUR COMPLETE" header + admin `closingFraming` + closing audio
+2. The essential question restated
+3. "This is where you started" — read-only echo of `initialTheory`
+   and `initialReasoning` (each in a small panel with its original
+   prompt)
+4. "This is what you thought during the tour…" — read-only echo of
+   `midwayResponseText`, only rendered if it's non-empty
+5. "Where are you now?" — final reflection + final reasoning inputs
+   with `MicButton`s (still required to enable Continue)
+
+Single page so the explorer can scroll back to revisit any earlier
+answer while drafting the final one. State machine routes directly to
+`eq_closing` now (`advanceToNextStop` + `finishLogicalStop`); the
+`eq_closing_discuss` phase still renders the new combined card as a
+fallback for in-flight sessions sitting on it. `EqClosingDiscussCard`
+was deleted and `completeEqClosingDiscuss` was removed from
+`tour-session`, `TourContext`, `Journal`, and `UnstructuredClosingView`.
+`EqClosingCard` now takes a `session` prop.
+
+**Lessons / gotchas captured this session**
+
+- `scrollbar-hide` is not a Tailwind v4 default. Added a tiny utility
+  in `globals.css` for the carousel.
+- Legacy phases live in in-flight session storage. When collapsing a
+  phase out of the flow, also handle the case where an existing
+  session is parked on it (render the new card on the old phase too).
+
+---
+
+*End of handoff. The unstructured exploration mode (§10), theme
+system (§9), and the parallel `unstructuredStops` authoring path are
+all live on `master`.*
