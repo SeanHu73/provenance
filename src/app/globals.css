@@ -126,6 +126,7 @@
   --font-serif: var(--th-font-body);
   --font-sans: var(--th-font-body);
   --font-display: var(--th-font-display);
+  --font-montserrat: var(--font-montserrat), 'Helvetica Neue', Arial, sans-serif;
   --radius-lg: var(--th-radius-lg);
   --radius-xl: var(--th-radius-xl);
   --radius-2xl: var(--th-radius-2xl);

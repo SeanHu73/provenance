@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from 'next';
-import { Newsreader, DM_Serif_Display } from 'next/font/google';
+import { Newsreader, DM_Serif_Display, Montserrat } from 'next/font/google';
 import './globals.css';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import ThemeColorMeta from '@/components/ThemeColorMeta';
+import SplashScreen from '@/components/SplashScreen';
 import { ThemeProvider } from '@/context/ThemeContext';
 
 // Shared content/body font — used for all reading text in both themes.
@@ -22,9 +23,18 @@ const dmSerifDisplay = DM_Serif_Display({
   display: 'swap',
 });
 
+// Wordmark font for the splash screen.
+const montserrat = Montserrat({
+  weight: '500',
+  subsets: ['latin'],
+  variable: '--font-montserrat',
+  display: 'swap',
+});
+
 const fontVariables = [
   newsreader.variable,
   dmSerifDisplay.variable,
+  montserrat.variable,
 ].join(' ');
 
 export const metadata: Metadata = {
@@ -56,7 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeProvider>
           <ThemeColorMeta />
-          {children}
+          <SplashScreen>{children}</SplashScreen>
           <ServiceWorkerRegistrar />
         </ThemeProvider>
       </body>
