@@ -174,16 +174,16 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 .splash-pin {
-  animation: splashPinDrop 0.8s cubic-bezier(0.22, 1.8, 0.36, 1) 0.5s both;
+  animation: splashPinDrop 1s cubic-bezier(0.22, 1.8, 0.36, 1) 0.5s both;
 }
 .splash-shadow {
-  animation: splashPinShadow 0.8s cubic-bezier(0.22, 1.8, 0.36, 1) 0.5s both;
+  animation: splashPinShadow 1s cubic-bezier(0.22, 1.8, 0.36, 1) 0.5s both;
 }
 .splash-wordmark {
-  animation: splashWordmark 0.8s ease-out 1.2s both;
+  animation: splashWordmark 1s ease-out 1.2s both;
 }
 .splash-overlay {
-  transition: opacity 0.7s ease-out;
+  transition: opacity 0.9s ease-out;
 }
 
 @keyframes slideUp {

@@ -7,11 +7,12 @@ const STORAGE_KEY = 'splash_seen';
 // Timeline lives in globals.css (.splash-pin, .splash-shadow, .splash-wordmark,
 // .splash-overlay). Values below mirror it so we can schedule the fade-out and
 // unmount.
-//   pin/shadow: 0.5s delay → 0.8s drop
-//   wordmark:  1.2s delay → 0.8s fade/slide  (anim ends at 2.0s)
-//   overlay fade-out: 0.7s
-const ANIM_END_MS = 2000;
-const FADE_OUT_MS = 700;
+//   pin/shadow: 0.5s delay → 1.0s drop (bounceback included)
+//   wordmark:  1.2s delay → 1.0s fade/slide  (anim ends at 2.2s)
+//   hold the fully-revealed splash for 0.5s
+//   overlay fade-out: 0.9s
+const ANIM_END_MS = 2200 + 500; // wordmark done + hold
+const FADE_OUT_MS = 900;
 
 type Phase = 'hidden' | 'animating' | 'fading';
 
