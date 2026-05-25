@@ -8,11 +8,11 @@ const STORAGE_KEY = 'splash_seen';
 // .splash-overlay). Values below mirror it so we can schedule the fade-out and
 // unmount.
 //   pin/shadow: 0.5s delay → 1.0s drop (bounceback included)
-//   wordmark:  1.2s delay → 1.0s fade/slide  (anim ends at 2.2s)
-//   hold the fully-revealed splash for 0.5s
-//   overlay fade-out: 0.9s
-const ANIM_END_MS = 2200 + 500; // wordmark done + hold
-const FADE_OUT_MS = 900;
+//   wordmark:  1.2s delay → 0.9s fade/slide  (anim ends at 2.1s)
+//   hold the fully-revealed splash for 0.2s
+//   overlay fade-out: 0.8s
+const ANIM_END_MS = 2100 + 200; // wordmark done + hold
+const FADE_OUT_MS = 800;
 
 type Phase = 'hidden' | 'animating' | 'fading';
 
@@ -52,14 +52,14 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
               <img
                 src="/logo_transparent.png"
                 alt=""
-                width={160}
-                height={160}
-                className="splash-pin block w-40 h-auto select-none"
+                width={240}
+                height={240}
+                className="splash-pin block w-60 h-auto select-none"
                 draggable={false}
               />
               <div
-                className="splash-shadow absolute left-1/2 -bottom-3 h-3 w-28 rounded-[50%]"
-                style={{ backgroundColor: 'rgba(0,0,0,0.1)', filter: 'blur(4px)' }}
+                className="splash-shadow absolute left-1/2 -bottom-4 h-3 w-44 rounded-[50%]"
+                style={{ backgroundColor: 'rgba(0,0,0,0.1)', filter: 'blur(5px)' }}
               />
             </div>
             <p
