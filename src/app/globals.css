@@ -160,6 +160,32 @@ body {
   animation: fadeIn 0.45s ease-out forwards;
 }
 
+/* Splash screen — first-load intro animation */
+@keyframes splashPinDrop {
+  from { transform: translateY(-120vh); }
+  to { transform: translateY(0); }
+}
+@keyframes splashPinShadow {
+  from { transform: translateX(-50%) scale(0); opacity: 0; }
+  to { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+@keyframes splashWordmark {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.splash-pin {
+  animation: splashPinDrop 0.8s cubic-bezier(0.22, 1.8, 0.36, 1) 0.5s both;
+}
+.splash-shadow {
+  animation: splashPinShadow 0.8s cubic-bezier(0.22, 1.8, 0.36, 1) 0.5s both;
+}
+.splash-wordmark {
+  animation: splashWordmark 0.8s ease-out 1.2s both;
+}
+.splash-overlay {
+  transition: opacity 0.7s ease-out;
+}
+
 @keyframes slideUp {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
