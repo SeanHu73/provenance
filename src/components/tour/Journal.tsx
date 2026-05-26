@@ -419,12 +419,33 @@ export default function Journal({ onMapPeek }: JournalProps) {
         </AnimatePresence>
       </div>
 
-      {/* Scroll indicator — large arrow above footer */}
+      {/* Scroll indicator — bouncing pill + chevron above the footer.
+          Loud on purpose: the gentle muted chevron we had before was
+          easy to miss, and people were stalling on screens that needed
+          a scroll. */}
       {canScrollMore && (
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 pointer-events-none animate-gentle-pulse">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--th-text)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.5">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+          <div className="flex flex-col items-center gap-1 animate-bounce">
+            <span
+              className="px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider shadow-lg"
+              style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}
+            >
+              Keep scrolling
+            </span>
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--th-primary)"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.25))' }}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
         </div>
       )}
 

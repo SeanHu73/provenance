@@ -36,6 +36,22 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
         </p>
       </div>
 
+      {/* First-time note — only the opening and closing of the tour ask
+          you to record an answer, so the group can see how their thinking
+          has evolved between the two. */}
+      <div
+        className="rounded-lg border-l-4 px-4 py-3"
+        style={{
+          borderColor: 'var(--aged-gold)',
+          backgroundColor: 'color-mix(in srgb, var(--aged-gold) 10%, transparent)',
+        }}
+      >
+        <p className="text-[14px] leading-relaxed text-text-secondary">
+          <span className="font-semibold" style={{ color: 'var(--th-text-primary)' }}>You&apos;ll only be asked to record an answer here and at the end of the tour.</span>{' '}
+          That way you can look back and see how your thinking has evolved.
+        </p>
+      </div>
+
       {/* Reminder of the question */}
       <div
         className="px-8 py-7 text-center rounded-2xl"
