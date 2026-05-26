@@ -748,9 +748,12 @@ export function MidwayCheckinCard({
       className="animate-fade-in absolute inset-0 overflow-y-auto"
       style={{ scrollSnapType: 'y mandatory' }}
     >
+      {/* See SeedCard for the rationale on min-h-full + side padding:
+          short content stays centred, long content grows the section so
+          the top stays in view after a snap. */}
       {/* Section 1 — header + visited stops summary */}
       <section
-        className="h-full flex flex-col justify-center space-y-6 px-1"
+        className="min-h-full flex flex-col justify-center space-y-6 px-5 py-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <div>
@@ -774,7 +777,7 @@ export function MidwayCheckinCard({
       {/* Section 2 — the question itself, revealed when scrolled into view */}
       <section
         ref={questionRef}
-        className="h-full flex flex-col justify-center space-y-6 px-1"
+        className="min-h-full flex flex-col justify-center space-y-6 px-5 py-6"
         style={{
           scrollSnapAlign: 'start',
           scrollSnapStop: 'always',

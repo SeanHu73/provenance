@@ -200,8 +200,17 @@ export default function SeedCard({ stop, onContinue }: Props) {
       className="animate-fade-in absolute inset-0 overflow-y-auto"
       style={{ scrollSnapType: 'y mandatory' }}
     >
+      {/* `min-h-full` (not `h-full`) lets each section grow when content
+          overflows the visible area; otherwise centred content would be
+          pushed above the viewport top and snap would yank the user
+          back. With min-h-full, short content sits centred in the
+          visible area, and long content fills + grows the section so
+          the top edge of the text lands at the top of the viewport
+          after the snap. Side padding restores the visual margin we
+          lost when SeedCard's outer started overlapping the card
+          frame's padding box. */}
       <section
-        className="h-full flex flex-col justify-center space-y-5 px-1"
+        className="min-h-full flex flex-col justify-center space-y-5 px-5 py-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         {backgroundBlock}
@@ -209,7 +218,7 @@ export default function SeedCard({ stop, onContinue }: Props) {
 
       <section
         ref={noticeRef}
-        className="h-full flex flex-col justify-center space-y-5 px-1"
+        className="min-h-full flex flex-col justify-center space-y-5 px-5 py-6"
         style={{
           scrollSnapAlign: 'start',
           scrollSnapStop: 'always',
