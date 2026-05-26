@@ -8,6 +8,7 @@
 import { Tour } from '@/lib/types';
 import { guidePhotoStyle } from '@/lib/guide-photo';
 import { getActiveStops } from '@/lib/tours-store';
+import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
   tour: Tour;
@@ -16,6 +17,8 @@ interface Props {
 }
 
 export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
+  const [autoplayPref] = useAudioAutoplay();
+  const peekAutoplay = autoplayPref && !tour.peekAudioAutoplayDisabled;
   return (
     <div className="fixed inset-0 z-30 flex flex-col justify-end">
       {/* Backdrop */}
@@ -104,7 +107,7 @@ export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
               {tour.peekAudioTitle && (
                 <p className="text-xs font-semibold px-3 pt-2" style={{ color: 'var(--th-surface)' }}>{tour.peekAudioTitle}</p>
               )}
-              <audio controls src={tour.peekAudioUrl} className="w-full h-8" style={{ filter: 'invert(1) hue-rotate(180deg)', opacity: 0.7 }} />
+              <audio controls src={tour.peekAudioUrl} autoPlay={peekAutoplay} className="w-full h-8" style={{ filter: 'invert(1) hue-rotate(180deg)', opacity: 0.7 }} />
             </div>
           )}
 

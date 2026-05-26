@@ -4,6 +4,7 @@ import { Stop } from '@/lib/types';
 import PhotoContent from './PhotoContent';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
+import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
   stop: Stop;
@@ -15,7 +16,9 @@ interface Props {
 }
 
 export default function WonderCard({ stop, onContinue, hasContext = true, isFinalInStop = false }: Props) {
+  const [autoplayPref] = useAudioAutoplay();
   if (!stop.wonder) return null;
+  const shouldAutoplay = autoplayPref && !stop.wonder.audioAutoplayDisabled;
 
   const buttonLabel = isFinalInStop
     ? "We've talked — continue tour"
@@ -31,7 +34,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
       </p>
 
       {/* Audio player */}
-      {stop.wonder?.audioUrl && <AudioButton audioUrl={stop.wonder.audioUrl} title={stop.wonder.audioTitle} />}
+      {stop.wonder?.audioUrl && <AudioButton audioUrl={stop.wonder.audioUrl} title={stop.wonder.audioTitle} autoplay={shouldAutoplay} />}
 
       {/* Discussion prompt + photos */}
       <PhotoContent

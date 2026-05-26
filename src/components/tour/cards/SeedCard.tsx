@@ -11,6 +11,7 @@ import { Stop } from '@/lib/types';
 import PhotoContent from './PhotoContent';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
+import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
   stop: Stop;
@@ -18,6 +19,12 @@ interface Props {
 }
 
 export default function SeedCard({ stop, onContinue }: Props) {
+  const [autoplayPref] = useAudioAutoplay();
+  const seedAutoplay = autoplayPref && !stop.seed.audioAutoplayDisabled;
+  // When both seed and notice audio are present on this combined screen,
+  // suppress notice autoplay so the two streams don't play in parallel.
+  const noticeAutoplay = autoplayPref && !stop.notice.audioAutoplayDisabled && !stop.seed.audioUrl;
+
   // Use the notice timer as the primary timer
   const noticeTimer = stop.notice.timerSeconds || 0;
   const seedTimer = stop.seed.timerSeconds ?? null;
@@ -48,7 +55,7 @@ export default function SeedCard({ stop, onContinue }: Props) {
       </p>
 
       {/* Seed audio */}
-      {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} />}
+      {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedAutoplay} />}
 
       {/* Seed text + photos */}
       {stop.seed.text ? (
@@ -75,7 +82,7 @@ export default function SeedCard({ stop, onContinue }: Props) {
           </p>
 
           {/* Notice audio */}
-          {stop.notice.audioUrl && <AudioButton audioUrl={stop.notice.audioUrl} title={stop.notice.audioTitle} />}
+          {stop.notice.audioUrl && <AudioButton audioUrl={stop.notice.audioUrl} title={stop.notice.audioTitle} autoplay={noticeAutoplay} />}
 
           {/* Notice prompt + photos */}
           <PhotoContent

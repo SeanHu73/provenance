@@ -12,9 +12,15 @@ interface Props {
   onTitleChange?: (title: string | null) => void;
   uploadPath: string;
   onUploadFile: (file: File, path: string) => Promise<string>;
+  /** When provided alongside onAutoplayDisabledChange, renders a "Don't
+   *  autoplay on this screen" checkbox so the admin can opt this audio
+   *  out of the user-facing autoplay preference (e.g. screens where
+   *  explorers should read first before audio joins in). */
+  autoplayDisabled?: boolean;
+  onAutoplayDisabledChange?: (v: boolean) => void;
 }
 
-export default function AudioUpload({ audioUrl, audioTitle, onChange, onTitleChange, uploadPath, onUploadFile }: Props) {
+export default function AudioUpload({ audioUrl, audioTitle, onChange, onTitleChange, uploadPath, onUploadFile, autoplayDisabled, onAutoplayDisabledChange }: Props) {
   return (
     <div className="space-y-1">
       <span className="text-xs text-stone-500">Audio narration (optional)</span>
@@ -58,6 +64,17 @@ export default function AudioUpload({ audioUrl, audioTitle, onChange, onTitleCha
       )}
       {audioUrl && (
         <audio controls src={audioUrl} className="w-full h-8 mt-1" style={{ maxHeight: 32 }} />
+      )}
+      {audioUrl && onAutoplayDisabledChange && (
+        <label className="flex items-center gap-2 mt-1 text-[11px] text-stone-600 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={!!autoplayDisabled}
+            onChange={(e) => onAutoplayDisabledChange(e.target.checked)}
+            className="w-3.5 h-3.5 accent-amber-500"
+          />
+          Don&apos;t autoplay on this screen (read first, audio fits in after)
+        </label>
       )}
     </div>
   );

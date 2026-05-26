@@ -10,9 +10,14 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 interface Props {
   audioUrl: string;
   title?: string | null;
+  /** When true, the audio attempts to play on mount. Browsers may still
+   *  block — the play() promise is swallowed and the button falls back
+   *  to its idle state. Only consulted on mount; toggling the user's
+   *  autoplay preference mid-screen does not retroactively start audio. */
+  autoplay?: boolean;
 }
 
-export default function AudioButton({ audioUrl, title }: Props) {
+export default function AudioButton({ audioUrl, title, autoplay = false }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -29,8 +34,17 @@ export default function AudioButton({ audioUrl, title }: Props) {
       setProgress(audio.duration ? audio.currentTime / audio.duration : 0);
     });
     audio.addEventListener('ended', () => { setPlaying(false); setProgress(0); setCurrentTime(0); });
+    audio.addEventListener('pause', () => setPlaying(false));
+    audio.addEventListener('play', () => setPlaying(true));
+
+    if (autoplay) {
+      audio.play().catch(() => {});
+    }
 
     return () => { audio.pause(); audio.src = ''; };
+    // autoplay is intentionally only read on mount — toggling the user
+    // preference mid-screen should not retroactively start playback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioUrl]);
 
   const toggle = useCallback(() => {

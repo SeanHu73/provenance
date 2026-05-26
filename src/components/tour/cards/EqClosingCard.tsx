@@ -23,6 +23,7 @@ import BackButton from './BackButton';
 import MicButton from '../MicButton';
 import FormattedText from './FormattedText';
 import AudioButton from './AudioButton';
+import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
   tour: Tour;
@@ -32,6 +33,8 @@ interface Props {
 
 export default function EqClosingCard({ tour, session, onComplete }: Props) {
   const eq = tour.essentialQuestion!;
+  const [autoplayPref] = useAudioAutoplay();
+  const shouldAutoplay = autoplayPref && !eq.closingAudioAutoplayDisabled;
   const [reflection, setReflection] = useState('');
   const [reasoning, setReasoning] = useState('');
 
@@ -52,7 +55,7 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
             <FormattedText text={eq.closingFraming} />
           </p>
         )}
-        {eq.closingAudioUrl && <AudioButton audioUrl={eq.closingAudioUrl} title={eq.closingAudioTitle} />}
+        {eq.closingAudioUrl && <AudioButton audioUrl={eq.closingAudioUrl} title={eq.closingAudioTitle} autoplay={shouldAutoplay} />}
       </div>
 
       {/* The essential question — restated */}

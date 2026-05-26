@@ -193,9 +193,11 @@ export interface Tour {
     intro?: string;                  // Brief intro shown on the "Meet Your Guide" screen
     introAudioUrl?: string | null;   // Optional narration on the "Meet Your Guide" screen
     introAudioTitle?: string | null;
+    introAudioAutoplayDisabled?: boolean; // When true, never autoplay this screen's audio
     thankYouMessage?: string;        // Closing "Last words from <guide>" message
     thankYouAudioUrl?: string | null;   // Optional narration on the "Last words" screen
     thankYouAudioTitle?: string | null;
+    thankYouAudioAutoplayDisabled?: boolean;
   };
   description: string;               // Brief intro shown on journal peek
   coverPhotoUrl: string;             // Photo for the journal peek
@@ -203,6 +205,7 @@ export interface Tour {
   coverPhotoZoom?: number;           // 1–3× zoom for the cover crop
   peekAudioUrl: string | null;       // Audio that plays on the journal peek
   peekAudioTitle: string | null;
+  peekAudioAutoplayDisabled?: boolean;
   // The "parent" pin on the map — the single marker visible before a
   // tour starts. Tapping it opens the journal peek.
   location: { lat: number; lng: number } | null;
@@ -220,6 +223,7 @@ export interface Tour {
     sceneDescription: string;          // "Find the stone plaque on the north wall..."
     sceneAudioUrl: string | null;      // Optional audio for the scene
     sceneAudioTitle: string | null;
+    sceneAudioAutoplayDisabled?: boolean;
     openingFraming: string;            // Toggle text below the scene
     closingFraming: string;            // "You answered this question before..."
     theoryPrompt: string;              // "What might your theory be?"
@@ -233,6 +237,7 @@ export interface Tour {
     } | null;
     closingAudioUrl: string | null;     // Audio for the closing discuss screen
     closingAudioTitle: string | null;
+    closingAudioAutoplayDisabled?: boolean;
     finalReflectionPrompt: string;     // "Your interpretation now..."
     finalReflectionPlaceholder: string;
     finalReasoningPrompt: string;      // "What did you discuss or see..."
@@ -292,6 +297,7 @@ export interface Stop {
     timerSeconds: number | null;     // Optional reading timer (null = no timer)
     audioUrl: string | null;         // Optional audio narration
     audioTitle: string | null;       // Display title for audio
+    audioAutoplayDisabled?: boolean;
   };
 
   // Notice phase
@@ -303,6 +309,7 @@ export interface Stop {
     photos: StopPhoto[]; // Multiple photos
     audioUrl: string | null;
     audioTitle: string | null;
+    audioAutoplayDisabled?: boolean;
   };
 
   // Wonder phase — null means skip (notice goes straight to reveal)
@@ -312,6 +319,7 @@ export interface Stop {
     photos: StopPhoto[];
     audioUrl: string | null;
     audioTitle: string | null;
+    audioAutoplayDisabled?: boolean;
   } | null;
 
   // Reveal phase
@@ -324,16 +332,18 @@ export interface Stop {
     bridgePhotos: StopPhoto[];
     audioUrl: string | null;
     audioTitle: string | null;
+    audioAutoplayDisabled?: boolean;
   };
 
   // Extra wonder + context rounds (optional, after the initial reveal, before the bridge)
   extraRounds: Array<{
-    wonder: { question: string; questionType: 'discuss' | 'opinion'; photos: StopPhoto[]; audioUrl: string | null; audioTitle: string | null } | null;
+    wonder: { question: string; questionType: 'discuss' | 'opinion'; photos: StopPhoto[]; audioUrl: string | null; audioTitle: string | null; audioAutoplayDisabled?: boolean } | null;
     reveal: {
       text: string;
       photos: StopPhoto[];
       audioUrl: string | null;
       audioTitle: string | null;
+      audioAutoplayDisabled?: boolean;
     } | null;
   }>;
 

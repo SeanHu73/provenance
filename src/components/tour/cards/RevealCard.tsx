@@ -6,6 +6,7 @@ import PhotoContent from './PhotoContent';
 import FullscreenPhoto from './FullscreenPhoto';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
+import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
   stop: Stop;
@@ -16,6 +17,8 @@ interface Props {
 
 export default function RevealCard({ stop, onContinue, isFinalInStop = false }: Props) {
   const hasAudio = !!stop.reveal.audioUrl;
+  const [autoplayPref] = useAudioAutoplay();
+  const shouldAutoplay = autoplayPref && !stop.reveal.audioAutoplayDisabled;
   const [textExpanded, setTextExpanded] = useState(!hasAudio);
   const [fullscreen, setFullscreen] = useState<{ url: string; caption: string | null } | null>(null);
 
@@ -33,7 +36,7 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
       </p>
 
       {/* Audio player */}
-      {hasAudio && <AudioButton audioUrl={stop.reveal.audioUrl!} title={stop.reveal.audioTitle} />}
+      {hasAudio && <AudioButton audioUrl={stop.reveal.audioUrl!} title={stop.reveal.audioTitle} autoplay={shouldAutoplay} />}
 
       {/* When text is hidden: "tap to read along" then photos */}
       {hasAudio && !textExpanded && (

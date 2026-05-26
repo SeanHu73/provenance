@@ -433,6 +433,8 @@ export default function TourEditorPage() {
               onTitleChange={(title) => updateGuidePartial({ introAudioTitle: title })}
               uploadPath={`memorial-church/audio/tours/${tourId}/guide`}
               onUploadFile={uploadPhoto}
+              autoplayDisabled={tour.guide.introAudioAutoplayDisabled}
+              onAutoplayDisabledChange={(v) => updateGuidePartial({ introAudioAutoplayDisabled: v })}
             />
             <label className="block">
               <span className="text-xs text-stone-600">
@@ -456,6 +458,8 @@ export default function TourEditorPage() {
               onTitleChange={(title) => updateGuidePartial({ thankYouAudioTitle: title })}
               uploadPath={`memorial-church/audio/tours/${tourId}/guide-outro`}
               onUploadFile={uploadPhoto}
+              autoplayDisabled={tour.guide.thankYouAudioAutoplayDisabled}
+              onAutoplayDisabledChange={(v) => updateGuidePartial({ thankYouAudioAutoplayDisabled: v })}
             />
           </div>
 
@@ -574,6 +578,8 @@ export default function TourEditorPage() {
             onTitleChange={(title) => updateField('peekAudioTitle', title)}
             uploadPath={`memorial-church/audio/tours/${tourId}/peek`}
             onUploadFile={uploadPhoto}
+            autoplayDisabled={tour.peekAudioAutoplayDisabled}
+            onAutoplayDisabledChange={(v) => updateField('peekAudioAutoplayDisabled', v)}
           />
 
           {/* Tour-level map pin */}
@@ -753,6 +759,8 @@ export default function TourEditorPage() {
                 onTitleChange={(title) => updateField('essentialQuestion', { ...tour.essentialQuestion!, sceneAudioTitle: title })}
                 uploadPath={`memorial-church/audio/tours/${tourId}/eq_scene`}
                 onUploadFile={uploadPhoto}
+                autoplayDisabled={tour.essentialQuestion.sceneAudioAutoplayDisabled}
+                onAutoplayDisabledChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, sceneAudioAutoplayDisabled: v })}
               />
 
               <div className="block">
@@ -851,6 +859,8 @@ export default function TourEditorPage() {
                 onTitleChange={(title) => updateField('essentialQuestion', { ...tour.essentialQuestion!, closingAudioTitle: title })}
                 uploadPath={`memorial-church/audio/tours/${tourId}/eq_closing`}
                 onUploadFile={uploadPhoto}
+                autoplayDisabled={tour.essentialQuestion.closingAudioAutoplayDisabled}
+                onAutoplayDisabledChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, closingAudioAutoplayDisabled: v })}
               />
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
@@ -1314,6 +1324,8 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
           onTitleChange={(audioTitle) => onChange({ seed: { ...stop.seed, audioTitle } })}
           uploadPath={`memorial-church/audio/tours/${tourId}/seed_${stop.id}`}
           onUploadFile={onUploadPhoto}
+          autoplayDisabled={stop.seed.audioAutoplayDisabled}
+          onAutoplayDisabledChange={(v) => onChange({ seed: { ...stop.seed, audioAutoplayDisabled: v } })}
         />
       </fieldset>
 
@@ -1365,6 +1377,8 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
           onTitleChange={(audioTitle) => onChange({ notice: { ...stop.notice, audioTitle } })}
           uploadPath={`memorial-church/audio/tours/${tourId}/notice_${stop.id}`}
           onUploadFile={onUploadPhoto}
+          autoplayDisabled={stop.notice.audioAutoplayDisabled}
+          onAutoplayDisabledChange={(v) => onChange({ notice: { ...stop.notice, audioAutoplayDisabled: v } })}
         />
       </fieldset>
 
@@ -1424,6 +1438,8 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
               onTitleChange={(audioTitle) => onChange({ wonder: { ...stop.wonder!, audioTitle } })}
               uploadPath={`memorial-church/audio/tours/${tourId}/wonder_${stop.id}`}
               onUploadFile={onUploadPhoto}
+              autoplayDisabled={stop.wonder!.audioAutoplayDisabled}
+              onAutoplayDisabledChange={(v) => onChange({ wonder: { ...stop.wonder!, audioAutoplayDisabled: v } })}
             />
           </>
         )}
@@ -1460,6 +1476,8 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
           onTitleChange={(audioTitle) => onChange({ reveal: { ...stop.reveal, audioTitle } })}
           uploadPath={`memorial-church/audio/tours/${tourId}/reveal_${stop.id}`}
           onUploadFile={onUploadPhoto}
+          autoplayDisabled={stop.reveal.audioAutoplayDisabled}
+          onAutoplayDisabledChange={(v) => onChange({ reveal: { ...stop.reveal, audioAutoplayDisabled: v } })}
         />
       </fieldset>
 
@@ -1550,6 +1568,12 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
                         }}
                         uploadPath={`memorial-church/audio/tours/${tourId}/extra_wonder_${stop.id}_${i}`}
                         onUploadFile={onUploadPhoto}
+                        autoplayDisabled={round.wonder?.audioAutoplayDisabled}
+                        onAutoplayDisabledChange={(v) => {
+                          const next = [...(stop.extraRounds || [])];
+                          next[i] = { ...next[i], wonder: { ...next[i].wonder!, audioAutoplayDisabled: v } };
+                          onChange({ extraRounds: next });
+                        }}
                       />
                     </>
                   )}
@@ -1602,6 +1626,12 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
                         }}
                         uploadPath={`memorial-church/audio/tours/${tourId}/extra_reveal_${stop.id}_${i}`}
                         onUploadFile={onUploadPhoto}
+                        autoplayDisabled={round.reveal?.audioAutoplayDisabled}
+                        onAutoplayDisabledChange={(v) => {
+                          const next = [...(stop.extraRounds || [])];
+                          next[i] = { ...next[i], reveal: { ...next[i].reveal!, audioAutoplayDisabled: v } };
+                          onChange({ extraRounds: next });
+                        }}
                       />
                     </>
                   )}

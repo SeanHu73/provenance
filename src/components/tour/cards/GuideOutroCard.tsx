@@ -9,6 +9,7 @@ import { Tour } from '@/lib/types';
 import { guidePhotoStyle } from '@/lib/guide-photo';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
+import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
   tour: Tour;
@@ -17,6 +18,8 @@ interface Props {
 
 export default function GuideOutroCard({ tour, onContinue }: Props) {
   const g = tour.guide;
+  const [autoplayPref] = useAudioAutoplay();
+  const shouldAutoplay = autoplayPref && !g.thankYouAudioAutoplayDisabled;
 
   return (
     <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
@@ -46,7 +49,7 @@ export default function GuideOutroCard({ tour, onContinue }: Props) {
 
       {/* Audio */}
       {g.thankYouAudioUrl && (
-        <AudioButton audioUrl={g.thankYouAudioUrl} title={g.thankYouAudioTitle ?? null} />
+        <AudioButton audioUrl={g.thankYouAudioUrl} title={g.thankYouAudioTitle ?? null} autoplay={shouldAutoplay} />
       )}
 
       {/* Message */}

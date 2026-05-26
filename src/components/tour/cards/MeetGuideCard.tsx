@@ -10,6 +10,7 @@ import { Tour } from '@/lib/types';
 import { guidePhotoStyle } from '@/lib/guide-photo';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
+import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
   tour: Tour;
@@ -18,6 +19,8 @@ interface Props {
 
 export default function MeetGuideCard({ tour, onContinue }: Props) {
   const g = tour.guide;
+  const [autoplayPref] = useAudioAutoplay();
+  const shouldAutoplay = autoplayPref && !g.introAudioAutoplayDisabled;
 
   return (
     <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
@@ -57,7 +60,7 @@ export default function MeetGuideCard({ tour, onContinue }: Props) {
 
       {/* Audio */}
       {g.introAudioUrl && (
-        <AudioButton audioUrl={g.introAudioUrl} title={g.introAudioTitle ?? null} />
+        <AudioButton audioUrl={g.introAudioUrl} title={g.introAudioTitle ?? null} autoplay={shouldAutoplay} />
       )}
 
       {/* Intro text */}

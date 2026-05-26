@@ -11,6 +11,7 @@ import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import FullscreenPhoto from './FullscreenPhoto';
 import FormattedText from './FormattedText';
+import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
   tour: Tour;
@@ -19,6 +20,8 @@ interface Props {
 
 export default function EqSceneCard({ tour, onContinue }: Props) {
   const eq = tour.essentialQuestion!;
+  const [autoplayPref] = useAudioAutoplay();
+  const shouldAutoplay = autoplayPref && !eq.sceneAudioAutoplayDisabled;
   const [framingOpen, setFramingOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
 
@@ -53,7 +56,7 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
 
       {/* Scene audio */}
       {eq.sceneAudioUrl && (
-        <AudioButton audioUrl={eq.sceneAudioUrl} title={eq.sceneAudioTitle} />
+        <AudioButton audioUrl={eq.sceneAudioUrl} title={eq.sceneAudioTitle} autoplay={shouldAutoplay} />
       )}
 
       {/* Opening framing — toggle */}
