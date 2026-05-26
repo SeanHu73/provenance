@@ -25,6 +25,7 @@ import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import RichTextarea from '@/components/admin/RichTextarea';
 import AudioUpload from '@/components/admin/AudioUpload';
+import PhotoOverlayEditor from '@/components/admin/PhotoOverlayEditor';
 import { registerPhotoInLibrary } from '@/lib/photo-sync-tour';
 
 const CHURCH_LOCATION = { lat: 37.42700, lng: -122.17015 };
@@ -1380,6 +1381,14 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
           autoplayDisabled={stop.notice.audioAutoplayDisabled}
           onAutoplayDisabledChange={(v) => onChange({ notice: { ...stop.notice, audioAutoplayDisabled: v } })}
         />
+
+        {/* ── Indoor "where to go" map ── */}
+        <NoticeMapEditor
+          map={stop.notice.noticeMap ?? null}
+          uploadPath={`memorial-church/photos/tours/${tourId}/notice_map_${stop.id}`}
+          onUploadPhoto={onUploadPhoto}
+          onChange={(noticeMap) => onChange({ notice: { ...stop.notice, noticeMap } })}
+        />
       </fieldset>
 
       {/* ── Wonder ── */}
@@ -2201,6 +2210,8 @@ interface PhotoListEditorProps {
 }
 
 function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto, showThumbnailCrop = false }: PhotoListEditorProps) {
+  const [overlayEditorIndex, setOverlayEditorIndex] = useState<number | null>(null);
+  const editingPhoto = overlayEditorIndex !== null ? photos[overlayEditorIndex] : null;
   return (
     <div className="space-y-2">
       <span className="text-xs text-stone-500">
@@ -2249,6 +2260,15 @@ function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto, showThum
                 />
               </label>
             </div>
+            {photo.url && (
+              <button
+                onClick={() => setOverlayEditorIndex(i)}
+                className="px-2 py-1 text-[11px] font-semibold rounded bg-blue-100 text-blue-700 hover:bg-blue-200 shrink-0"
+                title="Annotate this photo"
+              >
+                Annotate{photo.overlays && photo.overlays.length > 0 ? ` (${photo.overlays.length})` : ''}
+              </button>
+            )}
             <button
               onClick={() => onChange(photos.filter((_, j) => j !== i))}
               className="px-1.5 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
@@ -2432,6 +2452,148 @@ function PhotoListEditor({ photos, onChange, uploadPath, onUploadPhoto, showThum
       >
         + Add photo
       </button>
+
+      {editingPhoto && overlayEditorIndex !== null && (
+        <PhotoOverlayEditor
+          photoUrl={editingPhoto.url}
+          initial={editingPhoto.overlays}
+          onCancel={() => setOverlayEditorIndex(null)}
+          onSave={(overlays) => {
+            const next = [...photos];
+            next[overlayEditorIndex] = { ...next[overlayEditorIndex], overlays };
+            onChange(next);
+            setOverlayEditorIndex(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Notice Map Editor ──────────────────────────────────────────────
+
+interface NoticeMapEditorProps {
+  map: import('@/lib/types').NoticeMap | null;
+  uploadPath: string;
+  onUploadPhoto: (file: File, path: string) => Promise<string>;
+  onChange: (next: import('@/lib/types').NoticeMap | null) => void;
+}
+
+function NoticeMapEditor({ map, uploadPath, onUploadPhoto, onChange }: NoticeMapEditorProps) {
+  return (
+    <div className="border-t border-stone-200 pt-2 space-y-2">
+      <div className="flex items-baseline gap-2">
+        <p className="text-xs font-semibold text-stone-700">Indoor &ldquo;where to go&rdquo; map (optional)</p>
+        <p className="text-[10px] text-stone-400">
+          Shown above the prompt. Use for indoor stops where the outdoor GPS pin isn&apos;t enough.
+        </p>
+      </div>
+
+      {/* Upload row */}
+      <div className="flex gap-2 items-center">
+        <input
+          value={map?.url ?? ''}
+          onChange={(e) =>
+            onChange(
+              e.target.value
+                ? { url: e.target.value, caption: map?.caption ?? null, markers: map?.markers ?? [] }
+                : null,
+            )
+          }
+          className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs"
+          placeholder="Map image URL or upload..."
+        />
+        <label className="px-2 py-1 rounded bg-stone-200 text-stone-700 text-xs cursor-pointer hover:bg-stone-300 shrink-0">
+          Upload
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const url = await onUploadPhoto(file, `${uploadPath}_${file.name}`);
+              onChange({ url, caption: map?.caption ?? null, markers: map?.markers ?? [] });
+            }}
+          />
+        </label>
+        {map?.url && (
+          <button
+            onClick={() => onChange(null)}
+            className="text-xs text-red-600 hover:underline shrink-0"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+
+      {map?.url && (
+        <>
+          <input
+            value={map.caption ?? ''}
+            onChange={(e) => onChange({ ...map, caption: e.target.value || null })}
+            className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
+            placeholder="Caption (e.g. “North aisle, near the second column”)"
+          />
+
+          <p className="text-[10px] text-stone-500">
+            Click on the map to drop a &ldquo;you go here&rdquo; marker. Click an existing marker to edit or remove.
+          </p>
+
+          {/* Preview with markers — click to add new */}
+          <div
+            className="relative inline-block w-full max-w-xl border border-stone-300 rounded overflow-hidden bg-black/5 cursor-crosshair select-none"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+              const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+              const id = `mk_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+              onChange({ ...map, markers: [...map.markers, { id, x, y }] });
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={map.url} alt="" className="block w-full max-h-80 object-contain" draggable={false} />
+            {map.markers.map((m) => (
+              <div
+                key={m.id}
+                className="absolute flex flex-col items-center pointer-events-none"
+                style={{ left: `${m.x}%`, top: `${m.y}%`, transform: 'translate(-50%, -100%)' }}
+              >
+                <svg width="26" height="32" viewBox="0 0 24 30" fill="none" style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))' }}>
+                  <path d="M12 0 a 9 9 0 0 1 9 9 c 0 7 -9 21 -9 21 s -9 -14 -9 -21 a 9 9 0 0 1 9 -9 z" fill="#C4923A" stroke="#fff" strokeWidth="1.5" />
+                  <circle cx="12" cy="9" r="3.2" fill="#fff" />
+                </svg>
+              </div>
+            ))}
+          </div>
+
+          {/* Marker list — labels + delete */}
+          {map.markers.length > 0 && (
+            <ul className="space-y-1.5">
+              {map.markers.map((m, i) => (
+                <li key={m.id} className="flex gap-2 items-center text-xs">
+                  <span className="w-5 text-stone-400">{i + 1}.</span>
+                  <input
+                    value={m.label ?? ''}
+                    onChange={(e) => {
+                      const next = [...map.markers];
+                      next[i] = { ...next[i], label: e.target.value || undefined };
+                      onChange({ ...map, markers: next });
+                    }}
+                    placeholder="Optional label (e.g. “You are here”)"
+                    className="flex-1 px-2 py-1 border border-stone-300 rounded"
+                  />
+                  <span className="text-[10px] text-stone-400 font-mono">{Math.round(m.x)}, {Math.round(m.y)}</span>
+                  <button
+                    onClick={() => onChange({ ...map, markers: map.markers.filter((_, j) => j !== i) })}
+                    className="px-1.5 py-0.5 text-red-600 hover:bg-red-50 rounded"
+                  >&times;</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
     </div>
   );
 }

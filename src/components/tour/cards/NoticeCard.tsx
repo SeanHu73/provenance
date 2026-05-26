@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Stop } from '@/lib/types';
 import PhotoContent from './PhotoContent';
 import AudioButton from './AudioButton';
+import NoticeMapDisplay from './NoticeMapDisplay';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
@@ -39,6 +40,11 @@ export default function NoticeCard({ stop, onContinue }: Props) {
 
       {/* Audio player */}
       {stop.notice.audioUrl && <AudioButton audioUrl={stop.notice.audioUrl} title={stop.notice.audioTitle} autoplay={shouldAutoplay} />}
+
+      {/* Indoor "where to go" map — only when the admin uploaded one */}
+      {stop.notice.noticeMap && stop.notice.noticeMap.url && (
+        <NoticeMapDisplay map={stop.notice.noticeMap} />
+      )}
 
       {/* Prompt + photos interleaved via [photo:N] markers */}
       <PhotoContent

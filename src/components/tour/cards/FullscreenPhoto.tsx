@@ -9,14 +9,17 @@
 
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import type { PhotoOverlay } from '@/lib/types';
+import PhotoAnnotations from './PhotoAnnotations';
 
 interface Props {
   url: string;
   caption: string | null;
   onClose: () => void;
+  overlays?: PhotoOverlay[];
 }
 
-function FullscreenOverlay({ url, caption, onClose }: Props) {
+function FullscreenOverlay({ url, caption, onClose, overlays }: Props) {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -55,17 +58,24 @@ function FullscreenOverlay({ url, caption, onClose }: Props) {
           overflow: 'hidden',
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={url}
-          alt={caption || ''}
-          style={{
-            maxWidth: '100%',
-            maxHeight: '100%',
-            objectFit: 'contain',
-          }}
-          draggable={false}
-        />
+        {/* Inline-block wrapper auto-sizes to the rendered image so the
+            annotation overlay tracks the image edges exactly, regardless
+            of the image's intrinsic aspect ratio. */}
+        <div style={{ position: 'relative', display: 'inline-block', maxWidth: '100%', maxHeight: '100%' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt={caption || ''}
+            style={{
+              display: 'block',
+              maxWidth: '100%',
+              maxHeight: '100%',
+              objectFit: 'contain',
+            }}
+            draggable={false}
+          />
+          <PhotoAnnotations overlays={overlays} />
+        </div>
       </div>
 
       {/* Bottom close bar */}

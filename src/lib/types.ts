@@ -260,6 +260,16 @@ export interface Tour {
   updatedAt: string;                 // ISO 8601
 }
 
+// ─── Photo overlays ──────────────────────────────────────────────
+// Visual overlays an admin can drop onto a stop photo to highlight
+// features: text labels, outlined circles, outlined rectangles. Stored
+// in percent-of-photo coordinates so they scale with any rendered
+// size. (Distinct from the legacy v1 inquiry PhotoAnnotation above.)
+export type PhotoOverlay =
+  | { id: string; kind: 'text'; x: number; y: number; text: string; color: string; fontSize?: number }
+  | { id: string; kind: 'circle'; x: number; y: number; w: number; h: number; color: string }
+  | { id: string; kind: 'rect'; x: number; y: number; w: number; h: number; color: string };
+
 export interface StopPhoto {
   url: string;
   caption: string | null;
@@ -267,6 +277,25 @@ export interface StopPhoto {
   focalPoint?: { x: number; y: number };
   zoom?: number;                          // cover mode: 1.0 = standard fill, >1 = zoomed in
   thumbnailFocalPoint?: { x: number; y: number }; // focal point for small thumbnails
+  overlays?: PhotoOverlay[];              // admin-authored highlights/text
+}
+
+// ─── Notice map ──────────────────────────────────────────────────
+// Optional admin-uploaded floorplan / room photo used on the Notice
+// screen when GPS pins are unhelpful (e.g. inside a building). Each
+// marker is a "this is where the stop is" indicator at (x, y)
+// percent coordinates, with an optional admin-authored label.
+export interface NoticeMapMarker {
+  id: string;
+  x: number;                              // 0–100
+  y: number;                              // 0–100
+  label?: string;
+}
+
+export interface NoticeMap {
+  url: string;
+  caption?: string | null;
+  markers: NoticeMapMarker[];
 }
 
 export interface Stop {
@@ -310,6 +339,11 @@ export interface Stop {
     audioUrl: string | null;
     audioTitle: string | null;
     audioAutoplayDisabled?: boolean;
+    /** Optional indoor "where to go" map shown above the prompt. Used
+     *  for stops inside buildings where the outdoor GPS pin isn't
+     *  enough — the admin uploads a floorplan / room photo and drops
+     *  marker(s) on it pointing to where this sub-stop is. */
+    noticeMap?: NoticeMap | null;
   };
 
   // Wonder phase — null means skip (notice goes straight to reveal)

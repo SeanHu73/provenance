@@ -12,6 +12,8 @@
 import { useState } from 'react';
 import FormattedText from './FormattedText';
 import FullscreenPhoto from './FullscreenPhoto';
+import PhotoAnnotations from './PhotoAnnotations';
+import type { PhotoOverlay } from '@/lib/types';
 
 interface Photo {
   url: string;
@@ -19,6 +21,7 @@ interface Photo {
   displayMode?: 'cover' | 'contain';
   focalPoint?: { x: number; y: number };
   zoom?: number;
+  overlays?: PhotoOverlay[];
 }
 
 interface Props {
@@ -64,7 +67,7 @@ export default function PhotoContent({
           ))}
         </div>
         {fullscreen && (
-          <FullscreenPhoto url={fullscreen.url} caption={fullscreen.caption} onClose={() => setFullscreen(null)} />
+          <FullscreenPhoto url={fullscreen.url} caption={fullscreen.caption} overlays={fullscreen.overlays} onClose={() => setFullscreen(null)} />
         )}
       </>
     );
@@ -106,7 +109,7 @@ export default function PhotoContent({
         })}
       </div>
       {fullscreen && (
-        <FullscreenPhoto url={fullscreen.url} caption={fullscreen.caption} onClose={() => setFullscreen(null)} />
+        <FullscreenPhoto url={fullscreen.url} caption={fullscreen.caption} overlays={fullscreen.overlays} onClose={() => setFullscreen(null)} />
       )}
     </>
   );
@@ -130,7 +133,7 @@ function PhotoBlock({ photo, onTap }: { photo: Photo; onTap: () => void }) {
       style={{ overflow: 'clip' }}
     >
       {isCover ? (
-        <div className="w-full h-72" style={{ overflow: 'clip' }}>
+        <div className="relative w-full h-72" style={{ overflow: 'clip' }}>
           {/* Scale wrapper — keeps overflow:clip reliable when zooming */}
           <div
             style={{
@@ -147,14 +150,18 @@ function PhotoBlock({ photo, onTap }: { photo: Photo; onTap: () => void }) {
               style={{ objectPosition }}
             />
           </div>
+          <PhotoAnnotations overlays={photo.overlays} />
         </div>
       ) : (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={photo.url}
-          alt={photo.caption || ''}
-          className="w-full max-h-72 object-contain"
-        />
+        <div className="relative w-full">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photo.url}
+            alt={photo.caption || ''}
+            className="w-full max-h-72 object-contain"
+          />
+          <PhotoAnnotations overlays={photo.overlays} />
+        </div>
       )}
       {photo.caption && (
         <p className={`text-xs px-3 py-1.5 italic ${isLetterbox ? 'text-white/70 bg-black/50' : 'text-text-secondary bg-sandstone/50'}`}>
