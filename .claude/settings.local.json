@@ -46,7 +46,12 @@
       "PowerShell(npm run *)",
       "Bash(git -C \"D:/Provenance/memorial-church-tool\" add src/components/tour/cards/EqAdditionalCard.tsx src/components/tour/cards/EqClosingCard.tsx src/components/tour/cards/EqClosingDiscussCard.tsx src/components/tour/cards/EqDiscussCard.tsx src/components/tour/cards/EqOpeningCard.tsx)",
       "Bash(git -C D:/Provenance/memorial-church-tool commit -m ' *)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(node -e \"const s=require\\('sharp'\\); ['docs/Logo.png','public/icon-192.png','public/icon-512.png'].forEach\\(f=>{s\\(f\\).metadata\\(\\).then\\(m=>console.log\\(f, m.width+'x'+m.height, m.format, 'alpha='+m.hasAlpha\\)\\).catch\\(e=>console.log\\(f,'ERR',e.message\\)\\)}\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(echo \"TSC_EXIT=$?\")",
+      "Bash(node *)"
     ]
   }
 }

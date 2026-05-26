@@ -41,11 +41,12 @@ export default function TourFooter({ tour, session, pointAtQuestion = false }: P
         </button>
         <button
           onClick={() => setShowQuestionInput(true)}
-          className="relative flex items-center justify-center px-5 py-3.5 rounded-xl text-xl leading-none font-bold text-warm-white bg-white/25 hover:bg-white/35 transition-colors border border-white/50"
+          className="relative flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-base font-semibold text-warm-white bg-white/25 hover:bg-white/35 transition-colors border border-white/50"
           style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' }}
           title="Ask a question"
         >
-          ?
+          <span className="text-xl leading-none font-bold">?</span>
+          Inquiries
           {pointAtQuestion && (
             <span className="absolute left-1/2 bottom-full mb-1.5 -translate-x-1/2 pointer-events-none">
               <svg
