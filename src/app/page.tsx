@@ -33,7 +33,6 @@ function HomeInner() {
     setSelectedUnstructuredStopId,
     canGoBack,
     goBack,
-    endTour,
     completeMidwayCheckin,
   } = useTour();
 
@@ -206,15 +205,10 @@ function HomeInner() {
             )}
           </div>
           <p className="text-lg font-display font-bold text-warm-white text-center">{activeTour?.title}</p>
-          <div className="w-8">
-            <button
-              onClick={endTour}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15 text-sm"
-              title="Exit tour"
-            >
-              &times;
-            </button>
-          </div>
+          {/* Empty placeholder keeps the title centred without offering a
+              mid-tour exit. Leaving the tour is only available from the
+              EndCard at the natural end of the experience. */}
+          <div className="w-8" />
         </div>
       )}
 
