@@ -214,13 +214,11 @@ export default function Journal({ onMapPeek }: JournalProps) {
               : { x: '-100%' }
             }
             transition={{ duration: isFade ? 0.4 : 0.12, ease: isFade ? 'easeInOut' : 'easeOut' }}
-            className={`absolute inset-0 overflow-y-auto p-4 tour-scroll ${
-              phase === 'seed' ? 'snap-y snap-mandatory' : ''
-            }`}
+            className="absolute inset-0 overflow-y-auto p-4 tour-scroll"
             ref={(el) => { scrollContainerRef.current = el; checkScroll(); }}
             onScroll={checkScroll}
           >
-            <div className={`min-h-full rounded-2xl shadow-lg px-5 py-6 flex flex-col justify-center ${
+            <div className={`relative min-h-full rounded-2xl shadow-lg px-5 py-6 flex flex-col justify-center ${
               showBgPhoto
                 ? phase === 'reveal'
                   ? blurSupported

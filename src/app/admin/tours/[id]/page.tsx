@@ -95,6 +95,23 @@ export default function TourEditorPage() {
   const [expandedStopId, setExpandedStopId] = useState<string | null>(null);
   const [previewStopId, setPreviewStopId] = useState<string | null>(null);
   const [previewPhase, setPreviewPhase] = useState(0);
+  // Authoring-time textbox size — persisted across sessions so an admin's
+  // preference sticks. Applied via the data-admin-text-size attribute on
+  // the page root; CSS in globals.css scales every textarea / text input
+  // inside that scope.
+  const [adminTextSize, setAdminTextSize] = useState<'small' | 'normal' | 'large'>('normal');
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('admin-text-size');
+      if (saved === 'small' || saved === 'normal' || saved === 'large') {
+        setAdminTextSize(saved);
+      }
+    } catch { /* ignore */ }
+  }, []);
+  const changeAdminTextSize = (size: 'small' | 'normal' | 'large') => {
+    setAdminTextSize(size);
+    try { localStorage.setItem('admin-text-size', size); } catch { /* ignore */ }
+  };
 
   const stopRefs = useRef<Record<string, HTMLLIElement | null>>({});
   useEffect(() => {
@@ -239,7 +256,7 @@ export default function TourEditorPage() {
   const previewStop = previewStopId ? activeStops.find((s) => s.id === previewStopId) : null;
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 p-6 font-sans">
+    <div className="min-h-screen bg-stone-50 text-stone-900 p-6 font-sans" data-admin-text-size={adminTextSize}>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <header className="mb-6 border-b border-stone-300 pb-3">
@@ -249,6 +266,28 @@ export default function TourEditorPage() {
               <p className="text-xs text-stone-500 mt-0.5 font-mono">{tourId}</p>
             </div>
             <div className="flex gap-3 text-sm items-center">
+              {/* Author-side textbox size — scales every textarea and text
+                  input within the editor. Doesn't touch labels or buttons. */}
+              <div className="flex items-center gap-1 px-2 py-1 rounded border border-stone-300 bg-white">
+                <span className="text-[10px] text-stone-500 mr-1">Text size</span>
+                {(['small', 'normal', 'large'] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => changeAdminTextSize(s)}
+                    className={`px-1.5 py-0.5 rounded transition-colors ${
+                      adminTextSize === s
+                        ? 'bg-blue-600 text-white'
+                        : 'text-stone-600 hover:bg-stone-100'
+                    }`}
+                    style={{ fontSize: s === 'small' ? 10 : s === 'normal' ? 12 : 14, lineHeight: 1 }}
+                    aria-pressed={adminTextSize === s}
+                    title={`Text size: ${s}`}
+                  >
+                    A
+                  </button>
+                ))}
+              </div>
               {saving && <span className="text-xs text-stone-400 italic">Saving...</span>}
               <button
                 onClick={handleDeleteTour}

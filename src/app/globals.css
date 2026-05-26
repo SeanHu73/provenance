@@ -237,6 +237,25 @@ body {
   animation: gentleFade 2.4s ease-in-out infinite;
 }
 
+/* Admin text-size override — every textarea and text input within a
+   subtree marked with data-admin-text-size gets a uniform font size so
+   authoring at length is easier to read. Buttons, labels and the rest
+   of the chrome stay at their original sizes. */
+[data-admin-text-size="small"] textarea,
+[data-admin-text-size="small"] input[type="text"],
+[data-admin-text-size="small"] input:not([type]),
+[data-admin-text-size="small"] input[type="url"],
+[data-admin-text-size="small"] input[type="number"] {
+  font-size: 12px;
+}
+[data-admin-text-size="large"] textarea,
+[data-admin-text-size="large"] input[type="text"],
+[data-admin-text-size="large"] input:not([type]),
+[data-admin-text-size="large"] input[type="url"],
+[data-admin-text-size="large"] input[type="number"] {
+  font-size: 17px;
+}
+
 /* Tour card scrollbar — thin but visible */
 .tour-scroll::-webkit-scrollbar { width: 4px; }
 .tour-scroll::-webkit-scrollbar-track { background: transparent; }

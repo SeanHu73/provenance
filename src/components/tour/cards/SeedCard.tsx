@@ -189,16 +189,30 @@ export default function SeedCard({ stop, onContinue }: Props) {
     );
   }
 
+  // Two-section snap layout. SeedCard's outer is the actual scroll
+  // container, sized exactly to the parent card frame via absolute
+  // positioning — so each `h-full` section is exactly the height of the
+  // visible card area (no overshoot like min-h-screen produced) and a
+  // snap lands the next section's top at the viewport top with content
+  // centred in it.
   return (
-    <div className="animate-fade-in">
-      <section className="snap-start min-h-screen flex flex-col justify-center space-y-5 pb-6">
+    <div
+      className="animate-fade-in absolute inset-0 overflow-y-auto"
+      style={{ scrollSnapType: 'y mandatory' }}
+    >
+      <section
+        className="h-full flex flex-col justify-center space-y-5 px-1"
+        style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+      >
         {backgroundBlock}
       </section>
 
       <section
         ref={noticeRef}
-        className="snap-start min-h-screen flex flex-col justify-center space-y-5 pt-6"
+        className="h-full flex flex-col justify-center space-y-5 px-1"
         style={{
+          scrollSnapAlign: 'start',
+          scrollSnapStop: 'always',
           opacity: noticeRevealed ? 1 : 0,
           transform: noticeRevealed ? 'translateY(0)' : 'translateY(20px)',
           transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,

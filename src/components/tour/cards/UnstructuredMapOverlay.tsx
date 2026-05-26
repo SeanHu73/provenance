@@ -740,10 +740,19 @@ export function MidwayCheckinCard({
     };
   }, [questionRevealed]);
 
+  // Same approach as SeedCard's snap layout: absolutely-positioned
+  // scroll container sized to the parent frame so each `h-full` section
+  // is exactly the visible area, no overshoot.
   return (
-    <div className="animate-fade-in">
+    <div
+      className="animate-fade-in absolute inset-0 overflow-y-auto"
+      style={{ scrollSnapType: 'y mandatory' }}
+    >
       {/* Section 1 — header + visited stops summary */}
-      <section className="snap-start min-h-screen flex flex-col justify-center space-y-6 pb-6">
+      <section
+        className="h-full flex flex-col justify-center space-y-6 px-1"
+        style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+      >
         <div>
           <p className="text-[22px] uppercase tracking-[0.12em] font-display font-semibold text-aged-gold mb-1">
             Mid point check-in
@@ -765,17 +774,18 @@ export function MidwayCheckinCard({
       {/* Section 2 — the question itself, revealed when scrolled into view */}
       <section
         ref={questionRef}
-        className="snap-start min-h-screen flex flex-col justify-center space-y-6 pt-6"
+        className="h-full flex flex-col justify-center space-y-6 px-1"
         style={{
+          scrollSnapAlign: 'start',
+          scrollSnapStop: 'always',
           opacity: questionRevealed ? 1 : 0,
           transform: questionRevealed ? 'translateY(0)' : 'translateY(20px)',
           transition: 'opacity 250ms ease-out, transform 250ms ease-out',
         }}
       >
-        {/* Question styled to match the storyteller-authored question
-            treatment used by EQ / discussion cards — solid box with
-            cream text — at the midway's existing 24px size and without
-            the previous extra bold. */}
+        {/* Question in the storyteller question box, set in the body
+            serif (Newsreader) at a slightly smaller size than the EQ
+            hero — more readable mid-flow and less hero-weight. */}
         <div
           className="px-6 py-5 text-center rounded-2xl"
           style={{
@@ -783,7 +793,7 @@ export function MidwayCheckinCard({
             boxShadow: '0 8px 28px var(--th-question-shadow)',
           }}
         >
-          <p className="text-[24px] leading-relaxed font-display" style={{ color: 'var(--th-surface)' }}>
+          <p className="text-[20px] leading-relaxed font-serif" style={{ color: 'var(--th-surface)' }}>
             &ldquo;<FormattedText text={tour.midwayQuestion || ''} />&rdquo;
           </p>
         </div>

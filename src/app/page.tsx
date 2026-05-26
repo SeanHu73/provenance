@@ -217,10 +217,13 @@ function HomeInner() {
         <ProgressBar tour={activeTour} session={session} />
       )}
 
-      {/* Midway check-in content (replaces map area) */}
+      {/* Midway check-in content (replaces map area). The midway card
+          owns its own snap-scroll container; the inner frame is marked
+          `relative` so that scroll container can position absolutely
+          inside it. */}
       {isMidwayCheckin && activeTour && session && (
-        <div className="flex-1 overflow-y-auto p-4 snap-y snap-mandatory" style={{ backgroundColor: 'var(--th-surface)' }}>
-          <div className="min-h-full rounded-2xl bg-warm-white shadow-lg px-5 py-6">
+        <div className="flex-1 overflow-y-auto p-4" style={{ backgroundColor: 'var(--th-surface)' }}>
+          <div className="relative min-h-full rounded-2xl bg-warm-white shadow-lg px-5 py-6">
             <MidwayCheckinCard tour={activeTour} session={session} onComplete={completeMidwayCheckin} />
           </div>
         </div>
