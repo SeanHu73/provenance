@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { Tour, TourSession } from '@/lib/types';
+import { Tour, TourSession, Stop } from '@/lib/types';
 import { getLogicalStops } from '@/lib/tour-session';
 import { getActiveStops } from '@/lib/tours-store';
 
@@ -51,21 +51,22 @@ function UnstructuredProgressBar({ tour, session }: Props) {
       })()
     : null;
 
-  // In unstructured mode the explorer chooses each stop, so the bar
-  // reflects the journey they've actually built — completed stops in the
-  // order they entered them, followed by the current stop if any.
-  // Upcoming stops are deliberately left off: showing them in narrative
-  // order would imply a sequence that doesn't exist, and showing them in
-  // any other order is just noise. The "X of Y explored" label above
-  // already conveys how many remain, and the gallery is the proper
-  // surface for browsing what's left.
+  // Build ordered pill list: completed (in click order) → current (if in
+  // stop) → remaining upcoming. The upcoming pills exist so the explorer
+  // can see how many stops are left at a glance; they're rendered as
+  // anonymous dots, not by narrative position.
   const completedStops = completionOrder
     .map(id => logicalStops.find(ls => ls.id === id))
     .filter(Boolean) as typeof logicalStops;
 
+  const remainingStops = logicalStops.filter(
+    ls => !completedSet.has(ls.id) && ls.id !== currentLogicalStop?.id
+  );
+
   const pillList = [
     ...completedStops.map(s => ({ stop: s, state: 'completed' as const })),
     ...(currentLogicalStop ? [{ stop: currentLogicalStop, state: 'current' as const }] : []),
+    ...remainingStops.map(s => ({ stop: s, state: 'upcoming' as const })),
   ];
 
   const currentVisitNumber = completedCount + 1; // position of the current stop being visited
@@ -319,6 +320,54 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
   const currentRef = useRef<HTMLDivElement>(null);
   const completedIds = new Set(session.completedStops);
 
+  // For unstructured tours, the thumbnail row should reflect the
+  // journey the explorer is building, not the underlying authoring
+  // order: completed stops in the order they entered them, then the
+  // current stop (if mid-stop), then upcoming stops. Linear tours keep
+  // the authoring order since that *is* the journey.
+  //
+  // completionOrder tracks one entry per *logical* stop (group leader
+  // for merge groups, self for standalones). For per-sub-stop ordering
+  // we look up each physical stop's group leader, find that leader's
+  // index in completionOrder, and break ties within a group by
+  // authored order so a group's sub-stops stay contiguous.
+  const orderedStops = (() => {
+    const active = getActiveStops(tour);
+    if (!tour.unstructuredMode) return active;
+    const completionOrder: string[] = session.completionOrder || [];
+
+    const groupLogicalId = (s: Stop): string => s.mergeGroup
+      ? (active.find(x => x.mergeGroup === s.mergeGroup)?.id ?? s.id)
+      : s.id;
+
+    const completed = active
+      .filter(s => completedIds.has(s.id))
+      .sort((a, b) => {
+        const ai = completionOrder.indexOf(groupLogicalId(a));
+        const bi = completionOrder.indexOf(groupLogicalId(b));
+        // Sub-stops whose group hasn't been logged yet (e.g. mid-group)
+        // sort to the tail of the completed section so they sit just
+        // before the current/upcoming.
+        const aRank = ai >= 0 ? ai : Number.MAX_SAFE_INTEGER - 1;
+        const bRank = bi >= 0 ? bi : Number.MAX_SAFE_INTEGER - 1;
+        if (aRank !== bRank) return aRank - bRank;
+        return active.indexOf(a) - active.indexOf(b);
+      });
+
+    const currentStop = session.currentStopIndex >= 0 ? active[session.currentStopIndex] : null;
+    const isInStop = !!currentStop && !completedIds.has(currentStop.id);
+    const usedIds = new Set([
+      ...completed.map(s => s.id),
+      ...(isInStop && currentStop ? [currentStop.id] : []),
+    ]);
+    const remaining = active.filter(s => !usedIds.has(s.id));
+    return [
+      ...completed,
+      ...(isInStop && currentStop ? [currentStop] : []),
+      ...remaining,
+    ];
+  })();
+
   useEffect(() => {
     if (currentRef.current && scrollRef.current) {
       const container = scrollRef.current;
@@ -381,10 +430,11 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
             );
           })()}
 
-          {getActiveStops(tour).map((stop, i) => {
+          {orderedStops.map((stop, i) => {
             const isCompleted = completedIds.has(stop.id);
-            const isCurrent = i === session.currentStopIndex &&
-              !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end', 'unstructured_map', 'midway_checkin'].includes(session.currentPhase);
+            const inStopPhase = !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end', 'unstructured_map', 'midway_checkin'].includes(session.currentPhase);
+            const activeStopId = session.currentStopIndex >= 0 ? getActiveStops(tour)[session.currentStopIndex]?.id : null;
+            const isCurrent = inStopPhase && stop.id === activeStopId && !isCompleted;
             const isUpcoming = !isCompleted && !isCurrent;
 
             const thumbPhoto =
