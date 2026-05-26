@@ -51,19 +51,21 @@ function UnstructuredProgressBar({ tour, session }: Props) {
       })()
     : null;
 
-  // Build ordered pill list: completed (in order) → current (if in stop) → remaining upcoming
+  // In unstructured mode the explorer chooses each stop, so the bar
+  // reflects the journey they've actually built — completed stops in the
+  // order they entered them, followed by the current stop if any.
+  // Upcoming stops are deliberately left off: showing them in narrative
+  // order would imply a sequence that doesn't exist, and showing them in
+  // any other order is just noise. The "X of Y explored" label above
+  // already conveys how many remain, and the gallery is the proper
+  // surface for browsing what's left.
   const completedStops = completionOrder
     .map(id => logicalStops.find(ls => ls.id === id))
     .filter(Boolean) as typeof logicalStops;
 
-  const remainingStops = logicalStops.filter(
-    ls => !completedSet.has(ls.id) && ls.id !== currentLogicalStop?.id
-  );
-
   const pillList = [
     ...completedStops.map(s => ({ stop: s, state: 'completed' as const })),
     ...(currentLogicalStop ? [{ stop: currentLogicalStop, state: 'current' as const }] : []),
-    ...remainingStops.map(s => ({ stop: s, state: 'upcoming' as const })),
   ];
 
   const currentVisitNumber = completedCount + 1; // position of the current stop being visited

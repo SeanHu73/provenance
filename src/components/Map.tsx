@@ -317,8 +317,11 @@ function MapInitializer({
 }
 
 /**
- * When isUnstructuredMap first becomes true, center the map on the user at
- * the tour's configured zoom level. Runs at most once per map mount.
+ * Re-centres the map on the user at the tour's configured zoom level every
+ * time the explorer (re-)enters the unstructured map phase — i.e. on the
+ * initial entry AND on every return from a stop. Previously this used a
+ * one-shot ref, which meant the zoom level only got reset on first mount
+ * and would persist whatever the in-stop / flyer animations left behind.
  */
 function MapZoomer({
   isUnstructuredMap,
@@ -330,16 +333,20 @@ function MapZoomer({
   userLocation: Loc | null;
 }) {
   const map = useMap();
-  const fired = useRef(false);
+  const wasUnstructured = useRef(false);
 
   useEffect(() => {
-    if (!isUnstructuredMap || fired.current || !map) return;
-    fired.current = true;
-    const target = userLocation || CHURCH_LOCATION;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const anyMap = map as any;
-    anyMap.panTo(target);
-    anyMap.setZoom(defaultZoom);
+    // Fire on every false→true transition. Subsequent userLocation
+    // updates while already in the map phase don't re-zoom (the ref
+    // stays true until we leave the phase).
+    if (isUnstructuredMap && !wasUnstructured.current && map) {
+      const target = userLocation || CHURCH_LOCATION;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const anyMap = map as any;
+      anyMap.panTo(target);
+      anyMap.setZoom(defaultZoom);
+    }
+    wasUnstructured.current = isUnstructuredMap;
   }, [isUnstructuredMap, map, userLocation, defaultZoom]);
 
   return null;
@@ -395,25 +402,6 @@ function lerpNum(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-/**
- * Maximum zoom where `user` is fully visible when the map is centred on `stop`.
- * Keeps the stop pin at screen centre and zooms out just enough that the user
- * location dot appears within the viewport with `PAD` pixels of margin.
- */
-function fitZoomCenteredOnStop(stop: Loc, user: Loc, W: number, H: number): number {
-  const TILE = 256;
-  const PAD = 56; // pixel padding from each edge
-  const toMerc = (lat: number) =>
-    Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
-
-  const lngDelta = Math.abs(user.lng - stop.lng) || 0.0001;
-  const mercDelta = Math.abs(toMerc(user.lat) - toMerc(stop.lat)) || 0.0001;
-
-  const zLng = Math.log2(((W / 2) - PAD) * 360 / (TILE * lngDelta));
-  const zLat = Math.log2(((H / 2) - PAD) * (2 * Math.PI) / (TILE * mercDelta));
-
-  return Math.max(Math.min(zLng, zLat, MAX_AUTO_ZOOM), 13);
-}
 
 /**
  * Three-phase fly animation driven by requestAnimationFrame:
@@ -426,12 +414,12 @@ function fitZoomCenteredOnStop(stop: Loc, user: Loc, W: number, H: number): numb
  */
 function MapFlyer({
   flyTarget,
-  userLocation,
   onFlyComplete,
+  defaultZoom,
 }: {
   flyTarget: { stopLocation: Loc } | null;
-  userLocation: Loc | null;
   onFlyComplete: () => void;
+  defaultZoom: number;
 }) {
   const map = useMap();
   const prevTarget = useRef<{ stopLocation: Loc } | null>(null);
@@ -457,12 +445,12 @@ function MapFlyer({
       const startZoom: number = anyMap.getZoom() ?? 17;
       const { lat: stopLat, lng: stopLng } = flyTarget.stopLocation;
 
-      const div = anyMap.getDiv?.();
-      const W: number = div?.offsetWidth  || window.innerWidth;
-      const H: number = div?.offsetHeight || window.innerHeight;
-      const fitZoom = userLocation
-        ? fitZoomCenteredOnStop(flyTarget.stopLocation, userLocation, W, H)
-        : Math.max(startZoom - 2, 14);
+      // End the flyer at the tour's configured default zoom so the
+      // explorer always lands at the same zoom regardless of whether
+      // they came from the map, a stop, or the gallery. Previously this
+      // computed a "fit user and stop" zoom that left them slightly
+      // further out than the default.
+      const fitZoom = defaultZoom;
 
       const PAN_MS  = 900;
       const ZOOM_MS = 1400;
@@ -503,7 +491,7 @@ function MapFlyer({
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [flyTarget, map, userLocation]);
+  }, [flyTarget, map]);
 
   return null;
 }
@@ -1003,8 +991,8 @@ export default function MapContainer({
           />
           <MapFlyer
             flyTarget={flyTarget ?? null}
-            userLocation={userLocation}
             onFlyComplete={onFlyComplete ?? (() => {})}
+            defaultZoom={tourDefaultZoom ?? 17}
           />
           <OverlayAwarePanner tourStops={tourStops} flyTarget={flyTarget} />
           {userLocation && <UserLocationDot position={userLocation} />}
