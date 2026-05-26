@@ -199,6 +199,8 @@ export interface Tour {
   };
   description: string;               // Brief intro shown on journal peek
   coverPhotoUrl: string;             // Photo for the journal peek
+  coverPhotoFocalPoint?: { x: number; y: number }; // Crop focal point (0–100%)
+  coverPhotoZoom?: number;           // 1–3× zoom for the cover crop
   peekAudioUrl: string | null;       // Audio that plays on the journal peek
   peekAudioTitle: string | null;
   // The "parent" pin on the map — the single marker visible before a

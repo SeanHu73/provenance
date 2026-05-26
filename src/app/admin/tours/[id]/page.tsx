@@ -493,12 +493,78 @@ export default function TourEditorPage() {
                 />
               </label>
             </div>
-            {tour.coverPhotoUrl && (
-              <div className="mt-2 w-32 h-20 bg-stone-100 border border-stone-200 rounded overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={tour.coverPhotoUrl} alt="cover" className="w-full h-full object-cover" />
-              </div>
-            )}
+            {tour.coverPhotoUrl && (() => {
+              const fp = tour.coverPhotoFocalPoint;
+              const zoom = tour.coverPhotoZoom ?? 1;
+              const objPos = fp ? `${fp.x}% ${fp.y}%` : '50% 50%';
+              const origin = fp ? `${fp.x}% ${fp.y}%` : 'center';
+              return (
+                <div className="mt-2 space-y-1.5">
+                  <p className="text-[10px] text-stone-400">
+                    Click the photo to set the focal point. Preview matches what learners see on the journal peek (same crop, opacity, and gradient).
+                  </p>
+                  <div
+                    className="relative w-full max-w-md h-36 cursor-crosshair overflow-hidden rounded bg-stone-200 border border-stone-300"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+                      const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+                      updateField('coverPhotoFocalPoint', { x, y });
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={tour.coverPhotoUrl}
+                      alt="cover"
+                      className="w-full h-full object-cover opacity-60 select-none"
+                      style={{
+                        objectPosition: objPos,
+                        transform: zoom > 1 ? `scale(${zoom})` : undefined,
+                        transformOrigin: zoom > 1 ? origin : undefined,
+                      }}
+                      draggable={false}
+                    />
+                    {/* Same top-down gradient the learner sees, using the dark journal surface */}
+                    <div
+                      className="absolute inset-x-0 top-0 h-36 pointer-events-none"
+                      style={{ background: 'linear-gradient(to bottom, transparent, var(--th-journal))' }}
+                    />
+                    {fp && (
+                      <div
+                        className="absolute w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none"
+                        style={{ left: `${fp.x}%`, top: `${fp.y}%`, transform: 'translate(-50%,-50%)', background: '#F59E0B' }}
+                      />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 max-w-md">
+                    <span className="text-[10px] text-stone-400 shrink-0">Zoom:</span>
+                    <input
+                      type="range" min={1} max={3} step={0.05} value={zoom}
+                      onChange={(e) => updateField('coverPhotoZoom', parseFloat(e.target.value))}
+                      className="flex-1 h-1 accent-amber-500"
+                    />
+                    <span className="text-[10px] text-stone-500 w-9 text-right">{zoom.toFixed(2)}×</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <p className="text-[10px] text-stone-400">
+                      {fp ? `Focal point: ${fp.x}%, ${fp.y}%` : 'No focal point — defaults to centre'}
+                    </p>
+                    {(fp || zoom !== 1) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateField('coverPhotoFocalPoint', undefined);
+                          updateField('coverPhotoZoom', 1);
+                        }}
+                        className="text-[10px] text-blue-600 hover:underline"
+                      >
+                        Reset framing
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </label>
 
           <AudioUpload

@@ -24,17 +24,27 @@ export default function JournalPeek({ tour, onBegin, onDismiss }: Props) {
       {/* Sheet */}
       <div className="relative animate-slide-up rounded-t-2xl overflow-hidden" style={{ backgroundColor: 'var(--th-journal)' }}>
         {/* Cover photo */}
-        {tour.coverPhotoUrl && (
-          <div className="w-full h-36 overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={tour.coverPhotoUrl}
-              alt=""
-              className="w-full h-full object-cover opacity-60"
-            />
-            <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-transparent to-journal" />
-          </div>
-        )}
+        {tour.coverPhotoUrl && (() => {
+          const fp = tour.coverPhotoFocalPoint;
+          const zoom = tour.coverPhotoZoom && tour.coverPhotoZoom > 1 ? tour.coverPhotoZoom : 1;
+          const objPos = fp ? `${fp.x}% ${fp.y}%` : '50% 50%';
+          return (
+            <div className="w-full h-36 overflow-hidden relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={tour.coverPhotoUrl}
+                alt=""
+                className="w-full h-full object-cover opacity-60"
+                style={{
+                  objectPosition: objPos,
+                  transform: zoom > 1 ? `scale(${zoom})` : undefined,
+                  transformOrigin: zoom > 1 ? objPos : undefined,
+                }}
+              />
+              <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-transparent to-journal" />
+            </div>
+          );
+        })()}
 
         <div className="px-6 pb-8 pt-4 space-y-4">
           {/* Guide avatar + info */}
