@@ -1,7 +1,7 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-05-23
-(later in the day — see §8 final entry).
+*Handoff document for the next Claude Code session. Last updated 2026-05-25
+(see §8 final entry).
 Read this instead of re-discovering the codebase.*
 
 ---
@@ -58,7 +58,9 @@ Map (tour pin) → Journal Peek → Intro screens → [Meet Your Guide] →
 
 | Component | File | Purpose |
 |---|---|---|
+| SplashScreen | `src/components/SplashScreen.tsx` | First-load brand intro (pin drop + wordmark + fade-out). `sessionStorage`-gated. See §11 |
 | Journal | `src/components/tour/Journal.tsx` | Main tour playback overlay — phases, transitions, footer |
+| TourFooter | `src/components/tour/TourFooter.tsx` | Shared Journal + Ask (?) bar plus their overlays. Used by `Journal.tsx` and by `page.tsx` for map/midway/closing phases |
 | ProgressBar | `src/components/tour/ProgressBar.tsx` | Stop pills + amber fill bar + swipeable tracker |
 | JournalOverlay | `src/components/tour/JournalOverlay.tsx` | Stops/Questions/Theory tabs |
 | JournalPeek | `src/components/tour/JournalPeek.tsx` | Bottom sheet on map pin tap |
@@ -825,6 +827,199 @@ was deleted and `completeEqClosingDiscuss` was removed from
 
 ---
 
-*End of handoff. The unstructured exploration mode (§10), theme
-system (§9), and the parallel `unstructuredStops` authoring path are
-all live on `master`.*
+### Splash, persistent footer, branded opening bar, bridge-skip (2026-05-25)
+
+Five-part session. Live on `master` (commits `a002972` → `8e0078c`).
+
+**Splash screen — new component.** First-load brand intro at
+`src/components/SplashScreen.tsx`, wrapping `{children}` in
+`layout.tsx` (inside `ThemeProvider`). Plays once per browser tab via
+`sessionStorage.getItem('splash_seen')`; second-load skips entirely.
+Full reference in §11. Mount uses an isomorphic `useLayoutEffect`
+shim so the overlay covers the children on the first hydration
+paint instead of after a tick. Animations are CSS `@keyframes` with
+`animation-fill-mode: both` (Framer Motion was leaving the pin
+briefly visible at center on delayed mounts — the bug captured in
+§7). Montserrat Medium added to `next/font/google` in `layout.tsx`
+and exposed as the `font-montserrat` Tailwind utility via
+`@theme inline` in `globals.css`.
+
+**PWA launch-screen mitigation.** Installed PWAs were showing the
+OS-drawn "icon-on-white" splash before the JS splash could mount.
+Two side-channel fixes:
+
+- iOS: 11 solid-cream `apple-touch-startup-image` PNGs generated with
+  sharp at modern iPhone + iPad Pro 11"/12.9" portrait resolutions
+  (`public/splash/*`, ~140 KB total). Wired into
+  `appleWebApp.startupImage` metadata in `layout.tsx`, each with a
+  `device-width` / `device-height` / `-webkit-device-pixel-ratio` /
+  `orientation: portrait` media query. iOS falls back to its default
+  whenever a media query doesn't match exactly — coverage = modern
+  iPhones + iPad Pro portrait only.
+- Android: replaced `public/icon-192.png` and `public/icon-512.png`
+  (`purpose: "any"`) with solid `#E9E4E2` PNGs so Chrome's
+  auto-generated splash icon visually disappears against the cream
+  background. The maskable icon (`icon-maskable-512.png`) is
+  unchanged so launchers still render the real glyph on the home
+  screen. The app-name text Chrome draws below the icon can't be
+  suppressed via the manifest — accepted as a limitation.
+
+Manifest `background_color` corrected from `#FBF8F2` to `#E9E4E2` to
+match `--th-bg`. Logo source PNGs (`logo_transparent.png`,
+`logo_title_transparent.png`) committed to `docs/` and copied to
+`public/`.
+
+**Stop tracker / midway check-in — individual stop names.** The
+swipeable `StopTrackerOverlay` in `ProgressBar.tsx` and the
+`VisitedStopThumb` in `UnstructuredMapOverlay.tsx` were both falling
+back to `mergeGroup` for the card title, so visited cluster sub-stops
+all read as the group name. Switched to `stop.title` as the primary
+line with `stop.mergeGroup` rendered in italics below when present.
+
+`MidwayCheckinCard` was also building its visited list straight from
+`session.completionOrder` (which holds one logical-stop ID per
+cluster), so a 3-stop cluster appeared as one thumb. Rewrote the
+loop to expand leader entries via `getStopsInGroup(tour, mergeGroup)`
+in authored order — visited clusters now list every sub-stop the
+explorer actually saw.
+
+**TourFooter extraction + always-on map.** The Journal + Ask buttons
+used to live inside `Journal.tsx`, so any phase that `page.tsx`
+rendered outside the Journal overlay (`unstructured_map`,
+`midway_checkin`, the unstructured closing) lost the footer.
+Extracted `src/components/tour/TourFooter.tsx` — self-contained
+button bar plus the `JournalOverlay` mount and Ask-a-question modal
+(`QuestionInputPanel` moved with it). `Journal.tsx` now uses
+`<TourFooter />` (dropped ~120 lines of duplicate JSX/state) and
+`page.tsx` mounts it for the three map/midway/closing phases that
+were missing it.
+
+**Branded opening bottom bar.** Pre-tour bottom bar replaced from
+"Memorial Church / Provenance / Tap a pin to begin" to:
+
+- Bar background: `var(--th-primary)` (theme red/teal)
+- Pin glyph: `InvertedLogoGlyph` helper in `page.tsx` built from two
+  CSS-masked layers — `pin-glyph-base.png` filled with `var(--cream)`
+  and `pin-glyph-p.png` filled with `var(--th-primary)`. The "P"
+  layer matches the bar, so the speech-bubble area reads as
+  bar-colored negative space and the cream dots show through the
+  dot-shaped cutouts in the P mask
+- Wordmark "Provenance" in cream Montserrat Medium
+
+Same theme-aware approach as the map pins (May 22 entry), just with
+cream + primary instead of white + primary.
+
+**Skip WhatsNext when bridge is unselected.** Authors who turn the
+admin bridge toggle off were still seeing the "What's next..." screen
+between stops. Added two helpers in `tour-session.ts`:
+
+- `hasBridgeContent(stop)` — true if `bridgeText` or `bridgePhotos`
+  carry content.
+- `nextPhaseWouldBeWhatsNext(stop, phase, round)` — simulates the
+  state machine to predict whether the next `advancePhase` call would
+  land on `whats_next`.
+
+`TourContext.advancePhase` intercepts the transition: if the
+computed next phase is `whats_next` and `hasBridgeContent` is false,
+it calls `advanceStop()` instead. The URL state never enters
+`whats_next` in that case.
+
+`WonderCard`, `RevealCard`, `ReflectCard` take a new `isFinalInStop`
+prop and relabel their continue button:
+
+- Wonder: "We've talked — show us" → **"We've talked — continue tour"**
+- Reveal: "Continue" → **"Continue Tour"**
+- Reflect: "Continue" → **"Continue Tour"**, and `handleSubmit` /
+  `handleSkip` short-circuit to `onContinue()` after logging the
+  reflection so the embedded `<WhatsNext />` post-submit view is
+  bypassed.
+
+`Journal.tsx` computes `isFinalInStop` per card via the new helpers.
+
+**Lessons / gotchas captured this session**
+
+- Framer Motion's `initial` doesn't always apply at first paint for
+  delayed animations — the element can be visible at its target
+  position for one frame before the animation engages. Use CSS
+  `@keyframes` with `animation-fill-mode: both` for splash-style
+  effects where any flash is unacceptable.
+- Android Chrome's PWA launch splash icon can only be suppressed via
+  the cream-on-cream trick on `purpose: "any"` icons; the manifest
+  `name` text Chrome draws below the icon can't be hidden by any
+  manifest setting.
+- iOS `apple-touch-startup-image` selection is strict — the media
+  query must match the device's logical resolution exactly. Unmatched
+  devices fall back to iOS's default icon-on-white screen.
+- Cards rendered by the state machine were embedding `WhatsNext` (e.g.
+  `ReflectCard` post-submit), so suppressing the `whats_next` phase
+  alone isn't enough — the embed has to skip too. Pattern: gate the
+  embed on the same condition (`isFinalInStop` here).
+
+---
+
+## 11. Splash Screen
+
+Added 2026-05-25. First-load brand intro that plays once per browser
+tab. Lives at `src/components/SplashScreen.tsx`, mounted in
+`layout.tsx` inside `ThemeProvider` so it sits above all routes.
+
+### Behavior
+
+- Reads `sessionStorage.getItem('splash_seen')`. If set, splash is
+  never mounted — visits 2+ get the app immediately.
+- Otherwise sets the flag, mounts a fixed `z-[1000]` overlay covering
+  `{children}`, runs the timeline, then unmounts.
+- Mount uses an isomorphic `useLayoutEffect` shim so the overlay
+  covers the first hydration paint (no flash of the page underneath).
+
+### Timeline (total 3.1s)
+
+| t (s) | Event |
+|---|---|
+| 0 → 0.5 | Hold (pin held off-screen at `translateY(-120vh)`) |
+| 0.5 → 1.5 | Pin drops (1.0s) with `cubic-bezier(0.22, 1.8, 0.36, 1)` overshoot/settle. Soft elliptical shadow grows from `scale(0)` synchronously |
+| 1.2 → 2.1 | "Provenance" wordmark fades in + slides `8px → 0` over 0.9s (Montserrat Medium, `#8B2D2D`, 32px, `mt-4` below logo) |
+| 2.1 → 2.3 | 0.2s hold of the fully revealed splash |
+| 2.3 → 3.1 | Overlay opacity 1 → 0 over 0.8s, then unmount |
+
+Logo is `/logo_transparent.png` rendered at `w-60` (240px wide). The
+animation keyframes live in `globals.css` (`.splash-pin`,
+`.splash-shadow`, `.splash-wordmark`, `.splash-overlay`); the JS only
+schedules the fade-out and unmount via the mirrored `ANIM_END_MS` /
+`FADE_OUT_MS` constants.
+
+### PWA launch-screen integration
+
+Installed PWAs show an OS-drawn launch screen *before* any JS runs,
+so the JS splash alone can't be the whole story:
+
+- iOS uses `apple-touch-startup-image` link tags. We provide 11
+  solid-cream PNGs at modern iPhone + iPad Pro 11"/12.9" portrait
+  resolutions in `public/splash/`, wired via
+  `appleWebApp.startupImage` in `layout.tsx`. Unmatched devices fall
+  back to iOS's default white screen with the app icon.
+- Android Chrome auto-draws an icon centered on `background_color`.
+  `public/icon-192.png` and `public/icon-512.png` (`purpose: "any"`)
+  are intentionally solid cream so the icon visually disappears
+  against the cream background. The maskable icon is unchanged for
+  the home-screen launcher. The app-name text below the icon is
+  drawn by Chrome and can't be suppressed via the manifest.
+
+### Files
+
+| File | Purpose |
+|---|---|
+| `src/components/SplashScreen.tsx` | Wrapper component |
+| `src/app/globals.css` | `@keyframes splashPinDrop / splashPinShadow / splashWordmark` + `.splash-overlay` transition |
+| `src/app/layout.tsx` | Mount inside ThemeProvider; load Montserrat; `appleWebApp.startupImage` array |
+| `public/logo_transparent.png` | The dropping pin image |
+| `public/splash/iphone-*.png`, `public/splash/ipadpro-*.png` | iOS startup images (cream) |
+| `public/icon-192.png`, `public/icon-512.png` | Cream icons for Android PWA splash (see §7) |
+| `public/icon-maskable-512.png` | Real glyph — used for home-screen launcher only |
+| `public/manifest.json` | `background_color: #E9E4E2` matching the in-app cream |
+
+---
+
+*End of handoff. The splash screen (§11), unstructured exploration
+mode (§10), theme system (§9), and the parallel `unstructuredStops`
+authoring path are all live on `master`.*
