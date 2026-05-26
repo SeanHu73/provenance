@@ -226,6 +226,17 @@ body {
   animation: gentlePulse 2s ease-in-out infinite;
 }
 
+/* For affordance cues (e.g. "Keep scrolling") that need to be obviously
+   present yet calmly breathing — stays mostly opaque, eases to ~55% and
+   back over 2.4s so it never disappears like .animate-gentle-pulse would. */
+@keyframes gentleFade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.animate-gentle-fade {
+  animation: gentleFade 2.4s ease-in-out infinite;
+}
+
 /* Tour card scrollbar — thin but visible */
 .tour-scroll::-webkit-scrollbar { width: 4px; }
 .tour-scroll::-webkit-scrollbar-track { background: transparent; }

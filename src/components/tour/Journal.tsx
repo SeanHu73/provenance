@@ -413,13 +413,12 @@ export default function Journal({ onMapPeek }: JournalProps) {
         </AnimatePresence>
       </div>
 
-      {/* Scroll indicator — bouncing pill + chevron above the footer.
-          Loud on purpose: the gentle muted chevron we had before was
-          easy to miss, and people were stalling on screens that needed
-          a scroll. */}
+      {/* Scroll indicator — pill + chevron above the footer that fades
+          gently in and out. Loud enough in size/contrast to be noticed,
+          but the motion is a calm breath rather than a bounce. */}
       {canScrollMore && (
         <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-          <div className="flex flex-col items-center gap-1 animate-bounce">
+          <div className="flex flex-col items-center gap-1 animate-gentle-fade">
             <span
               className="px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider shadow-lg"
               style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}
