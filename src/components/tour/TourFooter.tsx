@@ -12,6 +12,9 @@ interface Props {
   session: TourSession;
   /** When true, the onboarding "point at the ? button" arrow shows over the ? button. */
   pointAtQuestion?: boolean;
+  /** When true, the bouncing arrow shows over the autoplay toggle so users
+   *  who just made an autoplay choice in onboarding see they can change it. */
+  pointAtAutoplay?: boolean;
 }
 
 /**
@@ -19,7 +22,7 @@ interface Props {
  * Shared between Journal.tsx (in-stop phases) and page.tsx (map, midway,
  * closing) so the footer stays visible across the whole active tour.
  */
-export default function TourFooter({ tour, session, pointAtQuestion = false }: Props) {
+export default function TourFooter({ tour, session, pointAtQuestion = false, pointAtAutoplay = false }: Props) {
   const [showJournal, setShowJournal] = useState(false);
   const [showQuestionInput, setShowQuestionInput] = useState(false);
   const [autoplayPref, setAutoplayPref] = useAudioAutoplay();
@@ -71,23 +74,42 @@ export default function TourFooter({ tour, session, pointAtQuestion = false }: P
         </button>
         <button
           onClick={() => setAutoplayPref(!autoplayPref)}
-          className="relative flex items-center justify-center px-3 py-3.5 rounded-xl text-warm-white bg-white/25 hover:bg-white/35 transition-colors border border-white/50"
-          style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' }}
-          title={autoplayPref ? 'Autoplay audio: on (tap to disable)' : 'Autoplay audio: off (tap to enable)'}
+          className="relative flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] uppercase tracking-wider font-semibold text-warm-white/85 hover:text-warm-white bg-black/15 hover:bg-black/25 transition-colors border border-white/20"
+          title={autoplayPref ? 'Auto-play narration: on (tap to disable)' : 'Auto-play narration: off (tap to enable)'}
           aria-pressed={autoplayPref}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
-            {autoplayPref ? (
-              <>
-                <path d="M15.54 8.46a5 5 0 010 7.07" />
-                <path d="M19.07 4.93a10 10 0 010 14.14" />
-              </>
-            ) : (
-              <line x1="23" y1="9" x2="17" y2="15" />
-            )}
-            {!autoplayPref && <line x1="17" y1="9" x2="23" y2="15" />}
+          Auto
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            fill={autoplayPref ? 'currentColor' : 'none'}
+          >
+            <polygon points="6,4 20,12 6,20" />
           </svg>
+          {pointAtAutoplay && (
+            <span className="absolute left-1/2 bottom-full mb-1.5 -translate-x-1/2 pointer-events-none">
+              <svg
+                className="animate-bounce"
+                width="46"
+                height="46"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--th-secondary)"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))' }}
+              >
+                <line x1="12" y1="3" x2="12" y2="17" />
+                <polyline points="5 11 12 18 19 11" />
+              </svg>
+            </span>
+          )}
         </button>
       </div>
 

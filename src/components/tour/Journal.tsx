@@ -70,6 +70,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const [paused, setPaused] = useState(false);
   const [canScrollMore, setCanScrollMore] = useState(false);
   const [pointAtQuestion, setPointAtQuestion] = useState(false);
+  const [pointAtAutoplay, setPointAtAutoplay] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   const checkScroll = useCallback(() => {
@@ -237,7 +238,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
             >
 
         {phase === 'intro' && (
-          <IntroScreens tour={tour} onComplete={completeIntro} onPointAtQuestion={setPointAtQuestion} />
+          <IntroScreens tour={tour} onComplete={completeIntro} onPointAtQuestion={setPointAtQuestion} onPointAtAutoplay={setPointAtAutoplay} />
         )}
 
         {phase === 'meet_guide' && (
@@ -431,7 +432,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
           map / midway / closing phases so the buttons stay visible across
           the whole tour. */}
       {phase !== 'end' && (
-        <TourFooter tour={tour} session={session} pointAtQuestion={pointAtQuestion} />
+        <TourFooter tour={tour} session={session} pointAtQuestion={pointAtQuestion} pointAtAutoplay={pointAtAutoplay} />
       )}
     </div>
   );
