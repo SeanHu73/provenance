@@ -13,6 +13,7 @@ import ThemeSwitcher from '@/components/ThemeSwitcher';
 import ProgressBar from '@/components/tour/ProgressBar';
 import UnstructuredMapControls, { MidwayCheckinCard } from '@/components/tour/cards/UnstructuredMapOverlay';
 import UnstructuredClosingView from '@/components/tour/cards/UnstructuredClosingView';
+import TourFooter from '@/components/tour/TourFooter';
 
 type FlyTarget = { stopLocation: { lat: number; lng: number } };
 
@@ -272,21 +273,24 @@ function HomeInner() {
         </div>
       )}
 
-      {/* Bottom bar */}
+      {/* Pre-tour bottom bar — logo + Provenance wordmark, centered. */}
       {!isActive && (
-        <div className="shrink-0 border-t px-4 py-3 z-10" style={{ backgroundColor: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
-          <div className="flex items-center gap-3">
-            <div>
-              <p className="font-display text-sm font-bold text-warm-white leading-tight">Memorial Church</p>
-              <p className="text-[10px] text-warm-white/70 font-sans tracking-wide uppercase">Provenance</p>
-            </div>
-            {tours.length > 0 && !peekTour && (
-              <p className="text-xs text-warm-white/80 ml-auto">
-                Tap a pin to begin
-              </p>
-            )}
-          </div>
+        <div
+          className="shrink-0 border-t px-4 py-3 z-10 flex items-center justify-center gap-3"
+          style={{ backgroundColor: 'var(--cream)', borderColor: 'var(--th-border)' }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo_transparent.png" alt="" width={32} height={32} className="w-8 h-8" draggable={false} />
+          <span className="font-montserrat font-medium text-xl" style={{ color: '#8B2D2D' }}>
+            Provenance
+          </span>
         </div>
+      )}
+
+      {/* Persistent Journal + Ask (?) footer during the map / midway /
+          closing phases that page.tsx renders outside Journal. */}
+      {isActive && (isUnstructuredMapPhase || isMidwayCheckin || isUnstructuredClosing) && activeTour && session && session.currentPhase !== 'end' && (
+        <TourFooter tour={activeTour} session={session} />
       )}
 
       {/* Map peek return button — shown when map is visible during active tour */}

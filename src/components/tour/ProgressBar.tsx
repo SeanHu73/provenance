@@ -392,7 +392,8 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
               (stop.seed.photoUrl ? { url: stop.seed.photoUrl, caption: stop.seed.photoCaption } : null) ||
               null;
 
-            const displayTitle = stop.mergeGroup || stop.title;
+            const displayTitle = stop.title;
+            const groupLabel = stop.mergeGroup || null;
 
             return (
               <div
@@ -431,6 +432,11 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
                   <p className={`text-sm font-semibold truncate ${isUpcoming ? 'text-text-secondary/40' : 'text-text-primary'}`}>
                     {isUpcoming ? `Stop ${i + 1}` : (displayTitle || `Stop ${i + 1}`)}
                   </p>
+                  {groupLabel && !isUpcoming && (
+                    <p className="text-[10px] italic truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                      {groupLabel}
+                    </p>
+                  )}
                   <p className="text-[10px] text-text-secondary mt-0.5">
                     {isCurrent ? 'In progress' : isCompleted ? 'Completed' : 'Upcoming'}
                   </p>

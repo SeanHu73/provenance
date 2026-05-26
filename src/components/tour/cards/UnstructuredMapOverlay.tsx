@@ -675,10 +675,19 @@ export function MidwayCheckinCard({
 }) {
   const [response, setResponse] = useState('');
   const activeStops = getActiveStops(tour);
-  // Logical stop IDs the explorer has completed, in visit order.
-  const visitedStops = (session.completionOrder || [])
-    .map((id) => activeStops.find((s) => s.id === id))
-    .filter((s): s is Stop => !!s);
+  // completionOrder holds logical-stop IDs (one per cluster). Expand
+  // cluster entries into every sub-stop in authored order so the
+  // explorer sees each stop they visited individually.
+  const visitedStops: Stop[] = [];
+  for (const id of session.completionOrder || []) {
+    const stop = activeStops.find((s) => s.id === id);
+    if (!stop) continue;
+    if (stop.mergeGroup) {
+      visitedStops.push(...getStopsInGroup(tour, stop.mergeGroup));
+    } else {
+      visitedStops.push(stop);
+    }
+  }
 
   return (
     <div className="animate-fade-in space-y-6 min-h-full">
@@ -738,7 +747,8 @@ export function MidwayCheckinCard({
 
 function VisitedStopThumb({ stop, visitNumber }: { stop: Stop; visitNumber: number }) {
   const thumb = pickStopThumb(stop);
-  const displayTitle = stop.title || stop.mergeGroup || `Stop ${visitNumber}`;
+  const displayTitle = stop.title || `Stop ${visitNumber}`;
+  const groupLabel = stop.mergeGroup || null;
   return (
     <div
       className="flex gap-3 p-3 rounded-xl border"
@@ -775,6 +785,11 @@ function VisitedStopThumb({ stop, visitNumber }: { stop: Stop; visitNumber: numb
         <p className="text-base font-semibold leading-snug" style={{ color: 'var(--th-text-primary)' }}>
           {displayTitle}
         </p>
+        {groupLabel && (
+          <p className="text-xs italic mt-0.5" style={{ color: 'var(--th-text-secondary)' }}>
+            {groupLabel}
+          </p>
+        )}
         {stop.category && (
           <p className="text-xs uppercase tracking-wide mt-0.5" style={{ color: 'var(--th-text-secondary)' }}>
             {stop.category}
