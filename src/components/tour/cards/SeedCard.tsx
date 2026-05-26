@@ -2,11 +2,17 @@
 
 /**
  * Combined Background + Look Around card.
- * Shows the seed context at the top, then the notice observation
- * prompt with its timer below — all on one screen.
+ *
+ * When the stop has notice content (prompt / audio / indoor map / photos),
+ * Background and Look Around are split into two `scroll-snap` sections —
+ * each `min-h-screen`, the second one starting hidden and revealing with
+ * a short haptic + fade after the IntersectionObserver detects it
+ * entering the viewport. When the stop has no notice content the card
+ * falls back to a single non-snap layout with the Continue button at the
+ * bottom (no point forcing a snap with only one section).
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Stop } from '@/lib/types';
 import PhotoContent from './PhotoContent';
 import AudioButton from './AudioButton';
@@ -19,12 +25,23 @@ interface Props {
   onContinue: () => void;
 }
 
+const REVEAL_DELAY_MS = 400;
+const REVEAL_TRANSITION_MS = 400;
+
 export default function SeedCard({ stop, onContinue }: Props) {
   const [autoplayPref] = useAudioAutoplay();
   const seedAutoplay = autoplayPref && !stop.seed.audioAutoplayDisabled;
   // When both seed and notice audio are present on this combined screen,
   // suppress notice autoplay so the two streams don't play in parallel.
   const noticeAutoplay = autoplayPref && !stop.notice.audioAutoplayDisabled && !stop.seed.audioUrl;
+
+  const hasNoticeSection = !!(
+    stop.notice.prompt
+    || stop.notice.audioUrl
+    || stop.notice.noticeMap?.url
+    || (stop.notice.photos && stop.notice.photos.length > 0)
+    || stop.notice.photoUrl
+  );
 
   // Use the notice timer as the primary timer
   const noticeTimer = stop.notice.timerSeconds || 0;
@@ -48,17 +65,45 @@ export default function SeedCard({ stop, onContinue }: Props) {
   const circumference = 2 * Math.PI * radius;
   const progress = timerDone || !totalTimer ? 0 : ((secondsLeft ?? 0) / totalTimer) * circumference;
 
-  return (
-    <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
-      {/* Background section */}
+  // Reveal state for the Look Around section — fires haptic + fade in
+  // when the section first scrolls into view.
+  const noticeRef = useRef<HTMLElement | null>(null);
+  const [noticeRevealed, setNoticeRevealed] = useState(false);
+
+  useEffect(() => {
+    if (!hasNoticeSection || noticeRevealed) return;
+    const el = noticeRef.current;
+    if (!el) return;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+              navigator.vibrate(10);
+            }
+            timeoutId = setTimeout(() => setNoticeRevealed(true), REVEAL_DELAY_MS);
+            obs.disconnect();
+            return;
+          }
+        }
+      },
+      { threshold: 0.1 },
+    );
+    obs.observe(el);
+    return () => {
+      obs.disconnect();
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [hasNoticeSection, noticeRevealed]);
+
+  // Background block (shared across snap and non-snap layouts)
+  const backgroundBlock = (
+    <>
       <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
         Background...
       </p>
-
-      {/* Seed audio */}
       {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedAutoplay} />}
-
-      {/* Seed text + photos */}
       {stop.seed.text ? (
         <PhotoContent
           text={stop.seed.text}
@@ -69,47 +114,34 @@ export default function SeedCard({ stop, onContinue }: Props) {
       ) : !stop.seed.audioUrl && (
         <p className="text-base text-text-secondary italic">Take a moment to look around this spot.</p>
       )}
+    </>
+  );
 
-      {/* Divider */}
-      {stop.notice.prompt && (
-        <div className="border-t border-sandstone-light my-1" />
+  // Look Around block (only when hasNoticeSection)
+  const lookAroundBlock = (
+    <>
+      <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
+        Look around...
+      </p>
+      {stop.notice.audioUrl && <AudioButton audioUrl={stop.notice.audioUrl} title={stop.notice.audioTitle} autoplay={noticeAutoplay} />}
+      {stop.notice.noticeMap && stop.notice.noticeMap.url && (
+        <NoticeMapDisplay map={stop.notice.noticeMap} />
       )}
-
-      {/* Look Around section — render if any of prompt, audio, indoor map,
-          or photos is present so the indoor map shows up even when there
-          isn't a separate text prompt yet. */}
-      {(stop.notice.prompt
-        || stop.notice.audioUrl
-        || stop.notice.noticeMap?.url
-        || (stop.notice.photos && stop.notice.photos.length > 0)
-        || stop.notice.photoUrl) && (
-        <>
-          <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
-            Look around...
-          </p>
-
-          {/* Notice audio */}
-          {stop.notice.audioUrl && <AudioButton audioUrl={stop.notice.audioUrl} title={stop.notice.audioTitle} autoplay={noticeAutoplay} />}
-
-          {/* Indoor "where to go" map — matches NoticeCard */}
-          {stop.notice.noticeMap && stop.notice.noticeMap.url && (
-            <NoticeMapDisplay map={stop.notice.noticeMap} />
-          )}
-
-          {/* Notice prompt + photos */}
-          {(stop.notice.prompt || (stop.notice.photos && stop.notice.photos.length > 0) || stop.notice.photoUrl) && (
-            <PhotoContent
-              text={stop.notice.prompt}
-              photos={stop.notice.photos || []}
-              legacyPhotoUrl={stop.notice.photoUrl}
-              legacyPhotoCaption={stop.notice.photoCaption}
-              textClass="text-[23px] leading-relaxed font-serif text-text-primary"
-            />
-          )}
-        </>
+      {(stop.notice.prompt || (stop.notice.photos && stop.notice.photos.length > 0) || stop.notice.photoUrl) && (
+        <PhotoContent
+          text={stop.notice.prompt}
+          photos={stop.notice.photos || []}
+          legacyPhotoUrl={stop.notice.photoUrl}
+          legacyPhotoCaption={stop.notice.photoCaption}
+          textClass="text-[23px] leading-relaxed font-serif text-text-primary"
+        />
       )}
+    </>
+  );
 
-      {/* Timer */}
+  // Timer + continue/back row (always present)
+  const footerBlock = (
+    <>
       {timerActive && (
         <div className="flex flex-col items-center gap-3">
           <div className="relative w-16 h-16">
@@ -132,20 +164,49 @@ export default function SeedCard({ stop, onContinue }: Props) {
         </div>
       )}
 
-      {/* Continue + Back */}
       <div className="flex gap-2">
         <BackButton />
         <button
           onClick={onContinue}
           className={`flex-1 py-3 rounded-lg text-base font-semibold transition-all ${
-            timerDone
-              ? 'bg-accent-dark text-white'
-              : 'bg-accent-dark/20 text-accent-dark'
+            timerDone ? 'bg-accent-dark text-white' : 'bg-accent-dark/20 text-accent-dark'
           }`}
         >
           We&apos;ve looked &mdash; continue
         </button>
       </div>
+    </>
+  );
+
+  // Single-section fallback when there's no notice content — keeps the
+  // original centred layout, no snap.
+  if (!hasNoticeSection) {
+    return (
+      <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
+        {backgroundBlock}
+        {footerBlock}
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-fade-in">
+      <section className="snap-start min-h-screen flex flex-col justify-center space-y-5 pb-6">
+        {backgroundBlock}
+      </section>
+
+      <section
+        ref={noticeRef}
+        className="snap-start min-h-screen flex flex-col justify-center space-y-5 pt-6"
+        style={{
+          opacity: noticeRevealed ? 1 : 0,
+          transform: noticeRevealed ? 'translateY(0)' : 'translateY(20px)',
+          transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
+        }}
+      >
+        {lookAroundBlock}
+        {footerBlock}
+      </section>
     </div>
   );
 }

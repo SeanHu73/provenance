@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Tour, TourSession, Stop } from '@/lib/types';
 import { getLogicalStops, getStopsInGroup, getActiveGroupId, getNextStopInGroup } from '@/lib/tour-session';
 import { getActiveStops } from '@/lib/tours-store';
@@ -707,58 +707,109 @@ export function MidwayCheckinCard({
     }
   }
 
+  // Reveal state for the question section — fires haptic + fade in
+  // when the section first scrolls into view after the explorer has
+  // reviewed the stops they've visited.
+  const questionRef = useRef<HTMLElement | null>(null);
+  const [questionRevealed, setQuestionRevealed] = useState(false);
+
+  useEffect(() => {
+    if (questionRevealed) return;
+    const el = questionRef.current;
+    if (!el) return;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+              navigator.vibrate(10);
+            }
+            timeoutId = setTimeout(() => setQuestionRevealed(true), 100);
+            obs.disconnect();
+            return;
+          }
+        }
+      },
+      { threshold: 0.1 },
+    );
+    obs.observe(el);
+    return () => {
+      obs.disconnect();
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [questionRevealed]);
+
   return (
-    <div className="animate-fade-in space-y-6 min-h-full">
-      {/* Header */}
-      <div>
-        <p className="text-[22px] uppercase tracking-[0.12em] font-display font-semibold text-aged-gold mb-1">
-          Mid point check-in
-        </p>
-        <p className="text-[18px] font-serif text-text-primary leading-relaxed">
-          So these are the stops you have seen so far...
-        </p>
-      </div>
-
-      {/* Visited stop thumbnails */}
-      {visitedStops.length > 0 && (
-        <div className="space-y-2">
-          {visitedStops.map((stop, idx) => (
-            <VisitedStopThumb key={stop.id} stop={stop} visitNumber={idx + 1} />
-          ))}
+    <div className="animate-fade-in">
+      {/* Section 1 — header + visited stops summary */}
+      <section className="snap-start min-h-screen flex flex-col justify-center space-y-6 pb-6">
+        <div>
+          <p className="text-[22px] uppercase tracking-[0.12em] font-display font-semibold text-aged-gold mb-1">
+            Mid point check-in
+          </p>
+          <p className="text-[18px] font-serif text-text-primary leading-relaxed">
+            So these are the stops you have seen so far...
+          </p>
         </div>
-      )}
 
-      {/* Divider + deliberate gap so the question feels like a separate
-          beat after reviewing what they've explored. */}
-      <hr className="border-0 h-px" style={{ backgroundColor: 'var(--th-border)' }} />
-      <div className="h-32" aria-hidden="true" />
+        {visitedStops.length > 0 && (
+          <div className="space-y-2">
+            {visitedStops.map((stop, idx) => (
+              <VisitedStopThumb key={stop.id} stop={stop} visitNumber={idx + 1} />
+            ))}
+          </div>
+        )}
+      </section>
 
-      {/* The midway question */}
-      <p className="text-[24px] leading-snug font-display font-bold text-text-primary">
-        <FormattedText text={tour.midwayQuestion || ''} />
-      </p>
-
-      <div className="flex gap-2 items-start">
-        <textarea
-          value={response}
-          onChange={(e) => setResponse(e.target.value)}
-          placeholder="Discuss this, but optional to write down"
-          rows={4}
-          className="flex-1 px-4 py-3 rounded-lg text-base font-serif text-text-primary resize-none focus:outline-none"
-          style={{
-            backgroundColor: 'color-mix(in srgb, var(--th-surface-alt) 60%, transparent)',
-            border: '1px solid var(--th-border)',
-          }}
-        />
-        <MicButton onTranscript={(t) => setResponse((r) => r + (r ? ' ' : '') + t)} />
-      </div>
-
-      <button
-        onClick={() => onComplete(response)}
-        className="w-full py-3 rounded-lg text-base font-semibold text-white bg-aged-gold"
+      {/* Section 2 — the question itself, revealed when scrolled into view */}
+      <section
+        ref={questionRef}
+        className="snap-start min-h-screen flex flex-col justify-center space-y-6 pt-6"
+        style={{
+          opacity: questionRevealed ? 1 : 0,
+          transform: questionRevealed ? 'translateY(0)' : 'translateY(20px)',
+          transition: 'opacity 250ms ease-out, transform 250ms ease-out',
+        }}
       >
-        Continue tour
-      </button>
+        {/* Question styled to match the storyteller-authored question
+            treatment used by EQ / discussion cards — solid box with
+            cream text — at the midway's existing 24px size and without
+            the previous extra bold. */}
+        <div
+          className="px-6 py-5 text-center rounded-2xl"
+          style={{
+            backgroundColor: 'var(--th-question-bg-solid)',
+            boxShadow: '0 8px 28px var(--th-question-shadow)',
+          }}
+        >
+          <p className="text-[24px] leading-relaxed font-display" style={{ color: 'var(--th-surface)' }}>
+            &ldquo;<FormattedText text={tour.midwayQuestion || ''} />&rdquo;
+          </p>
+        </div>
+
+        <div className="flex gap-2 items-start">
+          <textarea
+            value={response}
+            onChange={(e) => setResponse(e.target.value)}
+            placeholder="Discuss this, but optional to write down"
+            rows={4}
+            className="flex-1 px-4 py-3 rounded-lg text-base font-serif text-text-primary resize-none focus:outline-none"
+            style={{
+              backgroundColor: 'color-mix(in srgb, var(--th-surface-alt) 60%, transparent)',
+              border: '1px solid var(--th-border)',
+            }}
+          />
+          <MicButton onTranscript={(t) => setResponse((r) => r + (r ? ' ' : '') + t)} />
+        </div>
+
+        <button
+          onClick={() => onComplete(response)}
+          className="w-full py-3 rounded-lg text-base font-semibold text-white bg-aged-gold"
+        >
+          Continue tour
+        </button>
+      </section>
     </div>
   );
 }

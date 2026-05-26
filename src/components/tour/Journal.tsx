@@ -214,7 +214,9 @@ export default function Journal({ onMapPeek }: JournalProps) {
               : { x: '-100%' }
             }
             transition={{ duration: isFade ? 0.4 : 0.12, ease: isFade ? 'easeInOut' : 'easeOut' }}
-            className="absolute inset-0 overflow-y-auto p-4 tour-scroll"
+            className={`absolute inset-0 overflow-y-auto p-4 tour-scroll ${
+              phase === 'seed' ? 'snap-y snap-mandatory' : ''
+            }`}
             ref={(el) => { scrollContainerRef.current = el; checkScroll(); }}
             onScroll={checkScroll}
           >
