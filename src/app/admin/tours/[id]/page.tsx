@@ -2536,6 +2536,20 @@ function NoticeMapEditor({ map, uploadPath, onUploadPhoto, onChange }: NoticeMap
             placeholder="Caption (e.g. “North aisle, near the second column”)"
           />
 
+          {/* Hint toggle — hides the map behind a "Tap for hint" button on
+              the explorer side so the group has to actively reveal it. */}
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={!!map.isHint}
+              onChange={(e) => onChange({ ...map, isHint: e.target.checked })}
+              className="w-3.5 h-3.5 accent-amber-500"
+            />
+            <span className="text-xs text-stone-700">
+              Treat as a hint &mdash; explorers must tap &ldquo;Tap for hint&rdquo; to reveal the map.
+            </span>
+          </label>
+
           <p className="text-[10px] text-stone-500">
             Click on the map to drop a &ldquo;you go here&rdquo; marker. Click an existing marker to edit or remove.
           </p>

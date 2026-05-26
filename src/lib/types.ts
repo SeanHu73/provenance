@@ -296,6 +296,9 @@ export interface NoticeMap {
   url: string;
   caption?: string | null;
   markers: NoticeMapMarker[];
+  /** When true, the map is hidden behind a "Tap for hint" button so the
+   *  group has to actively reveal it instead of seeing it immediately. */
+  isHint?: boolean;
 }
 
 export interface Stop {
