@@ -273,15 +273,15 @@ function HomeInner() {
         </div>
       )}
 
-      {/* Pre-tour bottom bar — logo + Provenance wordmark, centered. */}
+      {/* Pre-tour bottom bar — theme-colored, with the inverse-colored
+          logo glyph + Provenance wordmark, centered. */}
       {!isActive && (
         <div
-          className="shrink-0 border-t px-4 py-3 z-10 flex items-center justify-center gap-3"
-          style={{ backgroundColor: 'var(--cream)', borderColor: 'var(--th-border)' }}
+          className="shrink-0 px-4 py-3 z-10 flex items-center justify-center gap-3"
+          style={{ backgroundColor: 'var(--th-primary)' }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo_transparent.png" alt="" width={32} height={32} className="w-8 h-8" draggable={false} />
-          <span className="font-montserrat font-medium text-xl" style={{ color: '#8B2D2D' }}>
+          <InvertedLogoGlyph height={36} />
+          <span className="font-montserrat font-medium text-xl" style={{ color: 'var(--cream)' }}>
             Provenance
           </span>
         </div>
@@ -330,5 +330,53 @@ export default function Home() {
     <TourProvider>
       <HomeInner />
     </TourProvider>
+  );
+}
+
+// Aspect of the full pin glyph (width / height of the source PNG mask).
+const PIN_GLYPH_ASPECT = 319 / 450;
+const GLYPH_MASK = {
+  maskSize: 'contain',
+  WebkitMaskSize: 'contain',
+  maskRepeat: 'no-repeat',
+  WebkitMaskRepeat: 'no-repeat',
+  maskPosition: 'center',
+  WebkitMaskPosition: 'center',
+} as const;
+
+/**
+ * The Provenance pin in "inverse" colors against a theme-primary
+ * background: outer pin and dots are cream, the speech-bubble area
+ * blends with the bar (rendered in theme-primary), giving the
+ * impression of a cream pin with a bar-colored bubble cutout.
+ *
+ * Built from the same CSS-mask glyph PNGs used by the map pins so
+ * it stays in sync with the rest of the brand.
+ */
+function InvertedLogoGlyph({ height }: { height: number }) {
+  const width = height * PIN_GLYPH_ASPECT;
+  return (
+    <div style={{ position: 'relative', width, height }} aria-hidden="true">
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'var(--cream)',
+          WebkitMaskImage: 'url(/pin-glyph-base.png)',
+          maskImage: 'url(/pin-glyph-base.png)',
+          ...GLYPH_MASK,
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'var(--th-primary)',
+          WebkitMaskImage: 'url(/pin-glyph-p.png)',
+          maskImage: 'url(/pin-glyph-p.png)',
+          ...GLYPH_MASK,
+        }}
+      />
+    </div>
   );
 }

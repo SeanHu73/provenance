@@ -101,6 +101,29 @@ function nextPhaseAndRound(
   }
 }
 
+/**
+ * Whether the stop's reveal carries a bridge — used to decide if
+ * `whats_next` is worth showing. The admin toggle wipes both fields
+ * when the author turns the bridge off, so checking content is
+ * sufficient.
+ */
+export function hasBridgeContent(stop: Stop): boolean {
+  return !!(stop.reveal.bridgeText || (stop.reveal.bridgePhotos || []).length > 0);
+}
+
+/**
+ * Whether the next advancePhase call would land on `whats_next`. Lets
+ * the explorer cards relabel their "continue" button to the
+ * end-of-stop variant when whats_next is about to be skipped.
+ */
+export function nextPhaseWouldBeWhatsNext(
+  stop: Stop,
+  currentPhase: TourPhase,
+  currentRound: number
+): boolean {
+  return nextPhaseAndRound(currentPhase, currentRound, stop).phase === 'whats_next';
+}
+
 /** Push current state onto the phase history before a transition. */
 function pushHistory(session: TourSession): TourSession['phaseHistory'] {
   return [...(session.phaseHistory || []), {

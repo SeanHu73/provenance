@@ -15,6 +15,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { canUseBlur } from '@/lib/device-capability';
 import { getActiveStops } from '@/lib/tours-store';
+import { hasBridgeContent, nextPhaseWouldBeWhatsNext } from '@/lib/tour-session';
 import IntroScreens from './cards/IntroScreens';
 import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
@@ -280,15 +281,36 @@ export default function Journal({ onMapPeek }: JournalProps) {
           const hasContext = round === 0
             ? true
             : ((currentStop.extraRounds || [])[round - 1]?.reveal ?? null) !== null;
-          return <WonderCard key={`wonder-${round}`} stop={virtualStop} onContinue={advancePhase} hasContext={hasContext} />;
+          // Final in-stop screen iff the next state-machine step would
+          // land on whats_next AND there is no bridge to render there.
+          const isFinalInStop =
+            nextPhaseWouldBeWhatsNext(currentStop, 'wonder', round) && !hasBridgeContent(currentStop);
+          return (
+            <WonderCard
+              key={`wonder-${round}`}
+              stop={virtualStop}
+              onContinue={advancePhase}
+              hasContext={hasContext}
+              isFinalInStop={isFinalInStop}
+            />
+          );
         })()}
 
         {phase === 'reveal' && currentStop && (() => {
           const round = session.currentRound;
           const extras = currentStop.extraRounds || [];
+          const isFinalInStop =
+            nextPhaseWouldBeWhatsNext(currentStop, 'reveal', round) && !hasBridgeContent(currentStop);
 
           if (round === 0) {
-            return <RevealCard key="reveal-0" stop={currentStop} onContinue={advancePhase} />;
+            return (
+              <RevealCard
+                key="reveal-0"
+                stop={currentStop}
+                onContinue={advancePhase}
+                isFinalInStop={isFinalInStop}
+              />
+            );
           }
           // Extra round reveal
           const extra = extras[round - 1];
@@ -306,7 +328,14 @@ export default function Journal({ onMapPeek }: JournalProps) {
               audioTitle: extra.reveal.audioTitle ?? null,
             },
           };
-          return <RevealCard key={`reveal-${round}`} stop={virtualStop} onContinue={advancePhase} />;
+          return (
+            <RevealCard
+              key={`reveal-${round}`}
+              stop={virtualStop}
+              onContinue={advancePhase}
+              isFinalInStop={isFinalInStop}
+            />
+          );
         })()}
 
         {phase === 'whats_next' && currentStop && (
@@ -343,6 +372,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
             onAskQuestion={enterBranch}
             onContinue={advanceStop}
             onAddReflection={(sliderValue, followUpResponse) => addReflection(sliderValue, followUpResponse)}
+            isFinalInStop={!hasBridgeContent(currentStop)}
           />
         )}
 

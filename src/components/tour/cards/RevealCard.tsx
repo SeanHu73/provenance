@@ -10,9 +10,11 @@ import BackButton from './BackButton';
 interface Props {
   stop: Stop;
   onContinue: () => void;
+  /** True when this reveal is the final in-stop screen (no bridge → no whats_next). */
+  isFinalInStop?: boolean;
 }
 
-export default function RevealCard({ stop, onContinue }: Props) {
+export default function RevealCard({ stop, onContinue, isFinalInStop = false }: Props) {
   const hasAudio = !!stop.reveal.audioUrl;
   const [textExpanded, setTextExpanded] = useState(!hasAudio);
   const [fullscreen, setFullscreen] = useState<{ url: string; caption: string | null } | null>(null);
@@ -92,7 +94,7 @@ export default function RevealCard({ stop, onContinue }: Props) {
           onClick={onContinue}
           className="flex-1 py-3 rounded-lg text-base font-semibold bg-aged-gold text-white transition-colors"
         >
-          Continue
+          {isFinalInStop ? 'Continue Tour' : 'Continue'}
         </button>
       </div>
 

@@ -28,6 +28,8 @@ interface Props {
   onAskQuestion: () => void;
   onContinue: () => void;
   onAddReflection: (sliderValue: number, followUpResponse: string | null) => void;
+  /** True when reflect is the final in-stop screen (no bridge → no whats_next). */
+  isFinalInStop?: boolean;
 }
 
 export default function ReflectCard({
@@ -36,6 +38,7 @@ export default function ReflectCard({
   onAskQuestion,
   onContinue,
   onAddReflection,
+  isFinalInStop = false,
 }: Props) {
   const { tour, session } = useTour();
   const [sliderValue, setSliderValue] = useState(0.5);
@@ -86,11 +89,20 @@ export default function ReflectCard({
     if (reasoningChoices.length > 0) parts.push(`Why: ${reasoningChoices.join(', ')}`);
     if (stopChoices.length > 0) parts.push(`From stops: ${stopChoices.join(', ')}`);
     onAddReflection(sliderValue, parts.length > 0 ? parts.join(' | ') : null);
+    if (isFinalInStop) {
+      // No bridge → no whats_next embed; jump straight to the next stop.
+      onContinue();
+      return;
+    }
     setSubmitted(true);
   };
 
   const handleSkip = () => {
     onAddReflection(-1, 'skipped');
+    if (isFinalInStop) {
+      onContinue();
+      return;
+    }
     setSubmitted(true);
   };
 
@@ -215,7 +227,7 @@ export default function ReflectCard({
                 onClick={handleSubmit}
                 className="flex-1 py-3 rounded-lg text-base font-semibold bg-text-secondary text-white"
               >
-                Continue
+                {isFinalInStop ? 'Continue Tour' : 'Continue'}
               </button>
             </div>
           )}

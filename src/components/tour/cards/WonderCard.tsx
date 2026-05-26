@@ -10,14 +10,18 @@ interface Props {
   onContinue: () => void;
   /** Whether a context (reveal) screen follows this discussion question. */
   hasContext?: boolean;
+  /** True when this wonder is the final in-stop screen (no bridge → no whats_next). */
+  isFinalInStop?: boolean;
 }
 
-export default function WonderCard({ stop, onContinue, hasContext = true }: Props) {
+export default function WonderCard({ stop, onContinue, hasContext = true, isFinalInStop = false }: Props) {
   if (!stop.wonder) return null;
 
-  const buttonLabel = hasContext
-    ? "We've talked — show us"
-    : "We've talked — what's next?";
+  const buttonLabel = isFinalInStop
+    ? "We've talked — continue tour"
+    : hasContext
+      ? "We've talked — show us"
+      : "We've talked — what's next?";
 
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">

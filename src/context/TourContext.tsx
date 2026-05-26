@@ -22,6 +22,7 @@ import {
   addReflection as addReflectionImpl,
   recordDetourVisit as recordDetourVisitImpl,
   goBack as goBackImpl,
+  hasBridgeContent,
   completeIntro as completeIntroImpl,
   completeMeetGuide as completeMeetGuideImpl,
   completeEqScene as completeEqSceneImpl,
@@ -135,11 +136,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
     if (prev) persist(prev);
   }, [session, persist]);
 
-  const advancePhase = useCallback(() => {
-    if (!session || !currentStop) return;
-    persist(advancePhaseImpl(session, currentStop));
-  }, [session, currentStop, persist]);
-
   const advanceStop = useCallback(() => {
     if (!session || !tour) return;
     const next = advanceToNextStopImpl(session, tour);
@@ -152,6 +148,19 @@ export function TourProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [session, tour, persist]);
+
+  const advancePhase = useCallback(() => {
+    if (!session || !currentStop) return;
+    const next = advancePhaseImpl(session, currentStop);
+    // Bridge unselected → no whats_next screen; advance straight to the
+    // next stop (or closing). The cards on the final in-stop screen
+    // relabel their "continue" button to reflect this.
+    if (next.currentPhase === 'whats_next' && !hasBridgeContent(currentStop)) {
+      advanceStop();
+      return;
+    }
+    persist(next);
+  }, [session, currentStop, persist, advanceStop]);
 
   const enterBranch = useCallback(() => {
     if (!session) return;
