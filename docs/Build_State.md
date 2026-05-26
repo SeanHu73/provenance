@@ -1,6 +1,6 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-05-25
+*Handoff document for the next Claude Code session. Last updated 2026-05-26
 (see §8 final entry).
 Read this instead of re-discovering the codebase.*
 
@@ -90,6 +90,9 @@ Map (tour pin) → Journal Peek → Intro screens → [Meet Your Guide] →
 | PhotoContent | `cards/PhotoContent.tsx` | Text + [photo:N] markers + fullscreen |
 | FormattedText | `cards/FormattedText.tsx` | **bold** *italic* {{color}} rendering |
 | FullscreenPhoto | `cards/FullscreenPhoto.tsx` | Portal-based fullscreen with pinch zoom |
+| NoticeMapDisplay | `cards/NoticeMapDisplay.tsx` | Indoor "where to go" map on the Notice screen; pulsing pin markers, optional "Tap for hint" reveal |
+| PhotoAnnotations | `cards/PhotoAnnotations.tsx` | Runtime overlay layer — renders admin-authored text / outlined-circle / outlined-rect annotations on any StopPhoto |
+| PhotoOverlayEditor | `src/components/admin/PhotoOverlayEditor.tsx` | Admin modal — toolbar, color picker, click-to-place, drag-to-move, corner-resize for photo overlays |
 | MicButton | `src/components/tour/MicButton.tsx` | Deepgram voice-to-text |
 | VoiceInput | `src/components/tour/VoiceInput.tsx` | Standalone voice input (prominent mode) |
 | ThemeSwitcher | `src/components/ThemeSwitcher.tsx` | Red/Teal toggle on the map (§9) |
@@ -954,6 +957,297 @@ prop and relabel their continue button:
   `ReflectCard` post-submit), so suppressing the `whats_next` phase
   alone isn't enough — the embed has to skip too. Pattern: gate the
   embed on the same condition (`isFinalInStop` here).
+
+---
+
+### Autoplay system, cover-photo framing, indoor maps, photo overlays, scroll-snap (2026-05-25 → 2026-05-26)
+
+A long multi-part session — eighteen commits (`b9b58fd` → `d39de46`),
+all live on `master`. Touches the explorer footer, onboarding, the
+journal peek, every audio surface, notice screens, every `StopPhoto`,
+the unstructured map and progress bar, and the admin tour editor.
+
+**Footer label.** The bare `?` button on the footer was relabelled to
+`? Inquiries` (icon-glyph at `text-xl font-bold` plus the word) to
+match the Journal button's `[icon, label]` rhythm. Same chunky
+pill style for both main buttons.
+
+**Audio autoplay.** Every audio surface — peek, guide intro, guide
+thank-you, EQ scene, EQ closing, stop seed/notice/wonder/reveal, and
+the extra-round wonder/reveal — gained an `audioAutoplayDisabled`
+sibling on its data and a `Don't autoplay on this screen` checkbox on
+`AudioUpload`. A new `useAudioAutoplay()` hook in
+`src/lib/audio-autoplay.ts` exposes a `localStorage`-backed
+preference; `AudioButton` accepts an `autoplay` prop and calls
+`audio.play().catch(...)` on mount when allowed (browsers may still
+block — the promise is swallowed and the button falls back to its
+idle state). The per-audio admin flag is a hard veto: even with the
+user preference on, a screen flagged as "no autoplay" never starts
+audio automatically. The combined Seed+Notice screen suppresses
+notice autoplay whenever seed audio is also present so the two
+streams don't collide.
+
+Footer toggle for the preference started as a generic speaker icon
+but read as "mute / volume," not autoplay. Replaced with a compact
+`Auto ▶` pill: `rounded-full px-3 py-2`, uppercase `text-[11px]`,
+subtler `bg-black/15` + `border-white/20` so it sits visibly
+subordinate to the chunky Journal / Inquiries buttons. When on, the
+*entire* pill lights up — `bg-warm-white text-journal border-warm-white shadow` — instead of just filling the play triangle, which
+was too subtle a cue.
+
+`IntroScreens`' Set Up step now also asks "When a screen has audio,
+should it play automatically?" with `Auto-play ▶` / `Tap to play ▷`
+buttons matching the existing phone-question style; picking one writes
+the preference. Advancing past Set Up is gated on both phone and
+autoplay choices. The moment a choice is made, the same bouncing arrow
+used for the `?` button appears over the footer's Auto pill so the
+reader sees where the setting lives. Threaded via a new
+`onPointAtAutoplay` callback through `IntroScreens` → `Journal` →
+`TourFooter` (mirrors the existing `onPointAtQuestion` pattern).
+
+**Tour cover photo framing.** `Tour.coverPhotoFocalPoint` and
+`Tour.coverPhotoZoom` joined the existing guide-photo framing pair.
+Admin: the tiny 128×80 thumbnail in the tour editor became a
+phone-width preview that mirrors the learner view exactly — same
+`h-36` crop, 60 % opacity, same `to-journal` top-down gradient — with
+click-to-set focal point and a 1×–3× zoom slider. `JournalPeek`
+honours both via `objectPosition` + matching `transform-origin scale`
+(same approach as `guidePhotoStyle`).
+
+While in the peek: enlarged the tour title (`text-lg` → `text-[26px]`),
+promoted the stops + estimated time to its own clock-iconed row right
+under the title so groups know what they're committing to before
+reading the description, and capped the sheet at `max-h: 75vh` with a
+`shrink-0` cover photo + `flex-1 overflow-y-auto` content area. Larger
+text now scrolls *inside* the sheet instead of pushing the photo
+off-screen, and the sheet never grows past three quarters of the
+viewport.
+
+**Top-bar exit X removed.** Both title bars (`Journal.tsx` for linear
+tours, `page.tsx` for unstructured map / midway / closing) carried an
+`×` that ended the tour with a single tap — easy to hit accidentally
+mid-flow. Removed; the empty `w-8` placeholder keeps the centred
+title centred. The natural-end `EndCard`'s Exit button still works.
+Dropped the now-unused `endTour` from each file's `useTour()`
+destructure.
+
+**Onboarding affordances.** Three small reads-better-on-first-run
+fixes:
+
+- `EqOpeningCard` shows a gold left-bordered note ("You'll only be
+  asked to record an answer here and at the end of the tour. That way
+  you can look back and see how your thinking has evolved.") so the
+  writing prompt isn't a surprise on first run.
+- `UnstructuredMapControls` shows a bouncing pin-iconed pill ("Tap a
+  pin to begin") at the top-centre of the map when the group has
+  completed no stops and no pin is selected. Clears as soon as they
+  tap or once any stop is in `completedStops`.
+- The bottom-of-screen "Keep scrolling" indicator was a faint
+  `opacity: 0.5` chevron with `animate-gentle-pulse` (0.15 → 0.5
+  opacity) that people were missing on busier content. First bumped
+  to a bouncing `Keep scrolling` pill + 36×36 chevron in the primary
+  color with drop shadow; then softened from `animate-bounce` to a
+  new `animate-gentle-fade` keyframe (1.0 → 0.55 → 1.0 over 2.4 s) so
+  the cue stays loud-but-calm instead of yanking attention.
+
+### Indoor notice map (2026-05-26)
+
+Two related authoring features arrived in this part of the session,
+both for visual emphasis at the stop level.
+
+**`NoticeMap` data type.** Each stop's notice phase gained an optional
+`NoticeMap = { url, caption, markers: NoticeMapMarker[], isHint }`.
+Markers carry `{ id, x, y, label? }` in 0–100 percent coordinates.
+Used for stops inside a building where the outdoor GPS pin isn't
+enough — the admin uploads a floorplan or interior photo and drops
+"this is where you go" pins on it.
+
+**Runtime.** `NoticeMapDisplay` renders a `WHERE TO GO` banner + the
+uploaded photo + pulsing pins for each marker. Tap to fullscreen.
+The marker glyph is anchored to a 0×0 div at `(x%, y%)` of the image
+wrapper; the pin SVG and label are absolutely positioned relative to
+that anchor, so the pin tip lands exactly on the pinned coordinate
+*regardless of whether a label is present* — the earlier flex-column
+approach drifted the pin upward by the label's height whenever a
+label was set. The pulsing halo is two nested spans (outer owns the
+positioning transform, inner owns the `animate-ping` scale) so the
+keyframe's `transform: scale(2)` doesn't clobber the centering
+translate (this is the same `animate-ping` lesson recorded in §7
+applied freshly).
+
+When the map is flagged `isHint`, the runtime hides it behind a
+dashed-border `Tap for hint` pill so the group has to actively reveal
+it; once revealed, the banner reads `Hint — where to go`. Rendered
+in both `NoticeCard` (standalone Notice phase) and the
+`SeedCard` "Look around" section (combined seed+notice) — the latter
+is the more common surface in practice, so wiring only `NoticeCard`
+would have left the map invisible on most stops.
+
+**Admin.** New inline `NoticeMapEditor` in the tour-editor's Notice
+fieldset: URL / Upload row, caption, the `Treat as a hint` checkbox,
+a click-to-drop preview, and a list below the preview where each
+marker gets an optional label and a delete button. Markers in the
+preview anchor to the image bounds (not the outer container or
+button) so the click-to-place coordinates and the rendered pin lay
+on the same point on both sides of the editor — the first cut
+positioned markers against an outer card/button and they drifted
+relative to the image whenever the photo was letterboxed or the
+container had different padding.
+
+### Photo overlay annotations (2026-05-26)
+
+Every `StopPhoto` gained an optional `overlays: PhotoOverlay[]`
+field. `PhotoOverlay` is a tagged union of `text` (with `text`,
+`color`, optional `fontSize`), `circle`, and `rect` (each with
+`{ x, y, w, h, color }`). Coordinates are percent-of-photo so they
+scale at any rendered size.
+
+**Type-name note.** The legacy v1 inquiry annotation type
+`PhotoAnnotation` is still referenced from the v1 admin code — the
+new system uses `PhotoOverlay` (field: `overlays`) to avoid colliding
+with that. Don't conflate the two.
+
+**Runtime.** `PhotoAnnotations` renders the overlays as
+absolutely-positioned HTML elements (not SVG with
+`preserveAspectRatio='none'` — that distorts text and stroke widths
+on non-square photos). Each annotation independently positions itself
+by `left: x%, top: y%` and (for shapes) `width: w%, height: h%`,
+which keeps text and outlines un-distorted regardless of the photo's
+aspect ratio. Wired into `PhotoContent` (inline photo blocks — each
+`PhotoBlock` wraps the `<img>` in a relative container with the
+overlay layered on top) and into `FullscreenPhoto` (the fullscreen
+viewer wraps the `<img>` in an `inline-block` sized to the rendered
+image, so the overlay tracks the image edges exactly even when
+`object-fit: contain` letterboxes the image).
+
+**Admin.** `PhotoOverlayEditor` is a full-screen modal that opens
+from every `PhotoListEditor` row via an `Annotate (N)` button.
+Toolbar: Select / Text / Circle / Rectangle plus a 7-color palette.
+Pick a tool then click on the photo to place a new overlay; click an
+existing overlay to select it; drag to move; four corner handles to
+resize shapes; side panel hosts text / font-size / numeric position
+fields and a list of all overlays for fast selection + delete. `Esc`
+cancels; `Delete` / `Backspace` removes the selected overlay. Out of
+scope for now: overlays on non-`StopPhoto` images (cover, guide, EQ
+scene, legacy `photoUrl` strings).
+
+### Map zoom-on-return + unstructured progress reorder (2026-05-26)
+
+**`MapZoomer`.** Used to fire once per map mount via a `fired` ref —
+which meant the configured default zoom only applied on the very
+first entry into the unstructured map. Replaced with a
+`wasUnstructured` ref tracking the previous value of
+`isUnstructuredMap`; now fires on every `false → true` transition.
+Returning from a stop snaps the map back to the admin-configured
+default zoom centred on the user, every time.
+
+**`MapFlyer`.** Phase 3 used to zoom out to a computed "fit user and
+stop in view" value (`fitZoomCenteredOnStop`) that left explorers
+slightly further out than the default. Threaded `tourDefaultZoom`
+into MapFlyer and use it as the end zoom instead. Removed the
+unused `userLocation` prop / dependency and dropped the
+`fitZoomCenteredOnStop` helper entirely.
+
+**Unstructured progress bar (inline pills).** Reordered so completed
+stops are in `completionOrder` (click) order; current; then upcoming
+(in authored order so the count stays meaningful). An earlier pass
+dropped the upcoming pills entirely; the user pulled them back —
+they liked seeing how many stops were left.
+
+**Unstructured progress bar (expanded tracker).** The thumbnail
+panel that opens when the bar is tapped (`StopTrackerOverlay`) used
+to iterate `getActiveStops(tour)` in authoring order, so starting on
+stop 6 lit up the sixth card from the left rather than the
+leftmost. For unstructured mode it now sorts completed sub-stops by
+their group's index in `completionOrder` (with `getActiveStops`
+index as the tiebreaker so a merge group's sub-stops stay
+contiguous), then the current stop, then upcoming in authored order.
+Linear mode short-circuits to `getActiveStops` since authoring order
+*is* the journey. Also fixed an `isCurrent` check inside the loop
+(was `i === session.currentStopIndex`, only correct when iterating
+in active-stop order; now compares stop IDs).
+
+### Scroll-snap reveals + admin text-size (2026-05-26)
+
+**Two transition points with snap + haptic + fade reveal:**
+
+1. `SeedCard`: Background → Look Around
+2. `MidwayCheckinCard`: stops summary → question
+
+Pattern: each card owns its own `scrollSnapType: y mandatory` scroll
+container. The first cut used the card frame parents (Journal's
+`motion.div`, page.tsx's midway flex div) as the snap container — but
+`min-h-screen` (100 vh) overshoots the visible card area because the
+title bar / progress strip / footer slice the viewport, so sections
+were taller than what's actually visible and the user saw "weird
+gaps" and an over-scrolled jump between sections. Final design:
+
+- The card's outer wrapper is `absolute inset-0 overflow-y-auto`
+  inside a card frame marked `relative`, so it fills the actual
+  visible card area exactly. Card frame's `px-5 py-6` padding gets
+  overlapped by the absolute wrapper, so each section restores
+  `px-5 py-6` internally for the visual margin.
+- Sections use `min-h-full` (not `h-full` or `min-h-screen`) +
+  `flex flex-col justify-center` + `scrollSnapAlign: start` +
+  `scrollSnapStop: always`. Short content stays centred in the
+  visible area; long content grows the section so `justify-center`
+  has no slack to push the top off-screen — after the snap, the top
+  of the content lands at the viewport top and the reader can scroll
+  down through the section.
+- The second section starts at `opacity 0 + translateY 20px`. An
+  `IntersectionObserver` (default root = viewport, threshold 0.1)
+  fires `navigator.vibrate(10)` (where supported) and after a delay
+  flips a `revealed` state that drives a CSS transition.
+- Background → Look Around: 400 ms delay, 400 ms transition.
+- Midway: 100 ms delay, 250 ms transition.
+
+When the stop has no notice content, `SeedCard` falls back to the
+original single-section centred layout — no point forcing a snap
+with nothing to snap to.
+
+**Midway question styling.** Was `font-display` (DM Serif Display)
+`font-bold` at 24 px — both too heavy and too big for mid-tour.
+Moved into the same storyteller question box used by the EQ /
+discussion cards (cream text on the dark question fill) but in
+`font-serif` (Newsreader, the body serif) at `text-[20px]` without
+bold. Lighter and more readable mid-flow than the EQ hero.
+
+**Admin text-size control.** Tour editor header now has a small
+A / A / A pill with `small` / `normal` / `large` choices. Selection
+writes to `localStorage` as `admin-text-size` and toggles
+`data-admin-text-size` on the page root; a CSS rule in `globals.css`
+scales every `textarea` and text-typed `input` inside that subtree
+to `12px` / inherit / `17px`. Labels, buttons, and layout stay at
+their original sizes — just field text scales.
+
+**Lessons / gotchas captured this session**
+
+- Tailwind's `animate-ping` keyframe sets `transform: scale(2)`,
+  which clobbers any positioning translate on the same element.
+  Already documented in §7; reapplied here for the notice-map halo
+  (split into outer-positioning + inner-animating spans).
+- `min-h-screen` / 100 vh > the actual visible card area inside the
+  Journal because the title bar, progress strip, and footer slice the
+  viewport. For "fits one screen" sections within a sub-area, use
+  `min-h-full` of an absolutely-positioned scroll container that
+  fills the actual sub-area, not viewport-height units.
+- `scroll-snap-type: y mandatory` is the right strictness for
+  "always land on a section top," but plan for sections that grow
+  beyond the visible area: `min-h-full` + `justify-center` handles
+  short content gracefully *and* lets long content cluster from the
+  section's top so the reader can scroll through.
+- `preserveAspectRatio='none'` on an SVG overlay distorts text and
+  stroke widths on non-square photos. For positioned annotations
+  over an image, use absolutely-positioned HTML elements with
+  percent `left/top` (and `width/height` for shapes) so each
+  annotation independently tracks the rendered photo at its native
+  aspect ratio.
+- Pin / marker layers anchored to an outer container (card, button)
+  drift relative to the image whenever the image is letterboxed or
+  the container has padding/borders. Position annotation layers
+  against an inline-block wrapper sized to the image itself, and
+  zero out any UA-default `<button>` padding/border if the click
+  target is a button.
 
 ---
 
