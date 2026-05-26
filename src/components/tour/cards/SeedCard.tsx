@@ -11,6 +11,7 @@ import { Stop } from '@/lib/types';
 import PhotoContent from './PhotoContent';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
+import NoticeMapDisplay from './NoticeMapDisplay';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
@@ -74,8 +75,14 @@ export default function SeedCard({ stop, onContinue }: Props) {
         <div className="border-t border-sandstone-light my-1" />
       )}
 
-      {/* Look Around section */}
-      {stop.notice.prompt && (
+      {/* Look Around section — render if any of prompt, audio, indoor map,
+          or photos is present so the indoor map shows up even when there
+          isn't a separate text prompt yet. */}
+      {(stop.notice.prompt
+        || stop.notice.audioUrl
+        || stop.notice.noticeMap?.url
+        || (stop.notice.photos && stop.notice.photos.length > 0)
+        || stop.notice.photoUrl) && (
         <>
           <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
             Look around...
@@ -84,14 +91,21 @@ export default function SeedCard({ stop, onContinue }: Props) {
           {/* Notice audio */}
           {stop.notice.audioUrl && <AudioButton audioUrl={stop.notice.audioUrl} title={stop.notice.audioTitle} autoplay={noticeAutoplay} />}
 
+          {/* Indoor "where to go" map — matches NoticeCard */}
+          {stop.notice.noticeMap && stop.notice.noticeMap.url && (
+            <NoticeMapDisplay map={stop.notice.noticeMap} />
+          )}
+
           {/* Notice prompt + photos */}
-          <PhotoContent
-            text={stop.notice.prompt}
-            photos={stop.notice.photos || []}
-            legacyPhotoUrl={stop.notice.photoUrl}
-            legacyPhotoCaption={stop.notice.photoCaption}
-            textClass="text-[23px] leading-relaxed font-serif text-text-primary"
-          />
+          {(stop.notice.prompt || (stop.notice.photos && stop.notice.photos.length > 0) || stop.notice.photoUrl) && (
+            <PhotoContent
+              text={stop.notice.prompt}
+              photos={stop.notice.photos || []}
+              legacyPhotoUrl={stop.notice.photoUrl}
+              legacyPhotoCaption={stop.notice.photoCaption}
+              textClass="text-[23px] leading-relaxed font-serif text-text-primary"
+            />
+          )}
         </>
       )}
 
