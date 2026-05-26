@@ -74,7 +74,11 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
         </button>
         <button
           onClick={() => setAutoplayPref(!autoplayPref)}
-          className="relative flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] uppercase tracking-wider font-semibold text-warm-white/85 hover:text-warm-white bg-black/15 hover:bg-black/25 transition-colors border border-white/20"
+          className={`relative flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] uppercase tracking-wider font-semibold transition-colors border ${
+            autoplayPref
+              ? 'bg-warm-white text-journal border-warm-white shadow'
+              : 'text-warm-white/85 hover:text-warm-white bg-black/15 hover:bg-black/25 border-white/20'
+          }`}
           title={autoplayPref ? 'Auto-play narration: on (tap to disable)' : 'Auto-play narration: off (tap to enable)'}
           aria-pressed={autoplayPref}
         >
