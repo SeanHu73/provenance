@@ -2554,31 +2554,49 @@ function NoticeMapEditor({ map, uploadPath, onUploadPhoto, onChange }: NoticeMap
             Click on the map to drop a &ldquo;you go here&rdquo; marker. Click an existing marker to edit or remove.
           </p>
 
-          {/* Preview with markers — click to add new */}
-          <div
-            className="relative inline-block w-full max-w-xl border border-stone-300 rounded overflow-hidden bg-black/5 cursor-crosshair select-none"
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
-              const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
-              const id = `mk_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-              onChange({ ...map, markers: [...map.markers, { id, x, y }] });
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={map.url} alt="" className="block w-full max-h-80 object-contain" draggable={false} />
-            {map.markers.map((m) => (
-              <div
-                key={m.id}
-                className="absolute flex flex-col items-center pointer-events-none"
-                style={{ left: `${m.x}%`, top: `${m.y}%`, transform: 'translate(-50%, -100%)' }}
-              >
-                <svg width="26" height="32" viewBox="0 0 24 30" fill="none" style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))' }}>
-                  <path d="M12 0 a 9 9 0 0 1 9 9 c 0 7 -9 21 -9 21 s -9 -14 -9 -21 a 9 9 0 0 1 9 -9 z" fill="#C4923A" stroke="#fff" strokeWidth="1.5" />
-                  <circle cx="12" cy="9" r="3.2" fill="#fff" />
-                </svg>
-              </div>
-            ))}
+          {/* Preview with markers — click to add new. The click target is
+              an inline-block sized exactly to the image so (x%, y%) maps
+              to the image bounds, matching the explorer-side renderer. */}
+          <div className="w-full max-w-xl border border-stone-300 rounded overflow-hidden bg-black/5 flex justify-center">
+            <div
+              className="relative cursor-crosshair select-none"
+              style={{ display: 'inline-block', maxWidth: '100%' }}
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) return;
+                const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+                const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+                const id = `mk_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+                onChange({ ...map, markers: [...map.markers, { id, x, y }] });
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={map.url} alt="" className="block" style={{ maxWidth: '100%', maxHeight: 320 }} draggable={false} />
+              {map.markers.map((m) => (
+                <div
+                  key={m.id}
+                  className="absolute pointer-events-none"
+                  style={{ left: `${m.x}%`, top: `${m.y}%`, width: 0, height: 0 }}
+                >
+                  <svg
+                    width="26"
+                    height="32"
+                    viewBox="0 0 24 30"
+                    fill="none"
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      bottom: 0,
+                      transform: 'translateX(-50%)',
+                      filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))',
+                    }}
+                  >
+                    <path d="M12 0 a 9 9 0 0 1 9 9 c 0 7 -9 21 -9 21 s -9 -14 -9 -21 a 9 9 0 0 1 9 -9 z" fill="#C4923A" stroke="#fff" strokeWidth="1.5" />
+                    <circle cx="12" cy="9" r="3.2" fill="#fff" />
+                  </svg>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Marker list — labels + delete */}

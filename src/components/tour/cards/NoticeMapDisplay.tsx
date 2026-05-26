@@ -60,24 +60,33 @@ export default function NoticeMapDisplay({ map }: Props) {
           </span>
         </div>
 
+        {/* Map area — markers anchor to an inline-block wrapper sized to
+            the image so (x%, y%) maps to the image bounds exactly, with
+            no offset from button padding or object-contain letterboxing
+            inside the parent's full width. */}
         <button
           type="button"
           onClick={() => setFullscreen(true)}
-          className="relative w-full block text-left"
+          className="block w-full text-left bg-black/5"
+          style={{ padding: 0, border: 'none' }}
           aria-label="Expand map"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={map.url}
-            alt={map.caption || 'Stop location map'}
-            className="w-full max-h-80 object-contain bg-black/5"
-            draggable={false}
-          />
-          {/* Marker layer */}
-          <div className="pointer-events-none absolute inset-0">
-            {map.markers.map((m) => (
-              <NoticeMapMarkerGlyph key={m.id} x={m.x} y={m.y} label={m.label} />
-            ))}
+          <div className="w-full flex justify-center">
+            <div style={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={map.url}
+                alt={map.caption || 'Stop location map'}
+                className="block"
+                style={{ maxWidth: '100%', maxHeight: 320 }}
+                draggable={false}
+              />
+              <div className="pointer-events-none absolute inset-0">
+                {map.markers.map((m) => (
+                  <NoticeMapMarkerGlyph key={m.id} x={m.x} y={m.y} label={m.label} />
+                ))}
+              </div>
+            </div>
           </div>
         </button>
 
