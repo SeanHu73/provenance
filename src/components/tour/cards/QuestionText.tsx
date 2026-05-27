@@ -1,9 +1,8 @@
 'use client';
 
 /**
- * Styled discussion question text — Marigold Sans, larger than the
- * surrounding body text, left-aligned, themed to --th-secondary so it
- * sits distinct from the page title (which uses --th-primary). Used
+ * Styled discussion question text — Montserrat, larger than the
+ * surrounding body text, left-aligned, themed to --th-secondary. Used
  * across all discussion-question cards (per-stop wonder, EQ discuss,
  * EQ additional, EQ closing echo, midway check-in).
  */
@@ -20,7 +19,7 @@ interface Props {
 export default function QuestionText({ text, sizeClass = 'text-[30px]', className = '' }: Props) {
   return (
     <p
-      className={`${sizeClass} leading-snug font-marigold-sans text-left ${className}`}
+      className={`${sizeClass} leading-snug font-montserrat text-left ${className}`}
       style={{ color: 'var(--th-secondary)' }}
     >
       <FormattedText text={text} />

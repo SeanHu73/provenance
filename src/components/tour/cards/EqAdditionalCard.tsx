@@ -64,7 +64,7 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
   const bgAutoplay = autoplayPref && !aq.questionBackgroundAudioAutoplayDisabled;
 
   const titleBlock = (
-    <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+    <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
       {isOpinion ? "What's your opinion?" : 'Chance to discuss...'}
     </p>
   );
@@ -133,7 +133,7 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
           transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
         }}
       >
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
           Discuss
         </p>
         <QuestionText text={aq.question} />

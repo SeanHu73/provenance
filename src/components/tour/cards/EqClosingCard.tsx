@@ -48,7 +48,7 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
     <div className="animate-fade-in space-y-7 min-h-full">
       {/* Tour-complete header + closing framing/audio */}
       <div className="space-y-3">
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
           Tour complete
         </p>
         {eq.closingFraming && (
@@ -85,7 +85,7 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
 
       {/* Where are you now — the actual closing prompts */}
       <div className="space-y-5">
-        <p className="text-[22px] uppercase tracking-[0.12em] font-display font-semibold text-aged-gold">
+        <p className="text-[22px] uppercase tracking-[0.12em] font-display font-semibold text-accent-dark">
           Where are you now?
         </p>
 

@@ -81,7 +81,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
   }, [hasBackground, questionRevealed]);
 
   const titleBlock = (
-    <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+    <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
       {title}
     </p>
   );
@@ -155,7 +155,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
           transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
         }}
       >
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
           Discuss
         </p>
         <QuestionText text={wonder.question} />

@@ -764,7 +764,7 @@ export function MidwayCheckinCard({
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <div>
-          <p className="text-[22px] uppercase tracking-[0.12em] font-display font-semibold text-aged-gold mb-1">
+          <p className="text-[22px] uppercase tracking-[0.12em] font-display font-semibold text-accent-dark mb-1">
             Mid point check-in
           </p>
           <p className="text-[18px] font-serif text-text-primary leading-relaxed">
@@ -813,7 +813,7 @@ export function MidwayCheckinCard({
           transition: 'opacity 250ms ease-out, transform 250ms ease-out',
         }}
       >
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
           Discuss
         </p>
         <QuestionText text={tour.midwayQuestion || ''} sizeClass="text-[26px]" />

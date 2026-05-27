@@ -63,7 +63,7 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
   }, [hasBackground, questionRevealed]);
 
   const titleBlock = (
-    <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+    <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
       Question for you!
     </p>
   );
@@ -132,7 +132,7 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
           transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
         }}
       >
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
           Discuss
         </p>
         <QuestionText text={eq.question} />
