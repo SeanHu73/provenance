@@ -15,7 +15,6 @@ import { Tour, TourSession } from '@/lib/types';
 import BackButton from './BackButton';
 import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
-import FormattedText from './FormattedText';
 import PhotoContent from './PhotoContent';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
@@ -143,12 +142,11 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
             autoplay={bgAutoplay}
           />
         )}
-        <p className="text-[19px] leading-relaxed font-serif text-text-primary text-left">
-          <FormattedText text={background} />
-        </p>
-        {item.questionBackgroundPhotos && item.questionBackgroundPhotos.length > 0 && (
-          <PhotoContent text="" photos={item.questionBackgroundPhotos} />
-        )}
+        <PhotoContent
+          text={background}
+          photos={item.questionBackgroundPhotos || []}
+          textClass="text-[19px] leading-relaxed font-serif text-text-primary text-left"
+        />
       </section>
 
       <section

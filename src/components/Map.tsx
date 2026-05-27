@@ -722,6 +722,12 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
   }
 
   const D = data.isActive ? 40 : 32;
+  // Linear pins: no index number. Number badges are reserved for
+  // cluster sub-stop counts; a stand-alone pin's "position in the
+  // sequence" is implied by walking the tour, not stamped on the map.
+  // Completed stops still get a check badge so explorers can read
+  // their own progress at a glance.
+  const badge = data.isCompleted && !data.isActive ? { check: true } : undefined;
   return (
     <AdvancedMarker
       position={data.stop.location}
@@ -733,7 +739,7 @@ function TourStopPin({ data, onClick }: { data: TourStopMarkerData; onClick: () 
           diameter={D}
           ring={data.isActive}
           dim={data.isCompleted && !data.isActive}
-          badge={{ text: String(data.index + 1) }}
+          badge={badge}
           glyph={<BubbleGlyph height={D * 0.56} />}
         />
       </div>
@@ -818,6 +824,10 @@ function computeOffScreenArrows(
   const counts = new Array(8).fill(0);
 
   for (const ts of tourStops) {
+    // Skip completed stops — pointing the group at pins they've
+    // already done would mislead them into thinking there's still
+    // something to find in that direction.
+    if (ts.isCompleted) continue;
     const loc = ts.stop.location;
     if (!loc) continue;
     // Is this stop outside the current viewport?

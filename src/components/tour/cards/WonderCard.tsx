@@ -16,7 +16,6 @@ import PhotoContent from './PhotoContent';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import QuestionText from './QuestionText';
-import FormattedText from './FormattedText';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
@@ -145,12 +144,11 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
         {wonder.audioUrl && (
           <AudioButton audioUrl={wonder.audioUrl} title={wonder.audioTitle} autoplay={wonderAutoplay} />
         )}
-        <p className="text-[19px] leading-relaxed font-serif text-text-primary text-left">
-          <FormattedText text={background} />
-        </p>
-        {wonder.questionBackgroundPhotos && wonder.questionBackgroundPhotos.length > 0 && (
-          <PhotoContent text="" photos={wonder.questionBackgroundPhotos} />
-        )}
+        <PhotoContent
+          text={background}
+          photos={wonder.questionBackgroundPhotos || []}
+          textClass="text-[19px] leading-relaxed font-serif text-text-primary text-left"
+        />
         {wonder.photos && wonder.photos.length > 0 && (
           <PhotoContent text="" photos={wonder.photos} />
         )}

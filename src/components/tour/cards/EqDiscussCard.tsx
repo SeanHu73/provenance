@@ -14,7 +14,6 @@ import { Tour } from '@/lib/types';
 import BackButton from './BackButton';
 import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
-import FormattedText from './FormattedText';
 import PhotoContent from './PhotoContent';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
@@ -123,12 +122,11 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
             autoplay={bgAutoplay}
           />
         )}
-        <p className="text-[19px] leading-relaxed font-serif text-text-primary text-left">
-          <FormattedText text={background} />
-        </p>
-        {eq.questionBackgroundPhotos && eq.questionBackgroundPhotos.length > 0 && (
-          <PhotoContent text="" photos={eq.questionBackgroundPhotos} />
-        )}
+        <PhotoContent
+          text={background}
+          photos={eq.questionBackgroundPhotos || []}
+          textClass="text-[19px] leading-relaxed font-serif text-text-primary text-left"
+        />
       </section>
 
       <section

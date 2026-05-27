@@ -41,8 +41,12 @@ export default function RoomStopProposalOverlay() {
   const myApproved = approvals.has(mySessionId);
   const waitingFor = room.members.filter((m) => !approvals.has(m.sessionId));
 
+  // Prefer the sub-stop's own title so cluster sub-stops show "Pendentive
+  // Angel" (or whatever) rather than the cluster's group name. Falls
+  // back to the group name for un-started cluster leaders that don't
+  // have their own title, then to a generic label.
   const targetTitle =
-    targetStop?.mergeGroup || targetStop?.title || 'the next stop';
+    targetStop?.title || targetStop?.mergeGroup || 'the next stop';
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[55] flex justify-center pointer-events-none">

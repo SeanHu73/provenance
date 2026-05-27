@@ -835,12 +835,11 @@ export function MidwayCheckinCard({
               autoplay={bgAutoplay}
             />
           )}
-          <p className="text-[19px] leading-relaxed font-serif text-text-primary text-left">
-            <FormattedText text={background} />
-          </p>
-          {tour.midwayQuestionBackgroundPhotos && tour.midwayQuestionBackgroundPhotos.length > 0 && (
-            <PhotoContent text="" photos={tour.midwayQuestionBackgroundPhotos} />
-          )}
+          <PhotoContent
+            text={background}
+            photos={tour.midwayQuestionBackgroundPhotos || []}
+            textClass="text-[19px] leading-relaxed font-serif text-text-primary text-left"
+          />
         </section>
       )}
 
