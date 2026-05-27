@@ -298,6 +298,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
               onContinue={advancePhase}
               hasContext={hasContext}
               isFinalInStop={isFinalInStop}
+              round={round}
             />
           );
         })()}

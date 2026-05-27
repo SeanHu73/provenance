@@ -11,6 +11,7 @@ import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
 interface Props {
   tour: Tour;
@@ -701,6 +702,7 @@ export function MidwayCheckinCard({
   const background = (tour.midwayQuestionBackground || '').trim();
   const hasBackground = background.length > 0;
   const bgAutoplay = autoplayPref && !tour.midwayQuestionBackgroundAudioAutoplayDisabled;
+  const barrier = useRoomBarrier('midway:checkin', () => onComplete(response));
   // completionOrder holds logical-stop IDs (one per cluster). Expand
   // cluster entries into every sub-stop in authored order so the
   // explorer sees each stop they visited individually.
@@ -837,11 +839,13 @@ export function MidwayCheckinCard({
           <MicButton onTranscript={(t) => setResponse((r) => r + (r ? ' ' : '') + t)} />
         </div>
 
+        {barrier.indicator}
         <button
-          onClick={() => onComplete(response)}
-          className="w-full py-3 rounded-lg text-base font-semibold text-white bg-aged-gold"
+          onClick={barrier.onPress}
+          disabled={barrier.disabled}
+          className="w-full py-3 rounded-lg text-base font-semibold text-white bg-aged-gold disabled:opacity-50"
         >
-          Continue tour
+          {barrier.label ?? 'Continue tour'}
         </button>
       </section>
     </div>

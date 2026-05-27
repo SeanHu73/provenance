@@ -211,9 +211,16 @@ export function getNextStopInGroup(
   return getStopsInGroup(tour, groupId).find((s) => !completedSet.has(s.id)) ?? null;
 }
 
-export function createSession(tour: Tour): TourSession {
+/** Generate a fresh TourSession id. Exposed so room flows can mint
+ *  an id before creating the session (we hand the same id to the
+ *  room doc as the member's sessionId). */
+export function newSessionId(): string {
+  return `ts_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createSession(tour: Tour, opts?: { id?: string }): TourSession {
   return {
-    id: `ts_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    id: opts?.id ?? newSessionId(),
     tourId: tour.id,
     phaseHistory: [],
     currentStopIndex: 0,

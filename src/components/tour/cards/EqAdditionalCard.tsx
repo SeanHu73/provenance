@@ -14,6 +14,7 @@ import QuestionText from './QuestionText';
 import FormattedText from './FormattedText';
 import PhotoContent from './PhotoContent';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
 interface Props {
   tour: Tour;
@@ -28,6 +29,7 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
   const [autoplayPref] = useAudioAutoplay();
   const questionRef = useRef<HTMLElement | null>(null);
   const [questionRevealed, setQuestionRevealed] = useState(false);
+  const barrier = useRoomBarrier('eq:additional', onContinue);
 
   const background = (aq?.questionBackground || '').trim();
   const hasBackground = background.length > 0;
@@ -79,14 +81,18 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
   );
 
   const continueRow = (
-    <div className="flex gap-2">
-      <BackButton />
-      <button
-        onClick={onContinue}
-        className="flex-1 py-3 rounded-lg text-base font-semibold bg-olive text-white"
-      >
-        Let&apos;s find the first stop...
-      </button>
+    <div className="space-y-2">
+      {barrier.indicator}
+      <div className="flex gap-2">
+        <BackButton />
+        <button
+          onClick={barrier.onPress}
+          disabled={barrier.disabled}
+          className="flex-1 py-3 rounded-lg text-base font-semibold bg-olive text-white disabled:opacity-50"
+        >
+          {barrier.label ?? "Let's find the first stop..."}
+        </button>
+      </div>
     </div>
   );
 

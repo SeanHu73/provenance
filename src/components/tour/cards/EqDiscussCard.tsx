@@ -16,6 +16,7 @@ import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import FormattedText from './FormattedText';
 import PhotoContent from './PhotoContent';
+import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
@@ -32,6 +33,7 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
   const background = (eq.questionBackground || '').trim();
   const hasBackground = background.length > 0;
   const bgAutoplay = autoplayPref && !eq.questionBackgroundAudioAutoplayDisabled;
+  const barrier = useRoomBarrier('eq:discuss', onContinue);
 
   const questionRef = useRef<HTMLElement | null>(null);
   const [questionRevealed, setQuestionRevealed] = useState(false);
@@ -76,14 +78,18 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
   );
 
   const continueRow = (
-    <div className="flex gap-2">
-      <BackButton />
-      <button
-        onClick={onContinue}
-        className="flex-1 py-3 rounded-lg text-base font-semibold bg-aged-gold text-white"
-      >
-        Discussed! What&apos;s next?
-      </button>
+    <div className="space-y-2">
+      {barrier.indicator}
+      <div className="flex gap-2">
+        <BackButton />
+        <button
+          onClick={barrier.onPress}
+          disabled={barrier.disabled}
+          className="flex-1 py-3 rounded-lg text-base font-semibold bg-aged-gold text-white disabled:opacity-50"
+        >
+          {barrier.label ?? "Discussed! What's next?"}
+        </button>
+      </div>
     </div>
   );
 

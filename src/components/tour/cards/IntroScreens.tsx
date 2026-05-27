@@ -2,13 +2,18 @@
 
 /**
  * Tour introduction screens — a sequence of cards that orient the
- * group before the tour begins. Explains what they'll be doing,
- * how the phone is shared, and what to expect.
+ * group before the tour begins. Set Up runs first; if "Everyone" has
+ * a phone the user is routed through the room flow (Host or Join) and
+ * the rest of the intro resumes once the host begins the tour from
+ * the lobby. "Only Me" skips room setup entirely.
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Tour } from '@/lib/types';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { useTour } from '@/context/TourContext';
+import { useRoom } from '@/context/RoomContext';
+import RoomEntrySheet from '@/components/room/RoomEntrySheet';
 
 interface Props {
   tour: Tour;
@@ -21,30 +26,63 @@ interface Props {
   onPointAtAutoplay?: (show: boolean) => void;
 }
 
-const TITLES = ['Welcome', 'How it works', 'Your thinking matters', 'Set Up', 'One last thing'];
+// Set Up is screen 0 so the room-or-solo decision drives everything
+// that follows. Autoplay sits later in the flow ("Audio") so the
+// opening screen stays focused on solo-vs-group. The user has flagged
+// this whole sequence for a rework later.
+const TITLES = ['Set Up', 'Welcome', 'How it works', 'Your thinking matters', 'Audio', 'One last thing'];
+const SETUP_INDEX = 0;
+const QUESTION_CUE_INDEX = 3; // "Your thinking matters"
+const AUDIO_INDEX = 4;
 const TOTAL = TITLES.length;
 
 const bodyClass = 'text-[21px] leading-relaxed font-serif text-text-primary animate-fade-in';
 
-export default function IntroScreens({ onComplete, onPointAtQuestion, onPointAtAutoplay }: Props) {
+export default function IntroScreens({ tour, onComplete, onPointAtQuestion, onPointAtAutoplay }: Props) {
   const [current, setCurrent] = useState(0);
   const [phoneSetup, setPhoneSetup] = useState<'me' | 'everyone' | null>(null);
   const [autoplayChoice, setAutoplayChoice] = useState<'on' | 'off' | null>(null);
   const [, setAutoplayPref] = useAudioAutoplay();
+  const [roomSheet, setRoomSheet] = useState<'host' | 'join' | null>(null);
+  const { session } = useTour();
+  const { room } = useRoom();
   const isLast = current === TOTAL - 1;
-  // The "Set Up" screen (index 3) needs both choices before advancing.
-  const canAdvance = current !== 3 || (phoneSetup !== null && autoplayChoice !== null);
+  const inRoom = !!room;
 
-  // Cue the footer ? button while the "Your thinking matters" screen (index 2) shows.
+  // Set Up requires a phone choice; for Everyone the user also has to
+  // create or join a room (which happens via the lobby — once the host
+  // taps Begin tour, room.started flips true and we auto-advance below).
+  const setupComplete =
+    phoneSetup !== null
+    && (phoneSetup === 'me' || (inRoom && !!room?.started));
+
+  // Audio (autoplay) requires a choice before continuing.
+  const audioComplete = autoplayChoice !== null;
+
+  const canAdvance =
+    (current !== SETUP_INDEX || setupComplete)
+    && (current !== AUDIO_INDEX || audioComplete);
+
+  // Auto-advance off Set Up the moment the room has started — the lobby
+  // just dismissed and we want the user to keep moving, not be parked
+  // on a now-resolved screen.
   useEffect(() => {
-    onPointAtQuestion?.(current === 2);
+    if (current !== SETUP_INDEX) return;
+    if (phoneSetup !== 'everyone') return;
+    if (!room?.started) return;
+    setCurrent(SETUP_INDEX + 1);
+  }, [room?.started, phoneSetup, current]);
+
+  // Cue the footer ? button while "Your thinking matters" shows.
+  useEffect(() => {
+    onPointAtQuestion?.(current === QUESTION_CUE_INDEX);
     return () => onPointAtQuestion?.(false);
   }, [current, onPointAtQuestion]);
 
-  // Once the user has picked an autoplay option on the setup screen, cue the
-  // footer autoplay toggle so they see where it lives — clears on next screen.
+  // Once the user has picked an autoplay option on the Audio screen,
+  // cue the footer autoplay toggle so they see where it lives.
   useEffect(() => {
-    onPointAtAutoplay?.(current === 3 && autoplayChoice !== null);
+    onPointAtAutoplay?.(current === AUDIO_INDEX && autoplayChoice !== null);
     return () => onPointAtAutoplay?.(false);
   }, [current, autoplayChoice, onPointAtAutoplay]);
 
@@ -68,40 +106,11 @@ export default function IntroScreens({ onComplete, onPointAtQuestion, onPointAtA
 
       {/* Content */}
       <div className="space-y-4 px-2" key={current}>
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold animate-fade-in">
+        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold animate-fade-in">
           {TITLES[current]}
         </p>
 
-        {current === 0 && (
-          <p className={bodyClass}>
-            Learn to see the world like a historian! History is like detective work.
-            What you notice and what you ask will shape how you reconstruct the past.
-          </p>
-        )}
-
-        {current === 1 && (
-          <p className={bodyClass}>
-            You&apos;ll explore stops on the map. At each one, you&apos;ll be asked to
-            find something and examine what you see. You&apos;ll get background that
-            helps you think deeper and sometimes a question to discuss together!
-          </p>
-        )}
-
-        {current === 2 && (
-          <>
-            <p className={bodyClass}>
-              Conversations are critical. We are reconstructing history together.
-              Share what you think out loud, build on each other&apos;s ideas, disagree!
-            </p>
-            <p className={bodyClass}>
-              If something makes you curious tap the ? button to ask a question.
-              Your questions get saved for you to revisit and they&apos;ll help
-              future explorers too!
-            </p>
-          </>
-        )}
-
-        {current === 3 && (
+        {current === SETUP_INDEX && (
           <>
             <p className={bodyClass}>
               For best experience, we suggest everyone use their own devices.
@@ -141,44 +150,108 @@ export default function IntroScreens({ onComplete, onPointAtQuestion, onPointAtA
               </p>
             )}
 
-            {phoneSetup !== null && (
-              <div className="space-y-3 pt-2 animate-fade-in">
+            {/* Group setup — only when "Everyone" has a phone. Once the
+                user creates or joins a room here, the RoomLobby will
+                overlay this screen until the host taps "Begin tour";
+                after that the auto-advance above moves us to Welcome. */}
+            {phoneSetup === 'everyone' && !inRoom && (
+              <div className="space-y-3 pt-3 animate-fade-in">
                 <p className="text-[20px] font-semibold text-text-primary">
-                  When a screen has audio, should it play automatically?
+                  Set up your group
+                </p>
+                <p className="text-[15px] text-text-secondary">
+                  Start a room and share the code, or join one your group already created.
                 </p>
                 <div className="flex gap-3 justify-center">
-                  {(['on', 'off'] as const).map((opt) => {
-                    const selected = autoplayChoice === opt;
-                    return (
-                      <button
-                        key={opt}
-                        onClick={() => pickAutoplay(opt)}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-base font-semibold border-2 transition-colors"
-                        style={
-                          selected
-                            ? { background: 'var(--th-primary)', color: 'var(--th-surface)', borderColor: 'var(--th-primary)' }
-                            : { background: 'transparent', color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }
-                        }
-                      >
-                        {opt === 'on' ? 'Auto-play' : 'Tap to play'}
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill={opt === 'on' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round">
-                          <polygon points="6,4 20,12 6,20" />
-                        </svg>
-                      </button>
-                    );
-                  })}
+                  <button
+                    onClick={() => setRoomSheet('host')}
+                    className="px-5 py-2.5 rounded-lg text-base font-semibold border-2 transition-colors"
+                    style={{ background: 'transparent', color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
+                  >
+                    Host a group
+                  </button>
+                  <button
+                    onClick={() => setRoomSheet('join')}
+                    className="px-5 py-2.5 rounded-lg text-base font-semibold border-2 transition-colors"
+                    style={{ background: 'transparent', color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
+                  >
+                    Join a group
+                  </button>
                 </div>
-                {autoplayChoice !== null && (
-                  <p className="text-[14px] text-text-secondary/80 animate-fade-in">
-                    You can change this anytime with the &ldquo;Auto&rdquo; button in the footer.
-                  </p>
-                )}
               </div>
             )}
           </>
         )}
 
-        {current === 4 && (
+        {current === 1 && (
+          <p className={bodyClass}>
+            Learn to see the world like a historian! History is like detective work.
+            What you notice and what you ask will shape how you reconstruct the past.
+          </p>
+        )}
+
+        {current === 2 && (
+          <p className={bodyClass}>
+            You&apos;ll explore stops on the map. At each one, you&apos;ll be asked to
+            find something and examine what you see. You&apos;ll get background that
+            helps you think deeper and sometimes a question to discuss together!
+          </p>
+        )}
+
+        {current === 3 && (
+          <>
+            <p className={bodyClass}>
+              Conversations are critical. We are reconstructing history together.
+              Share what you think out loud, build on each other&apos;s ideas, disagree!
+            </p>
+            <p className={bodyClass}>
+              If something makes you curious tap the ? button to ask a question.
+              Your questions get saved for you to revisit and they&apos;ll help
+              future explorers too!
+            </p>
+          </>
+        )}
+
+        {current === AUDIO_INDEX && (
+          <>
+            <p className={bodyClass}>
+              Some screens have narration. You can either let it play on its own
+              or tap to start it yourself.
+            </p>
+            <p className="text-[20px] font-semibold text-text-primary">
+              When a screen has audio, should it play automatically?
+            </p>
+            <div className="flex gap-3 justify-center">
+              {(['on', 'off'] as const).map((opt) => {
+                const selected = autoplayChoice === opt;
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => pickAutoplay(opt)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-base font-semibold border-2 transition-colors"
+                    style={
+                      selected
+                        ? { background: 'var(--th-primary)', color: 'var(--th-surface)', borderColor: 'var(--th-primary)' }
+                        : { background: 'transparent', color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }
+                    }
+                  >
+                    {opt === 'on' ? 'Auto-play' : 'Tap to play'}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill={opt === 'on' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round">
+                      <polygon points="6,4 20,12 6,20" />
+                    </svg>
+                  </button>
+                );
+              })}
+            </div>
+            {autoplayChoice !== null && (
+              <p className="text-[14px] text-text-secondary/80 animate-fade-in">
+                You can change this anytime with the &ldquo;Auto&rdquo; button in the footer.
+              </p>
+            )}
+          </>
+        )}
+
+        {current === 5 && (
           <>
             <p className="text-[23px] font-semibold text-text-primary animate-fade-in">
               Don&apos;t forget to look up!
@@ -209,6 +282,15 @@ export default function IntroScreens({ onComplete, onPointAtQuestion, onPointAtA
           </button>
         )}
       </div>
+
+      {roomSheet && session && (
+        <RoomEntrySheet
+          tour={tour}
+          newSessionId={session.id}
+          mode={roomSheet}
+          onDismiss={() => setRoomSheet(null)}
+        />
+      )}
     </div>
   );
 }

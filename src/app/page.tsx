@@ -14,6 +14,9 @@ import ProgressBar from '@/components/tour/ProgressBar';
 import UnstructuredMapControls, { MidwayCheckinCard } from '@/components/tour/cards/UnstructuredMapOverlay';
 import UnstructuredClosingView from '@/components/tour/cards/UnstructuredClosingView';
 import TourFooter from '@/components/tour/TourFooter';
+import RoomLobby from '@/components/room/RoomLobby';
+import RoomStopProposalOverlay from '@/components/room/RoomStopProposalOverlay';
+import { useRoom } from '@/context/RoomContext';
 
 type FlyTarget = { stopLocation: { lat: number; lng: number } };
 
@@ -318,8 +321,23 @@ function HomeInner() {
           onMapPeek={currentStopHasLocation ? () => setMapPeek(true) : undefined}
         />
       )}
+
+      {/* Room lobby — covers everything while a room is set up but the
+          host hasn't tapped "Begin tour" yet. */}
+      <RoomLobbyWrapper />
+
+      {/* Stop-proposal overlay — hovers above the active tour UI any
+          time the host has proposed a new stop and the group is still
+          confirming. */}
+      <RoomStopProposalOverlay />
     </div>
   );
+}
+
+function RoomLobbyWrapper() {
+  const { room } = useRoom();
+  if (!room || room.started) return null;
+  return <RoomLobby />;
 }
 
 export default function Home() {

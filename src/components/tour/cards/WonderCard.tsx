@@ -18,6 +18,7 @@ import BackButton from './BackButton';
 import QuestionText from './QuestionText';
 import FormattedText from './FormattedText';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
 interface Props {
   stop: Stop;
@@ -26,13 +27,17 @@ interface Props {
   hasContext?: boolean;
   /** True when this wonder is the final in-stop screen (no bridge → no whats_next). */
   isFinalInStop?: boolean;
+  /** 0 = main wonder, 1+ = extra rounds. Used to keep the room barrier
+   *  key unique per round. */
+  round?: number;
 }
 
 const REVEAL_DELAY_MS = 400;
 const REVEAL_TRANSITION_MS = 400;
 
-export default function WonderCard({ stop, onContinue, hasContext = true, isFinalInStop = false }: Props) {
+export default function WonderCard({ stop, onContinue, hasContext = true, isFinalInStop = false, round = 0 }: Props) {
   const [autoplayPref] = useAudioAutoplay();
+  const barrier = useRoomBarrier(`${stop.id}:wonder:${round}`, onContinue);
   if (!stop.wonder) return null;
 
   const wonder = stop.wonder;
@@ -87,15 +92,19 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
   );
 
   const continueRow = (
-    <div className="flex gap-2">
-      <BackButton />
-      <button
-        onClick={onContinue}
-        className="flex-1 py-3 rounded-lg text-base font-semibold text-white transition-colors"
-        style={{ backgroundColor: 'var(--th-primary)' }}
-      >
-        {buttonLabel}
-      </button>
+    <div className="space-y-2">
+      {barrier.indicator}
+      <div className="flex gap-2">
+        <BackButton />
+        <button
+          onClick={barrier.onPress}
+          disabled={barrier.disabled}
+          className="flex-1 py-3 rounded-lg text-base font-semibold text-white transition-colors disabled:opacity-50"
+          style={{ backgroundColor: 'var(--th-primary)' }}
+        >
+          {barrier.label ?? buttonLabel}
+        </button>
+      </div>
     </div>
   );
 

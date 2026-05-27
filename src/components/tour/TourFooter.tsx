@@ -6,6 +6,8 @@ import { useTour } from '@/context/TourContext';
 import JournalOverlay from './JournalOverlay';
 import MicButton from './MicButton';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { useRoom } from '@/context/RoomContext';
+import RoomMenu from '@/components/room/RoomMenu';
 
 interface Props {
   tour: Tour;
@@ -25,7 +27,9 @@ interface Props {
 export default function TourFooter({ tour, session, pointAtQuestion = false, pointAtAutoplay = false }: Props) {
   const [showJournal, setShowJournal] = useState(false);
   const [showQuestionInput, setShowQuestionInput] = useState(false);
+  const [showRoomMenu, setShowRoomMenu] = useState(false);
   const [autoplayPref, setAutoplayPref] = useAudioAutoplay();
+  const { room, isInRoom } = useRoom();
 
   return (
     <>
@@ -117,6 +121,26 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
         </button>
       </div>
 
+      {/* Group / room indicator — only mounted while a room is active.
+          Sits below the main footer row (pushing the Journal / ? / Auto
+          buttons up) so the code is visible at arm's length without
+          competing with the primary actions. Tap to open the room menu
+          (members, leave, kick). */}
+      {isInRoom && room && (
+        <button
+          onClick={() => setShowRoomMenu(true)}
+          className="shrink-0 w-full px-4 py-3 flex items-center justify-center gap-2 text-warm-white"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--th-primary) 70%, black)',
+            borderTop: '1px solid color-mix(in srgb, var(--th-primary) 50%, black)',
+          }}
+        >
+          <span className="text-[12px] uppercase tracking-[0.18em] opacity-85">Group</span>
+          <span className="text-[22px] font-display font-bold tracking-[0.1em]">{room.code}</span>
+          <span className="text-[12px] uppercase tracking-[0.14em] opacity-85">· {room.members.length}</span>
+        </button>
+      )}
+
       {showQuestionInput && (
         <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowQuestionInput(false)}>
           <div className="absolute inset-0 bg-black/40" />
@@ -144,6 +168,8 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
       {showJournal && (
         <JournalOverlay tour={tour} session={session} onClose={() => setShowJournal(false)} />
       )}
+
+      {showRoomMenu && <RoomMenu onDismiss={() => setShowRoomMenu(false)} />}
     </>
   );
 }

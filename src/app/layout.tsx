@@ -6,6 +6,7 @@ import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import ThemeColorMeta from '@/components/ThemeColorMeta';
 import SplashScreen from '@/components/SplashScreen';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { RoomProvider } from '@/context/RoomContext';
 
 // Shared content/body font — used for all reading text in both themes.
 const newsreader = Newsreader({
@@ -92,7 +93,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeProvider>
           <ThemeColorMeta />
-          <SplashScreen>{children}</SplashScreen>
+          <RoomProvider>
+            <SplashScreen>{children}</SplashScreen>
+          </RoomProvider>
           <ServiceWorkerRegistrar />
         </ThemeProvider>
       </body>

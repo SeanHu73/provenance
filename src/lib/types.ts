@@ -544,3 +544,51 @@ export interface CommunalResponse {
   responseText: string;
   timestamp: string;
 }
+
+// ─── Rooms (multi-device group tours) ────────────────────────────
+//
+// A Room ties multiple TourSessions to one coordinated playback.
+// Each member's device still runs its own TourSession independently;
+// the room only coordinates two things:
+//
+//   1. Stop transitions — host proposes, every member must approve.
+//   2. Discussion-question barriers — every member must arrive, then
+//      every member must press "ready". No exclusion of offline members
+//      (sleeping phones must wake to advance the group).
+//
+// Stored in Firestore at memorial-church-rooms/{code}.
+
+export interface RoomMember {
+  sessionId: string;                  // matches TourSession.id on that device
+  name: string;                       // user-entered or auto-assigned ("Explorer 2")
+  joinedAt: string;                   // ISO
+  lastSeenAt: string;                 // ISO — updated by heartbeat
+}
+
+export interface BarrierState {
+  /** sessionIds of members currently parked on this barrier */
+  arrivals: string[];
+  /** sessionIds who've pressed "Ready to continue" */
+  readys: string[];
+  /** ISO when every member was ready — triggers everyone's local advance */
+  resolvedAt: string | null;
+}
+
+export interface Room {
+  code: string;                       // 4-char alphanumeric, doc id
+  tourId: string;
+  hostSessionId: string;
+  members: RoomMember[];
+  /** false until host taps "Begin tour" in the lobby */
+  started: boolean;
+  /** Mirror of the group's tour progress; rejoining devices sync from here. */
+  currentStopId: string | null;
+  completedStopIds: string[];
+  /** Host has proposed a transition to this stop; awaiting approvals. */
+  pendingStopId: string | null;
+  pendingApprovals: string[];
+  /** key = `${stopId|"eq"}:${phase}:${round}` */
+  barriers: Record<string, BarrierState>;
+  createdAt: string;
+  updatedAt: string;
+}

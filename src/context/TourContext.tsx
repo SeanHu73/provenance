@@ -8,10 +8,11 @@
  * sessionStorage for reload survival.
  */
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { Tour, Stop, TourSession, BankedQuestion } from '@/lib/types';
 import { getTour, getActiveStops } from '@/lib/tours-store';
 import { persistTourSession } from '@/lib/tour-sessions-store';
+import { useRoom } from './RoomContext';
 import { logReflection, logQuestionRouted, logTourComplete, logEqOpening, logEqClosing, logEqFinalReflect, logStopEntered } from '@/lib/tour-logger';
 import {
   createSession,
@@ -41,6 +42,7 @@ import {
   saveTourSession,
   clearTourSession,
   getLogicalStops,
+  newSessionId,
 } from '@/lib/tour-session';
 
 interface TourContextValue {
@@ -49,7 +51,7 @@ interface TourContextValue {
   currentStop: Stop | null;
   isActive: boolean;
   isLastStop: boolean;
-  startTour: (tour: Tour) => void;
+  startTour: (tour: Tour, opts?: { sessionId?: string }) => void;
   goBack: () => void;
   canGoBack: boolean;
   advancePhase: () => void;
@@ -92,6 +94,15 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<TourSession | null>(null);
   const [selectedUnstructuredStopId, setSelectedUnstructuredStopId] = useState<string | null>(null);
 
+  // Multi-device room state (null when running single-player).
+  const {
+    room,
+    mySessionId: roomSessionId,
+    setMySessionId: setRoomSessionId,
+    isHost: isRoomHost,
+    proposeStop: proposeStopInRoom,
+  } = useRoom();
+
   // On mount, restore any persisted session
   useEffect(() => {
     const saved = loadTourSession();
@@ -124,11 +135,94 @@ export function TourProvider({ children }: { children: ReactNode }) {
       : session.currentStopIndex >= getActiveStops(tour).length - 1
     : false;
 
-  const startTour = useCallback((t: Tour) => {
-    const s = createSession(t);
+  const startTour = useCallback((t: Tour, opts?: { sessionId?: string }) => {
+    const s = createSession(t, { id: opts?.sessionId });
     setTour(t);
     persist(s);
   }, [persist]);
+
+  // ─── Room sync ──────────────────────────────────────────────────
+  //
+  // Mirror the local TourSession.id into RoomContext so the room
+  // knows who *we* are. Runs on every session change, including
+  // restoration from sessionStorage.
+  useEffect(() => {
+    if (!session) return;
+    if (roomSessionId === session.id) return;
+    setRoomSessionId(session.id);
+  }, [session, roomSessionId, setRoomSessionId]);
+
+  // When room.started flips true and we don't yet have a TourSession
+  // (e.g. a member who joined the room from the lobby), create one
+  // with the sessionId the room knows us by, aligned to the room's
+  // current stop if one is already in progress.
+  useEffect(() => {
+    if (!room || !room.started || session) return;
+    void (async () => {
+      const t = await getTour(room.tourId);
+      if (!t) return;
+      // Find the index of the room's currentStopId so a late joiner
+      // lands on the right stop. Fallback to 0 if none.
+      const stops = getActiveStops(t);
+      const idx = room.currentStopId
+        ? Math.max(0, stops.findIndex((s) => s.id === room.currentStopId))
+        : 0;
+      const aligned: TourSession = {
+        ...createSession(t, { id: roomSessionId ?? newSessionId() }),
+        currentStopIndex: idx,
+        currentPhase: room.currentStopId ? 'seed' : (t.unstructuredMode ? 'unstructured_map' : 'intro'),
+        completedStops: room.completedStopIds || [],
+      };
+      setTour(t);
+      persist(aligned);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.started, session]);
+
+  // When the room advances its currentStopId, every device should
+  // advance locally to match. Runs in both linear and unstructured
+  // modes; the local advance is a phase reset to 'seed' (or
+  // unstructured_map if the room cleared currentStopId).
+  const lastRoomStopRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (!room || !tour || !session) return;
+    const nextStopId = room.currentStopId;
+    if (lastRoomStopRef.current === undefined) {
+      lastRoomStopRef.current = nextStopId;
+      return;
+    }
+    if (lastRoomStopRef.current === nextStopId) return;
+    lastRoomStopRef.current = nextStopId;
+    const stops = getActiveStops(tour);
+    if (nextStopId) {
+      const idx = stops.findIndex((s) => s.id === nextStopId);
+      if (idx < 0) return;
+      // Align both linear and unstructured to start of this stop.
+      persist({
+        ...session,
+        phaseHistory: [...session.phaseHistory, {
+          phase: session.currentPhase,
+          round: session.currentRound,
+          stopIndex: session.currentStopIndex,
+        }],
+        currentStopIndex: idx,
+        currentPhase: 'seed',
+        currentRound: 0,
+      });
+    } else if (tour.unstructuredMode) {
+      // currentStopId cleared while unstructured — back to the map.
+      persist({
+        ...session,
+        phaseHistory: [...session.phaseHistory, {
+          phase: session.currentPhase,
+          round: session.currentRound,
+          stopIndex: session.currentStopIndex,
+        }],
+        currentPhase: 'unstructured_map',
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.currentStopId]);
 
   const canGoBack = !!(session?.phaseHistory && session.phaseHistory.length > 0);
 
@@ -140,6 +234,30 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const advanceStop = useCallback(() => {
     if (!session || !tour) return;
+    // Room-gated transition: in a room, the host proposes the next
+    // stop and members approve. The local session won't advance until
+    // every member's approval has come in and room.currentStopId
+    // updates (handled by the room sync effect above).
+    if (room && room.started) {
+      const stops = getActiveStops(tour);
+      const currentStop = stops[session.currentStopIndex];
+      const isFinal = currentStop?.isFinalStop || false;
+      const nextIndex = session.currentStopIndex + 1;
+      const closingTransition = isFinal || nextIndex >= stops.length;
+      if (closingTransition) {
+        // Per-device closing answers; don't barrier this transition.
+        persist(advanceToNextStopImpl(session, tour));
+        return;
+      }
+      if (isRoomHost) {
+        const nextStop = stops[nextIndex];
+        if (nextStop) void proposeStopInRoom(nextStop.id);
+      }
+      // Non-host: their advanceStop call is a no-op until the room
+      // signals the transition. UI surfaces a "waiting for host" hint
+      // separately.
+      return;
+    }
     const next = advanceToNextStopImpl(session, tour);
     persist(next);
     // Log when we actually enter a new stop (linear mode)
@@ -149,7 +267,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
         logStopEntered({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, stopIndex: next.currentStopIndex, stopTitle: stop.mergeGroup || stop.title || `Stop ${next.currentStopIndex + 1}` });
       }
     }
-  }, [session, tour, persist]);
+  }, [session, tour, persist, room, isRoomHost, proposeStopInRoom]);
 
   const advancePhase = useCallback(() => {
     if (!session || !currentStop) return;
@@ -286,13 +404,23 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const enterUnstructuredStopFn = useCallback((stopIndex: number) => {
     if (!session || !tour) return;
+    // In a room, only the host can pick a stop and even they go through
+    // proposeStop rather than advancing locally. Members tapping a pin
+    // is a no-op.
+    if (room && room.started) {
+      setSelectedUnstructuredStopId(null);
+      if (!isRoomHost) return;
+      const stop = getActiveStops(tour)[stopIndex];
+      if (stop) void proposeStopInRoom(stop.id);
+      return;
+    }
     setSelectedUnstructuredStopId(null);
     persist(selectUnstructuredStopImpl(session, stopIndex));
     const stop = getActiveStops(tour)[stopIndex];
     if (stop) {
       logStopEntered({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, stopIndex, stopTitle: stop.mergeGroup || stop.title || `Stop ${stopIndex + 1}` });
     }
-  }, [session, tour, persist]);
+  }, [session, tour, persist, room, isRoomHost, proposeStopInRoom]);
 
   const completeMidwayCheckinFn = useCallback((responseText: string) => {
     if (!session) return;
