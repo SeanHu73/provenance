@@ -218,6 +218,13 @@ export interface Tour {
   // Essential question — optional framing that bookends the tour
   essentialQuestion: {
     question: string;                  // "What is this place for?"
+    /** Optional contextualising text shown above the main EQ question
+     *  on its own snap-scroll section. When empty, the question renders
+     *  on its own without snap. */
+    questionBackground?: string;
+    questionBackgroundAudioUrl?: string | null;
+    questionBackgroundAudioTitle?: string | null;
+    questionBackgroundAudioAutoplayDisabled?: boolean;
     // Scene-setting screen
     scenePhotoUrl: string | null;      // Photo of where to find the starting point
     sceneDescription: string;          // "Find the stone plaque on the north wall..."
@@ -234,6 +241,10 @@ export interface Tour {
     additionalQuestion: {
       question: string;
       questionType: 'discuss' | 'opinion';
+      questionBackground?: string;
+      questionBackgroundAudioUrl?: string | null;
+      questionBackgroundAudioTitle?: string | null;
+      questionBackgroundAudioAutoplayDisabled?: boolean;
     } | null;
     closingAudioUrl: string | null;     // Audio for the closing discuss screen
     closingAudioTitle: string | null;
@@ -255,6 +266,13 @@ export interface Tour {
   categories?: string[];             // Author-defined category list for organising stops
   midwayEnabled?: boolean;           // Default false
   midwayQuestion?: string | null;    // Shown once the explorer completes half the stops
+  /** Optional contextualising text shown above the midway question on
+   *  its own snap-scroll section. When empty, the question renders
+   *  directly with no extra snap. */
+  midwayQuestionBackground?: string;
+  midwayQuestionBackgroundAudioUrl?: string | null;
+  midwayQuestionBackgroundAudioTitle?: string | null;
+  midwayQuestionBackgroundAudioAutoplayDisabled?: boolean;
 
   createdAt: string;                 // ISO 8601
   updatedAt: string;                 // ISO 8601
@@ -353,6 +371,14 @@ export interface Stop {
   wonder: {
     question: string;                // Discussion prompt (no options)
     questionType: 'discuss' | 'opinion';  // 'discuss' = "Chance to discuss...", 'opinion' = "What's your opinion?"
+    /** Optional contextualising text shown on a separate snap-scroll
+     *  section before the question. When empty, the question renders on
+     *  its own without snap. */
+    questionBackground?: string;
+    /** Optional audio for the question background section. */
+    questionBackgroundAudioUrl?: string | null;
+    questionBackgroundAudioTitle?: string | null;
+    questionBackgroundAudioAutoplayDisabled?: boolean;
     photos: StopPhoto[];
     audioUrl: string | null;
     audioTitle: string | null;
@@ -374,7 +400,7 @@ export interface Stop {
 
   // Extra wonder + context rounds (optional, after the initial reveal, before the bridge)
   extraRounds: Array<{
-    wonder: { question: string; questionType: 'discuss' | 'opinion'; photos: StopPhoto[]; audioUrl: string | null; audioTitle: string | null; audioAutoplayDisabled?: boolean } | null;
+    wonder: { question: string; questionType: 'discuss' | 'opinion'; questionBackground?: string; questionBackgroundAudioUrl?: string | null; questionBackgroundAudioTitle?: string | null; questionBackgroundAudioAutoplayDisabled?: boolean; photos: StopPhoto[]; audioUrl: string | null; audioTitle: string | null; audioAutoplayDisabled?: boolean } | null;
     reveal: {
       text: string;
       photos: StopPhoto[];

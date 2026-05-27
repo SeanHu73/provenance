@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Newsreader, DM_Serif_Display, Montserrat } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import ThemeColorMeta from '@/components/ThemeColorMeta';
@@ -23,11 +24,18 @@ const dmSerifDisplay = DM_Serif_Display({
   display: 'swap',
 });
 
-// Wordmark font for the splash screen + question-box copy.
+// Wordmark font for the splash screen.
 const montserrat = Montserrat({
-  weight: ['500', '700'],
+  weight: '500',
   subsets: ['latin'],
   variable: '--font-montserrat',
+  display: 'swap',
+});
+
+// Display face for the actual discussion question text.
+const marigoldSans = localFont({
+  src: '../../public/fonts/Marigold-Sans.otf',
+  variable: '--font-marigold-sans',
   display: 'swap',
 });
 
@@ -35,6 +43,7 @@ const fontVariables = [
   newsreader.variable,
   dmSerifDisplay.variable,
   montserrat.variable,
+  marigoldSans.variable,
 ].join(' ');
 
 export const metadata: Metadata = {

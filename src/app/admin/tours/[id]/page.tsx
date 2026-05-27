@@ -750,6 +750,25 @@ export default function TourEditorPage() {
             <div className="space-y-3">
               <div className="block">
                 <RichTextarea
+                  label="Question background (optional — shown on its own snap-scroll section above the question)"
+                  value={tour.essentialQuestion.questionBackground || ''}
+                  onChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, questionBackground: v })}
+                  rows={3}
+                  placeholder="Contextualising text the explorer reads before they see the question. Leave empty to skip and show the question alone."
+                />
+              </div>
+              <AudioUpload
+                audioUrl={tour.essentialQuestion.questionBackgroundAudioUrl ?? null}
+                audioTitle={tour.essentialQuestion.questionBackgroundAudioTitle ?? null}
+                onChange={(url) => updateField('essentialQuestion', { ...tour.essentialQuestion!, questionBackgroundAudioUrl: url })}
+                onTitleChange={(title) => updateField('essentialQuestion', { ...tour.essentialQuestion!, questionBackgroundAudioTitle: title })}
+                uploadPath={`memorial-church/audio/tours/${tourId}/eq_question_background`}
+                onUploadFile={uploadPhoto}
+                autoplayDisabled={tour.essentialQuestion.questionBackgroundAudioAutoplayDisabled}
+                onAutoplayDisabledChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, questionBackgroundAudioAutoplayDisabled: v })}
+              />
+              <div className="block">
+                <RichTextarea
                   label="The question"
                   value={tour.essentialQuestion.question}
                   onChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, question: v })}
@@ -875,6 +894,24 @@ export default function TourEditorPage() {
                       </label>
                     </div>
                     <RichTextarea
+                      label="Question background (optional)"
+                      value={tour.essentialQuestion.additionalQuestion.questionBackground || ''}
+                      onChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, questionBackground: v } })}
+                      rows={3}
+                      placeholder="Contextualising text shown above the question. Leave empty to show only the question."
+                    />
+                    <AudioUpload
+                      audioUrl={tour.essentialQuestion.additionalQuestion.questionBackgroundAudioUrl ?? null}
+                      audioTitle={tour.essentialQuestion.additionalQuestion.questionBackgroundAudioTitle ?? null}
+                      onChange={(url) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, questionBackgroundAudioUrl: url } })}
+                      onTitleChange={(title) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, questionBackgroundAudioTitle: title } })}
+                      uploadPath={`memorial-church/audio/tours/${tourId}/eq_additional_question_background`}
+                      onUploadFile={uploadPhoto}
+                      autoplayDisabled={tour.essentialQuestion.additionalQuestion.questionBackgroundAudioAutoplayDisabled}
+                      onAutoplayDisabledChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, questionBackgroundAudioAutoplayDisabled: v } })}
+                    />
+                    <RichTextarea
+                      label="The question"
                       value={tour.essentialQuestion.additionalQuestion.question}
                       onChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, question: v } })}
                       rows={2}
@@ -1070,7 +1107,24 @@ export default function TourEditorPage() {
               </div>
             </label>
             {tour.midwayEnabled && (
-              <div className="block pl-5">
+              <div className="block pl-5 space-y-3">
+                <RichTextarea
+                  label="Question background (optional)"
+                  value={tour.midwayQuestionBackground || ''}
+                  onChange={(v) => updateField('midwayQuestionBackground', v)}
+                  rows={3}
+                  placeholder="Contextualising text shown on its own section above the midway question."
+                />
+                <AudioUpload
+                  audioUrl={tour.midwayQuestionBackgroundAudioUrl ?? null}
+                  audioTitle={tour.midwayQuestionBackgroundAudioTitle ?? null}
+                  onChange={(url) => updateField('midwayQuestionBackgroundAudioUrl', url)}
+                  onTitleChange={(title) => updateField('midwayQuestionBackgroundAudioTitle', title)}
+                  uploadPath={`memorial-church/audio/tours/${tourId}/midway_question_background`}
+                  onUploadFile={uploadPhoto}
+                  autoplayDisabled={tour.midwayQuestionBackgroundAudioAutoplayDisabled}
+                  onAutoplayDisabledChange={(v) => updateField('midwayQuestionBackgroundAudioAutoplayDisabled', v)}
+                />
                 <RichTextarea
                   label="Midway check-in question"
                   value={tour.midwayQuestion || ''}
@@ -1464,6 +1518,23 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
               </label>
             </div>
             <RichTextarea
+              label="Question background (optional — shown on its own snap-scroll section above the question)"
+              value={stop.wonder.questionBackground || ''}
+              onChange={(v) => onChange({ wonder: { ...stop.wonder!, questionBackground: v } })}
+              rows={3}
+              placeholder="Contextualising text the group reads before they see the question. Leave empty to skip and show the question alone."
+            />
+            <AudioUpload
+              audioUrl={stop.wonder!.questionBackgroundAudioUrl ?? null}
+              audioTitle={stop.wonder!.questionBackgroundAudioTitle ?? null}
+              onChange={(url) => onChange({ wonder: { ...stop.wonder!, questionBackgroundAudioUrl: url } })}
+              onTitleChange={(title) => onChange({ wonder: { ...stop.wonder!, questionBackgroundAudioTitle: title } })}
+              uploadPath={`memorial-church/audio/tours/${tourId}/wonder_${stop.id}_background`}
+              onUploadFile={onUploadPhoto}
+              autoplayDisabled={stop.wonder!.questionBackgroundAudioAutoplayDisabled}
+              onAutoplayDisabledChange={(v) => onChange({ wonder: { ...stop.wonder!, questionBackgroundAudioAutoplayDisabled: v } })}
+            />
+            <RichTextarea
               label="Question (prompts group conversation)"
               value={stop.wonder.question}
               onChange={(question) => onChange({ wonder: { ...stop.wonder!, question } })}
@@ -1587,6 +1658,39 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
                           <span className="text-xs text-stone-600">Discuss Opinion</span>
                         </label>
                       </div>
+                      <RichTextarea
+                        label="Question background (optional)"
+                        value={round.wonder.questionBackground || ''}
+                        onChange={(v) => {
+                          const next = [...(stop.extraRounds || [])];
+                          next[i] = { ...next[i], wonder: { ...next[i].wonder!, questionBackground: v } };
+                          onChange({ extraRounds: next });
+                        }}
+                        rows={3}
+                        placeholder="Contextualising text shown above the question. Leave empty to show only the question."
+                      />
+                      <AudioUpload
+                        audioUrl={round.wonder.questionBackgroundAudioUrl ?? null}
+                        audioTitle={round.wonder.questionBackgroundAudioTitle ?? null}
+                        onChange={(url) => {
+                          const next = [...(stop.extraRounds || [])];
+                          next[i] = { ...next[i], wonder: { ...next[i].wonder!, questionBackgroundAudioUrl: url } };
+                          onChange({ extraRounds: next });
+                        }}
+                        onTitleChange={(title) => {
+                          const next = [...(stop.extraRounds || [])];
+                          next[i] = { ...next[i], wonder: { ...next[i].wonder!, questionBackgroundAudioTitle: title } };
+                          onChange({ extraRounds: next });
+                        }}
+                        uploadPath={`memorial-church/audio/tours/${tourId}/extra_wonder_${stop.id}_${i}_background`}
+                        onUploadFile={onUploadPhoto}
+                        autoplayDisabled={round.wonder.questionBackgroundAudioAutoplayDisabled}
+                        onAutoplayDisabledChange={(v) => {
+                          const next = [...(stop.extraRounds || [])];
+                          next[i] = { ...next[i], wonder: { ...next[i].wonder!, questionBackgroundAudioAutoplayDisabled: v } };
+                          onChange({ extraRounds: next });
+                        }}
+                      />
                       <RichTextarea
                         label="Discussion question"
                         value={round.wonder.question}

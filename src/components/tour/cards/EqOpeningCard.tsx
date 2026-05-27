@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Tour } from '@/lib/types';
 import BackButton from './BackButton';
 import MicButton from '../MicButton';
+import QuestionText from './QuestionText';
 
 interface Props {
   tour: Tour;
@@ -29,6 +30,10 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
       <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
         Share your discussion...
       </p>
+
+      {/* The essential question — restated as a plain styled reminder
+          (no red overlay box). */}
+      <QuestionText text={eq.question} />
 
       {/* First-time note — only the opening and closing of the tour ask
           you to record an answer, so the group can see how their thinking

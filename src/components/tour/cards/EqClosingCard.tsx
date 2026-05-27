@@ -23,6 +23,7 @@ import BackButton from './BackButton';
 import MicButton from '../MicButton';
 import FormattedText from './FormattedText';
 import AudioButton from './AudioButton';
+import QuestionText from './QuestionText';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
@@ -58,21 +59,10 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
         {eq.closingAudioUrl && <AudioButton audioUrl={eq.closingAudioUrl} title={eq.closingAudioTitle} autoplay={shouldAutoplay} />}
       </div>
 
-      {/* The essential question — restated */}
-      <div className="relative px-8 py-7 text-center">
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'var(--th-question-bg-solid)',
-            filter: 'blur(5px)',
-            transform: 'scale(0.99)',
-            borderRadius: '12px',
-          }}
-        />
-        <p className="relative text-[28px] leading-relaxed font-montserrat font-bold" style={{ color: 'var(--th-surface)' }}>
-          &ldquo;<FormattedText text={eq.question} />&rdquo;
-        </p>
-      </div>
+      {/* The essential question — restated. Left-aligned, themed, no
+          red overlay box (matches the styling used across all
+          discussion-question surfaces). */}
+      <QuestionText text={eq.question} />
 
       {/* Where you started — echo of opening answers */}
       {(initialTheory || initialReasoning) && (

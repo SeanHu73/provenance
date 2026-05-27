@@ -7,6 +7,9 @@ import { getActiveStops } from '@/lib/tours-store';
 import { useTour } from '@/context/TourContext';
 import MicButton from '../MicButton';
 import FormattedText from './FormattedText';
+import AudioButton from './AudioButton';
+import QuestionText from './QuestionText';
+import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
   tour: Tour;
@@ -692,7 +695,11 @@ export function MidwayCheckinCard({
   onComplete: (response: string) => void;
 }) {
   const [response, setResponse] = useState('');
+  const [autoplayPref] = useAudioAutoplay();
   const activeStops = getActiveStops(tour);
+  const background = (tour.midwayQuestionBackground || '').trim();
+  const hasBackground = background.length > 0;
+  const bgAutoplay = autoplayPref && !tour.midwayQuestionBackgroundAudioAutoplayDisabled;
   // completionOrder holds logical-stop IDs (one per cluster). Expand
   // cluster entries into every sub-stop in authored order so the
   // explorer sees each stop they visited individually.
@@ -774,7 +781,27 @@ export function MidwayCheckinCard({
         )}
       </section>
 
-      {/* Section 2 — the question itself, revealed when scrolled into view */}
+      {/* Optional background section — inserted between the visited
+          stops summary and the question when the admin authored one. */}
+      {hasBackground && (
+        <section
+          className="min-h-full flex flex-col justify-center space-y-5 px-5 py-6"
+          style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+        >
+          {tour.midwayQuestionBackgroundAudioUrl && (
+            <AudioButton
+              audioUrl={tour.midwayQuestionBackgroundAudioUrl}
+              title={tour.midwayQuestionBackgroundAudioTitle}
+              autoplay={bgAutoplay}
+            />
+          )}
+          <p className="text-[19px] leading-relaxed font-serif text-text-primary text-left">
+            <FormattedText text={background} />
+          </p>
+        </section>
+      )}
+
+      {/* Question section — left-aligned, themed, no red overlay box */}
       <section
         ref={questionRef}
         className="min-h-full flex flex-col justify-center space-y-6 px-5 py-6"
@@ -786,20 +813,10 @@ export function MidwayCheckinCard({
           transition: 'opacity 250ms ease-out, transform 250ms ease-out',
         }}
       >
-        {/* Question in the storyteller question box, set in Montserrat
-            (matches the EQ question-box copy) at a slightly smaller size
-            than the EQ hero — more readable mid-flow and less hero-weight. */}
-        <div
-          className="px-6 py-5 text-center rounded-2xl"
-          style={{
-            backgroundColor: 'var(--th-question-bg-solid)',
-            boxShadow: '0 8px 28px var(--th-question-shadow)',
-          }}
-        >
-          <p className="text-[20px] leading-relaxed font-montserrat" style={{ color: 'var(--th-surface)' }}>
-            &ldquo;<FormattedText text={tour.midwayQuestion || ''} />&rdquo;
-          </p>
-        </div>
+        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+          Discuss
+        </p>
+        <QuestionText text={tour.midwayQuestion || ''} sizeClass="text-[26px]" />
 
         <div className="flex gap-2 items-start">
           <textarea
