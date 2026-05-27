@@ -411,6 +411,10 @@ export interface Stop {
     photos: StopPhoto[]; // Multiple photos
     bridgeText: string;              // Forward-pointing sentence to next stop
     bridgePhotos: StopPhoto[];
+    /** Optional audio for the bridge / What's Next screen. */
+    bridgeAudioUrl?: string | null;
+    bridgeAudioTitle?: string | null;
+    bridgeAudioAutoplayDisabled?: boolean;
     audioUrl: string | null;
     audioTitle: string | null;
     audioAutoplayDisabled?: boolean;
@@ -515,6 +519,9 @@ export interface TourSession {
     finalPerceptualSlider: number | null;  // 0–1
     whatShiftedResponse: string[] | null;  // multi-select
     reasoningSourceResponse: string[] | null; // multi-select
+    /** Per-question responses for tour.essentialQuestion.additionalClosingQuestions,
+     *  parallel to that array. */
+    additionalClosingResponses?: string[];
   } | null;
   startedAt: string;
   completedAt: string | null;

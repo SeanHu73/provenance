@@ -27,7 +27,7 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
+      <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
         Share your discussion...
       </p>
 

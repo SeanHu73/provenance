@@ -68,7 +68,7 @@ interface TourContextValue {
   completeEqDiscuss: () => void;
   completeEqOpening: (theory: string, reasoning: string) => void;
   completeEqAdditional: () => void;
-  completeEqClosing: (finalReflection: string, finalReasoning: string) => void;
+  completeEqClosing: (finalReflection: string, finalReasoning: string, additionalClosingResponses: string[]) => void;
   completeEqClosingAdditional: () => void;
   completeEqFinalReflect: (cognitive: number, perceptual: number | null, whatShifted: string[] | null, reasoningSource: string[] | null) => void;
   finishTour: () => void;
@@ -483,9 +483,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
     logEqOpening({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, theory, reasoning });
   }, [session, tour, persist]);
 
-  const completeEqClosingFn = useCallback((finalReflection: string, finalReasoning: string) => {
+  const completeEqClosingFn = useCallback((finalReflection: string, finalReasoning: string, additionalClosingResponses: string[]) => {
     if (!session || !tour) return;
-    persist(completeEqClosingImpl(session, finalReflection, finalReasoning, tour));
+    persist(completeEqClosingImpl(session, finalReflection, finalReasoning, additionalClosingResponses, tour));
     logEqClosing({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, finalReflection, finalReasoning });
   }, [session, tour, persist]);
 

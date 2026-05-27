@@ -11,6 +11,7 @@ import FormattedText from './FormattedText';
 import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
+import SnapScrollHint from './SnapScrollHint';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
@@ -800,11 +801,11 @@ export function MidwayCheckinCard({
           the top stays in view after a snap. */}
       {/* Section 1 — header + visited stops summary */}
       <section
-        className="min-h-full flex flex-col justify-center space-y-6 px-5 py-6"
+        className="relative min-h-full flex flex-col justify-center space-y-6 px-5 py-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <div>
-          <p className="text-[22px] uppercase tracking-[0.12em] font-display font-semibold text-accent-dark mb-1">
+          <p className="text-[22px] uppercase tracking-[0.12em] font-display font-semibold text-aged-gold mb-1">
             Mid point check-in
           </p>
           <p className="text-[18px] font-serif text-text-primary leading-relaxed">
@@ -819,6 +820,7 @@ export function MidwayCheckinCard({
             ))}
           </div>
         )}
+        <SnapScrollHint />
       </section>
 
       {/* Optional background section — inserted between the visited
@@ -855,7 +857,7 @@ export function MidwayCheckinCard({
           transition: 'opacity 250ms ease-out, transform 250ms ease-out',
         }}
       >
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
+        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
           Discuss
         </p>
         <QuestionText text={tour.midwayQuestion || ''} sizeClass="text-[26px]" />

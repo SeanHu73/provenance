@@ -498,41 +498,38 @@ export function completeEqClosing(
   session: TourSession,
   finalReflection: string,
   finalReasoning: string,
-  tour: Tour
+  additionalClosingResponses: string[],
+  _tour: Tour, // kept for signature compatibility; no longer used for routing
 ): TourSession {
-  // If the admin authored additional closing questions, route through
-  // them one at a time before the final-reflect sliders.
-  const extras = tour.essentialQuestion?.additionalClosingQuestions ?? [];
-  const nextPhase: TourPhase = extras.length > 0 ? 'eq_closing_additional' : 'eq_final_reflect';
+  // The closing card now captures every closing question (main +
+  // additionals) in one snap-scroll screen, so we skip both
+  // eq_closing_additional and eq_final_reflect on the way out.
+  // "Any remaining questions" follows directly.
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: nextPhase,
-    currentRound: nextPhase === 'eq_closing_additional' ? 0 : session.currentRound,
+    currentPhase: 'eq_questions',
+    currentRound: 0,
     essentialQuestionResponses: session.essentialQuestionResponses
-      ? { ...session.essentialQuestionResponses, finalReflection, finalReasoning }
+      ? {
+          ...session.essentialQuestionResponses,
+          finalReflection,
+          finalReasoning,
+          additionalClosingResponses,
+        }
       : null,
   };
 }
 
-/** Advance through the additional closing questions list. After the
- *  last one we move on to the final-reflect sliders. */
-export function completeEqClosingAdditional(session: TourSession, tour: Tour): TourSession {
-  const total = tour.essentialQuestion?.additionalClosingQuestions?.length ?? 0;
-  const nextRound = session.currentRound + 1;
-  if (nextRound >= total) {
-    return {
-      ...session,
-      phaseHistory: pushHistory(session),
-      currentPhase: 'eq_final_reflect',
-      currentRound: 0,
-    };
-  }
+/** Legacy path kept for sessions parked on eq_closing_additional from
+ *  before the closing redesign. Now just advances to eq_questions. */
+export function completeEqClosingAdditional(session: TourSession, _tour: Tour): TourSession {
+  void _tour;
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: 'eq_closing_additional',
-    currentRound: nextRound,
+    currentPhase: 'eq_questions',
+    currentRound: 0,
   };
 }
 

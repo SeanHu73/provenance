@@ -18,6 +18,7 @@ import PhotoContent from './PhotoContent';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import NoticeMapDisplay from './NoticeMapDisplay';
+import SnapScrollHint from './SnapScrollHint';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
@@ -234,10 +235,11 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
           lost when SeedCard's outer started overlapping the card
           frame's padding box. */}
       <section
-        className="min-h-full flex flex-col justify-center space-y-5 px-5 py-6"
+        className="relative min-h-full flex flex-col justify-center space-y-5 px-5 py-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         {backgroundBlock}
+        <SnapScrollHint />
       </section>
 
       <section

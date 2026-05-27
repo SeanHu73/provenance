@@ -952,12 +952,50 @@ export default function TourEditorPage() {
                 onAutoplayDisabledChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, closingAudioAutoplayDisabled: v })}
               />
 
-              {/* Additional closing discussion questions — array */}
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-xs text-stone-500">Final reflection prompt</span>
+                  <input
+                    value={tour.essentialQuestion.finalReflectionPrompt}
+                    onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalReflectionPrompt: e.target.value })}
+                    className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-stone-500">Final reflection placeholder</span>
+                  <input
+                    value={tour.essentialQuestion.finalReflectionPlaceholder}
+                    onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalReflectionPlaceholder: e.target.value })}
+                    className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-stone-500">Final reasoning prompt</span>
+                  <input
+                    value={tour.essentialQuestion.finalReasoningPrompt}
+                    onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalReasoningPrompt: e.target.value })}
+                    className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-stone-500">Final reasoning placeholder</span>
+                  <input
+                    value={tour.essentialQuestion.finalReasoningPlaceholder}
+                    onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalReasoningPlaceholder: e.target.value })}
+                    className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                  />
+                </label>
+              </div>
+
+              {/* Additional closing discussion questions — array. Lives
+                  after the final reflection / reasoning prompts so the
+                  closing block reads top-to-bottom in the order the
+                  explorer encounters it. */}
               <div className="border-t border-stone-200 pt-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs text-stone-700 font-medium">Additional closing discussion questions</span>
-                    <p className="text-[10px] text-stone-400 mt-0.5">Shown one at a time after the main closing card, before the final-reflection sliders.</p>
+                    <p className="text-[10px] text-stone-400 mt-0.5">Listed under the main closing question on the explorer&apos;s closing screen; each gets its own response textbox.</p>
                   </div>
                   <button
                     onClick={() => {
@@ -971,7 +1009,7 @@ export default function TourEditorPage() {
                   >+ Add</button>
                 </div>
                 {(tour.essentialQuestion.additionalClosingQuestions || []).length === 0 ? (
-                  <p className="text-[10px] text-stone-400 italic">None. Add one to insert a discussion-question screen into the closing flow.</p>
+                  <p className="text-[10px] text-stone-400 italic">None. Add one to ask another discussion question on the closing screen.</p>
                 ) : (
                   <ul className="space-y-3">
                     {(tour.essentialQuestion.additionalClosingQuestions || []).map((item, i) => (
@@ -1070,41 +1108,6 @@ export default function TourEditorPage() {
                     ))}
                   </ul>
                 )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block">
-                  <span className="text-xs text-stone-500">Final reflection prompt</span>
-                  <input
-                    value={tour.essentialQuestion.finalReflectionPrompt}
-                    onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalReflectionPrompt: e.target.value })}
-                    className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-xs text-stone-500">Final reflection placeholder</span>
-                  <input
-                    value={tour.essentialQuestion.finalReflectionPlaceholder}
-                    onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalReflectionPlaceholder: e.target.value })}
-                    className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-xs text-stone-500">Final reasoning prompt</span>
-                  <input
-                    value={tour.essentialQuestion.finalReasoningPrompt}
-                    onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalReasoningPrompt: e.target.value })}
-                    className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-xs text-stone-500">Final reasoning placeholder</span>
-                  <input
-                    value={tour.essentialQuestion.finalReasoningPlaceholder}
-                    onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalReasoningPlaceholder: e.target.value })}
-                    className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
-                  />
-                </label>
               </div>
             </div>
           )}
@@ -2343,6 +2346,16 @@ function BridgeToggle({ stop, tourId, onChange, onUploadPhoto }: { stop: Stop; t
             onChange={(bridgePhotos) => onChange({ reveal: { ...stop.reveal, bridgePhotos } })}
             uploadPath={`memorial-church/photos/tours/${tourId}/bridge_${stop.id}`}
             onUploadPhoto={onUploadPhoto}
+          />
+          <AudioUpload
+            audioUrl={stop.reveal.bridgeAudioUrl ?? null}
+            audioTitle={stop.reveal.bridgeAudioTitle ?? null}
+            onChange={(url) => onChange({ reveal: { ...stop.reveal, bridgeAudioUrl: url } })}
+            onTitleChange={(title) => onChange({ reveal: { ...stop.reveal, bridgeAudioTitle: title } })}
+            uploadPath={`memorial-church/audio/tours/${tourId}/bridge_${stop.id}`}
+            onUploadFile={onUploadPhoto}
+            autoplayDisabled={stop.reveal.bridgeAudioAutoplayDisabled}
+            onAutoplayDisabledChange={(v) => onChange({ reveal: { ...stop.reveal, bridgeAudioAutoplayDisabled: v } })}
           />
         </>
       ) : (

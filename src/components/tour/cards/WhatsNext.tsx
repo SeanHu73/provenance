@@ -7,6 +7,8 @@ import FullscreenPhoto from './FullscreenPhoto';
 import { useTour } from '@/context/TourContext';
 import DetourFlow from './DetourFlow';
 import BackButton from './BackButton';
+import AudioButton from './AudioButton';
+import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
   stop: Stop;
@@ -17,6 +19,8 @@ interface Props {
 
 export default function WhatsNext({ stop, isLastStop, onAskQuestion, onContinue }: Props) {
   const { isDetourVisited, recordDetourVisit } = useTour();
+  const [autoplayPref] = useAudioAutoplay();
+  const bridgeAutoplay = autoplayPref && !stop.reveal.bridgeAudioAutoplayDisabled;
   const [activeDetour, setActiveDetour] = useState<Detour | null>(null);
   const [fullscreenPhoto, setFullscreenPhoto] = useState<{ url: string; caption: string | null } | null>(null);
 
@@ -53,6 +57,13 @@ export default function WhatsNext({ stop, isLastStop, onAskQuestion, onContinue 
       <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
         What&apos;s next...
       </p>
+      {stop.reveal.bridgeAudioUrl && (
+        <AudioButton
+          audioUrl={stop.reveal.bridgeAudioUrl}
+          title={stop.reveal.bridgeAudioTitle}
+          autoplay={bridgeAutoplay}
+        />
+      )}
       {stop.reveal.bridgeText && (
         <p className="text-[18px] text-text-secondary italic leading-relaxed">
           <FormattedText text={stop.reveal.bridgeText} />

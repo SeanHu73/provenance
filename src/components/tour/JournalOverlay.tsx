@@ -18,6 +18,12 @@ interface Props {
   tour: Tour;
   session: TourSession;
   onClose: () => void;
+  /** When the journal is opened from the closing card to let the
+   *  explorer re-read their opening theory, mount on the Your Theory
+   *  tab and show a prominent "Return when ready" button at the
+   *  bottom. The button is *only* present in this mode — it doesn't
+   *  appear on any other journal open. */
+  closingPeek?: boolean;
 }
 
 type ThumbPhoto = { url: string; thumbnailFocalPoint?: { x: number; y: number } };
@@ -32,8 +38,8 @@ function getStopThumbnailPhoto(stop: Tour['stops'][number]): ThumbPhoto | null {
   return null;
 }
 
-export default function JournalOverlay({ tour, session, onClose }: Props) {
-  const [tab, setTab] = useState<Tab>('stops');
+export default function JournalOverlay({ tour, session, onClose, closingPeek = false }: Props) {
+  const [tab, setTab] = useState<Tab>(closingPeek ? 'theory' : 'stops');
   const [expandedStopId, setExpandedStopId] = useState<string | null>(null);
   const [fullscreenPhoto, setFullscreenPhoto] = useState<{ url: string; caption: string | null } | null>(null);
 
@@ -336,6 +342,21 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
             </div>
           )}
         </div>
+
+        {/* "Return when ready" — only present when the journal was
+            opened from the closing card to let the explorer re-read
+            their opening theory. Not shown on any other open. */}
+        {closingPeek && (
+          <div className="shrink-0 px-5 py-3 border-t" style={{ borderColor: 'var(--th-border)' }}>
+            <button
+              onClick={onClose}
+              className="w-full py-3 rounded-lg text-base font-semibold text-warm-white"
+              style={{ backgroundColor: 'var(--th-primary)' }}
+            >
+              Return when ready
+            </button>
+          </div>
+        )}
       </div>
 
       {fullscreenPhoto && (

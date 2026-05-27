@@ -16,6 +16,7 @@ import PhotoContent from './PhotoContent';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import QuestionText from './QuestionText';
+import SnapScrollHint from './SnapScrollHint';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
@@ -85,7 +86,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
   }, [hasBackground, questionRevealed]);
 
   const titleBlock = (
-    <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
+    <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
       {title}
     </p>
   );
@@ -130,7 +131,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
       style={{ scrollSnapType: 'y mandatory' }}
     >
       <section
-        className="min-h-full flex flex-col justify-center space-y-5 px-5 py-6"
+        className="relative min-h-full flex flex-col justify-center space-y-5 px-5 py-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         {titleBlock}
@@ -152,6 +153,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
         {wonder.photos && wonder.photos.length > 0 && (
           <PhotoContent text="" photos={wonder.photos} />
         )}
+        <SnapScrollHint />
       </section>
 
       <section
@@ -165,7 +167,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
           transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
         }}
       >
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
+        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
           Discuss
         </p>
         <QuestionText text={wonder.question} />

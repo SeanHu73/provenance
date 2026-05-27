@@ -16,6 +16,7 @@ import BackButton from './BackButton';
 import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
+import SnapScrollHint from './SnapScrollHint';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
@@ -82,7 +83,7 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
   const bgAutoplay = autoplayPref && !item.questionBackgroundAudioAutoplayDisabled;
 
   const titleBlock = (
-    <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
+    <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
       {isOpinion ? "What's your opinion?" : 'Chance to discuss...'}
     </p>
   );
@@ -131,7 +132,7 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
       style={{ scrollSnapType: 'y mandatory' }}
     >
       <section
-        className="min-h-full flex flex-col justify-center space-y-5 px-5 py-6"
+        className="relative min-h-full flex flex-col justify-center space-y-5 px-5 py-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         {titleBlock}
@@ -147,6 +148,7 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
           photos={item.questionBackgroundPhotos || []}
           textClass="text-[19px] leading-relaxed font-serif text-text-primary text-left"
         />
+        <SnapScrollHint />
       </section>
 
       <section
@@ -160,7 +162,7 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
           transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
         }}
       >
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
+        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
           Discuss
         </p>
         <QuestionText text={item.question} />
