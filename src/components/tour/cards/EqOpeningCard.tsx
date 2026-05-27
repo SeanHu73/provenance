@@ -10,7 +10,6 @@ import { useState } from 'react';
 import { Tour } from '@/lib/types';
 import BackButton from './BackButton';
 import MicButton from '../MicButton';
-import FormattedText from './FormattedText';
 
 interface Props {
   tour: Tour;
@@ -27,14 +26,9 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <div className="space-y-1">
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
-          Share your discussion...
-        </p>
-        <p className="text-sm text-text-secondary">
-          You can type or tap and speak into the mic to respond.
-        </p>
-      </div>
+      <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
+        Share your discussion...
+      </p>
 
       {/* First-time note — only the opening and closing of the tour ask
           you to record an answer, so the group can see how their thinking
@@ -49,19 +43,6 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
         <p className="text-[14px] leading-relaxed text-text-secondary">
           <span className="font-semibold" style={{ color: 'var(--th-text-primary)' }}>You&apos;ll only be asked to record an answer here and at the end of the tour.</span>{' '}
           That way you can look back and see how your thinking has evolved.
-        </p>
-      </div>
-
-      {/* Reminder of the question */}
-      <div
-        className="px-8 py-7 text-center rounded-2xl"
-        style={{
-          backgroundColor: 'var(--th-question-bg-solid)',
-          boxShadow: '0 8px 28px var(--th-question-shadow)',
-        }}
-      >
-        <p className="text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
-          &ldquo;<FormattedText text={eq.question} />&rdquo;
         </p>
       </div>
 

@@ -32,7 +32,7 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
           boxShadow: '0 8px 28px var(--th-question-shadow)',
         }}
       >
-        <p className="text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
+        <p className="text-[30px] leading-relaxed font-montserrat font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;<FormattedText text={eq.question} />&rdquo;
         </p>
       </div>

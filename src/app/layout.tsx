@@ -23,9 +23,9 @@ const dmSerifDisplay = DM_Serif_Display({
   display: 'swap',
 });
 
-// Wordmark font for the splash screen.
+// Wordmark font for the splash screen + question-box copy.
 const montserrat = Montserrat({
-  weight: '500',
+  weight: ['500', '700'],
   subsets: ['latin'],
   variable: '--font-montserrat',
   display: 'swap',

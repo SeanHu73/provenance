@@ -107,6 +107,15 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const prevEntry = history.length > 0 ? history[history.length - 1] : null;
   const isFade = !prevEntry || prevEntry.stopIndex !== session.currentStopIndex;
 
+  // Detect back navigation: goBack shrinks phaseHistory by one, forward
+  // navigation grows it. Compare to the previous render's length and
+  // mirror the slide so back goes left-to-right instead of right-to-left.
+  const prevHistoryLenRef = useRef<number>(history.length);
+  const isBack = history.length < prevHistoryLenRef.current;
+  useEffect(() => {
+    prevHistoryLenRef.current = history.length;
+  }, [history.length]);
+
   // Device capability for blur
   const blurSupported = useMemo(() => canUseBlur(), []);
 
@@ -206,12 +215,12 @@ export default function Journal({ onMapPeek }: JournalProps) {
             key={phaseKey}
             initial={isFade
               ? { opacity: 0 }
-              : { x: '100%' }
+              : { x: isBack ? '-100%' : '100%' }
             }
             animate={{ x: 0, opacity: 1 }}
             exit={isFade
               ? { opacity: 0 }
-              : { x: '-100%' }
+              : { x: isBack ? '100%' : '-100%' }
             }
             transition={{ duration: isFade ? 0.4 : 0.12, ease: isFade ? 'easeInOut' : 'easeOut' }}
             className="absolute inset-0 overflow-y-auto p-4 tour-scroll"

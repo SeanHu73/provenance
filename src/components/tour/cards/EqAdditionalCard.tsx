@@ -38,7 +38,7 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
             borderRadius: '12px',
           }}
         />
-        <p className="relative text-[30px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
+        <p className="relative text-[30px] leading-relaxed font-montserrat font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;<FormattedText text={aq.question} />&rdquo;
         </p>
       </div>

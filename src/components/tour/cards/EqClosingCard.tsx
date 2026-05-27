@@ -69,7 +69,7 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
             borderRadius: '12px',
           }}
         />
-        <p className="relative text-[28px] leading-relaxed font-display font-bold" style={{ color: 'var(--th-surface)' }}>
+        <p className="relative text-[28px] leading-relaxed font-montserrat font-bold" style={{ color: 'var(--th-surface)' }}>
           &ldquo;<FormattedText text={eq.question} />&rdquo;
         </p>
       </div>

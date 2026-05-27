@@ -786,9 +786,9 @@ export function MidwayCheckinCard({
           transition: 'opacity 250ms ease-out, transform 250ms ease-out',
         }}
       >
-        {/* Question in the storyteller question box, set in the body
-            serif (Newsreader) at a slightly smaller size than the EQ
-            hero — more readable mid-flow and less hero-weight. */}
+        {/* Question in the storyteller question box, set in Montserrat
+            (matches the EQ question-box copy) at a slightly smaller size
+            than the EQ hero — more readable mid-flow and less hero-weight. */}
         <div
           className="px-6 py-5 text-center rounded-2xl"
           style={{
@@ -796,7 +796,7 @@ export function MidwayCheckinCard({
             boxShadow: '0 8px 28px var(--th-question-shadow)',
           }}
         >
-          <p className="text-[20px] leading-relaxed font-serif" style={{ color: 'var(--th-surface)' }}>
+          <p className="text-[20px] leading-relaxed font-montserrat" style={{ color: 'var(--th-surface)' }}>
             &ldquo;<FormattedText text={tour.midwayQuestion || ''} />&rdquo;
           </p>
         </div>
