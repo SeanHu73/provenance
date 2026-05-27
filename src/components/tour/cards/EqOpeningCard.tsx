@@ -75,17 +75,13 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
         <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
           Share your discussion...
         </p>
-        <div
-          className="rounded-lg border-l-4 px-4 py-3"
-          style={{
-            borderColor: 'var(--aged-gold)',
-            backgroundColor: 'color-mix(in srgb, var(--aged-gold) 10%, transparent)',
-          }}
-        >
-          <p className="text-[16px] leading-relaxed text-text-primary">
-            <span className="font-semibold">You will only be asked to record an answer here and at the end of the tour.</span>{' '}
-            All others are optional! This allows you to look back and see how your thinking has changed.
-            It also helps our team learn with you!
+        <div className="space-y-2">
+          <p className="text-[18px] leading-relaxed text-text-primary">
+            You will only be asked to record an answer here and at the end. All others are optional.
+          </p>
+          <p className="text-[14px] italic leading-relaxed text-text-secondary">
+            This allows you to look back and see how your thinking has changed.
+            It also helps our team learn with you.
           </p>
         </div>
         <SnapScrollHint />
