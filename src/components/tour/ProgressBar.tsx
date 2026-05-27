@@ -30,7 +30,7 @@ function UnstructuredProgressBar({ tour, session }: Props) {
   const totalCount = logicalStops.length;
   const completedCount = completionOrder.length;
 
-  const isClosing = ['eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
+  const isClosing = ['eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
   const isIntro = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional'].includes(session.currentPhase);
   const isInStopPhase = !isClosing && !isIntro && session.currentPhase !== 'unstructured_map' && session.currentPhase !== 'midway_checkin';
 
@@ -131,7 +131,7 @@ function LinearProgressBar({ tour, session }: Props) {
   const totalCount = logicalStops.length;
   const completedCount = logicalStops.filter(ls => completedIds.has(ls.id)).length;
 
-  const isClosing = ['eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
+  const isClosing = ['eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
   const isIntroPhase = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional'].includes(session.currentPhase);
   const isInStopPhase = !isClosing && !isIntroPhase;
 
@@ -166,7 +166,7 @@ function LinearProgressBar({ tour, session }: Props) {
   if (isIntroPhase) {
     pct = (0.5 / totalSegments) * 100;
   } else if (isClosing) {
-    const closingPhases = ['eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'];
+    const closingPhases = ['eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end'];
     const ci = closingPhases.indexOf(session.currentPhase);
     pct = ((totalSegments - 1 + (ci >= 0 ? ci / closingPhases.length : 0)) / totalSegments) * 100;
   } else if (session.currentPhase === 'end') {
@@ -432,7 +432,7 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
 
           {orderedStops.map((stop, i) => {
             const isCompleted = completedIds.has(stop.id);
-            const inStopPhase = !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end', 'unstructured_map', 'midway_checkin'].includes(session.currentPhase);
+            const inStopPhase = !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end', 'unstructured_map', 'midway_checkin'].includes(session.currentPhase);
             const activeStopId = session.currentStopIndex >= 0 ? getActiveStops(tour)[session.currentStopIndex]?.id : null;
             const isCurrent = inStopPhase && stop.id === activeStopId && !isCompleted;
             const isUpcoming = !isCompleted && !isCurrent;
@@ -499,7 +499,7 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
 
           {/* Closing card */}
           {(() => {
-            const closingPhases = ['eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end'];
+            const closingPhases = ['eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end'];
             const isActive = closingPhases.includes(session.currentPhase);
             return (
               <div

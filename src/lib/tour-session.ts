@@ -490,15 +490,42 @@ export function completeEqAdditional(session: TourSession, tour: Tour): TourSess
 export function completeEqClosing(
   session: TourSession,
   finalReflection: string,
-  finalReasoning: string
+  finalReasoning: string,
+  tour: Tour
 ): TourSession {
+  // If the admin authored additional closing questions, route through
+  // them one at a time before the final-reflect sliders.
+  const extras = tour.essentialQuestion?.additionalClosingQuestions ?? [];
+  const nextPhase: TourPhase = extras.length > 0 ? 'eq_closing_additional' : 'eq_final_reflect';
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: 'eq_final_reflect',
+    currentPhase: nextPhase,
+    currentRound: nextPhase === 'eq_closing_additional' ? 0 : session.currentRound,
     essentialQuestionResponses: session.essentialQuestionResponses
       ? { ...session.essentialQuestionResponses, finalReflection, finalReasoning }
       : null,
+  };
+}
+
+/** Advance through the additional closing questions list. After the
+ *  last one we move on to the final-reflect sliders. */
+export function completeEqClosingAdditional(session: TourSession, tour: Tour): TourSession {
+  const total = tour.essentialQuestion?.additionalClosingQuestions?.length ?? 0;
+  const nextRound = session.currentRound + 1;
+  if (nextRound >= total) {
+    return {
+      ...session,
+      phaseHistory: pushHistory(session),
+      currentPhase: 'eq_final_reflect',
+      currentRound: 0,
+    };
+  }
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'eq_closing_additional',
+    currentRound: nextRound,
   };
 }
 

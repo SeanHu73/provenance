@@ -951,6 +951,127 @@ export default function TourEditorPage() {
                 autoplayDisabled={tour.essentialQuestion.closingAudioAutoplayDisabled}
                 onAutoplayDisabledChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, closingAudioAutoplayDisabled: v })}
               />
+
+              {/* Additional closing discussion questions — array */}
+              <div className="border-t border-stone-200 pt-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-stone-700 font-medium">Additional closing discussion questions</span>
+                    <p className="text-[10px] text-stone-400 mt-0.5">Shown one at a time after the main closing card, before the final-reflection sliders.</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const list = tour.essentialQuestion!.additionalClosingQuestions || [];
+                      updateField('essentialQuestion', {
+                        ...tour.essentialQuestion!,
+                        additionalClosingQuestions: [...list, { question: '', questionType: 'discuss' as const }],
+                      });
+                    }}
+                    className="text-xs text-stone-700 hover:underline"
+                  >+ Add</button>
+                </div>
+                {(tour.essentialQuestion.additionalClosingQuestions || []).length === 0 ? (
+                  <p className="text-[10px] text-stone-400 italic">None. Add one to insert a discussion-question screen into the closing flow.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {(tour.essentialQuestion.additionalClosingQuestions || []).map((item, i) => (
+                      <li key={i} className="border border-stone-300 rounded bg-stone-50 p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-stone-600">Closing question {i + 1}</span>
+                          <button
+                            onClick={() => {
+                              const next = (tour.essentialQuestion!.additionalClosingQuestions || []).filter((_, j) => j !== i);
+                              updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalClosingQuestions: next });
+                            }}
+                            className="text-xs text-red-600 hover:underline"
+                          >&times; Remove</button>
+                        </div>
+                        <div className="flex gap-3">
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              checked={(item.questionType || 'discuss') === 'discuss'}
+                              onChange={() => {
+                                const next = [...(tour.essentialQuestion!.additionalClosingQuestions || [])];
+                                next[i] = { ...next[i], questionType: 'discuss' };
+                                updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalClosingQuestions: next });
+                              }}
+                            />
+                            <span className="text-xs text-stone-600">Discussion Question</span>
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              checked={item.questionType === 'opinion'}
+                              onChange={() => {
+                                const next = [...(tour.essentialQuestion!.additionalClosingQuestions || [])];
+                                next[i] = { ...next[i], questionType: 'opinion' };
+                                updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalClosingQuestions: next });
+                              }}
+                            />
+                            <span className="text-xs text-stone-600">Discuss Opinion</span>
+                          </label>
+                        </div>
+                        <RichTextarea
+                          label="Question background (optional)"
+                          value={item.questionBackground || ''}
+                          onChange={(v) => {
+                            const next = [...(tour.essentialQuestion!.additionalClosingQuestions || [])];
+                            next[i] = { ...next[i], questionBackground: v };
+                            updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalClosingQuestions: next });
+                          }}
+                          rows={3}
+                          placeholder="Contextualising text shown above the question."
+                        />
+                        <AudioUpload
+                          audioUrl={item.questionBackgroundAudioUrl ?? null}
+                          audioTitle={item.questionBackgroundAudioTitle ?? null}
+                          onChange={(url) => {
+                            const next = [...(tour.essentialQuestion!.additionalClosingQuestions || [])];
+                            next[i] = { ...next[i], questionBackgroundAudioUrl: url };
+                            updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalClosingQuestions: next });
+                          }}
+                          onTitleChange={(title) => {
+                            const next = [...(tour.essentialQuestion!.additionalClosingQuestions || [])];
+                            next[i] = { ...next[i], questionBackgroundAudioTitle: title };
+                            updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalClosingQuestions: next });
+                          }}
+                          uploadPath={`memorial-church/audio/tours/${tourId}/eq_closing_additional_${i}_background`}
+                          onUploadFile={uploadPhoto}
+                          autoplayDisabled={item.questionBackgroundAudioAutoplayDisabled}
+                          onAutoplayDisabledChange={(v) => {
+                            const next = [...(tour.essentialQuestion!.additionalClosingQuestions || [])];
+                            next[i] = { ...next[i], questionBackgroundAudioAutoplayDisabled: v };
+                            updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalClosingQuestions: next });
+                          }}
+                        />
+                        <PhotoListEditor
+                          photos={item.questionBackgroundPhotos || []}
+                          onChange={(photos) => {
+                            const next = [...(tour.essentialQuestion!.additionalClosingQuestions || [])];
+                            next[i] = { ...next[i], questionBackgroundPhotos: photos };
+                            updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalClosingQuestions: next });
+                          }}
+                          uploadPath={`memorial-church/photos/tours/${tourId}/eq_closing_additional_${i}_background`}
+                          onUploadPhoto={uploadPhoto}
+                        />
+                        <RichTextarea
+                          label="The question"
+                          value={item.question}
+                          onChange={(v) => {
+                            const next = [...(tour.essentialQuestion!.additionalClosingQuestions || [])];
+                            next[i] = { ...next[i], question: v };
+                            updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalClosingQuestions: next });
+                          }}
+                          rows={2}
+                          placeholder="A question to discuss now that the tour is wrapping up..."
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                   <span className="text-xs text-stone-500">Final reflection prompt</span>

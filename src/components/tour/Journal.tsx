@@ -24,6 +24,7 @@ import EqDiscussCard from './cards/EqDiscussCard';
 import EqOpeningCard from './cards/EqOpeningCard';
 import EqAdditionalCard from './cards/EqAdditionalCard';
 import EqClosingCard from './cards/EqClosingCard';
+import EqClosingAdditionalCard from './cards/EqClosingAdditionalCard';
 import EqFinalReflectCard from './cards/EqFinalReflectCard';
 import EqQuestionsCard from './cards/EqQuestionsCard';
 import ProgressBar from './ProgressBar';
@@ -63,6 +64,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeEqOpening,
     completeEqAdditional,
     completeEqClosing,
+    completeEqClosingAdditional,
     completeEqFinalReflect,
   } = useTour();
 
@@ -386,6 +388,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
         {(phase === 'eq_closing_discuss' || phase === 'eq_closing') && tour.essentialQuestion && session && (
           <EqClosingCard tour={tour} session={session} onComplete={completeEqClosing} />
+        )}
+
+        {phase === 'eq_closing_additional' && tour.essentialQuestion && session && (
+          <EqClosingAdditionalCard tour={tour} session={session} onContinue={completeEqClosingAdditional} />
         )}
 
         {phase === 'eq_final_reflect' && (

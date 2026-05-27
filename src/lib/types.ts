@@ -248,6 +248,19 @@ export interface Tour {
       questionBackgroundAudioAutoplayDisabled?: boolean;
       questionBackgroundPhotos?: StopPhoto[];
     } | null;
+    /** Optional list of extra discussion/opinion questions shown after
+     *  the main eq_closing card and before eq_final_reflect. Each plays
+     *  as its own discussion-question screen with the same snap-scroll
+     *  background → "Discuss" + question pattern. */
+    additionalClosingQuestions?: Array<{
+      question: string;
+      questionType: 'discuss' | 'opinion';
+      questionBackground?: string;
+      questionBackgroundAudioUrl?: string | null;
+      questionBackgroundAudioTitle?: string | null;
+      questionBackgroundAudioAutoplayDisabled?: boolean;
+      questionBackgroundPhotos?: StopPhoto[];
+    }>;
     closingAudioUrl: string | null;     // Audio for the closing discuss screen
     closingAudioTitle: string | null;
     closingAudioAutoplayDisabled?: boolean;
@@ -473,7 +486,7 @@ export interface WebNode {
   y: number;
 }
 
-export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin';
+export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin';
 
 export interface TourSession {
   id: string;

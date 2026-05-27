@@ -30,6 +30,7 @@ import {
   completeEqAdditional as completeEqAdditionalImpl,
   completeEqOpening as completeEqOpeningImpl,
   completeEqClosing as completeEqClosingImpl,
+  completeEqClosingAdditional as completeEqClosingAdditionalImpl,
   completeEqFinalReflect as completeEqFinalReflectImpl,
   finishTour as finishTourImpl,
   completeGuideOutro as completeGuideOutroImpl,
@@ -66,6 +67,7 @@ interface TourContextValue {
   completeEqOpening: (theory: string, reasoning: string) => void;
   completeEqAdditional: () => void;
   completeEqClosing: (finalReflection: string, finalReasoning: string) => void;
+  completeEqClosingAdditional: () => void;
   completeEqFinalReflect: (cognitive: number, perceptual: number | null, whatShifted: string[] | null, reasoningSource: string[] | null) => void;
   finishTour: () => void;
   completeGuideOutro: () => void;
@@ -267,8 +269,13 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const completeEqClosingFn = useCallback((finalReflection: string, finalReasoning: string) => {
     if (!session || !tour) return;
-    persist(completeEqClosingImpl(session, finalReflection, finalReasoning));
+    persist(completeEqClosingImpl(session, finalReflection, finalReasoning, tour));
     logEqClosing({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, finalReflection, finalReasoning });
+  }, [session, tour, persist]);
+
+  const completeEqClosingAdditionalFn = useCallback(() => {
+    if (!session || !tour) return;
+    persist(completeEqClosingAdditionalImpl(session, tour));
   }, [session, tour, persist]);
 
   const completeEqFinalReflectFn = useCallback((cognitive: number, perceptual: number | null, whatChanged: string[] | null, whyChanged: string[] | null) => {
@@ -341,6 +348,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeEqOpening: completeEqOpeningFn,
       completeEqAdditional: completeEqAdditionalFn,
       completeEqClosing: completeEqClosingFn,
+      completeEqClosingAdditional: completeEqClosingAdditionalFn,
       completeEqFinalReflect: completeEqFinalReflectFn,
       finishTour: finishTourFn,
       completeGuideOutro: completeGuideOutroFn,

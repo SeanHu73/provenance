@@ -89,7 +89,7 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                 if (tour.unstructuredMode) {
                   const order: string[] = session.completionOrder || [];
                   const nonStopPhases = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional',
-                    'eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end',
+                    'eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end',
                     'unstructured_map', 'midway_checkin'];
                   const isInStopPhase = !nonStopPhases.includes(session.currentPhase);
                   const usedIndices = new Set<number>();
@@ -127,7 +127,7 @@ export default function JournalOverlay({ tour, session, onClose }: Props) {
                 return stopsToShow.map(({ stop, i }) => {
                 const isCompleted = completedIds.has(stop.id);
                 const isInStop = !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional',
-                  'eq_closing_discuss', 'eq_closing', 'eq_final_reflect', 'eq_questions', 'end',
+                  'eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end',
                   'unstructured_map', 'midway_checkin'].includes(session.currentPhase);
                 const isCurrent = i === currentIdx && isInStop;
                 const isUpcoming = !isCompleted && !isCurrent;
