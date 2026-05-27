@@ -320,7 +320,14 @@ function finishLogicalStop(
   logicalStopId: string,
   newCompletedStops: string[]
 ): TourSession {
-  const completionOrder = [...(session.completionOrder || []), logicalStopId];
+  // Don't double-count: if this logical stop is already in the visit
+  // order, leave it where it is. (A double-count would push
+  // completionOrder past logicalTotal and fire the closing transition
+  // early — which would also rob us of the midway check-in slot.)
+  const prevOrder = session.completionOrder || [];
+  const completionOrder = prevOrder.includes(logicalStopId)
+    ? prevOrder
+    : [...prevOrder, logicalStopId];
   const logicalTotal = getLogicalStops(tour).length;
 
   // All logical stops done → closing
