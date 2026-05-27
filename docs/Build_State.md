@@ -1,7 +1,7 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-05-26
-(see §8 final entry).
+*Handoff document for the next Claude Code session. Last updated 2026-05-27
+(see §8 final entry and the new §12 on multi-device rooms).
 Read this instead of re-discovering the codebase.*
 
 ---
@@ -96,6 +96,15 @@ Map (tour pin) → Journal Peek → Intro screens → [Meet Your Guide] →
 | MicButton | `src/components/tour/MicButton.tsx` | Deepgram voice-to-text |
 | VoiceInput | `src/components/tour/VoiceInput.tsx` | Standalone voice input (prominent mode) |
 | ThemeSwitcher | `src/components/ThemeSwitcher.tsx` | Red/Teal toggle on the map (§9) |
+| QuestionText | `cards/QuestionText.tsx` | Themed discussion-question text — body serif, bronze (`--th-accent-dark`), left-aligned. Strips `[photo:N]` markers since the question section is photo-free. |
+| SnapScrollHint | `cards/SnapScrollHint.tsx` | "Keep scrolling" pill + chevron embedded at the bottom of the first snap section on every snap-scroll card |
+| EqClosingAdditionalCard | `cards/EqClosingAdditionalCard.tsx` | Legacy per-additional-question card; new closings collapse these into `EqClosingCard` (kept for in-flight sessions) |
+| RoomLobby | `src/components/room/RoomLobby.tsx` | Full-screen waiting room shown while a group is set up but not yet started (§12) |
+| RoomEntrySheet | `src/components/room/RoomEntrySheet.tsx` | Host / Join bottom sheet — collects name (+ code for join) (§12) |
+| RoomMenu | `src/components/room/RoomMenu.tsx` | Bottom sheet opened by the footer ROOM pill — members + idle status + remove + copy code + leave (§12) |
+| RoomBarrierIndicator | `src/components/room/RoomBarrierIndicator.tsx` | "Waiting for X to arrive / be ready" surface used by the discussion-barrier hook (§12) |
+| RoomStopProposalOverlay | `src/components/room/RoomStopProposalOverlay.tsx` | Floating card shown whenever the host has proposed a stop transition (§12) |
+| useRoomBarrier | `src/components/room/useRoomBarrier.tsx` | Hook that turns any discussion-question continue button into a barrier-aware Ready vote when the device is in a room (§12) |
 
 ### Data Layer
 
@@ -111,15 +120,22 @@ Map (tour pin) → Journal Peek → Intro screens → [Meet Your Guide] →
 | `src/lib/device-capability.ts` | Detects low-end devices for blur fallback |
 | `src/context/TourContext.tsx` | React context for all tour state + actions |
 | `src/context/ThemeContext.tsx` | Theme state (Red/Teal) + localStorage persistence (§9) |
+| `src/context/RoomContext.tsx` | Multi-device group room state, heartbeat, host-failover (§12) |
+| `src/lib/room-store.ts` | Firestore CRUD for `memorial-church-rooms` (§12) |
 
 ### Phase Types (TourPhase)
 
 ```
 intro → meet_guide → eq_scene → eq_discuss → eq_opening → eq_additional →
 seed → notice → wonder → reveal → reflect → whats_next → branch → off_path →
-eq_closing_discuss → eq_closing → eq_final_reflect → eq_questions →
-guide_outro → end
+eq_closing_discuss → eq_closing → eq_closing_additional → eq_final_reflect →
+eq_questions → guide_outro → end
 ```
+
+The closing redesign (2026-05-27) collapsed `eq_closing_additional` and
+`eq_final_reflect` into the new combined `eq_closing` card; both phase
+identifiers still exist for in-flight legacy sessions but new sessions
+go `eq_closing → eq_questions` directly.
 
 `meet_guide` and `guide_outro` are the optional guide bookends — shown
 only when the tour's guide has the relevant content (see §8).
@@ -231,11 +247,18 @@ Explorer photos are tappable for fullscreen (portal, pinch-zoom, close button at
 | `memorial-church-contributions` | Learner contributions |
 | `memorial-church-questions` | Legacy question log |
 | `memorial-church-migrations` | Migration receipts |
+| `memorial-church-rooms` | Multi-device group rooms (§12) — code, members, transition + barrier state |
 
 ### Security Rules
 
 All collections: `allow read, write: if true;` (test mode).
 Storage: `memorial-church/{allPaths=**}` allow read, write.
+
+**New collections must be added explicitly** — the rules are
+per-collection, not a catch-all. `memorial-church-rooms` needed its
+own block added in the Firebase console for the rooms feature to
+work (one-line `match /memorial-church-rooms/{doc} { allow read,
+write: if true; }`).
 
 ---
 
@@ -1251,6 +1274,162 @@ their original sizes — just field text scales.
 
 ---
 
+### Question background pattern + closing redesign + multi-device rooms (2026-05-26 → 2026-05-27)
+
+The biggest session of the project. All commits live on `master`.
+
+**Discussion-question redesign.** Every discussion-question card got
+a unified treatment:
+
+- The red cardinal question box is gone. Question text now renders as
+  plain themed copy via a new `QuestionText` atom (`cards/QuestionText.tsx`)
+  — body serif (Newsreader), `--th-accent-dark` (bronze), left-aligned,
+  larger than body. Page section titles ("Chance to discuss…",
+  "Question for you!", "Discuss", "Closing questions") use
+  `text-aged-gold` (theme primary) so colour distinguishes title from
+  question.
+- New optional **question background** for every discussion-question
+  shape (per-stop wonder, extra-round wonder, EQ main, EQ additional,
+  closing additional, midway): `questionBackground` text +
+  `questionBackgroundAudioUrl/Title/AutoplayDisabled` + a
+  `questionBackgroundPhotos: StopPhoto[]`. Authoring lives in the
+  tour editor right above each question's existing "The question"
+  field.
+- When a background is authored the card splits into two
+  `scroll-snap` sections — Section 1: title + audio + background text
+  rendered through `PhotoContent` (so `[photo:N]` markers inline at
+  position) + question photos; Section 2 (snap-snap, fades in on
+  arrival): "Discuss" heading + the question text. When no background
+  is authored the card falls back to its single-section layout.
+- A `SnapScrollHint` pill + chevron (`cards/SnapScrollHint.tsx`,
+  `animate-gentle-fade`) is anchored at the bottom of section 1 on
+  every snap-scroll card (Seed, Wonder, EqDiscuss, EqAdditional,
+  EqClosingAdditional, MidwayCheckin, and the new EqClosing) so the
+  explorer always knows there's more below. `QuestionText` strips
+  `[photo:N]` markers from its text since the question section is
+  photo-free by design.
+
+**Additional closing questions.** The EQ can now author an array of
+`additionalClosingQuestions` (discuss / opinion type, full
+background + audio + photos). In the admin they live *after* the
+final reflection / reasoning prompt fields so the closing block
+reads top-to-bottom in the order the explorer encounters it. The
+new `EqClosingCard` (see below) lists every additional question with
+its own response textbox under the main EQ question. The standalone
+`EqClosingAdditionalCard` and `eq_closing_additional` /
+`eq_final_reflect` phases are retained for in-flight legacy sessions
+but new sessions skip them.
+
+**Closing redesign (`EqClosingCard`).** Rewritten as a two-section
+snap-scroll:
+
+1. **Tour Complete** — title + admin-authored closing framing +
+   closing audio + a primary "Open your theory journal" button.
+   Tapping mounts `JournalOverlay` in a new `closingPeek` mode that
+   defaults to the Your Theory tab and renders a bottom "Return when
+   ready" button. The button is *only* present in this mode. On
+   close the closing card auto-scrolls to section 2.
+2. **Closing questions** — heading + main EQ restated + the existing
+   `finalReflectionPrompt` / `finalReasoningPrompt` textboxes, then
+   each `additionalClosingQuestions[i]` as its own textbox, then a
+   Continue button. Submitting writes `finalReflection`,
+   `finalReasoning`, and `additionalClosingResponses[]` (new field on
+   `essentialQuestionResponses`) in one transition and advances
+   directly to `eq_questions`. "Where are you now?" / sliders / chip
+   sets are gone from the flow.
+
+**Bridge audio.** `Stop.reveal` gained `bridgeAudioUrl / Title /
+AutoplayDisabled`; admin's bridge fieldset has an AudioUpload next
+to the bridge photo list; `WhatsNext` renders an AudioButton above
+the bridge text when set.
+
+**Multi-device group rooms — full reference in §12.** New
+`memorial-church-rooms` Firestore collection coordinates 2–4 people
+walking a tour together. Host proposes stop transitions, members
+approve; discussion-question screens become group-ready barriers;
+sleeping phones still block (must wake to advance); after 2 min
+idle any member can Remove an idle member from the room menu; host
+failover at 5 min via an atomic transaction. Onboarding reordered
+so Set Up runs first, with Host / Join buttons inline when
+"Everyone" has a phone; autoplay moved to a later "Audio" screen.
+Linear tours in a room drop everyone onto the map between stops
+(host taps the next pin to propose). Reload mid-tour re-subscribes
+from `sessionStorage` and aligns the local session to the room's
+current stop. Per-device responses persist via the existing
+`TourSession` sessionStorage mechanism.
+
+**"Find pin" map peek.** Local-only "where am I supposed to be"
+overlay anchored on the Look Around section of the Notice page
+(top-right "Find pin" button when `stop.location` is set). Flips a
+`mapPeek` flag in `page.tsx` that filters `tourStopMarkers` down to
+the current stop only and replaces the journal area with the map.
+A full-width "Return to tour" bar at the bottom flips it back. No
+room writes, no end-of-stop transition, no barrier — host and
+participant can each peek independently.
+
+**Map polish during the tour.**
+
+- Linear pin number badges (`index + 1`) removed. Numbers are
+  reserved for cluster sub-stop count badges on group leaders.
+- Off-screen direction arrows (`computeOffScreenArrows`) skip
+  completed stops so the arrows only point at work the group still
+  has to do.
+- Map markers in unstructured rooms read `room.completedStopIds` as
+  the source of truth instead of stale local `session.completedStops`.
+- `RoomStopProposalOverlay`'s display title prefers `stop.title`
+  over `mergeGroup` so a proposed cluster sub-stop shows its own
+  name (cluster leaders without a title still fall through to the
+  group name).
+- Non-host members in a room see the stop overlay card with the
+  Begin button hidden (they can browse thumbnails but only the host
+  advances). When the host proposes, members' overlay auto-replaces
+  with the proposed stop's thumbnail.
+
+**State-machine guards / fixes.**
+
+- `finishLogicalStop` checks whether `logicalStopId` is already in
+  `completionOrder` and skips the append if so. A double-call
+  (which could happen at edge cases) was otherwise pushing the
+  count past `logicalTotal` and firing closing early — and stealing
+  the midway check-in slot.
+- `recordHostAdvance` no longer overwrites `barriers` in its
+  Firestore update; the host's local persist re-renders into the
+  new phase and fires `arriveAtBarrier` synchronously, so clearing
+  barriers in the async transaction was wiping the host's arrival
+  (the "Waiting for X to arrive…" stall on midway in rooms).
+- `canGoBack` blocks back navigation that would cross a stop
+  boundary or back out of a group-level / closing phase in room
+  mode, but allows it within a stop (wonder → seed to re-read
+  context, etc.).
+- Slide animation in `Journal.tsx` reverses direction when
+  `phaseHistory.length` shrinks (back navigation now visibly
+  slides the opposite way).
+- Sync effect in `TourContext` consolidated so room → local updates
+  (currentStopId, groupPhase, completedStopIds, completionOrder)
+  all happen in one `persist()` call. The earlier pair of effects
+  could race-overwrite each other.
+
+**Lessons captured this session**
+
+- Firestore rules are per-collection in this project — adding a new
+  collection requires adding its `match` block in the console
+  (recorded in §3).
+- Firestore `runTransaction` writes that include an unconditional
+  field overwrite (e.g. `barriers: {}`) can wipe parallel writes
+  that landed between the transaction's read and commit. Drop the
+  field from the update if you don't actually need to clear it.
+- React `useEffect`s that both call `persist({...session, ...})`
+  can race if they fire on the same render — each captures the
+  same stale `session` reference, so the second clobbers the first.
+  Consolidate related sync effects into one.
+- For "host drives the group" patterns, push the result of running
+  the existing local state machine to a shared doc (rather than
+  trying to reimplement the state machine remotely). Members
+  mirror; cluster sub-stops / midway / closing transitions Just
+  Work because the same state machine produced them.
+
+---
+
 ## 11. Splash Screen
 
 Added 2026-05-25. First-load brand intro that plays once per browser
@@ -1314,6 +1493,135 @@ so the JS splash alone can't be the whole story:
 
 ---
 
-*End of handoff. The splash screen (§11), unstructured exploration
-mode (§10), theme system (§9), and the parallel `unstructuredStops`
-authoring path are all live on `master`.*
+## 12. Multi-device Group Rooms
+
+Added 2026-05-27. Lets a small group (2–4 people) walk a tour
+together from their own devices. Per-device written responses persist
+exactly as in single-player; the room only coordinates two things:
+stop transitions and discussion-question barriers.
+
+### Firestore model
+
+Stored at `memorial-church-rooms/{code}` (4-char alphanumeric, lookalike
+chars excluded). See `src/lib/types.ts` (`Room`, `RoomMember`,
+`BarrierState`) for the full shape. Key fields:
+
+- `members: RoomMember[]` — `sessionId`, `name`, `joinedAt`, `lastSeenAt`
+- `started: boolean` — flipped by the host's "Begin tour" in the lobby
+- `currentStopId: string | null`
+- `completedStopIds: string[]`
+- `completionOrder?: string[]` — logical stops in visit order; drives
+  the progress-bar count + midway threshold
+- `groupPhase?: TourPhase | null` — outer phase (unstructured_map,
+  midway_checkin, eq_closing*, eq_questions, …) that members mirror
+- `pendingStopId / pendingApprovals` — in-flight transition vote
+- `barriers: Record<key, { arrivals, readys, resolvedAt }>` — keyed
+  by `${stopId}:${phase}:${round}` (or `midway:checkin`, `eq:discuss`,
+  `eq:additional`, `eq:closing_additional:${idx}`)
+
+### Coordination model
+
+**Stop transitions** — host taps a pin (unstructured) or completes
+the last in-stop screen (linear): `proposeStop(stopId)` writes the
+target to `pendingStopId`. Every member sees the
+`RoomStopProposalOverlay` and taps "I'm in — let's go" to add
+themselves to `pendingApprovals`. When everyone's in, the same
+transaction commits — `currentStopId` updates and every device's
+sync effect advances locally to the new stop's seed. Linear rooms
+have a "map interlude" between stops: completing a stop clears
+`currentStopId` (via `markCurrentStopCompleted`), every device
+lands on the map view (`unstructured_map` phase) with the next
+sequential pin highlighted, host taps to propose.
+
+**Unstructured advance** — host's `advanceStop` runs
+`advanceToNextStopUnstructured` locally and publishes the result to
+the room via `recordHostAdvance({ completedStopIds, completionOrder,
+groupPhase })`. The local state machine handles cluster sub-stops,
+midway threshold, and final-stop → closing transitions; members
+mirror.
+
+**Discussion-question barriers** — `useRoomBarrier(key, onResolve)`
+hook on every continue button. On mount each device calls
+`arriveAtBarrier`. The card surfaces a status pill ("Waiting for K to
+arrive…") and the continue label changes to "Waiting for the group…"
+→ "Ready to continue". Pressing Ready calls `readyAtBarrier`; when
+every member is ready the same transaction sets `resolvedAt`, every
+device's hook fires `onResolve` (which calls the card's original
+continue handler) and the local state machine advances. Members
+must always arrive — sleeping phones still block.
+
+### Liveness, host failover, kicking
+
+- **Heartbeat** every 30 s via `RoomContext`, paused while the tab is
+  hidden (Page Visibility API). `RoomMember.lastSeenAt` is the
+  authority.
+- **Status tiers**: `online` (<60 s), `idle` (≥60 s), `stale`
+  (≥15 min). Idle members can be **kicked** by any other member from
+  the room menu after 2 min of inactivity (`memberStatus()` /
+  `canKick()` in `RoomContext`).
+- **Host failover** at 5 min host silence — any member's watchdog
+  fires `claimHostIfStale` (atomic Firestore transaction) that
+  promotes the oldest remaining member if the host is still stale at
+  commit time.
+- **Reload-rejoin** — the room code lives in `sessionStorage`
+  (`provenance-room-code`). On mount the provider re-subscribes via
+  `onSnapshot`. The sync effect in `TourContext` aligns the local
+  `TourSession` to whatever stop / phase the room is on.
+
+### Onboarding entry
+
+`IntroScreens` runs `Set Up` first. "Who has a phone?" → Only Me
+skips room setup; Everyone reveals **Host a group** / **Join a
+group** buttons that open `RoomEntrySheet` (name + code for join,
+just name for host). After the sheet submits, `RoomLobby` overlays
+the journal at full-screen — shows the 4-char code (big), the live
+member list with online/idle dots, and a host-only "Begin tour for
+everyone" button. When the host taps Begin, `room.started` flips
+true and every device's `IntroScreens` auto-advances past Set Up
+into the rest of the intro flow.
+
+### Room menu
+
+Tap the persistent ROOM pill in the footer (below the Journal / ? /
+Auto row, only mounted while in a room). Opens a bottom sheet with
+the member list (online/idle/stale indicators + host badge), a
+"Copy code" button, a "Remove" button next to each idle member
+(enabled after 2 min), and a "Leave room" button.
+
+### Closing in rooms
+
+The closing redesign (Tour Complete → journal peek → closing
+questions section, see §8) is per-device. The host's `advanceStop`
+on the final stop fires `recordHostAdvance` with
+`groupPhase='eq_closing'` so members align to closing. After that
+each member traverses the closing card and lands on `eq_questions`
+independently.
+
+### Files
+
+| File | Purpose |
+|---|---|
+| `src/lib/room-store.ts` | Firestore CRUD: create / join / leave / heartbeat / proposeStop / approveStop / arriveAtBarrier / readyAtBarrier / recordHostAdvance / setGroupPhase / claimHostIfStale / kickMember |
+| `src/context/RoomContext.tsx` | Subscription, heartbeat, host-failover watchdog, action wrappers |
+| `src/components/room/RoomLobby.tsx` | Full-screen waiting room |
+| `src/components/room/RoomEntrySheet.tsx` | Host / Join bottom sheet |
+| `src/components/room/RoomMenu.tsx` | Members + kick + leave + copy code |
+| `src/components/room/RoomBarrierIndicator.tsx` | "Waiting for X to arrive / be ready" pill |
+| `src/components/room/RoomStopProposalOverlay.tsx` | Pending transition card |
+| `src/components/room/useRoomBarrier.tsx` | Hook used by discussion cards to gate Continue |
+
+### Out of scope (yet)
+
+- Cross-device response recovery without auth — full app close on a
+  fresh device loses local responses. Solving would require a
+  "claim my membership by name" flow on join (or actual auth).
+- No automatic kick at any threshold — kicks are manual.
+- Linear tours without `location` on every stop won't surface a
+  useful map interlude (the host has no pin to tap).
+
+---
+
+*End of handoff. The room system (§12), splash screen (§11),
+unstructured exploration mode (§10), theme system (§9), and the
+parallel `unstructuredStops` authoring path are all live on
+`master`.*
