@@ -24,7 +24,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { Room } from '@/lib/types';
+import { Room, TourPhase } from '@/lib/types';
 import {
   approveStop as approveStopImpl,
   arriveAtBarrier as arriveAtBarrierImpl,
@@ -39,6 +39,8 @@ import {
   markCurrentStopCompleted as markCurrentStopCompletedImpl,
   proposeStop as proposeStopImpl,
   readyAtBarrier as readyAtBarrierImpl,
+  recordHostAdvance as recordHostAdvanceImpl,
+  setGroupPhase as setGroupPhaseImpl,
   startTour as startTourImpl,
   subscribeToRoom,
 } from '@/lib/room-store';
@@ -72,6 +74,12 @@ interface RoomContextValue {
   approveStop: () => Promise<void>;
   cancelPendingStop: () => Promise<void>;
   markCurrentStopCompleted: () => Promise<void>;
+  /** Host-only: publish the result of running advanceToNextStopUnstructured
+   *  locally so every member's device aligns to the same outer state. */
+  recordHostAdvance: (next: { completedStopIds: string[]; completionOrder: string[]; groupPhase: TourPhase }) => Promise<void>;
+  /** Host-only: bump the room's outer phase (used when midway / closing
+   *  transitions are driven by the host's local state machine). */
+  setGroupPhase: (phase: TourPhase) => Promise<void>;
   // Discussion barriers
   arriveAtBarrier: (key: string) => Promise<void>;
   readyAtBarrier: (key: string) => Promise<void>;
@@ -245,6 +253,22 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     await markCurrentStopCompletedImpl(roomCode, mySessionId);
   }, [roomCode, mySessionId]);
 
+  const recordHostAdvance = useCallback(
+    async (next: { completedStopIds: string[]; completionOrder: string[]; groupPhase: TourPhase }) => {
+      if (!roomCode || !mySessionId) return;
+      await recordHostAdvanceImpl(roomCode, mySessionId, next);
+    },
+    [roomCode, mySessionId],
+  );
+
+  const setGroupPhase = useCallback(
+    async (phase: TourPhase) => {
+      if (!roomCode || !mySessionId) return;
+      await setGroupPhaseImpl(roomCode, mySessionId, phase);
+    },
+    [roomCode, mySessionId],
+  );
+
   const arriveAtBarrier = useCallback(
     async (key: string) => {
       if (!roomCode || !mySessionId) return;
@@ -279,6 +303,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       approveStop,
       cancelPendingStop,
       markCurrentStopCompleted,
+      recordHostAdvance,
+      setGroupPhase,
       arriveAtBarrier,
       readyAtBarrier,
     };
@@ -294,6 +320,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     approveStop,
     cancelPendingStop,
     markCurrentStopCompleted,
+    recordHostAdvance,
+    setGroupPhase,
     arriveAtBarrier,
     readyAtBarrier,
   ]);

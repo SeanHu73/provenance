@@ -8,8 +8,8 @@
  * sessionStorage for reload survival.
  */
 
-import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
-import { Tour, Stop, TourSession, BankedQuestion } from '@/lib/types';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { Tour, Stop, TourSession, TourPhase, BankedQuestion } from '@/lib/types';
 import { getTour, getActiveStops } from '@/lib/tours-store';
 import { persistTourSession } from '@/lib/tour-sessions-store';
 import { useRoom } from './RoomContext';
@@ -102,6 +102,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
     isHost: isRoomHost,
     proposeStop: proposeStopInRoom,
     markCurrentStopCompleted: markStopCompletedInRoom,
+    recordHostAdvance: recordHostAdvanceInRoom,
+    setGroupPhase: setGroupPhaseInRoom,
   } = useRoom();
 
   // On mount, restore any persisted session
@@ -180,55 +182,97 @@ export function TourProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.started, session]);
 
-  // When the room advances its currentStopId, every device should
-  // advance locally to match. Runs in both linear and unstructured
-  // modes; the local advance is a phase reset to 'seed' (or
-  // unstructured_map if the room cleared currentStopId).
-  const lastRoomStopRef = useRef<string | null | undefined>(undefined);
+  // Closing-flow phases run per-device — never yank a member out of
+  // their own closing once they've started writing.
+  const closingPhasesSet = new Set<TourPhase>([
+    'eq_closing_discuss', 'eq_closing', 'eq_closing_additional',
+    'eq_final_reflect', 'eq_questions', 'guide_outro', 'end',
+  ]);
+
+  // Single consolidated room → local sync. Combines what used to be a
+  // currentStopId-watcher and a separate completedStops mirror; running
+  // both caused them to race-overwrite each other (each `persist` used
+  // the same stale `session` reference, so the second clobbered the
+  // first). One effect with one persist eliminates the race and also
+  // lets us mirror `completionOrder` and `groupPhase` — both required
+  // for unstructured-room features (progress bar count, cluster
+  // mini-map, midway threshold, closing transitions) to work.
+  const roomCompletedKey = (room?.completedStopIds || []).join('|');
+  const roomCOKey = (room?.completionOrder || []).join('|');
   useEffect(() => {
     if (!room || !tour || !session) return;
-    const nextStopId = room.currentStopId;
-    if (lastRoomStopRef.current === undefined) {
-      lastRoomStopRef.current = nextStopId;
-      return;
-    }
-    if (lastRoomStopRef.current === nextStopId) return;
-    lastRoomStopRef.current = nextStopId;
+    const inClosing = closingPhasesSet.has(session.currentPhase);
     const stops = getActiveStops(tour);
-    if (nextStopId) {
-      const idx = stops.findIndex((s) => s.id === nextStopId);
-      if (idx < 0) return;
-      // Align both linear and unstructured to start of this stop.
-      persist({
-        ...session,
-        phaseHistory: [...session.phaseHistory, {
-          phase: session.currentPhase,
-          round: session.currentRound,
-          stopIndex: session.currentStopIndex,
-        }],
-        currentStopIndex: idx,
-        currentPhase: 'seed',
-        currentRound: 0,
-      });
-    } else if (room) {
-      // currentStopId cleared while in a room — back to the map view
-      // so the host can propose the next stop pictorially. Applies to
-      // both linear and unstructured modes; only the source-of-truth
-      // map markers differ (handled in page.tsx).
-      persist({
-        ...session,
-        phaseHistory: [...session.phaseHistory, {
-          phase: session.currentPhase,
-          round: session.currentRound,
-          stopIndex: session.currentStopIndex,
-        }],
-        currentPhase: 'unstructured_map',
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room?.currentStopId]);
 
-  const canGoBack = !!(session?.phaseHistory && session.phaseHistory.length > 0);
+    const updates: Partial<TourSession> = {};
+    let needsHistoryEntry = false;
+
+    if (!inClosing) {
+      const nextStopId = room.currentStopId;
+      if (nextStopId) {
+        const idx = stops.findIndex((s) => s.id === nextStopId);
+        if (idx >= 0 && idx !== session.currentStopIndex) {
+          updates.currentStopIndex = idx;
+          updates.currentPhase = 'seed';
+          updates.currentRound = 0;
+          needsHistoryEntry = true;
+        }
+      } else if (room.started && (room.completedStopIds?.length || 0) > 0) {
+        // Mid-tour, between stops — the host's local advance state
+        // machine decides which outer surface (map, midway, closing)
+        // and writes it to `room.groupPhase`. Members align here.
+        const targetPhase: TourPhase = room.groupPhase ?? 'unstructured_map';
+        if (session.currentPhase !== targetPhase) {
+          updates.currentPhase = targetPhase;
+          needsHistoryEntry = true;
+        }
+      }
+    }
+
+    // Always mirror completedStops + completionOrder so progress bar
+    // and cluster mini-map logic reflect the group's actual state
+    // (even on a late-joiner / closing-flow device).
+    const roomCompleted = room.completedStopIds || [];
+    if (
+      roomCompleted.length !== session.completedStops.length
+      || !roomCompleted.every((id, i) => session.completedStops[i] === id)
+    ) {
+      updates.completedStops = [...roomCompleted];
+    }
+    const roomCO = room.completionOrder || [];
+    const sessionCO = session.completionOrder || [];
+    if (
+      roomCO.length !== sessionCO.length
+      || !roomCO.every((id, i) => sessionCO[i] === id)
+    ) {
+      updates.completionOrder = [...roomCO];
+    }
+
+    if (Object.keys(updates).length === 0) return;
+
+    persist({
+      ...session,
+      ...updates,
+      phaseHistory: needsHistoryEntry
+        ? [...session.phaseHistory, {
+            phase: session.currentPhase,
+            round: session.currentRound,
+            stopIndex: session.currentStopIndex,
+          }]
+        : session.phaseHistory,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.currentStopId, room?.groupPhase, room?.started, roomCompletedKey, roomCOKey, tour]);
+
+  // Back navigation is disabled in room mode to keep every device in
+  // sync with the group. Once a stop has started, no member (host or
+  // participant) can accidentally leave it; once the group has moved
+  // past a phase, no one can reopen it.
+  const canGoBack = !!(
+    session?.phaseHistory
+    && session.phaseHistory.length > 0
+    && !(room && room.started)
+  );
 
   const goBackFn = useCallback(() => {
     if (!session) return;
@@ -238,31 +282,51 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const advanceStop = useCallback(() => {
     if (!session || !tour) return;
-    // Room-gated transition: in a room, ending a stop drops everyone
-    // back on the map. The host then taps the next pin to *propose*
-    // (giving the group time to physically walk over before the
-    // approval flow runs).
     if (room && room.started) {
+      // Only host drives stop transitions; non-host advanceStop is a
+      // no-op until the room signals the change.
+      if (!isRoomHost) return;
+
       const stops = getActiveStops(tour);
       const currentStop = stops[session.currentStopIndex];
       const isFinal = currentStop?.isFinalStop || false;
       const nextIndex = session.currentStopIndex + 1;
       const closingTransition = isFinal || nextIndex >= stops.length;
-      if (closingTransition) {
-        // Per-device closing answers; don't barrier this transition.
-        persist(advanceToNextStopImpl(session, tour));
+
+      if (tour.unstructuredMode) {
+        // Run the unstructured advance state machine locally. It knows
+        // how to handle cluster sub-stops (return to mini-map), the
+        // midway threshold, and final-stop → closing transitions.
+        const next = advanceToNextStopImpl(session, tour);
+        persist(next);
+        // Publish the result so members align: completedStops drives the
+        // pin-completed state; completionOrder drives the "N of M
+        // explored" progress count and midway threshold; groupPhase
+        // tells members whether to land on the map, the midway card, or
+        // the closing flow.
+        void recordHostAdvanceInRoom({
+          completedStopIds: next.completedStops,
+          completionOrder: next.completionOrder || [],
+          groupPhase: next.currentPhase,
+        });
         return;
       }
-      if (isRoomHost) {
-        // Mark the stop completed and clear currentStopId. The room
-        // sync effect below picks the cleared id up and routes every
-        // device to the map view, where the host taps the next pin to
-        // propose. Non-host members ride along via onSnapshot.
-        void markStopCompletedInRoom();
+
+      // Linear room mode.
+      if (closingTransition) {
+        // Last stop done — run the linear advance to land on closing
+        // and publish so members come along too.
+        const next = advanceToNextStopImpl(session, tour);
+        persist(next);
+        void recordHostAdvanceInRoom({
+          completedStopIds: next.completedStops,
+          completionOrder: next.completionOrder || [],
+          groupPhase: next.currentPhase,
+        });
+        return;
       }
-      // Non-host: their advanceStop call is a no-op until the room
-      // signals the transition. UI surfaces a "waiting for host" hint
-      // separately.
+      // Mid-tour linear: drop everyone on the map, host taps next pin.
+      void markStopCompletedInRoom();
       return;
     }
     const next = advanceToNextStopImpl(session, tour);
@@ -274,7 +338,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
         logStopEntered({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, stopIndex: next.currentStopIndex, stopTitle: stop.mergeGroup || stop.title || `Stop ${next.currentStopIndex + 1}` });
       }
     }
-  }, [session, tour, persist, room, isRoomHost, markStopCompletedInRoom]);
+  }, [session, tour, persist, room, isRoomHost, markStopCompletedInRoom, recordHostAdvanceInRoom]);
 
   const advancePhase = useCallback(() => {
     if (!session || !currentStop) return;
@@ -432,7 +496,13 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const completeMidwayCheckinFn = useCallback((responseText: string) => {
     if (!session) return;
     persist(completeMidwayCheckinImpl(session, responseText));
-  }, [session, persist]);
+    // Host publishes the new outer phase so members' sync effect
+    // doesn't try to pull them back to the midway card after the
+    // barrier resolved.
+    if (room && room.started && isRoomHost) {
+      void setGroupPhaseInRoom('unstructured_map');
+    }
+  }, [session, persist, room, isRoomHost, setGroupPhaseInRoom]);
 
   const finishTourFn = useCallback(() => {
     if (!session || !tour) return;

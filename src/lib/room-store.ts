@@ -44,7 +44,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { BarrierState, Room, RoomMember } from './types';
+import { BarrierState, Room, RoomMember, TourPhase } from './types';
 
 const COLLECTION = 'memorial-church-rooms';
 
@@ -371,6 +371,62 @@ export async function cancelPendingStop(code: string, hostSessionId: string): Pr
     });
   } catch (err) {
     console.error('[room-store] cancelPendingStop failed:', err);
+  }
+}
+
+/** Host completed the active stop. Records the result of running the
+ *  local advance state machine: which stops are now done, in what
+ *  visit order, and what outer phase the group lands on (map, midway,
+ *  closing). Members read this to align their local sessions.
+ *
+ *  currentStopId is always cleared here — when the host wants to enter
+ *  the next stop they go through proposeStop / approveStop. */
+export async function recordHostAdvance(
+  code: string,
+  hostSessionId: string,
+  next: {
+    completedStopIds: string[];
+    completionOrder: string[];
+    groupPhase: TourPhase;
+  },
+): Promise<void> {
+  const ref = doc(db, COLLECTION, code.toUpperCase());
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const room = snap.data() as Room;
+      if (room.hostSessionId !== hostSessionId) return;
+      tx.update(ref, {
+        currentStopId: null,
+        completedStopIds: next.completedStopIds,
+        completionOrder: next.completionOrder,
+        groupPhase: next.groupPhase,
+        pendingStopId: null,
+        pendingApprovals: [],
+        barriers: {},
+        updatedAt: nowIso(),
+      });
+    });
+  } catch (err) {
+    console.error('[room-store] recordHostAdvance failed:', err);
+  }
+}
+
+/** Host moved past the "outer" phase (e.g. completed midway → goes
+ *  back to the map). Updates groupPhase only. */
+export async function setGroupPhase(code: string, hostSessionId: string, phase: TourPhase): Promise<void> {
+  const ref = doc(db, COLLECTION, code.toUpperCase());
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const room = snap.data() as Room;
+      if (room.hostSessionId !== hostSessionId) return;
+      tx.update(ref, { groupPhase: phase, updatedAt: nowIso() });
+    });
+  } catch (err) {
+    console.error('[room-store] setGroupPhase failed:', err);
   }
 }
 

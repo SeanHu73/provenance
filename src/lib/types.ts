@@ -584,6 +584,16 @@ export interface Room {
   /** Mirror of the group's tour progress; rejoining devices sync from here. */
   currentStopId: string | null;
   completedStopIds: string[];
+  /** Logical stops the group has finished, in visit order. For cluster
+   *  groups this is the leader id (one entry per group). Drives the
+   *  "N of M explored" pill on the progress bar and the midway
+   *  threshold. */
+  completionOrder?: string[];
+  /** What "outer" phase the room is in between stops — mirrored by
+   *  members so they land on the right surface (map, midway, closing).
+   *  Set by the host. Null/undefined while inside a stop (currentStopId
+   *  is the authority then). */
+  groupPhase?: TourPhase | null;
   /** Host has proposed a transition to this stop; awaiting approvals. */
   pendingStopId: string | null;
   pendingApprovals: string[];
