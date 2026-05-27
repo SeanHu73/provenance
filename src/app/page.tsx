@@ -37,7 +37,9 @@ function HomeInner() {
     canGoBack,
     goBack,
     completeMidwayCheckin,
+    enterUnstructuredStop,
   } = useTour();
+  const { room, isHost: isRoomHost } = useRoom();
 
   useEffect(() => {
     getTours().then(setTours).catch((err) => {
@@ -53,6 +55,11 @@ function HomeInner() {
   // During tour: show stop pins that have locations
   const tourStopMarkers: TourStopMarkerData[] = [];
   const isUnstructuredMapPhase = !!(activeTour?.unstructuredMode && session?.currentPhase === 'unstructured_map');
+  // Linear tours in a room also drop onto the map between stops so the
+  // host can tap the next pin (giving the group time to walk). Same
+  // phase token, different controls.
+  const isLinearRoomMapPhase = !!(activeTour && !activeTour.unstructuredMode && room && room.started && session?.currentPhase === 'unstructured_map');
+  const isOnTourMap = isUnstructuredMapPhase || isLinearRoomMapPhase;
   const isMidwayCheckin = !!(activeTour?.unstructuredMode && session?.currentPhase === 'midway_checkin');
   const isUnstructuredClosing = !!(activeTour?.unstructuredMode && session && ['eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'guide_outro', 'end'].includes(session.currentPhase));
   if (isActive && activeTour) {
@@ -142,8 +149,26 @@ function HomeInner() {
           }
         }
       }
+    } else if (isLinearRoomMapPhase && session) {
+      // Linear room, between-stops map. Highlight the next unvisited
+      // sequential stop as "active" so the host knows which pin to tap.
+      const completedSet = new Set(room?.completedStopIds || []);
+      let nextIdx = -1;
+      for (let i = 0; i < activeStops.length; i++) {
+        if (!completedSet.has(activeStops[i].id)) { nextIdx = i; break; }
+      }
+      for (let i = 0; i < activeStops.length; i++) {
+        const stop = activeStops[i];
+        if (!stop.location) continue;
+        tourStopMarkers.push({
+          stop,
+          index: i,
+          isActive: i === nextIdx,
+          isCompleted: completedSet.has(stop.id),
+        });
+      }
     } else {
-      // Linear mode: show all stops with locations
+      // Linear mode (during a stop): show all stops with locations.
       for (let i = 0; i < activeStops.length; i++) {
         const stop = activeStops[i];
         if (!stop.location) continue;
@@ -164,8 +189,16 @@ function HomeInner() {
   const handleTourStopSelect = useCallback((stop: Stop) => {
     if (isUnstructuredMapPhase) {
       setSelectedUnstructuredStopId(stop.id);
+      return;
     }
-  }, [isUnstructuredMapPhase, setSelectedUnstructuredStopId]);
+    // Linear room interlude: tap directly proposes the stop (only the
+    // host's tap does anything; enterUnstructuredStop is room-gated
+    // inside TourContext).
+    if (isLinearRoomMapPhase && isRoomHost && activeTour) {
+      const idx = getActiveStops(activeTour).findIndex((s) => s.id === stop.id);
+      if (idx >= 0) enterUnstructuredStop(idx);
+    }
+  }, [isUnstructuredMapPhase, isLinearRoomMapPhase, isRoomHost, activeTour, setSelectedUnstructuredStopId, enterUnstructuredStop]);
 
   const handleStopSelectedFromGallery = useCallback((stop: Stop) => {
     if (stop.location) {
@@ -189,7 +222,7 @@ function HomeInner() {
   return (
     <div className="relative h-full w-full flex flex-col bg-cream">
       {/* Title bar — shown in document flow during unstructured map / midway / closing phases */}
-      {isActive && (isUnstructuredMapPhase || isMidwayCheckin || isUnstructuredClosing) && (
+      {isActive && (isOnTourMap || isMidwayCheckin || isUnstructuredClosing) && (
         <div
           className="shrink-0 flex items-center justify-between px-4 py-2"
           style={{ backgroundColor: 'var(--th-primary)' }}
@@ -216,7 +249,7 @@ function HomeInner() {
       )}
 
       {/* Progress strip — shown in document flow during unstructured map / midway / closing phases */}
-      {isActive && (isUnstructuredMapPhase || isMidwayCheckin || isUnstructuredClosing) && activeTour && session && (
+      {isActive && (isOnTourMap || isMidwayCheckin || isUnstructuredClosing) && activeTour && session && (
         <ProgressBar tour={activeTour} session={session} />
       )}
 
@@ -248,7 +281,7 @@ function HomeInner() {
             onTourStopSelect={handleTourStopSelect}
             hidePins={true}
             tourDefaultZoom={activeTour?.defaultZoom}
-            isUnstructuredMap={isUnstructuredMapPhase}
+            isUnstructuredMap={isOnTourMap}
             flyTarget={flyTarget}
             onFlyComplete={() => setFlyTarget(null)}
             isTourActive={isActive}
@@ -270,6 +303,17 @@ function HomeInner() {
               onFlyToStop={handleStopSelectedFromGallery}
             />
           )}
+
+          {/* Linear room — between-stops cue. Host taps the highlighted
+              pin once the group has physically arrived. */}
+          {isLinearRoomMapPhase && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[55] px-4 py-2 rounded-full text-sm font-semibold shadow-lg max-w-[88vw] text-center"
+              style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}>
+              {isRoomHost
+                ? 'Tap the next pin when your group is there'
+                : 'Walk with the group — host will pick the next stop'}
+            </div>
+          )}
         </div>
       )}
 
@@ -289,7 +333,7 @@ function HomeInner() {
 
       {/* Persistent Journal + Ask (?) footer during the map / midway /
           closing phases that page.tsx renders outside Journal. */}
-      {isActive && (isUnstructuredMapPhase || isMidwayCheckin || isUnstructuredClosing) && activeTour && session && session.currentPhase !== 'end' && (
+      {isActive && (isOnTourMap || isMidwayCheckin || isUnstructuredClosing) && activeTour && session && session.currentPhase !== 'end' && (
         <TourFooter tour={activeTour} session={session} />
       )}
 
@@ -315,8 +359,9 @@ function HomeInner() {
         />
       )}
 
-      {/* Tour journal — active tour playback; not shown during unstructured map, midway, or closing phases */}
-      {isActive && !mapPeek && !isUnstructuredMapPhase && !isMidwayCheckin && !isUnstructuredClosing && (
+      {/* Tour journal — active tour playback; not shown while we're on
+          the map, in midway check-in, or running the closing flow. */}
+      {isActive && !mapPeek && !isOnTourMap && !isMidwayCheckin && !isUnstructuredClosing && (
         <Journal
           onMapPeek={currentStopHasLocation ? () => setMapPeek(true) : undefined}
         />

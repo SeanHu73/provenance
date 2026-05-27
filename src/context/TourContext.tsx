@@ -101,6 +101,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     setMySessionId: setRoomSessionId,
     isHost: isRoomHost,
     proposeStop: proposeStopInRoom,
+    markCurrentStopCompleted: markStopCompletedInRoom,
   } = useRoom();
 
   // On mount, restore any persisted session
@@ -209,8 +210,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
         currentPhase: 'seed',
         currentRound: 0,
       });
-    } else if (tour.unstructuredMode) {
-      // currentStopId cleared while unstructured — back to the map.
+    } else if (room) {
+      // currentStopId cleared while in a room — back to the map view
+      // so the host can propose the next stop pictorially. Applies to
+      // both linear and unstructured modes; only the source-of-truth
+      // map markers differ (handled in page.tsx).
       persist({
         ...session,
         phaseHistory: [...session.phaseHistory, {
@@ -234,10 +238,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const advanceStop = useCallback(() => {
     if (!session || !tour) return;
-    // Room-gated transition: in a room, the host proposes the next
-    // stop and members approve. The local session won't advance until
-    // every member's approval has come in and room.currentStopId
-    // updates (handled by the room sync effect above).
+    // Room-gated transition: in a room, ending a stop drops everyone
+    // back on the map. The host then taps the next pin to *propose*
+    // (giving the group time to physically walk over before the
+    // approval flow runs).
     if (room && room.started) {
       const stops = getActiveStops(tour);
       const currentStop = stops[session.currentStopIndex];
@@ -250,8 +254,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (isRoomHost) {
-        const nextStop = stops[nextIndex];
-        if (nextStop) void proposeStopInRoom(nextStop.id);
+        // Mark the stop completed and clear currentStopId. The room
+        // sync effect below picks the cleared id up and routes every
+        // device to the map view, where the host taps the next pin to
+        // propose. Non-host members ride along via onSnapshot.
+        void markStopCompletedInRoom();
       }
       // Non-host: their advanceStop call is a no-op until the room
       // signals the transition. UI surfaces a "waiting for host" hint
@@ -267,7 +274,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
         logStopEntered({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, stopIndex: next.currentStopIndex, stopTitle: stop.mergeGroup || stop.title || `Stop ${next.currentStopIndex + 1}` });
       }
     }
-  }, [session, tour, persist, room, isRoomHost, proposeStopInRoom]);
+  }, [session, tour, persist, room, isRoomHost, markStopCompletedInRoom]);
 
   const advancePhase = useCallback(() => {
     if (!session || !currentStop) return;
