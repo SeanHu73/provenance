@@ -65,7 +65,13 @@ function HomeInner() {
   if (isActive && activeTour) {
     const activeStops = getActiveStops(activeTour);
     if (isUnstructuredMapPhase && session) {
-      const completedSet = new Set(session.completedStops);
+      // In a room, the room's completedStopIds is the source of truth —
+      // local completedStops doesn't update on the non-host's device
+      // while the host is moving the group. Falls back to local when
+      // running single-player.
+      const completedSet = new Set(
+        room && room.started ? (room.completedStopIds || []) : session.completedStops
+      );
       const activeGroupId = getActiveGroupId(activeTour, session);
       const nextInGroupId = activeGroupId
         ? getNextStopInGroup(activeTour, activeGroupId, session)?.id ?? null

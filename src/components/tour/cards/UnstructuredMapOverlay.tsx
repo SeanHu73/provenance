@@ -5,6 +5,7 @@ import { Tour, TourSession, Stop } from '@/lib/types';
 import { getLogicalStops, getStopsInGroup, getActiveGroupId, getNextStopInGroup } from '@/lib/tour-session';
 import { getActiveStops } from '@/lib/tours-store';
 import { useTour } from '@/context/TourContext';
+import { useRoom } from '@/context/RoomContext';
 import MicButton from '../MicButton';
 import FormattedText from './FormattedText';
 import AudioButton from './AudioButton';
@@ -25,6 +26,7 @@ interface Props {
 // Title bar and progress strip are rendered by the parent (HomeInner) in document flow.
 export default function UnstructuredMapControls({ tour, session, onStopSelectedFromGallery, onFlyToStop }: Props) {
   const { selectedUnstructuredStopId, setSelectedUnstructuredStopId, enterUnstructuredStop } = useTour();
+  const { room, isHost: isRoomHost } = useRoom();
   const [view, setView] = useState<'map' | 'gallery'>('map');
 
   const activeStops = getActiveStops(tour);
@@ -35,7 +37,22 @@ export default function UnstructuredMapControls({ tour, session, onStopSelectedF
     ? activeStops.findIndex((s) => s.id === selectedUnstructuredStopId)
     : -1;
 
-  const completedIds = new Set(session.completedStops);
+  // In a room, the room's completedStopIds is the source of truth.
+  const completedIds = new Set(
+    room && room.started ? (room.completedStopIds || []) : session.completedStops
+  );
+
+  // Non-host in a room: when the host puts forth a stop, override the
+  // local selection so the proposed stop's thumbnail pops up on every
+  // device (replacing whatever stop the member was browsing). Cleared
+  // automatically when the proposal resolves (currentStopId set).
+  const isParticipant = !!(room && room.started && !isRoomHost);
+  const pendingStopId = room?.pendingStopId ?? null;
+  useEffect(() => {
+    if (!isParticipant || !pendingStopId) return;
+    if (selectedUnstructuredStopId === pendingStopId) return;
+    setSelectedUnstructuredStopId(pendingStopId);
+  }, [isParticipant, pendingStopId, selectedUnstructuredStopId, setSelectedUnstructuredStopId]);
 
   // When the selected stop is a group leader that hasn't been started,
   // show the cluster carousel instead of the single-stop card. After at
@@ -131,6 +148,7 @@ export default function UnstructuredMapControls({ tour, session, onStopSelectedF
                 firstUncompleted={firstUncompletedInGroup}
                 onBegin={handleBeginCluster}
                 onDismiss={() => setSelectedUnstructuredStopId(null)}
+                hideBegin={isParticipant}
               />
             ) : isSelectedLocked ? (
               <LockedStopOverlayCard
@@ -144,6 +162,7 @@ export default function UnstructuredMapControls({ tour, session, onStopSelectedF
                 isCompleted={completedIds.has(selectedStop.id)}
                 onBegin={handleBeginStop}
                 onDismiss={() => setSelectedUnstructuredStopId(null)}
+                hideBegin={isParticipant}
               />
             )}
           </div>
@@ -186,11 +205,15 @@ function StopOverlayCard({
   isCompleted,
   onBegin,
   onDismiss,
+  hideBegin = false,
 }: {
   stop: Stop;
   isCompleted: boolean;
   onBegin: () => void;
   onDismiss: () => void;
+  /** Hide the Begin button — for non-host members in a room. They can
+   *  still browse the thumbnail; only the host advances the group. */
+  hideBegin?: boolean;
 }) {
   const thumbPhoto = pickStopThumb(stop);
   const seedPreview = stop.seed.text
@@ -231,6 +254,16 @@ function StopOverlayCard({
             <button
               onClick={onDismiss}
               className="ml-auto text-sm text-text-secondary px-3 py-2 rounded-lg border"
+              style={{ borderColor: 'var(--th-border)' }}
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : hideBegin ? (
+          <div className="flex items-center justify-end">
+            <button
+              onClick={onDismiss}
+              className="text-sm text-text-secondary px-3 py-2 rounded-lg border"
               style={{ borderColor: 'var(--th-border)' }}
             >
               Dismiss
@@ -360,6 +393,7 @@ function GroupClusterOverlayCard({
   firstUncompleted,
   onBegin,
   onDismiss,
+  hideBegin = false,
 }: {
   groupName: string;
   stops: Stop[];
@@ -367,6 +401,7 @@ function GroupClusterOverlayCard({
   firstUncompleted: Stop | null;
   onBegin: () => void;
   onDismiss: () => void;
+  hideBegin?: boolean;
 }) {
   const total = stops.length;
   // Unused now that the headline is the group name; keep the prop wired
@@ -423,14 +458,16 @@ function GroupClusterOverlayCard({
           className="px-4 py-2.5 rounded-lg text-sm text-text-secondary border"
           style={{ borderColor: 'var(--th-border)' }}
         >
-          Not now
+          {hideBegin ? 'Dismiss' : 'Not now'}
         </button>
-        <button
-          onClick={onBegin}
-          className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-aged-gold"
-        >
-          Begin first stop
-        </button>
+        {!hideBegin && (
+          <button
+            onClick={onBegin}
+            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-aged-gold"
+          >
+            Begin first stop
+          </button>
+        )}
       </div>
     </div>
   );
