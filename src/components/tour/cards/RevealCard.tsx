@@ -6,7 +6,9 @@ import PhotoContent from './PhotoContent';
 import FullscreenPhoto from './FullscreenPhoto';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
+import InquiryReminder from './InquiryReminder';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { useTour } from '@/context/TourContext';
 
 interface Props {
   stop: Stop;
@@ -21,6 +23,13 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
   const shouldAutoplay = autoplayPref && !stop.reveal.audioAutoplayDisabled;
   const [textExpanded, setTextExpanded] = useState(!hasAudio);
   const [fullscreen, setFullscreen] = useState<{ url: string; caption: string | null } | null>(null);
+  // Every third stop (3, 6, 9, …) flash a one-shot reminder over the
+  // Context screen that the "? Inquiries" footer button is there for
+  // questions. Counts by completedStops length + the stop we're
+  // currently sitting in.
+  const { session } = useTour();
+  const stopNumber = (session?.completedStops.length ?? 0) + 1;
+  const showInquiryReminder = stopNumber > 0 && stopNumber % 3 === 0;
 
   // Collect all photos (legacy + array)
   const allPhotos = [
@@ -104,6 +113,8 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
       {fullscreen && (
         <FullscreenPhoto url={fullscreen.url} caption={fullscreen.caption} onClose={() => setFullscreen(null)} />
       )}
+
+      {showInquiryReminder && <InquiryReminder />}
     </div>
   );
 }

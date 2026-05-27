@@ -268,6 +268,18 @@ export interface Tour {
     finalReflectionPlaceholder: string;
     finalReasoningPrompt: string;      // "What did you discuss or see..."
     finalReasoningPlaceholder: string;
+    /** Final-reflection (eq_final_reflect) configuration. Falls back to
+     *  sensible defaults when undefined so existing tours keep working. */
+    finalCognitivePrompt?: string;        // default: "How much did this tour change your answer to the original question?"
+    finalCognitiveLeftLabel?: string;     // default: "Confirmed what we thought"
+    finalCognitiveRightLabel?: string;    // default: "Shifted our thinking"
+    finalPerceptualPrompt?: string;       // default: "How much did this change how you see this place?"
+    finalPerceptualLeftLabel?: string;    // default: "Same as before"
+    finalPerceptualRightLabel?: string;   // default: "I see it completely differently now"
+    finalWhatShiftedPrompt?: string;      // default: "What changed?"
+    finalWhatShiftedOptions?: string[];   // default: ['We learned something new', 'We changed our mind', 'We had part of it', 'We were surprised']
+    finalReasoningSourcePrompt?: string;  // default: "Why did it change or not?"
+    finalReasoningSourceOptions?: string[]; // default: ['What we could see here', 'Something we discussed', 'Something we already knew', 'A guess']
   } | null;
   // Unstructured exploration mode
   unstructuredMode?: boolean;        // Default false — when true, explorer chooses stop order

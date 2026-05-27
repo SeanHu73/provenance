@@ -238,6 +238,20 @@ body {
   animation: gentleFade 2.4s ease-in-out infinite;
 }
 
+/* One-shot fade-in-then-out used by the inquiry reminder that pops up
+   on every third stop's context screen. Total duration 2s: fade in
+   over the first 20%, hold to 70%, fade out by 100%. animation-fill-mode
+   `forwards` so the overlay stays at opacity 0 at the end. */
+@keyframes oneShotFlash {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.animate-one-shot-flash {
+  animation: oneShotFlash 2s ease-in-out forwards;
+}
+
 /* Admin text-size override — every textarea and text input within a
    subtree marked with data-admin-text-size gets a uniform font size so
    authoring at length is easier to read. Buttons, labels and the rest

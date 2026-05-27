@@ -128,7 +128,7 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
       >
         {/* Section 1 — Tour Complete + closing framing + audio + journal peek */}
         <section
-          className="relative min-h-full flex flex-col justify-center space-y-6 px-5 py-6"
+          className="relative min-h-full flex flex-col justify-center space-y-6 px-5 pt-10 pb-6"
           style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
         >
           <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
@@ -158,7 +158,7 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
         {/* Section 2 — every closing question + its own response box */}
         <section
           ref={section2Ref}
-          className="min-h-full flex flex-col justify-center space-y-6 px-5 py-6"
+          className="min-h-full flex flex-col justify-center space-y-6 px-5 pt-10 pb-6"
           style={{
             scrollSnapAlign: 'start',
             scrollSnapStop: 'always',

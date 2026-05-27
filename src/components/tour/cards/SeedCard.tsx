@@ -124,14 +124,14 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   // Look Around block (only when hasNoticeSection)
   const lookAroundBlock = (
     <>
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
-          Look around...
-        </p>
-        {onPeekMap && stop.location && (
+      <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
+        Look around...
+      </p>
+      {onPeekMap && stop.location && (
+        <div>
           <button
             onClick={onPeekMap}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wider"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wider"
             style={{
               color: 'var(--th-primary)',
               border: '1px solid var(--th-primary)',
@@ -146,8 +146,8 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
             </svg>
             Find pin
           </button>
-        )}
-      </div>
+        </div>
+      )}
       {stop.notice.audioUrl && <AudioButton audioUrl={stop.notice.audioUrl} title={stop.notice.audioTitle} autoplay={noticeAutoplay} />}
       {stop.notice.noticeMap && stop.notice.noticeMap.url && (
         <NoticeMapDisplay map={stop.notice.noticeMap} />
@@ -235,7 +235,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
           lost when SeedCard's outer started overlapping the card
           frame's padding box. */}
       <section
-        className="relative min-h-full flex flex-col justify-center space-y-5 px-5 py-6"
+        className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         {backgroundBlock}
@@ -244,7 +244,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
 
       <section
         ref={noticeRef}
-        className="min-h-full flex flex-col justify-center space-y-5 px-5 py-6"
+        className="min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{
           scrollSnapAlign: 'start',
           scrollSnapStop: 'always',

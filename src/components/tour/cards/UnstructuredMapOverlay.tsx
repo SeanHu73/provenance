@@ -801,7 +801,7 @@ export function MidwayCheckinCard({
           the top stays in view after a snap. */}
       {/* Section 1 — header + visited stops summary */}
       <section
-        className="relative min-h-full flex flex-col justify-center space-y-6 px-5 py-6"
+        className="relative min-h-full flex flex-col justify-center space-y-6 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <div>
@@ -827,7 +827,7 @@ export function MidwayCheckinCard({
           stops summary and the question when the admin authored one. */}
       {hasBackground && (
         <section
-          className="min-h-full flex flex-col justify-center space-y-5 px-5 py-6"
+          className="min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
           style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
         >
           {tour.midwayQuestionBackgroundAudioUrl && (
@@ -848,7 +848,7 @@ export function MidwayCheckinCard({
       {/* Question section — left-aligned, themed, no red overlay box */}
       <section
         ref={questionRef}
-        className="min-h-full flex flex-col justify-center space-y-6 px-5 py-6"
+        className="min-h-full flex flex-col justify-center space-y-6 px-5 pt-10 pb-6"
         style={{
           scrollSnapAlign: 'start',
           scrollSnapStop: 'always',

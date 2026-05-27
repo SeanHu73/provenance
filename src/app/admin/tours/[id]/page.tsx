@@ -1109,6 +1109,102 @@ export default function TourEditorPage() {
                   </ul>
                 )}
               </div>
+
+              {/* Final-reflect sliders & chip sets — the eq_final_reflect
+                  screen that runs after the closing card. Defaults shown
+                  in placeholder; an empty string keeps the default. */}
+              <div className="border-t border-stone-200 pt-3 space-y-3">
+                <div>
+                  <span className="text-xs text-stone-700 font-medium">Final reflection — slider &amp; chip options</span>
+                  <p className="text-[10px] text-stone-400 mt-0.5">Customise the cognitive / perceptual sliders and the two follow-up chip sets. Leave any field blank to keep the default shown as placeholder text.</p>
+                </div>
+
+                <fieldset className="border border-stone-200 rounded p-3 space-y-2">
+                  <legend className="text-[11px] text-stone-600 font-semibold px-1">Cognitive slider</legend>
+                  <label className="block">
+                    <span className="text-[10px] text-stone-500">Prompt</span>
+                    <input
+                      value={tour.essentialQuestion.finalCognitivePrompt ?? ''}
+                      placeholder="How much did this tour change your answer to the original question?"
+                      onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalCognitivePrompt: e.target.value })}
+                      className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                    />
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="block">
+                      <span className="text-[10px] text-stone-500">Left label</span>
+                      <input
+                        value={tour.essentialQuestion.finalCognitiveLeftLabel ?? ''}
+                        placeholder="Confirmed what we thought"
+                        onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalCognitiveLeftLabel: e.target.value })}
+                        className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] text-stone-500">Right label</span>
+                      <input
+                        value={tour.essentialQuestion.finalCognitiveRightLabel ?? ''}
+                        placeholder="Shifted our thinking"
+                        onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalCognitiveRightLabel: e.target.value })}
+                        className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      />
+                    </label>
+                  </div>
+                </fieldset>
+
+                <fieldset className="border border-stone-200 rounded p-3 space-y-2">
+                  <legend className="text-[11px] text-stone-600 font-semibold px-1">Perceptual slider</legend>
+                  <label className="block">
+                    <span className="text-[10px] text-stone-500">Prompt</span>
+                    <input
+                      value={tour.essentialQuestion.finalPerceptualPrompt ?? ''}
+                      placeholder="How much did this change how you see this place?"
+                      onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalPerceptualPrompt: e.target.value })}
+                      className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                    />
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="block">
+                      <span className="text-[10px] text-stone-500">Left label</span>
+                      <input
+                        value={tour.essentialQuestion.finalPerceptualLeftLabel ?? ''}
+                        placeholder="Same as before"
+                        onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalPerceptualLeftLabel: e.target.value })}
+                        className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] text-stone-500">Right label</span>
+                      <input
+                        value={tour.essentialQuestion.finalPerceptualRightLabel ?? ''}
+                        placeholder="I see it completely differently now"
+                        onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalPerceptualRightLabel: e.target.value })}
+                        className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      />
+                    </label>
+                  </div>
+                </fieldset>
+
+                <ChipOptionsEditor
+                  label="What changed (multi-select chips)"
+                  prompt={tour.essentialQuestion.finalWhatShiftedPrompt ?? ''}
+                  promptPlaceholder="What changed?"
+                  options={tour.essentialQuestion.finalWhatShiftedOptions ?? null}
+                  defaultOptions={['We learned something new', 'We changed our mind', 'We had part of it', 'We were surprised']}
+                  onPromptChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalWhatShiftedPrompt: v })}
+                  onOptionsChange={(opts) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalWhatShiftedOptions: opts })}
+                />
+
+                <ChipOptionsEditor
+                  label="Why it changed or not (multi-select chips)"
+                  prompt={tour.essentialQuestion.finalReasoningSourcePrompt ?? ''}
+                  promptPlaceholder="Why did it change or not?"
+                  options={tour.essentialQuestion.finalReasoningSourceOptions ?? null}
+                  defaultOptions={['What we could see here', 'Something we discussed', 'Something we already knew', 'A guess']}
+                  onPromptChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalReasoningSourcePrompt: v })}
+                  onOptionsChange={(opts) => updateField('essentialQuestion', { ...tour.essentialQuestion!, finalReasoningSourceOptions: opts })}
+                />
+              </div>
             </div>
           )}
         </section>
@@ -2263,6 +2359,83 @@ interface DetourEditorProps {
   tourId: string;
   onChange: (patch: Partial<Detour>) => void;
   onUploadPhoto: (file: File, path: string) => Promise<string>;
+}
+
+function ChipOptionsEditor({
+  label,
+  prompt,
+  promptPlaceholder,
+  options,
+  defaultOptions,
+  onPromptChange,
+  onOptionsChange,
+}: {
+  label: string;
+  prompt: string;
+  promptPlaceholder: string;
+  options: string[] | null;
+  defaultOptions: string[];
+  onPromptChange: (v: string) => void;
+  onOptionsChange: (opts: string[]) => void;
+}) {
+  const effective = (options ?? defaultOptions) ?? [];
+  const usingDefaults = !options;
+  return (
+    <fieldset className="border border-stone-200 rounded p-3 space-y-2">
+      <legend className="text-[11px] text-stone-600 font-semibold px-1">{label}</legend>
+      <label className="block">
+        <span className="text-[10px] text-stone-500">Prompt</span>
+        <input
+          value={prompt}
+          placeholder={promptPlaceholder}
+          onChange={(e) => onPromptChange(e.target.value)}
+          className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs"
+        />
+      </label>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-stone-500">Chip options{usingDefaults && ' (defaults — edit to customise)'}</span>
+          <button
+            onClick={() => {
+              const next = options ? [...options, ''] : [...defaultOptions, ''];
+              onOptionsChange(next);
+            }}
+            className="text-[10px] text-stone-700 hover:underline"
+          >+ Add chip</button>
+        </div>
+        <ul className="space-y-1">
+          {effective.map((opt, i) => (
+            <li key={i} className="flex items-center gap-2">
+              <input
+                value={opt}
+                onChange={(e) => {
+                  const next = options ? [...options] : [...defaultOptions];
+                  next[i] = e.target.value;
+                  onOptionsChange(next);
+                }}
+                className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs"
+              />
+              <button
+                onClick={() => {
+                  const base = options ? [...options] : [...defaultOptions];
+                  base.splice(i, 1);
+                  onOptionsChange(base);
+                }}
+                className="text-xs text-red-600 hover:underline shrink-0"
+                title="Remove"
+              >&times;</button>
+            </li>
+          ))}
+        </ul>
+        {!usingDefaults && (
+          <button
+            onClick={() => onOptionsChange(defaultOptions)}
+            className="text-[10px] text-stone-500 hover:underline"
+          >Reset to defaults</button>
+        )}
+      </div>
+    </fieldset>
+  );
 }
 
 function BgPhotoOverride({ stop, tourId, onChange, onUploadPhoto }: { stop: Stop; tourId: string; onChange: (patch: Partial<Stop>) => void; onUploadPhoto: (file: File, path: string) => Promise<string> }) {

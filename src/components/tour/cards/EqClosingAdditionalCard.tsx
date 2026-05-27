@@ -132,7 +132,7 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
       style={{ scrollSnapType: 'y mandatory' }}
     >
       <section
-        className="relative min-h-full flex flex-col justify-center space-y-5 px-5 py-6"
+        className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         {titleBlock}
@@ -153,7 +153,7 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
 
       <section
         ref={questionRef}
-        className="min-h-full flex flex-col justify-center space-y-6 px-5 py-6"
+        className="min-h-full flex flex-col justify-center space-y-6 px-5 pt-10 pb-6"
         style={{
           scrollSnapAlign: 'start',
           scrollSnapStop: 'always',

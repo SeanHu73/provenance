@@ -2,25 +2,51 @@
 
 /**
  * Essential Question — Final reflection screen.
- * Cognitive slider + all follow-up reflections + perceptual slider.
+ * Cognitive slider + follow-up chip sets + perceptual slider.
+ *
+ * Prompts, slider labels, and chip options come from the tour's
+ * essentialQuestion config when set, falling back to the historic
+ * defaults so older tours keep working unchanged.
  */
 
 import { useState } from 'react';
+import { Tour } from '@/lib/types';
+import { useTour } from '@/context/TourContext';
 import BackButton from './BackButton';
 
-const WHAT_SHIFTED_OPTIONS = [
+const DEFAULT_COGNITIVE_PROMPT = 'How much did this tour change your answer to the original question?';
+const DEFAULT_COGNITIVE_LEFT = 'Confirmed what we thought';
+const DEFAULT_COGNITIVE_RIGHT = 'Shifted our thinking';
+const DEFAULT_PERCEPTUAL_PROMPT = 'How much did this change how you see this place?';
+const DEFAULT_PERCEPTUAL_LEFT = 'Same as before';
+const DEFAULT_PERCEPTUAL_RIGHT = 'I see it completely differently now';
+const DEFAULT_WHAT_SHIFTED_PROMPT = 'What changed?';
+const DEFAULT_WHAT_SHIFTED_OPTIONS = [
   'We learned something new',
   'We changed our mind',
   'We had part of it',
   'We were surprised',
 ];
-
-const REASONING_SOURCE_OPTIONS = [
+const DEFAULT_REASONING_SOURCE_PROMPT = 'Why did it change or not?';
+const DEFAULT_REASONING_SOURCE_OPTIONS = [
   'What we could see here',
   'Something we discussed',
   'Something we already knew',
   'A guess',
 ];
+
+export const FINAL_REFLECT_DEFAULTS = {
+  cognitivePrompt: DEFAULT_COGNITIVE_PROMPT,
+  cognitiveLeftLabel: DEFAULT_COGNITIVE_LEFT,
+  cognitiveRightLabel: DEFAULT_COGNITIVE_RIGHT,
+  perceptualPrompt: DEFAULT_PERCEPTUAL_PROMPT,
+  perceptualLeftLabel: DEFAULT_PERCEPTUAL_LEFT,
+  perceptualRightLabel: DEFAULT_PERCEPTUAL_RIGHT,
+  whatShiftedPrompt: DEFAULT_WHAT_SHIFTED_PROMPT,
+  whatShiftedOptions: DEFAULT_WHAT_SHIFTED_OPTIONS,
+  reasoningSourcePrompt: DEFAULT_REASONING_SOURCE_PROMPT,
+  reasoningSourceOptions: DEFAULT_REASONING_SOURCE_OPTIONS,
+};
 
 interface Props {
   onComplete: (
@@ -32,6 +58,23 @@ interface Props {
 }
 
 export default function EqFinalReflectCard({ onComplete }: Props) {
+  const { tour } = useTour();
+  const cfg = (tour as Tour | null)?.essentialQuestion;
+  const cognitivePrompt = cfg?.finalCognitivePrompt || DEFAULT_COGNITIVE_PROMPT;
+  const cognitiveLeft = cfg?.finalCognitiveLeftLabel || DEFAULT_COGNITIVE_LEFT;
+  const cognitiveRight = cfg?.finalCognitiveRightLabel || DEFAULT_COGNITIVE_RIGHT;
+  const perceptualPrompt = cfg?.finalPerceptualPrompt || DEFAULT_PERCEPTUAL_PROMPT;
+  const perceptualLeft = cfg?.finalPerceptualLeftLabel || DEFAULT_PERCEPTUAL_LEFT;
+  const perceptualRight = cfg?.finalPerceptualRightLabel || DEFAULT_PERCEPTUAL_RIGHT;
+  const whatShiftedPrompt = cfg?.finalWhatShiftedPrompt || DEFAULT_WHAT_SHIFTED_PROMPT;
+  const whatShiftedOpts = cfg?.finalWhatShiftedOptions && cfg.finalWhatShiftedOptions.length > 0
+    ? cfg.finalWhatShiftedOptions
+    : DEFAULT_WHAT_SHIFTED_OPTIONS;
+  const reasoningSourcePrompt = cfg?.finalReasoningSourcePrompt || DEFAULT_REASONING_SOURCE_PROMPT;
+  const reasoningSourceOpts = cfg?.finalReasoningSourceOptions && cfg.finalReasoningSourceOptions.length > 0
+    ? cfg.finalReasoningSourceOptions
+    : DEFAULT_REASONING_SOURCE_OPTIONS;
+
   const [cognitiveSlider, setCognitiveSlider] = useState(0.5);
   const [cognitiveReleased, setCognitiveReleased] = useState(false);
   const [perceptualSlider, setPerceptualSlider] = useState(0.5);
@@ -49,9 +92,7 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
 
       {/* Cognitive slider */}
       <div className="space-y-3">
-        <p className="text-sm font-semibold text-text-primary">
-          How much did this tour change your answer to the original question?
-        </p>
+        <p className="text-sm font-semibold text-text-primary">{cognitivePrompt}</p>
         <input
           type="range"
           min="0" max="1" step="0.01"
@@ -62,8 +103,8 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
           className="w-full accent-aged-gold"
         />
         <div className="flex justify-between text-[11px] text-text-secondary">
-          <span>Confirmed what we thought</span>
-          <span>Shifted our thinking</span>
+          <span>{cognitiveLeft}</span>
+          <span>{cognitiveRight}</span>
         </div>
       </div>
 
@@ -72,9 +113,9 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
         <div className="space-y-6 animate-fade-in">
           {/* What shifted — multi-select */}
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-text-primary">What changed?</p>
+            <p className="text-sm font-semibold text-text-primary">{whatShiftedPrompt}</p>
             <div className="flex flex-wrap gap-2">
-              {WHAT_SHIFTED_OPTIONS.map((opt) => (
+              {whatShiftedOpts.map((opt) => (
                 <button
                   key={opt}
                   onClick={() => setWhatShifted(toggleChip(whatShifted, opt))}
@@ -92,9 +133,9 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
 
           {/* Reasoning source — multi-select */}
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-text-primary">Why did it change or not?</p>
+            <p className="text-sm font-semibold text-text-primary">{reasoningSourcePrompt}</p>
             <div className="flex flex-wrap gap-2">
-              {REASONING_SOURCE_OPTIONS.map((opt) => (
+              {reasoningSourceOpts.map((opt) => (
                 <button
                   key={opt}
                   onClick={() => setReasoningSource(toggleChip(reasoningSource, opt))}
@@ -112,9 +153,7 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
 
           {/* Perceptual slider */}
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-text-primary">
-              How much did this change how you see this place?
-            </p>
+            <p className="text-sm font-semibold text-text-primary">{perceptualPrompt}</p>
             <input
               type="range"
               min="0" max="1" step="0.01"
@@ -123,8 +162,8 @@ export default function EqFinalReflectCard({ onComplete }: Props) {
               className="w-full accent-aged-gold"
             />
             <div className="flex justify-between text-[11px] text-text-secondary">
-              <span>Same as before</span>
-              <span>I see it completely differently now</span>
+              <span>{perceptualLeft}</span>
+              <span>{perceptualRight}</span>
             </div>
           </div>
 

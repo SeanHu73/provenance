@@ -506,16 +506,18 @@ export function completeEqClosing(
   finalReflection: string,
   finalReasoning: string,
   additionalClosingResponses: string[],
-  _tour: Tour, // kept for signature compatibility; no longer used for routing
+  _tour: Tour,
 ): TourSession {
-  // The closing card now captures every closing question (main +
-  // additionals) in one snap-scroll screen, so we skip both
-  // eq_closing_additional and eq_final_reflect on the way out.
-  // "Any remaining questions" follows directly.
+  // The new closing card captures every closing question (main +
+  // additionals) in one snap-scroll screen. After it, the explorer
+  // moves through the slider / chip-set final-reflect screen, then
+  // "Any remaining questions". eq_closing_additional remains a no-op
+  // pass-through for in-flight legacy sessions.
+  void _tour;
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: 'eq_questions',
+    currentPhase: 'eq_final_reflect',
     currentRound: 0,
     essentialQuestionResponses: session.essentialQuestionResponses
       ? {
