@@ -264,15 +264,42 @@ export function TourProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.currentStopId, room?.groupPhase, room?.started, roomCompletedKey, roomCOKey, tour]);
 
-  // Back navigation is disabled in room mode to keep every device in
-  // sync with the group. Once a stop has started, no member (host or
-  // participant) can accidentally leave it; once the group has moved
-  // past a phase, no one can reopen it.
-  const canGoBack = !!(
-    session?.phaseHistory
-    && session.phaseHistory.length > 0
-    && !(room && room.started)
-  );
+  // Back navigation: in single-player we allow anything. In a room we
+  // allow back navigation only when it stays inside the stop the
+  // explorer is already in — so going wonder → seed to re-read the
+  // background works, but backing out of seed onto the map (which
+  // would desync from the group) doesn't.
+  const canGoBack = (() => {
+    const history = session?.phaseHistory;
+    if (!history || history.length === 0) return false;
+    if (!room || !room.started) return true;
+
+    const last = history[history.length - 1];
+    const inStopPhases = new Set<TourPhase>([
+      'seed', 'notice', 'wonder', 'reveal', 'reflect',
+      'whats_next', 'branch', 'off_path',
+    ]);
+    const closingPhases = new Set<TourPhase>([
+      'eq_closing_discuss', 'eq_closing', 'eq_closing_additional',
+      'eq_final_reflect', 'eq_questions', 'guide_outro', 'end',
+    ]);
+
+    const curInStop = inStopPhases.has(session!.currentPhase);
+    if (curInStop) {
+      // Back only if it stays in the same stop AND lands on another
+      // in-stop phase (not back out to the map / midway / EQ opening).
+      return inStopPhases.has(last.phase) && last.stopIndex === session!.currentStopIndex;
+    }
+    const curClosing = closingPhases.has(session!.currentPhase);
+    if (curClosing) {
+      // Within the closing flow back nav is per-device and harmless;
+      // re-entering a stop from closing is blocked.
+      return closingPhases.has(last.phase);
+    }
+    // Group-level phases (intro / EQ opening / map / midway) — no
+    // back-out in room mode.
+    return false;
+  })();
 
   const goBackFn = useCallback(() => {
     if (!session) return;

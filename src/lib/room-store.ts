@@ -397,6 +397,15 @@ export async function recordHostAdvance(
       if (!snap.exists()) return;
       const room = snap.data() as Room;
       if (room.hostSessionId !== hostSessionId) return;
+      // NOTE: we intentionally do NOT clear `barriers` here. The host's
+      // local persist (which fires immediately after this call is
+      // queued) re-renders into the new phase and mounts the next
+      // barrier card, which fires its own arriveAtBarrier. If we
+      // overwrite barriers in this transaction we can wipe the host's
+      // arrival before the room knows about it, leaving both devices
+      // each reading only their own arrival (the "waiting for X to
+      // arrive" stall on midway). Old barriers from previous stops use
+      // unique keys and don't interfere.
       tx.update(ref, {
         currentStopId: null,
         completedStopIds: next.completedStopIds,
@@ -404,7 +413,6 @@ export async function recordHostAdvance(
         groupPhase: next.groupPhase,
         pendingStopId: null,
         pendingApprovals: [],
-        barriers: {},
         updatedAt: nowIso(),
       });
     });
