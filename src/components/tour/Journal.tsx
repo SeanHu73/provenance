@@ -267,7 +267,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
         )}
 
         {phase === 'seed' && currentStop && (
-          <SeedCard stop={currentStop} onContinue={advancePhase} />
+          <SeedCard stop={currentStop} onContinue={advancePhase} onPeekMap={onMapPeek} />
         )}
 
         {phase === 'notice' && currentStop && (

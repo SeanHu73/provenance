@@ -188,6 +188,17 @@ function HomeInner() {
     }
   }
 
+  // Map-peek mode: only the current stop's pin should show. This is a
+  // local-only "where am I supposed to be" lookup — doesn't affect the
+  // room and doesn't end the stop. Pins for other stops are filtered
+  // out so the user can't tap into anything else by accident.
+  const tourStopMarkersForRender = (() => {
+    if (!mapPeek || !session || !activeTour) return tourStopMarkers;
+    const currentId = getActiveStops(activeTour)[session.currentStopIndex]?.id;
+    if (!currentId) return tourStopMarkers;
+    return tourStopMarkers.filter((m) => m.stop.id === currentId);
+  })();
+
   const handleTourPinSelect = useCallback((tour: Tour) => {
     setPeekTour(tour);
   }, []);
@@ -283,7 +294,7 @@ function HomeInner() {
             onPinSelect={() => {}}
             tourPins={tourPins}
             onTourPinSelect={handleTourPinSelect}
-            tourStops={tourStopMarkers}
+            tourStops={tourStopMarkersForRender}
             onTourStopSelect={handleTourStopSelect}
             hidePins={true}
             tourDefaultZoom={activeTour?.defaultZoom}
@@ -343,15 +354,17 @@ function HomeInner() {
         <TourFooter tour={activeTour} session={session} />
       )}
 
-      {/* Map peek return button — shown when map is visible during active tour */}
+      {/* Map peek return — full-width bottom bar shown when the user is
+          temporarily viewing the map for orientation. Local-only: in a
+          room this doesn't affect anyone else and doesn't end the stop. */}
       {isActive && mapPeek && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <div className="absolute bottom-0 left-0 right-0 z-50 px-4 pb-4 pt-3 pointer-events-none">
           <button
             onClick={() => setMapPeek(false)}
-            className="px-5 py-3 rounded-full shadow-lg text-sm font-semibold"
-            style={{ backgroundColor: 'var(--th-journal)', color: 'var(--th-surface)' }}
+            className="pointer-events-auto w-full py-4 rounded-xl shadow-lg text-base font-semibold"
+            style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}
           >
-            Return to journal
+            Return to tour
           </button>
         </div>
       )}

@@ -23,12 +23,15 @@ import { useAudioAutoplay } from '@/lib/audio-autoplay';
 interface Props {
   stop: Stop;
   onContinue: () => void;
+  /** Optional handler for the "find me on the map" button on the
+   *  Look Around section. Visible only when the stop has a location. */
+  onPeekMap?: () => void;
 }
 
 const REVEAL_DELAY_MS = 400;
 const REVEAL_TRANSITION_MS = 400;
 
-export default function SeedCard({ stop, onContinue }: Props) {
+export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   const [autoplayPref] = useAudioAutoplay();
   const seedAutoplay = autoplayPref && !stop.seed.audioAutoplayDisabled;
   // When both seed and notice audio are present on this combined screen,
@@ -120,9 +123,30 @@ export default function SeedCard({ stop, onContinue }: Props) {
   // Look Around block (only when hasNoticeSection)
   const lookAroundBlock = (
     <>
-      <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
-        Look around...
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
+          Look around...
+        </p>
+        {onPeekMap && stop.location && (
+          <button
+            onClick={onPeekMap}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wider"
+            style={{
+              color: 'var(--th-primary)',
+              border: '1px solid var(--th-primary)',
+              backgroundColor: 'color-mix(in srgb, var(--th-primary) 6%, transparent)',
+            }}
+            title="Find this stop on the map"
+            aria-label="Find this stop on the map"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 21s-7-7.5-7-13a7 7 0 0 1 14 0c0 5.5-7 13-7 13z" />
+              <circle cx="12" cy="9" r="2" fill="currentColor" stroke="none" />
+            </svg>
+            Find pin
+          </button>
+        )}
+      </div>
       {stop.notice.audioUrl && <AudioButton audioUrl={stop.notice.audioUrl} title={stop.notice.audioTitle} autoplay={noticeAutoplay} />}
       {stop.notice.noticeMap && stop.notice.noticeMap.url && (
         <NoticeMapDisplay map={stop.notice.noticeMap} />
