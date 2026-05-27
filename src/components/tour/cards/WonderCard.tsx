@@ -139,6 +139,9 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
         <p className="text-[19px] leading-relaxed font-serif text-text-primary text-left">
           <FormattedText text={background} />
         </p>
+        {wonder.questionBackgroundPhotos && wonder.questionBackgroundPhotos.length > 0 && (
+          <PhotoContent text="" photos={wonder.questionBackgroundPhotos} />
+        )}
         {wonder.photos && wonder.photos.length > 0 && (
           <PhotoContent text="" photos={wonder.photos} />
         )}

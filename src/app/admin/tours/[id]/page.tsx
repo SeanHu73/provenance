@@ -767,6 +767,12 @@ export default function TourEditorPage() {
                 autoplayDisabled={tour.essentialQuestion.questionBackgroundAudioAutoplayDisabled}
                 onAutoplayDisabledChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, questionBackgroundAudioAutoplayDisabled: v })}
               />
+              <PhotoListEditor
+                photos={tour.essentialQuestion.questionBackgroundPhotos || []}
+                onChange={(photos) => updateField('essentialQuestion', { ...tour.essentialQuestion!, questionBackgroundPhotos: photos })}
+                uploadPath={`memorial-church/photos/tours/${tourId}/eq_question_background`}
+                onUploadPhoto={uploadPhoto}
+              />
               <div className="block">
                 <RichTextarea
                   label="The question"
@@ -909,6 +915,12 @@ export default function TourEditorPage() {
                       onUploadFile={uploadPhoto}
                       autoplayDisabled={tour.essentialQuestion.additionalQuestion.questionBackgroundAudioAutoplayDisabled}
                       onAutoplayDisabledChange={(v) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, questionBackgroundAudioAutoplayDisabled: v } })}
+                    />
+                    <PhotoListEditor
+                      photos={tour.essentialQuestion.additionalQuestion.questionBackgroundPhotos || []}
+                      onChange={(photos) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, questionBackgroundPhotos: photos } })}
+                      uploadPath={`memorial-church/photos/tours/${tourId}/eq_additional_question_background`}
+                      onUploadPhoto={uploadPhoto}
                     />
                     <RichTextarea
                       label="The question"
@@ -1124,6 +1136,12 @@ export default function TourEditorPage() {
                   onUploadFile={uploadPhoto}
                   autoplayDisabled={tour.midwayQuestionBackgroundAudioAutoplayDisabled}
                   onAutoplayDisabledChange={(v) => updateField('midwayQuestionBackgroundAudioAutoplayDisabled', v)}
+                />
+                <PhotoListEditor
+                  photos={tour.midwayQuestionBackgroundPhotos || []}
+                  onChange={(photos) => updateField('midwayQuestionBackgroundPhotos', photos)}
+                  uploadPath={`memorial-church/photos/tours/${tourId}/midway_question_background`}
+                  onUploadPhoto={uploadPhoto}
                 />
                 <RichTextarea
                   label="Midway check-in question"
@@ -1534,6 +1552,12 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
               autoplayDisabled={stop.wonder!.questionBackgroundAudioAutoplayDisabled}
               onAutoplayDisabledChange={(v) => onChange({ wonder: { ...stop.wonder!, questionBackgroundAudioAutoplayDisabled: v } })}
             />
+            <PhotoListEditor
+              photos={stop.wonder!.questionBackgroundPhotos || []}
+              onChange={(photos) => onChange({ wonder: { ...stop.wonder!, questionBackgroundPhotos: photos } })}
+              uploadPath={`memorial-church/photos/tours/${tourId}/wonder_${stop.id}_background`}
+              onUploadPhoto={onUploadPhoto}
+            />
             <RichTextarea
               label="Question (prompts group conversation)"
               value={stop.wonder.question}
@@ -1690,6 +1714,16 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
                           next[i] = { ...next[i], wonder: { ...next[i].wonder!, questionBackgroundAudioAutoplayDisabled: v } };
                           onChange({ extraRounds: next });
                         }}
+                      />
+                      <PhotoListEditor
+                        photos={round.wonder.questionBackgroundPhotos || []}
+                        onChange={(photos) => {
+                          const next = [...(stop.extraRounds || [])];
+                          next[i] = { ...next[i], wonder: { ...next[i].wonder!, questionBackgroundPhotos: photos } };
+                          onChange({ extraRounds: next });
+                        }}
+                        uploadPath={`memorial-church/photos/tours/${tourId}/extra_wonder_${stop.id}_${i}_background`}
+                        onUploadPhoto={onUploadPhoto}
                       />
                       <RichTextarea
                         label="Discussion question"

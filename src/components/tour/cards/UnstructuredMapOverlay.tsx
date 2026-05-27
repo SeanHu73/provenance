@@ -9,6 +9,7 @@ import MicButton from '../MicButton';
 import FormattedText from './FormattedText';
 import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
+import PhotoContent from './PhotoContent';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
@@ -798,6 +799,9 @@ export function MidwayCheckinCard({
           <p className="text-[19px] leading-relaxed font-serif text-text-primary text-left">
             <FormattedText text={background} />
           </p>
+          {tour.midwayQuestionBackgroundPhotos && tour.midwayQuestionBackgroundPhotos.length > 0 && (
+            <PhotoContent text="" photos={tour.midwayQuestionBackgroundPhotos} />
+          )}
         </section>
       )}
 

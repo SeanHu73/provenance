@@ -225,6 +225,7 @@ export interface Tour {
     questionBackgroundAudioUrl?: string | null;
     questionBackgroundAudioTitle?: string | null;
     questionBackgroundAudioAutoplayDisabled?: boolean;
+    questionBackgroundPhotos?: StopPhoto[];
     // Scene-setting screen
     scenePhotoUrl: string | null;      // Photo of where to find the starting point
     sceneDescription: string;          // "Find the stone plaque on the north wall..."
@@ -245,6 +246,7 @@ export interface Tour {
       questionBackgroundAudioUrl?: string | null;
       questionBackgroundAudioTitle?: string | null;
       questionBackgroundAudioAutoplayDisabled?: boolean;
+      questionBackgroundPhotos?: StopPhoto[];
     } | null;
     closingAudioUrl: string | null;     // Audio for the closing discuss screen
     closingAudioTitle: string | null;
@@ -273,6 +275,7 @@ export interface Tour {
   midwayQuestionBackgroundAudioUrl?: string | null;
   midwayQuestionBackgroundAudioTitle?: string | null;
   midwayQuestionBackgroundAudioAutoplayDisabled?: boolean;
+  midwayQuestionBackgroundPhotos?: StopPhoto[];
 
   createdAt: string;                 // ISO 8601
   updatedAt: string;                 // ISO 8601
@@ -379,6 +382,8 @@ export interface Stop {
     questionBackgroundAudioUrl?: string | null;
     questionBackgroundAudioTitle?: string | null;
     questionBackgroundAudioAutoplayDisabled?: boolean;
+    /** Optional photos for the question background section. */
+    questionBackgroundPhotos?: StopPhoto[];
     photos: StopPhoto[];
     audioUrl: string | null;
     audioTitle: string | null;
@@ -400,7 +405,7 @@ export interface Stop {
 
   // Extra wonder + context rounds (optional, after the initial reveal, before the bridge)
   extraRounds: Array<{
-    wonder: { question: string; questionType: 'discuss' | 'opinion'; questionBackground?: string; questionBackgroundAudioUrl?: string | null; questionBackgroundAudioTitle?: string | null; questionBackgroundAudioAutoplayDisabled?: boolean; photos: StopPhoto[]; audioUrl: string | null; audioTitle: string | null; audioAutoplayDisabled?: boolean } | null;
+    wonder: { question: string; questionType: 'discuss' | 'opinion'; questionBackground?: string; questionBackgroundAudioUrl?: string | null; questionBackgroundAudioTitle?: string | null; questionBackgroundAudioAutoplayDisabled?: boolean; questionBackgroundPhotos?: StopPhoto[]; photos: StopPhoto[]; audioUrl: string | null; audioTitle: string | null; audioAutoplayDisabled?: boolean } | null;
     reveal: {
       text: string;
       photos: StopPhoto[];
