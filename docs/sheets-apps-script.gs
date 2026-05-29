@@ -12,7 +12,7 @@
  * SETUP (run ONCE after pasting this file in):
  *   1. Paste this whole file into the Apps Script editor for the
  *      target sheet (Extensions → Apps Script).
- *   2. From the function dropdown choose `setupHeaders`, click Run,
+ *   2. From the function dropdown choose `addHeaders`, click Run,
  *      and accept the auth prompt the first time.
  *   3. Deploy → Manage deployments → edit the existing Web app
  *      deployment → Version: New version → Deploy. The deployment
@@ -66,7 +66,7 @@ const HEADERS = [
  * present (in HEADERS order). Safe to re-run — it only adds missing
  * headers, never reorders or deletes existing ones.
  */
-function setupHeaders() {
+function addHeaders() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   const lastCol = sheet.getLastColumn();
 
