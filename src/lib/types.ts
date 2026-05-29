@@ -251,6 +251,12 @@ export interface Tour {
       questionBackgroundAudioAutoplayDisabled?: boolean;
       questionBackgroundPhotos?: StopPhoto[];
       questionBackgroundAsInstructions?: boolean;
+      /** Spectrum labels for opinion-type gamification in rooms. When
+       *  both are set and questionType === 'opinion' and the device is
+       *  in a room, the explorer sees a semicircular dial instead of
+       *  the regular discussion UI. */
+      opinionSpectrumLeft?: string;
+      opinionSpectrumRight?: string;
     } | null;
     /** Optional list of extra discussion/opinion questions shown after
      *  the main eq_closing card and before eq_final_reflect. Each plays
@@ -265,6 +271,8 @@ export interface Tour {
       questionBackgroundAudioAutoplayDisabled?: boolean;
       questionBackgroundPhotos?: StopPhoto[];
       questionBackgroundAsInstructions?: boolean;
+      opinionSpectrumLeft?: string;
+      opinionSpectrumRight?: string;
     }>;
     closingAudioUrl: string | null;     // Audio for the closing discuss screen
     closingAudioTitle: string | null;
@@ -416,6 +424,9 @@ export interface Stop {
     /** Optional photos for the question background section. */
     questionBackgroundPhotos?: StopPhoto[];
     questionBackgroundAsInstructions?: boolean;
+    /** Spectrum labels for opinion-type gamification in rooms. */
+    opinionSpectrumLeft?: string;
+    opinionSpectrumRight?: string;
     photos: StopPhoto[];
     audioUrl: string | null;
     audioTitle: string | null;
@@ -441,7 +452,7 @@ export interface Stop {
 
   // Extra wonder + context rounds (optional, after the initial reveal, before the bridge)
   extraRounds: Array<{
-    wonder: { question: string; questionType: 'discuss' | 'opinion'; questionBackground?: string; questionBackgroundAudioUrl?: string | null; questionBackgroundAudioTitle?: string | null; questionBackgroundAudioAutoplayDisabled?: boolean; questionBackgroundPhotos?: StopPhoto[]; questionBackgroundAsInstructions?: boolean; photos: StopPhoto[]; audioUrl: string | null; audioTitle: string | null; audioAutoplayDisabled?: boolean } | null;
+    wonder: { question: string; questionType: 'discuss' | 'opinion'; questionBackground?: string; questionBackgroundAudioUrl?: string | null; questionBackgroundAudioTitle?: string | null; questionBackgroundAudioAutoplayDisabled?: boolean; questionBackgroundPhotos?: StopPhoto[]; questionBackgroundAsInstructions?: boolean; opinionSpectrumLeft?: string; opinionSpectrumRight?: string; photos: StopPhoto[]; audioUrl: string | null; audioTitle: string | null; audioAutoplayDisabled?: boolean } | null;
     reveal: {
       text: string;
       photos: StopPhoto[];
@@ -600,6 +611,17 @@ export interface BarrierState {
   resolvedAt: string | null;
 }
 
+/** Per-opinion-question dial state stored on the room. Keyed by the
+ *  same `${stopId|"eq"}:${phase}:${round}` shape barriers use, so a
+ *  card knows where to look. */
+export interface OpinionDialState {
+  /** sessionId → chosen position on the spectrum (0 = left option, 1 = right option). */
+  positions: Record<string, number>;
+  /** sessionIds who have tapped "Find out where your friend is" — once
+   *  every member is in here, the dial reveals each other's dots. */
+  revealedBy: string[];
+}
+
 export interface Room {
   code: string;                       // 4-char alphanumeric, doc id
   tourId: string;
@@ -625,6 +647,11 @@ export interface Room {
   pendingApprovals: string[];
   /** key = `${stopId|"eq"}:${phase}:${round}` */
   barriers: Record<string, BarrierState>;
+  /** Opinion-dial state per opinion question, keyed the same way as
+   *  barriers. Populated only when the question is an opinion type AND
+   *  the admin has authored both spectrum labels AND the device is in
+   *  a room. */
+  opinionDials?: Record<string, OpinionDialState>;
   createdAt: string;
   updatedAt: string;
 }

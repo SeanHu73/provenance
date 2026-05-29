@@ -947,6 +947,27 @@ export default function TourEditorPage() {
                       rows={2}
                       placeholder="The follow-up question..."
                     />
+                    {tour.essentialQuestion.additionalQuestion.questionType === 'opinion' && (
+                      <div className="space-y-1 p-2 rounded border border-stone-200 bg-stone-50">
+                        <p className="text-[10px] uppercase tracking-wide text-stone-500 font-semibold">
+                          Opinion spectrum (shown as a dial in group tours)
+                        </p>
+                        <input
+                          type="text"
+                          value={tour.essentialQuestion.additionalQuestion.opinionSpectrumLeft || ''}
+                          onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, opinionSpectrumLeft: e.target.value } })}
+                          placeholder="Left side of the spectrum"
+                          className="w-full px-2 py-1.5 text-xs rounded border border-stone-300 bg-white"
+                        />
+                        <input
+                          type="text"
+                          value={tour.essentialQuestion.additionalQuestion.opinionSpectrumRight || ''}
+                          onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, opinionSpectrumRight: e.target.value } })}
+                          placeholder="Right side of the spectrum"
+                          className="w-full px-2 py-1.5 text-xs rounded border border-stone-300 bg-white"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1135,6 +1156,35 @@ export default function TourEditorPage() {
                           rows={2}
                           placeholder="A question to discuss now that the tour is wrapping up..."
                         />
+                        {item.questionType === 'opinion' && (
+                          <div className="space-y-1 p-2 rounded border border-stone-200 bg-stone-50">
+                            <p className="text-[10px] uppercase tracking-wide text-stone-500 font-semibold">
+                              Opinion spectrum (shown as a dial in group tours)
+                            </p>
+                            <input
+                              type="text"
+                              value={item.opinionSpectrumLeft || ''}
+                              onChange={(e) => {
+                                const next = [...(tour.essentialQuestion!.additionalClosingQuestions || [])];
+                                next[i] = { ...next[i], opinionSpectrumLeft: e.target.value };
+                                updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalClosingQuestions: next });
+                              }}
+                              placeholder="Left side of the spectrum"
+                              className="w-full px-2 py-1.5 text-xs rounded border border-stone-300 bg-white"
+                            />
+                            <input
+                              type="text"
+                              value={item.opinionSpectrumRight || ''}
+                              onChange={(e) => {
+                                const next = [...(tour.essentialQuestion!.additionalClosingQuestions || [])];
+                                next[i] = { ...next[i], opinionSpectrumRight: e.target.value };
+                                updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalClosingQuestions: next });
+                              }}
+                              placeholder="Right side of the spectrum"
+                              className="w-full px-2 py-1.5 text-xs rounded border border-stone-300 bg-white"
+                            />
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -1833,6 +1883,27 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
               onChange={(question) => onChange({ wonder: { ...stop.wonder!, question } })}
               rows={3}
             />
+            {stop.wonder.questionType === 'opinion' && (
+              <div className="space-y-1 p-2 rounded border border-stone-200 bg-stone-50">
+                <p className="text-[10px] uppercase tracking-wide text-stone-500 font-semibold">
+                  Opinion spectrum (shown as a dial in group tours)
+                </p>
+                <input
+                  type="text"
+                  value={stop.wonder.opinionSpectrumLeft || ''}
+                  onChange={(e) => onChange({ wonder: { ...stop.wonder!, opinionSpectrumLeft: e.target.value } })}
+                  placeholder="Left side of the spectrum"
+                  className="w-full px-2 py-1.5 text-xs rounded border border-stone-300 bg-white"
+                />
+                <input
+                  type="text"
+                  value={stop.wonder.opinionSpectrumRight || ''}
+                  onChange={(e) => onChange({ wonder: { ...stop.wonder!, opinionSpectrumRight: e.target.value } })}
+                  placeholder="Right side of the spectrum"
+                  className="w-full px-2 py-1.5 text-xs rounded border border-stone-300 bg-white"
+                />
+              </div>
+            )}
             <p className="text-[10px] text-stone-400 italic">
               Write a question that prompts group conversation. There are no right or wrong answers &mdash;
               the reveal will complicate their thinking.
@@ -2017,6 +2088,35 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
                         }}
                         rows={2}
                       />
+                      {round.wonder.questionType === 'opinion' && (
+                        <div className="space-y-1 p-2 rounded border border-stone-200 bg-stone-50">
+                          <p className="text-[10px] uppercase tracking-wide text-stone-500 font-semibold">
+                            Opinion spectrum (shown as a dial in group tours)
+                          </p>
+                          <input
+                            type="text"
+                            value={round.wonder.opinionSpectrumLeft || ''}
+                            onChange={(e) => {
+                              const next = [...(stop.extraRounds || [])];
+                              next[i] = { ...next[i], wonder: { ...next[i].wonder!, opinionSpectrumLeft: e.target.value } };
+                              onChange({ extraRounds: next });
+                            }}
+                            placeholder="Left side of the spectrum"
+                            className="w-full px-2 py-1.5 text-xs rounded border border-stone-300 bg-white"
+                          />
+                          <input
+                            type="text"
+                            value={round.wonder.opinionSpectrumRight || ''}
+                            onChange={(e) => {
+                              const next = [...(stop.extraRounds || [])];
+                              next[i] = { ...next[i], wonder: { ...next[i].wonder!, opinionSpectrumRight: e.target.value } };
+                              onChange({ extraRounds: next });
+                            }}
+                            placeholder="Right side of the spectrum"
+                            className="w-full px-2 py-1.5 text-xs rounded border border-stone-300 bg-white"
+                          />
+                        </div>
+                      )}
                       <PhotoListEditor
                         photos={round.wonder.photos || []}
                         onChange={(photos) => {

@@ -489,6 +489,67 @@ export async function arriveAtBarrier(code: string, key: string, sessionId: stri
   }
 }
 
+/** Write this member's opinion-dial position (0..1) for the given
+ *  question key. Idempotent — overwrites the previous value if any. */
+export async function setOpinionDialPosition(
+  code: string,
+  key: string,
+  sessionId: string,
+  position: number,
+): Promise<void> {
+  const ref = doc(db, COLLECTION, code.toUpperCase());
+  const clamped = Math.max(0, Math.min(1, position));
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const room = snap.data() as Room;
+      const state = room.opinionDials?.[key] || { positions: {}, revealedBy: [] };
+      // Once a member has revealed they can't move their dot — write
+      // is ignored.
+      if (state.revealedBy.includes(sessionId)) return;
+      const next = {
+        ...state,
+        positions: { ...state.positions, [sessionId]: clamped },
+      };
+      tx.update(ref, {
+        opinionDials: { ...(room.opinionDials || {}), [key]: next },
+        updatedAt: nowIso(),
+      });
+    });
+  } catch (err) {
+    console.error('[room-store] setOpinionDialPosition failed:', err);
+  }
+}
+
+/** Mark this member as having tapped "Find out where your friend is".
+ *  Once every member with a position is in revealedBy, the dial flips
+ *  to its reveal state and each device renders the others' dots. */
+export async function revealOpinionDial(code: string, key: string, sessionId: string): Promise<void> {
+  const ref = doc(db, COLLECTION, code.toUpperCase());
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const room = snap.data() as Room;
+      const state = room.opinionDials?.[key] || { positions: {}, revealedBy: [] };
+      if (state.revealedBy.includes(sessionId)) return;
+      // Only reveal if this member has picked a position.
+      if (state.positions[sessionId] === undefined) return;
+      const next = {
+        ...state,
+        revealedBy: [...state.revealedBy, sessionId],
+      };
+      tx.update(ref, {
+        opinionDials: { ...(room.opinionDials || {}), [key]: next },
+        updatedAt: nowIso(),
+      });
+    });
+  } catch (err) {
+    console.error('[room-store] revealOpinionDial failed:', err);
+  }
+}
+
 /** Add the member to a barrier's readys list. When everyone is ready,
  *  the resolvedAt timestamp is set atomically. */
 export async function readyAtBarrier(code: string, key: string, sessionId: string): Promise<void> {

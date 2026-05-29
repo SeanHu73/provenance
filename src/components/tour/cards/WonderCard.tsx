@@ -18,7 +18,9 @@ import BackButton from './BackButton';
 import QuestionText from './QuestionText';
 import SnapScrollHint from './SnapScrollHint';
 import ActionTitle, { InstructionsTitle, SectionSubtitle } from './ActionTitle';
+import OpinionDial from './OpinionDial';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { useRoom } from '@/context/RoomContext';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
 interface Props {
@@ -89,7 +91,23 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
   const asInstructions = !!wonder.questionBackgroundAsInstructions;
   const discussTitle = <ActionTitle action="DISCUSS" opinion={isOpinion} />;
 
-  const continueRow = (
+  const { isInRoom } = useRoom();
+  const opinionKey = `${stop.id}:wonder:${round}`;
+  const useDial =
+    isOpinion &&
+    isInRoom &&
+    !!(wonder.opinionSpectrumLeft || '').trim() &&
+    !!(wonder.opinionSpectrumRight || '').trim();
+
+  const continueRow = useDial ? (
+    <OpinionDial
+      questionKey={opinionKey}
+      leftLabel={wonder.opinionSpectrumLeft!}
+      rightLabel={wonder.opinionSpectrumRight!}
+      onContinue={onContinue}
+      continueLabel={buttonLabel}
+    />
+  ) : (
     <div className="space-y-2">
       {barrier.indicator}
       <div className="flex gap-2">

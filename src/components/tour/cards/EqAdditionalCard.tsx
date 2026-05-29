@@ -14,7 +14,9 @@ import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
 import SnapScrollHint from './SnapScrollHint';
 import ActionTitle, { InstructionsTitle, SectionSubtitle } from './ActionTitle';
+import OpinionDial from './OpinionDial';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { useRoom } from '@/context/RoomContext';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
 interface Props {
@@ -79,7 +81,22 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
     </p>
   );
 
-  const continueRow = (
+  const { isInRoom } = useRoom();
+  const useDial =
+    isOpinion &&
+    isInRoom &&
+    !!(aq.opinionSpectrumLeft || '').trim() &&
+    !!(aq.opinionSpectrumRight || '').trim();
+
+  const continueRow = useDial ? (
+    <OpinionDial
+      questionKey="eq:additional:0"
+      leftLabel={aq.opinionSpectrumLeft!}
+      rightLabel={aq.opinionSpectrumRight!}
+      onContinue={onContinue}
+      continueLabel="Let's find the first stop..."
+    />
+  ) : (
     <div className="space-y-2">
       {barrier.indicator}
       <div className="flex gap-2">
@@ -100,7 +117,7 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
       <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
         {discussTitle}
         <QuestionText text={aq.question} />
-        {instruction}
+        {!useDial && instruction}
         {continueRow}
       </div>
     );
@@ -151,7 +168,7 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
       >
         {discussTitle}
         <QuestionText text={aq.question} />
-        {instruction}
+        {!useDial && instruction}
         {continueRow}
       </section>
     </div>

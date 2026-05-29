@@ -18,7 +18,9 @@ import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
 import SnapScrollHint from './SnapScrollHint';
 import ActionTitle, { InstructionsTitle, SectionSubtitle } from './ActionTitle';
+import OpinionDial from './OpinionDial';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { useRoom } from '@/context/RoomContext';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
 interface Props {
@@ -96,7 +98,22 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
 
   const continueLabel = isLast ? 'Continue to reflection' : 'Discussed — next question';
 
-  const continueRow = (
+  const { isInRoom } = useRoom();
+  const useDial =
+    isOpinion &&
+    isInRoom &&
+    !!(item.opinionSpectrumLeft || '').trim() &&
+    !!(item.opinionSpectrumRight || '').trim();
+
+  const continueRow = useDial ? (
+    <OpinionDial
+      questionKey={`eq:closing_additional:${idx}`}
+      leftLabel={item.opinionSpectrumLeft!}
+      rightLabel={item.opinionSpectrumRight!}
+      onContinue={onContinue}
+      continueLabel={continueLabel}
+    />
+  ) : (
     <div className="space-y-2">
       {barrier.indicator}
       <div className="flex gap-2">
@@ -117,7 +134,7 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
       <div key={`closing-add-${idx}`} className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
         {discussTitle}
         <QuestionText text={item.question} />
-        {instruction}
+        {!useDial && instruction}
         {continueRow}
       </div>
     );
@@ -169,7 +186,7 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
       >
         {discussTitle}
         <QuestionText text={item.question} />
-        {instruction}
+        {!useDial && instruction}
         {continueRow}
       </section>
     </div>

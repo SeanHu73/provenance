@@ -40,7 +40,9 @@ import {
   proposeStop as proposeStopImpl,
   readyAtBarrier as readyAtBarrierImpl,
   recordHostAdvance as recordHostAdvanceImpl,
+  revealOpinionDial as revealOpinionDialImpl,
   setGroupPhase as setGroupPhaseImpl,
+  setOpinionDialPosition as setOpinionDialPositionImpl,
   startTour as startTourImpl,
   subscribeToRoom,
 } from '@/lib/room-store';
@@ -83,6 +85,9 @@ interface RoomContextValue {
   // Discussion barriers
   arriveAtBarrier: (key: string) => Promise<void>;
   readyAtBarrier: (key: string) => Promise<void>;
+  // Opinion-dial gamification
+  setOpinionDialPosition: (key: string, position: number) => Promise<void>;
+  revealOpinionDial: (key: string) => Promise<void>;
 }
 
 const RoomCtx = createContext<RoomContextValue | null>(null);
@@ -285,6 +290,22 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     [roomCode, mySessionId],
   );
 
+  const setOpinionDialPosition = useCallback(
+    async (key: string, position: number) => {
+      if (!roomCode || !mySessionId) return;
+      await setOpinionDialPositionImpl(roomCode, key, mySessionId, position);
+    },
+    [roomCode, mySessionId],
+  );
+
+  const revealOpinionDial = useCallback(
+    async (key: string) => {
+      if (!roomCode || !mySessionId) return;
+      await revealOpinionDialImpl(roomCode, key, mySessionId);
+    },
+    [roomCode, mySessionId],
+  );
+
   const value = useMemo<RoomContextValue>(() => {
     const isHost = !!(room && mySessionId && room.hostSessionId === mySessionId);
     const isInRoom = !!(room && mySessionId && room.members.some((m) => m.sessionId === mySessionId));
@@ -307,6 +328,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       setGroupPhase,
       arriveAtBarrier,
       readyAtBarrier,
+      setOpinionDialPosition,
+      revealOpinionDial,
     };
   }, [
     room,
@@ -324,6 +347,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     setGroupPhase,
     arriveAtBarrier,
     readyAtBarrier,
+    setOpinionDialPosition,
+    revealOpinionDial,
   ]);
 
   return <RoomCtx.Provider value={value}>{children}</RoomCtx.Provider>;
