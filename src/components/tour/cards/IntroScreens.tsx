@@ -342,6 +342,7 @@ function HowItWorksScreen({
 
       {step === 'peek-open' && (
         <MockJournalPeek
+          tour={tour}
           isInGroup={isInGroup}
           isHost={isHost}
           hostCopy={hostCopy}
@@ -366,33 +367,49 @@ function HowItWorksScreen({
 }
 
 function MockJournalPeek({
+  tour,
   isInGroup,
   isHost,
   hostCopy,
   guestCopy,
   onBegin,
 }: {
+  tour: Tour;
   isInGroup: boolean;
   isHost: boolean;
   hostCopy: string;
   guestCopy: string;
   onBegin: () => void;
 }) {
+  // Pull the first real stop from the tour so the peek displays
+  // authentic content instead of "sample" placeholder text. Falls back
+  // gracefully if the tour hasn't been authored yet.
+  const stops = tour.unstructuredStops ?? tour.stops ?? [];
+  const sample = stops[0];
+  const stopTitle = sample?.title || 'Tour stop';
+  const stopBlurb = (sample?.seed?.text || sample?.notice?.prompt || '')
+    .replace(/\[photo:\s*\d*\s*\]/gi, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .trim()
+    .slice(0, 220);
+
   return (
     <div className="rounded-2xl shadow-lg p-5 space-y-4 text-left animate-fade-in" style={{ backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)' }}>
       <p className="text-[14px] uppercase tracking-[0.18em] font-display font-semibold" style={{ color: 'var(--th-primary)' }}>
         Stop 1
       </p>
-      <p className="text-[20px] font-serif text-text-primary leading-snug">
-        A sample stop title
+      <p className="text-[20px] font-serif text-text-primary leading-snug font-semibold">
+        {stopTitle}
       </p>
-      {isInGroup ? (
-        <p className="text-[16px] text-text-secondary leading-relaxed italic">
-          {isHost ? hostCopy : guestCopy}
+      {stopBlurb && (
+        <p className="text-[15px] font-serif text-text-secondary leading-relaxed">
+          {stopBlurb}{stopBlurb.length === 220 ? '…' : ''}
         </p>
-      ) : (
-        <p className="text-[15px] text-text-secondary leading-relaxed">
-          When you tap a real pin you&apos;ll see a description of the stop here.
+      )}
+      {isInGroup && (
+        <p className="text-[15px] text-text-primary leading-relaxed italic border-t pt-3" style={{ borderColor: 'var(--th-border)' }}>
+          {isHost ? hostCopy : guestCopy}
         </p>
       )}
       <button
@@ -433,76 +450,99 @@ function MockParticipantImIn({ onTap }: { onTap: () => void }) {
 
 type WhatStep = 'find' | 'learn-discuss' | 'develop';
 
+const ACTION_DESCRIPTIONS: Record<'FIND' | 'LEARN' | 'DISCUSS', string> = {
+  FIND: 'Look for something in the area.',
+  LEARN: 'Read or listen to learn about that site.',
+  DISCUSS: 'Talk through an interesting question with your friend!',
+};
+
 function WhatYouDoScreen({ onAdvance }: { onAdvance: () => void }) {
   const [step, setStep] = useState<WhatStep>('find');
-  const developRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const developRef = useRef<HTMLElement | null>(null);
 
+  // Once the explorer has revealed LEARN/DISCUSS, the next tap snaps
+  // to the Develop section. We programmatically scrollIntoView once
+  // step flips to 'develop'.
   useEffect(() => {
     if (step !== 'develop') return;
     const el = developRef.current;
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [step]);
 
-  const advanceTap = () => {
+  const advanceTap = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (step === 'find') setStep('learn-discuss');
     else if (step === 'learn-discuss') setStep('develop');
   };
 
   return (
     <div
-      onClick={step === 'develop' ? undefined : advanceTap}
-      className="space-y-10 cursor-pointer select-none"
+      ref={scrollRef}
+      className="absolute inset-0 overflow-y-auto"
+      style={{ scrollSnapType: 'y mandatory' }}
     >
-      <div className="space-y-3">
-        <p className="text-[20px] text-text-secondary">Each stop will have you</p>
-        <ActionRow label="FIND" />
-      </div>
-
-      {(step === 'learn-discuss' || step === 'develop') && (
-        <div className="space-y-3 animate-fade-in">
-          <p className="text-[20px] text-text-secondary">Then you will</p>
-          <ActionRow label="LEARN" />
-          <p className="text-[18px] italic text-text-secondary">or</p>
-          <ActionRow label="DISCUSS" />
+      {/* Section 1 — actions reveal sequence */}
+      <section
+        onClick={step === 'develop' ? undefined : advanceTap}
+        className="relative min-h-full flex flex-col justify-center space-y-8 px-5 pt-10 pb-6 cursor-pointer select-none"
+        style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+      >
+        <div className="space-y-3">
+          <p className="text-[24px] italic text-text-secondary">Each stop will have you</p>
+          <ActionRow label="FIND" />
+          <p className="text-[16px] text-text-primary">{ACTION_DESCRIPTIONS.FIND}</p>
         </div>
-      )}
 
-      {step !== 'develop' && (
-        <p className="text-[14px] italic text-text-secondary animate-fade-in">
-          Tap the screen to continue&hellip;
-        </p>
-      )}
+        {(step === 'learn-discuss' || step === 'develop') && (
+          <div className="space-y-6 animate-fade-in">
+            <p className="text-[24px] italic text-text-secondary">Then you will</p>
+            <div className="space-y-2">
+              <ActionRow label="LEARN" />
+              <p className="text-[16px] text-text-primary">{ACTION_DESCRIPTIONS.LEARN}</p>
+            </div>
+            <p className="text-[24px] italic text-text-secondary text-center">or</p>
+            <div className="space-y-2">
+              <ActionRow label="DISCUSS" />
+              <p className="text-[16px] text-text-primary">{ACTION_DESCRIPTIONS.DISCUSS}</p>
+            </div>
+          </div>
+        )}
 
-      {step === 'develop' && (
-        <div
-          ref={developRef}
-          className="space-y-6 animate-fade-in pt-8"
-        >
-          <p className="text-[28px] font-display font-bold leading-snug text-text-primary">
-            Develop your own historical explanation as you question and discuss together!
+        {step !== 'develop' && (
+          <p className="text-[14px] italic text-text-secondary animate-fade-in">
+            Tap the screen to continue&hellip;
           </p>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAdvance();
-            }}
-            className="w-full py-3.5 rounded-lg text-[18px] font-semibold bg-aged-gold text-white"
-          >
-            Next
-          </button>
-        </div>
-      )}
+        )}
+      </section>
+
+      {/* Section 2 — Develop your own historical explanation */}
+      <section
+        ref={developRef}
+        className="min-h-full flex flex-col justify-center space-y-8 px-5 pt-10 pb-6"
+        style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+      >
+        <p className="text-[30px] font-display font-bold leading-snug text-text-primary text-center">
+          Develop your own historical explanation as you question and discuss together!
+        </p>
+        <button
+          onClick={onAdvance}
+          className="w-full py-3.5 rounded-lg text-[18px] font-semibold bg-aged-gold text-white"
+        >
+          Next
+        </button>
+      </section>
     </div>
   );
 }
 
 function ActionRow({ label }: { label: 'FIND' | 'LEARN' | 'DISCUSS' }) {
   return (
-    <div className="flex items-end justify-between gap-3 px-4 py-2" style={{ color: 'var(--th-accent-dark)' }}>
-      <h3 className="uppercase tracking-[0.12em] font-display font-bold leading-none" style={{ fontSize: 52 }}>
+    <div className="flex items-end justify-between gap-3 px-2 py-1" style={{ color: 'var(--th-accent-dark)' }}>
+      <h3 className="uppercase tracking-[0.12em] font-display font-bold leading-none" style={{ fontSize: 40 }}>
         {label}
       </h3>
-      <ActionGlyph label={label} size={56} />
+      <ActionGlyph label={label} size={44} />
     </div>
   );
 }
@@ -522,7 +562,6 @@ function ActionGlyph({ label, size }: { label: 'FIND' | 'LEARN' | 'DISCUSS'; siz
       <path d="M12 2a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2z" />
     </svg>
   );
-  // DISCUSS
   return (
     <svg {...common}>
       <circle cx="9" cy="7" r="3" />
@@ -607,24 +646,21 @@ function YourThinkingScreen({ onAdvance }: { onAdvance: () => void }) {
           targetSelector="[data-inquiries-button]"
           dimOpacity={0.78}
           padding={10}
-          message={
-            <span>
-              <strong>SHARE</strong> to the community:<br />
-              If something makes you curious, or you have a good inquiry,{' '}
-              tap here to share!
-            </span>
-          }
+          message={<ShareCallout />}
           arrow={<BouncingDownArrow />}
         />
       )}
 
       {step === 'modal-spotlight' && (
+        // The Inquiries modal stays visible — no dim. Just a circle
+        // around the close X so the explorer sees the input UI as it
+        // really looks. They tap X to close, the close button leaves
+        // the DOM, and we auto-advance.
         <SpotlightOverlay
           targetSelector="[data-question-close]"
-          dimOpacity={0.78}
           padding={6}
           circleTarget
-          message="Tap the X to close this when you're done."
+          dim={false}
         />
       )}
     </div>
@@ -640,6 +676,27 @@ function BouncingDownArrow() {
         <polyline points="5 11 12 18 19 11" />
       </svg>
     </span>
+  );
+}
+
+function ShareCallout() {
+  return (
+    <div
+      className="inline-block max-w-md text-left px-5 py-4 rounded-2xl border-2"
+      style={{
+        backgroundColor: 'var(--th-surface)',
+        borderColor: 'var(--th-secondary)',
+        color: 'var(--th-text-primary)',
+        boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
+      }}
+    >
+      <p className="text-[18px] font-display font-semibold leading-snug">
+        <strong>SHARE</strong> to the community:
+      </p>
+      <p className="mt-1 text-[16px] font-serif leading-snug">
+        If something makes you curious, or you have a good inquiry, tap here to share!
+      </p>
+    </div>
   );
 }
 

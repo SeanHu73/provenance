@@ -40,6 +40,11 @@ interface Props {
   /** Fires when the user taps anywhere on the DIM (one of the four
    *  surrounding panels). */
   onOutsideTap?: () => void;
+  /** When false, skip the dim panels entirely — just draw the ring
+   *  over the target. Useful when the underlying UI must remain
+   *  visible (e.g. the Inquiries modal stays readable while we cue
+   *  the close X). */
+  dim?: boolean;
 }
 
 export default function SpotlightOverlay({
@@ -51,6 +56,7 @@ export default function SpotlightOverlay({
   circleTarget = false,
   onTargetTap,
   onOutsideTap,
+  dim = true,
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -117,26 +123,30 @@ export default function SpotlightOverlay({
   // exactly tile the viewport with no gaps and no overlap.
   return createPortal(
     <div className="fixed inset-0 z-[80] pointer-events-none animate-fade-in">
-      <div
-        className="absolute pointer-events-auto"
-        style={{ top: 0, left: 0, right: 0, height: Math.max(0, holeTop), backgroundColor: bg }}
-        onClick={() => onOutsideTap?.()}
-      />
-      <div
-        className="absolute pointer-events-auto"
-        style={{ top: holeBottom, left: 0, right: 0, bottom: 0, backgroundColor: bg }}
-        onClick={() => onOutsideTap?.()}
-      />
-      <div
-        className="absolute pointer-events-auto"
-        style={{ top: holeTop, left: 0, width: Math.max(0, holeLeft), height: holeHeight, backgroundColor: bg }}
-        onClick={() => onOutsideTap?.()}
-      />
-      <div
-        className="absolute pointer-events-auto"
-        style={{ top: holeTop, left: holeRight, right: 0, height: holeHeight, backgroundColor: bg }}
-        onClick={() => onOutsideTap?.()}
-      />
+      {dim && (
+        <>
+          <div
+            className="absolute pointer-events-auto"
+            style={{ top: 0, left: 0, right: 0, height: Math.max(0, holeTop), backgroundColor: bg }}
+            onClick={() => onOutsideTap?.()}
+          />
+          <div
+            className="absolute pointer-events-auto"
+            style={{ top: holeBottom, left: 0, right: 0, bottom: 0, backgroundColor: bg }}
+            onClick={() => onOutsideTap?.()}
+          />
+          <div
+            className="absolute pointer-events-auto"
+            style={{ top: holeTop, left: 0, width: Math.max(0, holeLeft), height: holeHeight, backgroundColor: bg }}
+            onClick={() => onOutsideTap?.()}
+          />
+          <div
+            className="absolute pointer-events-auto"
+            style={{ top: holeTop, left: holeRight, right: 0, height: holeHeight, backgroundColor: bg }}
+            onClick={() => onOutsideTap?.()}
+          />
+        </>
+      )}
 
       {/* Visual ring around the hole. Pointer-events-none so clicks
           on the target pass through to the element underneath. */}
@@ -153,23 +163,31 @@ export default function SpotlightOverlay({
         }}
       />
 
-      {message && (
-        <div className="absolute inset-x-0 top-[18%] px-8 text-center pointer-events-none">
-          <div
-            className="text-[22px] font-display font-semibold leading-snug"
-            style={{ color: 'var(--th-surface)', textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}
-          >
-            {message}
-          </div>
-        </div>
-      )}
-
-      {arrow && (
+      {(message || arrow) && (
+        // Stack message + arrow vertically ABOVE the target so the
+        // callout reads as a single tooltip pointing down at the
+        // spotlit element. `bottom` is computed so the stack's bottom
+        // edge sits ~12 px above the spotlight ring.
         <div
-          className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
-          style={{ top: holeTop - 120 }}
+          className="absolute left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center gap-3 px-5"
+          style={{
+            bottom: `calc(100vh - ${holeTop}px + 12px)`,
+            maxWidth: '92vw',
+          }}
         >
-          {arrow}
+          {message && (
+            <div
+              className="text-center text-[22px] font-display font-semibold leading-snug"
+              style={
+                dim
+                  ? { color: 'var(--th-surface)', textShadow: '0 2px 8px rgba(0,0,0,0.6)' }
+                  : { color: 'var(--th-text-primary)' }
+              }
+            >
+              {message}
+            </div>
+          )}
+          {arrow && <div>{arrow}</div>}
         </div>
       )}
 
