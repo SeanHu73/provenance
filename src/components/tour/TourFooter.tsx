@@ -78,6 +78,7 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
           )}
         </button>
         <button
+          data-auto-button
           onClick={() => setAutoplayPref(!autoplayPref)}
           className={`relative flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] uppercase tracking-wider font-semibold transition-colors border ${
             autoplayPref
@@ -153,8 +154,9 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
             <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: 'var(--th-border)' }}>
               <h3 className="text-base font-semibold text-text-primary">Ask a question</h3>
               <button
+                data-question-close
                 onClick={() => setShowQuestionInput(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-text-secondary hover:bg-sandstone-light/30 text-lg"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-text-secondary hover:bg-sandstone-light/30 text-2xl"
               >
                 &times;
               </button>
