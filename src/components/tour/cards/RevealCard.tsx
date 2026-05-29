@@ -88,7 +88,7 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
               Hide text
             </button>
           )}
-          <SectionSubtitle className="mb-3">Context</SectionSubtitle>
+          <SectionSubtitle className="mb-2">Context</SectionSubtitle>
           <PhotoContent
             text={stop.reveal.text}
             photos={stop.reveal.photos || []}

@@ -108,15 +108,15 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
       <ActionTitle action="LEARN" />
       {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedAutoplay} />}
       {stop.seed.text ? (
-        <>
-          <SectionSubtitle>Background</SectionSubtitle>
+        <div>
+          <SectionSubtitle className="mb-2">Background</SectionSubtitle>
           <PhotoContent
             text={stop.seed.text}
             photos={stop.seed.photos || []}
             legacyPhotoUrl={stop.seed.photoUrl}
             legacyPhotoCaption={stop.seed.photoCaption}
           />
-        </>
+        </div>
       ) : !stop.seed.audioUrl && (
         <p className="text-base text-text-secondary italic">Take a moment to look around this spot.</p>
       )}

@@ -31,10 +31,12 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
       {/* Title */}
       <ActionTitle action="FIND" />
 
-      <SectionSubtitle>Setting the scene...</SectionSubtitle>
-      <p className="text-[20px] font-semibold text-text-primary">
-        Are you looking at this:
-      </p>
+      <div>
+        <SectionSubtitle className="mb-2">Setting the scene...</SectionSubtitle>
+        <p className="text-[20px] font-semibold text-text-primary">
+          Are you looking at this:
+        </p>
+      </div>
 
       {/* Scene photo */}
       {eq.scenePhotoUrl && (

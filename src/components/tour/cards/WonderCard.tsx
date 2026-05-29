@@ -143,12 +143,14 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
         {wonder.audioUrl && (
           <AudioButton audioUrl={wonder.audioUrl} title={wonder.audioTitle} autoplay={wonderAutoplay} />
         )}
-        {!asInstructions && <SectionSubtitle>Background</SectionSubtitle>}
-        <PhotoContent
-          text={background}
-          photos={wonder.questionBackgroundPhotos || []}
-          textClass="text-[19px] leading-relaxed font-serif text-text-primary text-left"
-        />
+        <div>
+          {!asInstructions && <SectionSubtitle className="mb-2">Background</SectionSubtitle>}
+          <PhotoContent
+            text={background}
+            photos={wonder.questionBackgroundPhotos || []}
+            textClass="text-[19px] leading-relaxed font-serif text-text-primary text-left"
+          />
+        </div>
         {wonder.photos && wonder.photos.length > 0 && (
           <PhotoContent text="" photos={wonder.photos} />
         )}

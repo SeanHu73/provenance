@@ -74,15 +74,17 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <ActionTitle action="RESPOND" />
-        <SectionSubtitle>Share your discussion...</SectionSubtitle>
-        <div className="space-y-2">
-          <p className="text-[18px] leading-relaxed text-text-primary">
-            You will only be asked to record an answer here and at the end. All others are optional.
-          </p>
-          <p className="text-[14px] italic leading-relaxed text-text-secondary">
-            This allows you to look back and see how your thinking has changed.
-            It also helps our team learn with you.
-          </p>
+        <div>
+          <SectionSubtitle className="mb-2">Share your discussion...</SectionSubtitle>
+          <div className="space-y-2">
+            <p className="text-[18px] leading-relaxed text-text-primary">
+              You will only be asked to record an answer here and at the end. All others are optional.
+            </p>
+            <p className="text-[14px] italic leading-relaxed text-text-secondary">
+              This allows you to look back and see how your thinking has changed.
+              It also helps our team learn with you.
+            </p>
+          </div>
         </div>
         <SnapScrollHint />
       </section>

@@ -806,11 +806,13 @@ export function MidwayCheckinCard({
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <div>
-          <ActionTitle action="LEARN" investigation className="mb-3" />
-          <SectionSubtitle className="mb-2">Mid point check-in</SectionSubtitle>
-          <p className="text-[18px] font-serif text-text-primary leading-relaxed">
-            So these are the stops you have seen so far...
-          </p>
+          <ActionTitle action="LEARN" investigation />
+          <div className="mt-5">
+            <SectionSubtitle className="mb-2">Mid point check-in</SectionSubtitle>
+            <p className="text-[18px] font-serif text-text-primary leading-relaxed">
+              So these are the stops you have seen so far...
+            </p>
+          </div>
         </div>
 
         {visitedStops.length > 0 && (
@@ -842,14 +844,16 @@ export function MidwayCheckinCard({
               autoplay={bgAutoplay}
             />
           )}
-          {!tour.midwayQuestionBackgroundAsInstructions && (
-            <SectionSubtitle>Background</SectionSubtitle>
-          )}
-          <PhotoContent
-            text={background}
-            photos={tour.midwayQuestionBackgroundPhotos || []}
-            textClass="text-[19px] leading-relaxed font-serif text-text-primary text-left"
-          />
+          <div>
+            {!tour.midwayQuestionBackgroundAsInstructions && (
+              <SectionSubtitle className="mb-2">Background</SectionSubtitle>
+            )}
+            <PhotoContent
+              text={background}
+              photos={tour.midwayQuestionBackgroundPhotos || []}
+              textClass="text-[19px] leading-relaxed font-serif text-text-primary text-left"
+            />
+          </div>
         </section>
       )}
 

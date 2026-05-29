@@ -126,12 +126,14 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
             autoplay={bgAutoplay}
           />
         )}
-        {!asInstructions && <SectionSubtitle>Background</SectionSubtitle>}
-        <PhotoContent
-          text={background}
-          photos={eq.questionBackgroundPhotos || []}
-          textClass="text-[19px] leading-relaxed font-serif text-text-primary text-left"
-        />
+        <div>
+          {!asInstructions && <SectionSubtitle className="mb-2">Background</SectionSubtitle>}
+          <PhotoContent
+            text={background}
+            photos={eq.questionBackgroundPhotos || []}
+            textClass="text-[19px] leading-relaxed font-serif text-text-primary text-left"
+          />
+        </div>
         <SnapScrollHint />
       </section>
 

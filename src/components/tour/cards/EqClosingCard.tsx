@@ -133,12 +133,14 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
           style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
         >
           <ActionTitle action="LEARN" investigation />
-          <SectionSubtitle>Tour complete</SectionSubtitle>
-          {eq.closingFraming && (
-            <p className="text-[19px] leading-relaxed font-serif text-text-primary">
-              <FormattedText text={eq.closingFraming} />
-            </p>
-          )}
+          <div>
+            <SectionSubtitle className="mb-2">Tour complete</SectionSubtitle>
+            {eq.closingFraming && (
+              <p className="text-[19px] leading-relaxed font-serif text-text-primary">
+                <FormattedText text={eq.closingFraming} />
+              </p>
+            )}
+          </div>
           {eq.closingAudioUrl && (
             <AudioButton audioUrl={eq.closingAudioUrl} title={eq.closingAudioTitle} autoplay={shouldAutoplay} />
           )}
@@ -171,7 +173,7 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
 
           {/* Main EQ closing question */}
           <div className="space-y-3">
-            <SectionSubtitle>Closing questions</SectionSubtitle>
+            <SectionSubtitle className="-mb-1">Closing questions</SectionSubtitle>
             <QuestionText text={eq.question} sizeClass="text-[26px]" />
             <div className="space-y-2">
               {eq.finalReflectionPrompt && (

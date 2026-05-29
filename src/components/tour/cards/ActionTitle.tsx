@@ -64,10 +64,7 @@ export default function ActionTitle({
       {opinion && (
         <span
           className="inline-block mt-2 text-[11px] uppercase tracking-wider font-semibold px-2.5 py-0.5 rounded-full"
-          style={{
-            color: 'var(--th-text-secondary)',
-            backgroundColor: 'color-mix(in srgb, var(--th-text-secondary) 18%, transparent)',
-          }}
+          style={{ color: '#FFFFFF', backgroundColor: '#3F3F46' }}
         >
           Opinion
         </span>

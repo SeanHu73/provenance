@@ -145,12 +145,14 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
             autoplay={bgAutoplay}
           />
         )}
-        {!asInstructions && <SectionSubtitle>Background</SectionSubtitle>}
-        <PhotoContent
-          text={background}
-          photos={item.questionBackgroundPhotos || []}
-          textClass="text-[19px] leading-relaxed font-serif text-text-primary text-left"
-        />
+        <div>
+          {!asInstructions && <SectionSubtitle className="mb-2">Background</SectionSubtitle>}
+          <PhotoContent
+            text={background}
+            photos={item.questionBackgroundPhotos || []}
+            textClass="text-[19px] leading-relaxed font-serif text-text-primary text-left"
+          />
+        </div>
         <SnapScrollHint />
       </section>
 
