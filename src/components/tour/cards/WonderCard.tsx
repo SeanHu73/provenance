@@ -23,6 +23,9 @@ import UserChoicePanel from './UserChoicePanel';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoom } from '@/context/RoomContext';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
+import { useTour } from '@/context/TourContext';
+import { logOpinionDial, logUserChoice } from '@/lib/tour-logger';
+import { getActiveStops } from '@/lib/tours-store';
 
 interface Props {
   stop: Stop;
@@ -141,6 +144,17 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [chosen?.question]);
 
+  const { tour, session } = useTour();
+
+  // Look up our stop's index for logging — same index used by the
+  // legacy stop_entered event so analytics can join rows by stop.
+  const stopIndexForLog = useMemo(() => {
+    if (!tour) return 0;
+    const stops = getActiveStops(tour);
+    const idx = stops.findIndex((s) => s.id === stop.id);
+    return idx >= 0 ? idx : 0;
+  }, [tour, stop.id]);
+
   const handlePick = useCallback(
     (question: string, isCustom: boolean) => {
       if (isInRoom) {
@@ -148,8 +162,44 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
       } else {
         setLocalChoice({ question, isCustom });
       }
+      // Log the pick — only the picker fires this. Other members see
+      // the choice mirrored via the room doc and don't log a row.
+      if (tour && session) {
+        logUserChoice({
+          tourId: tour.id,
+          sessionId: session.id,
+          tourTitle: tour.title,
+          stopIndex: stopIndexForLog,
+          stopTitle: stop.title,
+          questionKey: userChoiceKey,
+          chosenQuestion: question,
+          isCustom,
+        });
+      }
     },
-    [isInRoom, selectUserChoiceQuestion, userChoiceKey],
+    [isInRoom, selectUserChoiceQuestion, userChoiceKey, tour, session, stopIndexForLog, stop.title],
+  );
+
+  const handleOpinionResolved = useCallback(
+    (data: { myPosition: number; otherPositions: number[]; averageDistance: number; similarity: 'similar' | 'different' }) => {
+      if (!tour || !session) return;
+      logOpinionDial({
+        tourId: tour.id,
+        sessionId: session.id,
+        tourTitle: tour.title,
+        stopIndex: stopIndexForLog,
+        stopTitle: stop.title,
+        questionKey: opinionKey,
+        questionText: wonder.question,
+        leftLabel: wonder.opinionSpectrumLeft || '',
+        rightLabel: wonder.opinionSpectrumRight || '',
+        myPosition: data.myPosition,
+        otherPositions: data.otherPositions,
+        similarity: data.similarity,
+        averageDistance: data.averageDistance,
+      });
+    },
+    [tour, session, stopIndexForLog, stop.title, opinionKey, wonder.question, wonder.opinionSpectrumLeft, wonder.opinionSpectrumRight],
   );
 
   const effectiveQuestion = useUserChoice ? (chosen?.question ?? wonder.question) : wonder.question;
@@ -161,6 +211,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
       rightLabel={wonder.opinionSpectrumRight!}
       onContinue={onContinue}
       continueLabel={buttonLabel}
+      onResolved={handleOpinionResolved}
     />
   ) : (
     <div className="space-y-2">

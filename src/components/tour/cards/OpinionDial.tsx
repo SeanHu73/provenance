@@ -19,7 +19,7 @@
  * RoomContext.setOpinionDialPosition / revealOpinionDial.
  */
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRoom } from '@/context/RoomContext';
 import BackButton from './BackButton';
 
@@ -32,6 +32,14 @@ interface Props {
   onContinue: () => void;
   /** Continue-button label override (defaults to "Continue"). */
   continueLabel?: string;
+  /** Fires once every member has chosen + revealed, with this member's
+   *  perspective. The parent uses it to log the round to analytics. */
+  onResolved?: (data: {
+    myPosition: number;
+    otherPositions: number[];
+    averageDistance: number;
+    similarity: 'similar' | 'different';
+  }) => void;
 }
 
 const SIMILAR_THRESHOLD = 0.25;
@@ -42,6 +50,7 @@ export default function OpinionDial({
   rightLabel,
   onContinue,
   continueLabel = 'Continue',
+  onResolved,
 }: Props) {
   const { room, mySessionId, setOpinionDialPosition, revealOpinionDial } = useRoom();
   const state = room?.opinionDials?.[questionKey];
@@ -71,12 +80,35 @@ export default function OpinionDial({
       .filter((p): p is number => typeof p === 'number');
   }, [allRevealed, state, room, mySessionId]);
 
-  // Distance-based message
-  const message = useMemo(() => {
-    if (!allRevealed || myPosition === null || otherDots.length === 0) return null;
+  // Average distance + similarity verdict
+  const verdict = useMemo(() => {
+    if (!allRevealed || myPosition === null || otherDots.length === 0) {
+      return null;
+    }
     const avg = otherDots.reduce((s, p) => s + Math.abs(p - myPosition), 0) / otherDots.length;
-    return avg < SIMILAR_THRESHOLD ? 'Quite similar!' : "Wow, quite different. Why's that?";
+    const similarity: 'similar' | 'different' = avg < SIMILAR_THRESHOLD ? 'similar' : 'different';
+    return { avg, similarity };
   }, [allRevealed, myPosition, otherDots]);
+
+  const message = verdict
+    ? verdict.similarity === 'similar'
+      ? 'Quite similar!'
+      : "Wow, quite different. Why's that?"
+    : null;
+
+  // Fire onResolved exactly once per round when the verdict appears.
+  const resolvedFiredRef = useRef(false);
+  useEffect(() => {
+    if (!verdict || myPosition === null) return;
+    if (resolvedFiredRef.current) return;
+    resolvedFiredRef.current = true;
+    onResolved?.({
+      myPosition,
+      otherPositions: otherDots,
+      averageDistance: verdict.avg,
+      similarity: verdict.similarity,
+    });
+  }, [verdict, myPosition, otherDots, onResolved]);
 
   return (
     <div className="space-y-3">

@@ -47,6 +47,7 @@ import {
   startTour as startTourImpl,
   subscribeToRoom,
 } from '@/lib/room-store';
+import { setLogContext } from '@/lib/tour-logger';
 
 const STORAGE_KEY = 'provenance-room-code';
 const HEARTBEAT_MS = 30 * 1000;
@@ -130,6 +131,20 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     });
     return () => unsub();
   }, [roomCode]);
+
+  // Keep the tour-logger context in sync so every Google Sheets row
+  // is tagged with the room code, host flag, and current member count.
+  useEffect(() => {
+    if (!room || !mySessionId) {
+      setLogContext({ roomCode: null, isHost: true, memberCount: 1 });
+      return;
+    }
+    setLogContext({
+      roomCode: room.code,
+      isHost: room.hostSessionId === mySessionId,
+      memberCount: room.members.length,
+    });
+  }, [room, mySessionId]);
 
   // If we have a code but no room data, try a one-off fetch as a
   // belt-and-suspenders against transient subscription delays.

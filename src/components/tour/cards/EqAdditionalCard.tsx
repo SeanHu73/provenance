@@ -18,6 +18,8 @@ import OpinionDial from './OpinionDial';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoom } from '@/context/RoomContext';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
+import { useTour } from '@/context/TourContext';
+import { logOpinionDial } from '@/lib/tour-logger';
 
 interface Props {
   tour: Tour;
@@ -88,6 +90,8 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
     !!(aq.opinionSpectrumLeft || '').trim() &&
     !!(aq.opinionSpectrumRight || '').trim();
 
+  const { session: tourSession } = useTour();
+
   const continueRow = useDial ? (
     <OpinionDial
       questionKey="eq:additional:0"
@@ -95,6 +99,24 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
       rightLabel={aq.opinionSpectrumRight!}
       onContinue={onContinue}
       continueLabel="Let's find the first stop..."
+      onResolved={(data) => {
+        if (!tourSession) return;
+        logOpinionDial({
+          tourId: tour.id,
+          sessionId: tourSession.id,
+          tourTitle: tour.title,
+          stopIndex: -1,
+          stopTitle: 'EQ Additional',
+          questionKey: 'eq:additional:0',
+          questionText: aq.question,
+          leftLabel: aq.opinionSpectrumLeft || '',
+          rightLabel: aq.opinionSpectrumRight || '',
+          myPosition: data.myPosition,
+          otherPositions: data.otherPositions,
+          similarity: data.similarity,
+          averageDistance: data.averageDistance,
+        });
+      }}
     />
   ) : (
     <div className="space-y-2">

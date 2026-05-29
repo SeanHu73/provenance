@@ -22,6 +22,8 @@ import OpinionDial from './OpinionDial';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoom } from '@/context/RoomContext';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
+import { useTour } from '@/context/TourContext';
+import { logOpinionDial } from '@/lib/tour-logger';
 
 interface Props {
   tour: Tour;
@@ -105,6 +107,8 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
     !!(item.opinionSpectrumLeft || '').trim() &&
     !!(item.opinionSpectrumRight || '').trim();
 
+  const { session: tourSession } = useTour();
+
   const continueRow = useDial ? (
     <OpinionDial
       questionKey={`eq:closing_additional:${idx}`}
@@ -112,6 +116,24 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
       rightLabel={item.opinionSpectrumRight!}
       onContinue={onContinue}
       continueLabel={continueLabel}
+      onResolved={(data) => {
+        if (!tourSession) return;
+        logOpinionDial({
+          tourId: tour.id,
+          sessionId: tourSession.id,
+          tourTitle: tour.title,
+          stopIndex: -1,
+          stopTitle: `EQ Closing Additional ${idx + 1}`,
+          questionKey: `eq:closing_additional:${idx}`,
+          questionText: item.question,
+          leftLabel: item.opinionSpectrumLeft || '',
+          rightLabel: item.opinionSpectrumRight || '',
+          myPosition: data.myPosition,
+          otherPositions: data.otherPositions,
+          similarity: data.similarity,
+          averageDistance: data.averageDistance,
+        });
+      }}
     />
   ) : (
     <div className="space-y-2">

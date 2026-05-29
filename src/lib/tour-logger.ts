@@ -4,7 +4,31 @@
  * Fire-and-forget calls to /api/log-tour, which appends rows to
  * the same Google Sheet as the ask logger. No await, no error
  * handling — if it fails, it fails silently.
+ *
+ * Group context (room code, host flag, member count) is held in a
+ * module-level slot and merged onto every event row by `fire()`.
+ * RoomContext keeps it current via `setLogContext()`.
  */
+
+interface LogContext {
+  roomCode: string | null;
+  isHost: boolean;
+  memberCount: number;
+}
+
+let logContext: LogContext = {
+  roomCode: null,
+  isHost: true,
+  memberCount: 1,
+};
+
+/** Called by RoomContext whenever the room state changes (created,
+ *  joined, members updated, left). The logger merges these fields
+ *  onto every subsequent event row so analytics can group rows by
+ *  room and distinguish host vs participant. */
+export function setLogContext(ctx: LogContext): void {
+  logContext = ctx;
+}
 
 export function logReflection(opts: {
   tourId: string;
@@ -148,8 +172,81 @@ export function logStopEntered(opts: {
   });
 }
 
+/** Opinion-dial reveal — fired by each member's device once every
+ *  member has chosen + revealed. Each row records that member's own
+ *  position, the average distance from them to the others, and the
+ *  similarity verdict the explorer saw. */
+export function logOpinionDial(opts: {
+  tourId: string;
+  sessionId: string;
+  tourTitle: string;
+  stopIndex: number;
+  stopTitle: string;
+  questionKey: string;
+  questionText: string;
+  leftLabel: string;
+  rightLabel: string;
+  myPosition: number;
+  otherPositions: number[];
+  similarity: 'similar' | 'different';
+  averageDistance: number;
+}): void {
+  fire({
+    event: 'opinion_dial',
+    tourId: opts.tourId,
+    sessionId: opts.sessionId,
+    tourTitle: opts.tourTitle,
+    stopIndex: opts.stopIndex,
+    stopTitle: opts.stopTitle,
+    questionKey: opts.questionKey,
+    questionText: opts.questionText,
+    opinionLeftLabel: opts.leftLabel,
+    opinionRightLabel: opts.rightLabel,
+    opinionMyPosition: opts.myPosition,
+    opinionOtherPositions: opts.otherPositions.join(', '),
+    opinionSimilarity: opts.similarity,
+    opinionAvgDistance: opts.averageDistance,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+/** User-choice question pick — fired by the picker only (solo OR
+ *  first non-host in a group). Other members of the group don't fire
+ *  this event; their own row appears via the standard stop_entered
+ *  event. */
+export function logUserChoice(opts: {
+  tourId: string;
+  sessionId: string;
+  tourTitle: string;
+  stopIndex: number;
+  stopTitle: string;
+  questionKey: string;
+  chosenQuestion: string;
+  isCustom: boolean;
+}): void {
+  fire({
+    event: 'user_choice_picked',
+    tourId: opts.tourId,
+    sessionId: opts.sessionId,
+    tourTitle: opts.tourTitle,
+    stopIndex: opts.stopIndex,
+    stopTitle: opts.stopTitle,
+    questionKey: opts.questionKey,
+    userChoiceQuestion: opts.chosenQuestion,
+    userChoiceIsCustom: opts.isCustom,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 function fire(entry: Record<string, unknown>): void {
-  const payload = JSON.stringify(entry);
+  // Merge the current room context onto every event row.
+  const enriched = {
+    ...entry,
+    roomCode: logContext.roomCode,
+    isHost: logContext.isHost,
+    memberCount: logContext.memberCount,
+  };
+  const payload = JSON.stringify(enriched);
 
   // Try sendBeacon first — designed to survive page transitions on mobile
   if (typeof navigator !== 'undefined' && navigator.sendBeacon) {

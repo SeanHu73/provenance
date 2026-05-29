@@ -36,6 +36,21 @@ interface TourLogEntry {
   eqPerceptualSlider?: number | null;
   eqWhatChanged?: string;
   eqWhyChanged?: string;
+  // Group / room context (present on every event)
+  roomCode?: string | null;
+  isHost?: boolean;
+  memberCount?: number;
+  // Opinion dial
+  questionKey?: string;
+  opinionLeftLabel?: string;
+  opinionRightLabel?: string;
+  opinionMyPosition?: number;
+  opinionOtherPositions?: string;
+  opinionSimilarity?: 'similar' | 'different';
+  opinionAvgDistance?: number;
+  // User-choice question
+  userChoiceQuestion?: string;
+  userChoiceIsCustom?: boolean;
   timestamp: string;
 }
 
