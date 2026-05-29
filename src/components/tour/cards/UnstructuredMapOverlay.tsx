@@ -12,7 +12,7 @@ import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
 import SnapScrollHint from './SnapScrollHint';
-import ActionTitle, { InstructionsTitle } from './ActionTitle';
+import ActionTitle, { InstructionsTitle, SectionSubtitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
@@ -806,7 +806,8 @@ export function MidwayCheckinCard({
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <div>
-          <ActionTitle action="LEARN" investigation subtitle="Mid point check-in" className="mb-3" />
+          <ActionTitle action="LEARN" investigation className="mb-3" />
+          <SectionSubtitle className="mb-2">Mid point check-in</SectionSubtitle>
           <p className="text-[18px] font-serif text-text-primary leading-relaxed">
             So these are the stops you have seen so far...
           </p>
@@ -832,7 +833,7 @@ export function MidwayCheckinCard({
           {tour.midwayQuestionBackgroundAsInstructions ? (
             <InstructionsTitle />
           ) : (
-            <ActionTitle action="LEARN" subtitle="Background" />
+            <ActionTitle action="LEARN" />
           )}
           {tour.midwayQuestionBackgroundAudioUrl && (
             <AudioButton
@@ -840,6 +841,9 @@ export function MidwayCheckinCard({
               title={tour.midwayQuestionBackgroundAudioTitle}
               autoplay={bgAutoplay}
             />
+          )}
+          {!tour.midwayQuestionBackgroundAsInstructions && (
+            <SectionSubtitle>Background</SectionSubtitle>
           )}
           <PhotoContent
             text={background}

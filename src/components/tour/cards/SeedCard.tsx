@@ -19,7 +19,7 @@ import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import NoticeMapDisplay from './NoticeMapDisplay';
 import SnapScrollHint from './SnapScrollHint';
-import ActionTitle from './ActionTitle';
+import ActionTitle, { SectionSubtitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
@@ -105,15 +105,18 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   // Background block (shared across snap and non-snap layouts)
   const backgroundBlock = (
     <>
-      <ActionTitle action="LEARN" subtitle="Background" />
+      <ActionTitle action="LEARN" />
       {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedAutoplay} />}
       {stop.seed.text ? (
-        <PhotoContent
-          text={stop.seed.text}
-          photos={stop.seed.photos || []}
-          legacyPhotoUrl={stop.seed.photoUrl}
-          legacyPhotoCaption={stop.seed.photoCaption}
-        />
+        <>
+          <SectionSubtitle>Background</SectionSubtitle>
+          <PhotoContent
+            text={stop.seed.text}
+            photos={stop.seed.photos || []}
+            legacyPhotoUrl={stop.seed.photoUrl}
+            legacyPhotoCaption={stop.seed.photoCaption}
+          />
+        </>
       ) : !stop.seed.audioUrl && (
         <p className="text-base text-text-secondary italic">Take a moment to look around this spot.</p>
       )}

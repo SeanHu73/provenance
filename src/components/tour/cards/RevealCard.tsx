@@ -7,7 +7,7 @@ import FullscreenPhoto from './FullscreenPhoto';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import InquiryReminder from './InquiryReminder';
-import ActionTitle from './ActionTitle';
+import ActionTitle, { SectionSubtitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useTour } from '@/context/TourContext';
 
@@ -41,7 +41,7 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
   return (
     <div className="animate-fade-in space-y-4 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <ActionTitle action="LEARN" subtitle="Context" />
+      <ActionTitle action="LEARN" />
 
       {/* Audio player */}
       {hasAudio && <AudioButton audioUrl={stop.reveal.audioUrl!} title={stop.reveal.audioTitle} autoplay={shouldAutoplay} />}
@@ -88,6 +88,7 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
               Hide text
             </button>
           )}
+          <SectionSubtitle className="mb-3">Context</SectionSubtitle>
           <PhotoContent
             text={stop.reveal.text}
             photos={stop.reveal.photos || []}

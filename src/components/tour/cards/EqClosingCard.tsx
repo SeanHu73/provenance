@@ -24,7 +24,7 @@ import FormattedText from './FormattedText';
 import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import SnapScrollHint from './SnapScrollHint';
-import ActionTitle from './ActionTitle';
+import ActionTitle, { SectionSubtitle } from './ActionTitle';
 import JournalOverlay from '../JournalOverlay';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
@@ -132,7 +132,8 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
           className="relative min-h-full flex flex-col justify-center space-y-6 px-5 pt-10 pb-6"
           style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
         >
-          <ActionTitle action="LEARN" investigation subtitle="Tour complete" />
+          <ActionTitle action="LEARN" investigation />
+          <SectionSubtitle>Tour complete</SectionSubtitle>
           {eq.closingFraming && (
             <p className="text-[19px] leading-relaxed font-serif text-text-primary">
               <FormattedText text={eq.closingFraming} />
@@ -166,10 +167,11 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
             transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
           }}
         >
-          <ActionTitle action="RESPOND" investigation subtitle="Closing questions" />
+          <ActionTitle action="RESPOND" investigation />
 
           {/* Main EQ closing question */}
           <div className="space-y-3">
+            <SectionSubtitle>Closing questions</SectionSubtitle>
             <QuestionText text={eq.question} sizeClass="text-[26px]" />
             <div className="space-y-2">
               {eq.finalReflectionPrompt && (

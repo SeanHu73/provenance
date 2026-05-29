@@ -16,7 +16,7 @@ import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
 import SnapScrollHint from './SnapScrollHint';
-import ActionTitle, { InstructionsTitle } from './ActionTitle';
+import ActionTitle, { InstructionsTitle, SectionSubtitle } from './ActionTitle';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
@@ -117,7 +117,7 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
         {asInstructions ? (
           <InstructionsTitle />
         ) : (
-          <ActionTitle action="LEARN" investigation subtitle="Background" />
+          <ActionTitle action="LEARN" investigation />
         )}
         {eq.questionBackgroundAudioUrl && (
           <AudioButton
@@ -126,6 +126,7 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
             autoplay={bgAutoplay}
           />
         )}
+        {!asInstructions && <SectionSubtitle>Background</SectionSubtitle>}
         <PhotoContent
           text={background}
           photos={eq.questionBackgroundPhotos || []}

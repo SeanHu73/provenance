@@ -16,7 +16,7 @@ import BackButton from './BackButton';
 import MicButton from '../MicButton';
 import QuestionText from './QuestionText';
 import SnapScrollHint from './SnapScrollHint';
-import ActionTitle from './ActionTitle';
+import ActionTitle, { SectionSubtitle } from './ActionTitle';
 
 interface Props {
   tour: Tour;
@@ -73,7 +73,8 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
         className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        <ActionTitle action="RESPOND" investigation subtitle="Share your discussion..." />
+        <ActionTitle action="RESPOND" />
+        <SectionSubtitle>Share your discussion...</SectionSubtitle>
         <div className="space-y-2">
           <p className="text-[18px] leading-relaxed text-text-primary">
             You will only be asked to record an answer here and at the end. All others are optional.

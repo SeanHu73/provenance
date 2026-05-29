@@ -17,7 +17,7 @@ import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
 import SnapScrollHint from './SnapScrollHint';
-import ActionTitle, { InstructionsTitle } from './ActionTitle';
+import ActionTitle, { InstructionsTitle, SectionSubtitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
@@ -136,7 +136,7 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
         {asInstructions ? (
           <InstructionsTitle />
         ) : (
-          <ActionTitle action="LEARN" investigation subtitle="Background" />
+          <ActionTitle action="LEARN" investigation />
         )}
         {item.questionBackgroundAudioUrl && (
           <AudioButton
@@ -145,6 +145,7 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
             autoplay={bgAutoplay}
           />
         )}
+        {!asInstructions && <SectionSubtitle>Background</SectionSubtitle>}
         <PhotoContent
           text={background}
           photos={item.questionBackgroundPhotos || []}

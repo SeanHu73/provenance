@@ -9,20 +9,18 @@
  *   RESPOND  → pen-on-paper icon
  *
  * Layout: the action label sits on the LEFT, the matching icon on the
- * RIGHT of the card (with a small right margin) for breathing room.
- * Both render in bronze (--th-accent-dark) for a consistent look.
+ * RIGHT of the card (with a small right margin). Both render in bronze
+ * (--th-accent-dark) so the action header is visually consistent.
  *
- * `investigation` adds a "The Investigation" sub-title BELOW the action
- * label (theme-primary, smaller than the action). Used on every
- * EQ-related card (scene, discuss, additional, opening write, closing,
- * closing-additional, midway).
+ * `investigation` adds a black "The Investigation" sub-title BELOW the
+ * action label on EQ-related cards.
  *
- * `subtitle` renders an additional uppercase theme-primary line below
- * the action label (and below Investigation when both are present).
- * Used for the legacy page titles ("Background", "Context", "Setting
- * the scene...", "Tour complete", "Closing questions", "Mid point
- * check-in", "Share your discussion...") that the new spec keeps in
- * place underneath the new action title.
+ * Per-page subtitles (e.g. "Background", "Context", "Setting the
+ * scene...", "Tour complete", "Closing questions", "Mid point check-in",
+ * "Share your discussion...") are NOT rendered by this component. Each
+ * card renders the SectionSubtitle helper directly above its main
+ * content so the subtitle visually pairs with the text / question it
+ * introduces instead of being attached to the action header.
  */
 
 type Action = 'DISCUSS' | 'LEARN' | 'FIND' | 'RESPOND';
@@ -31,29 +29,25 @@ interface Props {
   action: Action;
   /** Small grey "Opinion" pill rendered under the action label. */
   opinion?: boolean;
-  /** "The Investigation" sub-title (smaller than the action, theme primary). */
+  /** Black "The Investigation" subtitle under the action label. */
   investigation?: boolean;
-  /** Legacy page subtitle ("Background", "Context", "Setting the scene...", etc.). */
-  subtitle?: string;
   /** Extra Tailwind classes on the outer wrapper. */
   className?: string;
 }
 
-const ICON_SIZE = 46;
+const ICON_SIZE = 64;
 const ACTION_TITLE_PX = 44;
-const SUB_TITLE_PX = 22;
+const INVESTIGATION_PX = 22;
 
 export default function ActionTitle({
   action,
   opinion = false,
   investigation = false,
-  subtitle,
   className = '',
 }: Props) {
   return (
     <div className={className}>
-      {/* Action row — label on the left, icon on the right (with a
-          small right margin so it doesn't crowd the card edge). */}
+      {/* Action row — label left, icon right (margin from edge). */}
       <div
         className="flex items-end justify-between gap-3 pr-2"
         style={{ color: 'var(--th-accent-dark)' }}
@@ -82,18 +76,9 @@ export default function ActionTitle({
       {investigation && (
         <p
           className="mt-2 uppercase tracking-[0.14em] font-display font-semibold leading-tight"
-          style={{ fontSize: SUB_TITLE_PX, color: 'var(--th-primary)' }}
+          style={{ fontSize: INVESTIGATION_PX, color: '#000' }}
         >
           The Investigation
-        </p>
-      )}
-
-      {subtitle && (
-        <p
-          className="mt-1 uppercase tracking-[0.14em] font-display font-semibold leading-tight"
-          style={{ fontSize: SUB_TITLE_PX, color: 'var(--th-primary)' }}
-        >
-          {subtitle}
         </p>
       )}
     </div>
@@ -107,7 +92,7 @@ function ActionIcon({ action, size }: { action: Action; size: number }) {
     viewBox: '0 0 24 24',
     fill: 'none' as const,
     stroke: 'currentColor',
-    strokeWidth: 1.9,
+    strokeWidth: 1.8,
     strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const,
     'aria-hidden': true,
@@ -148,10 +133,32 @@ function ActionIcon({ action, size }: { action: Action; size: number }) {
 }
 
 /**
+ * Per-page subtitle — used immediately above the main text / question
+ * a section introduces. Theme-primary, uppercase, 22px. Render this
+ * DIRECTLY ABOVE the question / paragraph it labels — never attached
+ * to the action title — so the subtitle reads as a label for that
+ * specific piece of content.
+ */
+export function SectionSubtitle({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <p
+      className={`uppercase tracking-[0.14em] font-display font-semibold leading-tight ${className}`}
+      style={{ fontSize: 22, color: 'var(--th-primary)' }}
+    >
+      {children}
+    </p>
+  );
+}
+
+/**
  * Italic "Instructions" title used in place of an ActionTitle when the
- * admin has flipped a question background into instructions mode. Same
- * theme-primary color and overall size as a subtitle, but italic and
- * NOT uppercase to make the swap visually obvious.
+ * admin has flipped a question background into instructions mode.
  */
 export function InstructionsTitle({ className = '' }: { className?: string }) {
   return (

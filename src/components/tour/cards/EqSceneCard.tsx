@@ -11,7 +11,7 @@ import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import FullscreenPhoto from './FullscreenPhoto';
 import FormattedText from './FormattedText';
-import ActionTitle from './ActionTitle';
+import ActionTitle, { SectionSubtitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
@@ -29,8 +29,9 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <ActionTitle action="FIND" investigation subtitle="Setting the scene..." />
+      <ActionTitle action="FIND" />
 
+      <SectionSubtitle>Setting the scene...</SectionSubtitle>
       <p className="text-[20px] font-semibold text-text-primary">
         Are you looking at this:
       </p>
