@@ -10,7 +10,7 @@
  * back to a single-section layout with the question shown directly.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Stop } from '@/lib/types';
 import PhotoContent from './PhotoContent';
 import AudioButton from './AudioButton';
@@ -19,6 +19,7 @@ import QuestionText from './QuestionText';
 import SnapScrollHint from './SnapScrollHint';
 import ActionTitle, { InstructionsTitle, SectionSubtitle } from './ActionTitle';
 import OpinionDial from './OpinionDial';
+import UserChoicePanel from './UserChoicePanel';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoom } from '@/context/RoomContext';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
@@ -91,13 +92,55 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
   const asInstructions = !!wonder.questionBackgroundAsInstructions;
   const discussTitle = <ActionTitle action="DISCUSS" opinion={isOpinion} />;
 
-  const { isInRoom } = useRoom();
+  const { room, mySessionId, isInRoom, selectUserChoiceQuestion } = useRoom();
   const opinionKey = `${stop.id}:wonder:${round}`;
   const useDial =
     isOpinion &&
     isInRoom &&
     !!(wonder.opinionSpectrumLeft || '').trim() &&
     !!(wonder.opinionSpectrumRight || '').trim();
+
+  // User-choice mode: explorer (or first non-host picker) chooses the
+  // question from a list or proposes their own.
+  const userChoiceOptions = wonder.userChoiceQuestions ?? [];
+  const useUserChoice = !!wonder.userChoiceEnabled && userChoiceOptions.filter((q) => q.trim()).length > 0;
+  const userChoiceKey = opinionKey; // share the same key shape
+
+  // Picker = first non-host member by joinedAt. Solo → self is picker.
+  const pickerSessionId = useMemo(() => {
+    if (!room) return null;
+    const candidates = room.members.filter((m) => m.sessionId !== room.hostSessionId);
+    if (candidates.length === 0) return null;
+    return [...candidates].sort((a, b) => a.joinedAt.localeCompare(b.joinedAt))[0].sessionId;
+  }, [room]);
+  const isPicker = !isInRoom || mySessionId === pickerSessionId;
+
+  // Choice source of truth: room (group) or local state (solo).
+  const groupChoice = room?.userChoiceSelections?.[userChoiceKey] ?? null;
+  const [localChoice, setLocalChoice] = useState<{ question: string; isCustom?: boolean } | null>(null);
+  const chosen = useUserChoice ? (isInRoom ? groupChoice : localChoice) : null;
+
+  // Auto-scroll the question section into view as soon as a choice
+  // appears (either local or pushed from the room).
+  const userChoiceQuestionRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!chosen) return;
+    const el = userChoiceQuestionRef.current;
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [chosen?.question]);
+
+  const handlePick = useCallback(
+    (question: string, isCustom: boolean) => {
+      if (isInRoom) {
+        void selectUserChoiceQuestion(userChoiceKey, question, isCustom);
+      } else {
+        setLocalChoice({ question, isCustom });
+      }
+    },
+    [isInRoom, selectUserChoiceQuestion, userChoiceKey],
+  );
+
+  const effectiveQuestion = useUserChoice ? (chosen?.question ?? wonder.question) : wonder.question;
 
   const continueRow = useDial ? (
     <OpinionDial
@@ -124,6 +167,55 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
     </div>
   );
 
+  // User-choice mode — two-snap-section layout: choice → question.
+  // The question section auto-scrolls into view as soon as the picker
+  // commits. Background-mode (`hasBackground`) is intentionally ignored
+  // here so the choice screen stays the explorer's first surface.
+  if (useUserChoice) {
+    return (
+      <div
+        className="animate-fade-in absolute inset-0 overflow-y-auto"
+        style={{ scrollSnapType: 'y mandatory' }}
+      >
+        <section
+          className="relative min-h-full flex flex-col justify-center space-y-6 px-5 pt-10 pb-6"
+          style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+        >
+          {discussTitle}
+          {isPicker ? (
+            <UserChoicePanel
+              options={userChoiceOptions.filter((q) => q.trim())}
+              onPick={handlePick}
+              stopId={stop.id}
+            />
+          ) : (
+            <p className="text-center text-[20px] italic leading-relaxed py-8" style={{ color: 'var(--th-text-secondary)' }}>
+              Your friend is choosing a question…
+            </p>
+          )}
+          {chosen && <SnapScrollHint />}
+        </section>
+        {chosen && (
+          <section
+            ref={userChoiceQuestionRef}
+            className="min-h-full flex flex-col justify-center space-y-6 px-5 pt-10 pb-6"
+            style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+          >
+            {discussTitle}
+            {wonder.audioUrl && (
+              <AudioButton audioUrl={wonder.audioUrl} title={wonder.audioTitle} autoplay={wonderAutoplay} />
+            )}
+            <QuestionText text={effectiveQuestion} />
+            {wonder.photos && wonder.photos.length > 0 && (
+              <PhotoContent text="" photos={wonder.photos} />
+            )}
+            {continueRow}
+          </section>
+        )}
+      </div>
+    );
+  }
+
   // No background → single-section layout. Question takes the new styled
   // treatment but renders directly with audio + photos around it.
   if (!hasBackground) {
@@ -131,7 +223,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
       <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
         {discussTitle}
         {wonder.audioUrl && <AudioButton audioUrl={wonder.audioUrl} title={wonder.audioTitle} autoplay={wonderAutoplay} />}
-        <QuestionText text={wonder.question} />
+        <QuestionText text={effectiveQuestion} />
         {wonder.photos && wonder.photos.length > 0 && (
           <PhotoContent text="" photos={wonder.photos} />
         )}
@@ -187,7 +279,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
         }}
       >
         {discussTitle}
-        <QuestionText text={wonder.question} />
+        <QuestionText text={effectiveQuestion} />
         {continueRow}
       </section>
     </div>

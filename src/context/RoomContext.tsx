@@ -41,6 +41,7 @@ import {
   readyAtBarrier as readyAtBarrierImpl,
   recordHostAdvance as recordHostAdvanceImpl,
   revealOpinionDial as revealOpinionDialImpl,
+  selectUserChoiceQuestion as selectUserChoiceQuestionImpl,
   setGroupPhase as setGroupPhaseImpl,
   setOpinionDialPosition as setOpinionDialPositionImpl,
   startTour as startTourImpl,
@@ -88,6 +89,8 @@ interface RoomContextValue {
   // Opinion-dial gamification
   setOpinionDialPosition: (key: string, position: number) => Promise<void>;
   revealOpinionDial: (key: string) => Promise<void>;
+  // User-choice questions (non-host picker)
+  selectUserChoiceQuestion: (key: string, question: string, isCustom: boolean) => Promise<void>;
 }
 
 const RoomCtx = createContext<RoomContextValue | null>(null);
@@ -306,6 +309,14 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     [roomCode, mySessionId],
   );
 
+  const selectUserChoiceQuestion = useCallback(
+    async (key: string, question: string, isCustom: boolean) => {
+      if (!roomCode || !mySessionId) return;
+      await selectUserChoiceQuestionImpl(roomCode, key, mySessionId, question, isCustom);
+    },
+    [roomCode, mySessionId],
+  );
+
   const value = useMemo<RoomContextValue>(() => {
     const isHost = !!(room && mySessionId && room.hostSessionId === mySessionId);
     const isInRoom = !!(room && mySessionId && room.members.some((m) => m.sessionId === mySessionId));
@@ -330,6 +341,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       readyAtBarrier,
       setOpinionDialPosition,
       revealOpinionDial,
+      selectUserChoiceQuestion,
     };
   }, [
     room,
@@ -349,6 +361,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     readyAtBarrier,
     setOpinionDialPosition,
     revealOpinionDial,
+    selectUserChoiceQuestion,
   ]);
 
   return <RoomCtx.Provider value={value}>{children}</RoomCtx.Provider>;

@@ -427,6 +427,12 @@ export interface Stop {
     /** Spectrum labels for opinion-type gamification in rooms. */
     opinionSpectrumLeft?: string;
     opinionSpectrumRight?: string;
+    /** When true, explorer picks from a list of admin-authored question
+     *  options (or proposes their own) instead of being shown the
+     *  static `question`. In rooms, only the first non-host member
+     *  picks while others wait. */
+    userChoiceEnabled?: boolean;
+    userChoiceQuestions?: string[];
     photos: StopPhoto[];
     audioUrl: string | null;
     audioTitle: string | null;
@@ -452,7 +458,7 @@ export interface Stop {
 
   // Extra wonder + context rounds (optional, after the initial reveal, before the bridge)
   extraRounds: Array<{
-    wonder: { question: string; questionType: 'discuss' | 'opinion'; questionBackground?: string; questionBackgroundAudioUrl?: string | null; questionBackgroundAudioTitle?: string | null; questionBackgroundAudioAutoplayDisabled?: boolean; questionBackgroundPhotos?: StopPhoto[]; questionBackgroundAsInstructions?: boolean; opinionSpectrumLeft?: string; opinionSpectrumRight?: string; photos: StopPhoto[]; audioUrl: string | null; audioTitle: string | null; audioAutoplayDisabled?: boolean } | null;
+    wonder: { question: string; questionType: 'discuss' | 'opinion'; questionBackground?: string; questionBackgroundAudioUrl?: string | null; questionBackgroundAudioTitle?: string | null; questionBackgroundAudioAutoplayDisabled?: boolean; questionBackgroundPhotos?: StopPhoto[]; questionBackgroundAsInstructions?: boolean; opinionSpectrumLeft?: string; opinionSpectrumRight?: string; userChoiceEnabled?: boolean; userChoiceQuestions?: string[]; photos: StopPhoto[]; audioUrl: string | null; audioTitle: string | null; audioAutoplayDisabled?: boolean } | null;
     reveal: {
       text: string;
       photos: StopPhoto[];
@@ -652,6 +658,10 @@ export interface Room {
    *  the admin has authored both spectrum labels AND the device is in
    *  a room. */
   opinionDials?: Record<string, OpinionDialState>;
+  /** User-choice question selections, keyed the same way as barriers
+   *  (`${stopId}:wonder:${round}`). The non-host picker writes once;
+   *  every member then jumps to that question. */
+  userChoiceSelections?: Record<string, { chosenBy: string; question: string; isCustom?: boolean }>;
   createdAt: string;
   updatedAt: string;
 }

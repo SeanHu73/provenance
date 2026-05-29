@@ -1908,6 +1908,11 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
               Write a question that prompts group conversation. There are no right or wrong answers &mdash;
               the reveal will complicate their thinking.
             </p>
+            <UserChoiceEditor
+              enabled={!!stop.wonder!.userChoiceEnabled}
+              questions={stop.wonder!.userChoiceQuestions ?? []}
+              onChange={(next) => onChange({ wonder: { ...stop.wonder!, ...next } })}
+            />
             <PhotoListEditor
               photos={stop.wonder.photos || []}
               onChange={(photos) => onChange({ wonder: { ...stop.wonder!, photos } })}
@@ -2117,6 +2122,15 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
                           />
                         </div>
                       )}
+                      <UserChoiceEditor
+                        enabled={!!round.wonder.userChoiceEnabled}
+                        questions={round.wonder.userChoiceQuestions ?? []}
+                        onChange={(updates) => {
+                          const next = [...(stop.extraRounds || [])];
+                          next[i] = { ...next[i], wonder: { ...next[i].wonder!, ...updates } };
+                          onChange({ extraRounds: next });
+                        }}
+                      />
                       <PhotoListEditor
                         photos={round.wonder.photos || []}
                         onChange={(photos) => {
@@ -2521,6 +2535,75 @@ interface DetourEditorProps {
   tourId: string;
   onChange: (patch: Partial<Detour>) => void;
   onUploadPhoto: (file: File, path: string) => Promise<string>;
+}
+
+function UserChoiceEditor({
+  enabled,
+  questions,
+  onChange,
+}: {
+  enabled: boolean;
+  questions: string[];
+  onChange: (updates: { userChoiceEnabled?: boolean; userChoiceQuestions?: string[] }) => void;
+}) {
+  return (
+    <div className="space-y-1 p-2 rounded border border-stone-200 bg-stone-50">
+      <label className="flex items-center gap-2 text-xs text-stone-700">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => onChange({ userChoiceEnabled: e.target.checked })}
+          className="rounded"
+        />
+        <span>
+          <strong>User Choice Question</strong> &mdash; let the explorer pick from a list or propose their own
+        </span>
+      </label>
+      {enabled && (
+        <div className="space-y-1 pt-1">
+          <p className="text-[10px] uppercase tracking-wide text-stone-500 font-semibold">
+            Question options
+          </p>
+          {questions.length === 0 && (
+            <p className="text-[11px] text-stone-400 italic">No options yet &mdash; add at least one.</p>
+          )}
+          {questions.map((q, i) => (
+            <div key={i} className="flex gap-1">
+              <input
+                type="text"
+                value={q}
+                onChange={(e) => {
+                  const next = [...questions];
+                  next[i] = e.target.value;
+                  onChange({ userChoiceQuestions: next });
+                }}
+                placeholder={`Question option ${i + 1}`}
+                className="flex-1 px-2 py-1.5 text-xs rounded border border-stone-300 bg-white"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const next = questions.filter((_, j) => j !== i);
+                  onChange({ userChoiceQuestions: next });
+                }}
+                className="px-2 text-xs text-stone-500 hover:text-red-600"
+                title="Remove option"
+              >
+                &times;
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => onChange({ userChoiceQuestions: [...questions, ''] })}
+            className="text-[11px] text-stone-600 hover:text-stone-900 underline"
+          >
+            + Add another option
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ChipOptionsEditor({

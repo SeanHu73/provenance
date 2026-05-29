@@ -522,6 +522,35 @@ export async function setOpinionDialPosition(
   }
 }
 
+/** Picker locks in the chosen question for a user-choice wonder. First
+ *  write wins (idempotent) so two members racing to choose can't
+ *  overwrite each other. */
+export async function selectUserChoiceQuestion(
+  code: string,
+  key: string,
+  sessionId: string,
+  question: string,
+  isCustom: boolean,
+): Promise<void> {
+  const ref = doc(db, COLLECTION, code.toUpperCase());
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const room = snap.data() as Room;
+      const existing = room.userChoiceSelections?.[key];
+      if (existing) return; // first write wins
+      const next = { chosenBy: sessionId, question, isCustom };
+      tx.update(ref, {
+        userChoiceSelections: { ...(room.userChoiceSelections || {}), [key]: next },
+        updatedAt: nowIso(),
+      });
+    });
+  } catch (err) {
+    console.error('[room-store] selectUserChoiceQuestion failed:', err);
+  }
+}
+
 /** Mark this member as having tapped "Find out where your friend is".
  *  Once every member with a position is in revealedBy, the dial flips
  *  to its reveal state and each device renders the others' dots. */
