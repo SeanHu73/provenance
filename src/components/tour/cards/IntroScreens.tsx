@@ -138,6 +138,7 @@ export default function IntroScreens({ tour, onComplete, onPointAtQuestion, onPo
 
         {current === HOWITWORKS_INDEX && (
           <HowItWorksScreen
+            tour={tour}
             isInGroup={inRoom}
             isHost={isHost}
             onContinue={() => setCurrent(current + 1)}
@@ -289,10 +290,12 @@ type HowStep =
   | 'participant-waiting'; // group non-host clicked "Begin"; needs "I'm in" mocked
 
 function HowItWorksScreen({
+  tour,
   isInGroup,
   isHost,
   onContinue,
 }: {
+  tour: Tour;
   isInGroup: boolean;
   isHost: boolean;
   onContinue: () => void;
@@ -320,6 +323,7 @@ function HowItWorksScreen({
       )}
 
       <IntroMapMockup
+        tour={tour}
         onPinTap={() => {
           if (step === 'map-pin-spotlight') setStep('peek-open');
         }}

@@ -5,16 +5,17 @@
  * point the explorer at a specific button or pin. Rendered through a
  * portal so the fixed positioning escapes any transformed ancestors.
  *
- * Pass a CSS selector for the target element; the overlay queries it
- * via `document.querySelector`, polls bounding rect on resize, and
- * paints the rest of the viewport near-opaque via a 9999px box-shadow.
- * The target keeps a soft white glow ring.
+ * Layout — the dim is split into four pointer-events-auto panels
+ * arranged AROUND the target rect (top / bottom / left / right). The
+ * target area itself has NO overlay, so clicks pass straight through
+ * to the underlying element. A separate pointer-events-none ring is
+ * drawn over the target for the visual glow.
  *
- * `message` renders centred over the dim. `onTargetTap` fires when the
- * spotlit element is clicked (we attach the listener directly because
- * the overlay's `pointer-events: none` lets clicks reach through).
+ * `targetSelector` is a CSS selector; the overlay queries it via
+ * `document.querySelector`, polls bounding rect on resize / scroll,
+ * and waits for the element to mount.
  *
- * `circleTarget` swaps the glow ring for a thicker animated circle —
+ * `circleTarget` swaps the soft glow for a thicker animated ring —
  * used for the "close the modal" cue.
  */
 
@@ -26,15 +27,18 @@ interface Props {
   message?: React.ReactNode;
   /** Rendered below the message (e.g. a pulsing arrow). */
   arrow?: React.ReactNode;
-  /** Hard opacity for the dim layer. 0.65 = noticeable but not pitch black. */
+  /** Opacity of the dim panels. 0.65 = noticeable but not pitch black. */
   dimOpacity?: number;
   /** Extra space around the target rect (px). */
   padding?: number;
   /** When true, render a thicker animated ring instead of the soft glow. */
   circleTarget?: boolean;
-  /** Fires when the user taps the spotlit element. */
+  /** Fires when the user taps the spotlit element. Listener attached
+   *  directly to the target so it works even though the overlay panels
+   *  don't cover the target. */
   onTargetTap?: () => void;
-  /** Fires when the user taps anywhere OUTSIDE the spotlit element. */
+  /** Fires when the user taps anywhere on the DIM (one of the four
+   *  surrounding panels). */
   onOutsideTap?: () => void;
 }
 
@@ -59,19 +63,20 @@ export default function SpotlightOverlay({
       if (el) setRect(el.getBoundingClientRect());
     };
     measure();
-    // re-measure once on next frame in case layout settles
     raf = requestAnimationFrame(measure);
+    // Also poll briefly in case the target mounts after us (e.g. modal
+    // not yet open).
+    const interval = setInterval(measure, 250);
     window.addEventListener('resize', measure);
     window.addEventListener('scroll', measure, true);
     return () => {
       if (raf) cancelAnimationFrame(raf);
+      clearInterval(interval);
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure, true);
     };
   }, [targetSelector]);
 
-  // Bind a click listener directly on the target so the overlay can
-  // capture the tap even though the dim layer is pointer-events-none.
   useEffect(() => {
     if (!onTargetTap) return;
     const el = document.querySelector(targetSelector) as HTMLElement | null;
@@ -84,34 +89,70 @@ export default function SpotlightOverlay({
     return () => el.removeEventListener('click', handler);
   }, [targetSelector, onTargetTap]);
 
-  if (!mounted) return null;
+  if (!mounted || !rect) {
+    // Fall back to a single full-screen dim while we wait for the
+    // target to mount; clicks on it still hit onOutsideTap.
+    if (!mounted) return null;
+    return createPortal(
+      <div
+        className="fixed inset-0 z-[80] animate-fade-in"
+        style={{ backgroundColor: `rgba(0,0,0,${dimOpacity})` }}
+        onClick={() => onOutsideTap?.()}
+      />,
+      document.body,
+    );
+  }
 
-  const ring = circleTarget
-    ? `0 0 0 4px rgba(255,255,255,0.95), 0 0 0 8px var(--th-secondary)`
-    : `0 0 0 3px rgba(255,255,255,0.7), 0 0 32px 14px rgba(255,255,255,0.4)`;
+  const bg = `rgba(0,0,0,${dimOpacity})`;
+  const holeTop = rect.top - padding;
+  const holeLeft = rect.left - padding;
+  const holeRight = rect.right + padding;
+  const holeBottom = rect.bottom + padding;
+  const holeWidth = rect.width + padding * 2;
+  const holeHeight = rect.height + padding * 2;
 
+  // 4-panel dim — each captures pointer events for outside-tap. The
+  // target rect itself is uncovered so clicks go through to the
+  // underlying element. Using static inset positioning so the panels
+  // exactly tile the viewport with no gaps and no overlap.
   return createPortal(
-    <div
-      className="fixed inset-0 z-[80] pointer-events-auto animate-fade-in"
-      onClick={(e) => {
-        // Outside-tap only when user clicks the dim itself.
-        if (e.target === e.currentTarget && onOutsideTap) onOutsideTap();
-      }}
-    >
-      {rect ? (
-        <div
-          className="absolute rounded-2xl pointer-events-none"
-          style={{
-            left: rect.left - padding,
-            top: rect.top - padding,
-            width: rect.width + padding * 2,
-            height: rect.height + padding * 2,
-            boxShadow: `${ring}, 0 0 0 9999px rgba(0,0,0,${dimOpacity})`,
-          }}
-        />
-      ) : (
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: `rgba(0,0,0,${dimOpacity})` }} />
-      )}
+    <div className="fixed inset-0 z-[80] pointer-events-none animate-fade-in">
+      <div
+        className="absolute pointer-events-auto"
+        style={{ top: 0, left: 0, right: 0, height: Math.max(0, holeTop), backgroundColor: bg }}
+        onClick={() => onOutsideTap?.()}
+      />
+      <div
+        className="absolute pointer-events-auto"
+        style={{ top: holeBottom, left: 0, right: 0, bottom: 0, backgroundColor: bg }}
+        onClick={() => onOutsideTap?.()}
+      />
+      <div
+        className="absolute pointer-events-auto"
+        style={{ top: holeTop, left: 0, width: Math.max(0, holeLeft), height: holeHeight, backgroundColor: bg }}
+        onClick={() => onOutsideTap?.()}
+      />
+      <div
+        className="absolute pointer-events-auto"
+        style={{ top: holeTop, left: holeRight, right: 0, height: holeHeight, backgroundColor: bg }}
+        onClick={() => onOutsideTap?.()}
+      />
+
+      {/* Visual ring around the hole. Pointer-events-none so clicks
+          on the target pass through to the element underneath. */}
+      <div
+        className="absolute rounded-2xl pointer-events-none"
+        style={{
+          left: holeLeft,
+          top: holeTop,
+          width: holeWidth,
+          height: holeHeight,
+          boxShadow: circleTarget
+            ? '0 0 0 4px rgba(255,255,255,0.95), 0 0 0 8px var(--th-secondary)'
+            : '0 0 0 3px rgba(255,255,255,0.7), 0 0 32px 14px rgba(255,255,255,0.4)',
+        }}
+      />
+
       {message && (
         <div className="absolute inset-x-0 top-[18%] px-8 text-center pointer-events-none">
           <div
@@ -122,14 +163,16 @@ export default function SpotlightOverlay({
           </div>
         </div>
       )}
-      {arrow && rect && (
+
+      {arrow && (
         <div
           className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
-          style={{ top: rect.top - 120 }}
+          style={{ top: holeTop - 120 }}
         >
           {arrow}
         </div>
       )}
+
     </div>,
     document.body,
   );
