@@ -239,17 +239,17 @@ body {
 }
 
 /* One-shot fade-in-then-out used by the inquiry reminder that pops up
-   on every third stop's context screen. Total 3.5s: ~0.35s fade in,
-   ~2.8s hold, ~0.35s fade out. animation-fill-mode `forwards` so the
+   on every third stop's context screen. Total 5.5s: ~0.4s fade in,
+   ~4.7s hold, ~0.4s fade out. animation-fill-mode `forwards` so the
    overlay stays at opacity 0 at the end. */
 @keyframes oneShotFlash {
   0% { opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
+  7% { opacity: 1; }
+  93% { opacity: 1; }
   100% { opacity: 0; }
 }
 .animate-one-shot-flash {
-  animation: oneShotFlash 3.5s ease-in-out forwards;
+  animation: oneShotFlash 5.5s ease-in-out forwards;
 }
 
 /* Admin text-size override — every textarea and text input within a

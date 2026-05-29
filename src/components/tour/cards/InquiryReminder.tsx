@@ -2,7 +2,7 @@
 
 /**
  * One-shot reminder overlay that darkens almost the entire screen for
- * ~3.5s and "spotlights" the footer's "? Inquiries" button. Mounted on
+ * ~5.5s and "spotlights" the footer's "? Inquiries" button. Mounted on
  * the Context (reveal) screen of every third stop (see RevealCard).
  *
  * Rendered via a portal to document.body so the fixed overlay actually
@@ -19,7 +19,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-const TOTAL_MS = 3500;
+const TOTAL_MS = 5500;
 const PADDING = 10;
 
 export default function InquiryReminder() {
