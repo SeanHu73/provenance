@@ -226,6 +226,9 @@ export interface Tour {
     questionBackgroundAudioTitle?: string | null;
     questionBackgroundAudioAutoplayDisabled?: boolean;
     questionBackgroundPhotos?: StopPhoto[];
+    /** When true, explorer renders the background block as italic
+     *  "Instructions" instead of the LEARN + "Background" treatment. */
+    questionBackgroundAsInstructions?: boolean;
     // Scene-setting screen
     scenePhotoUrl: string | null;      // Photo of where to find the starting point
     sceneDescription: string;          // "Find the stone plaque on the north wall..."
@@ -247,6 +250,7 @@ export interface Tour {
       questionBackgroundAudioTitle?: string | null;
       questionBackgroundAudioAutoplayDisabled?: boolean;
       questionBackgroundPhotos?: StopPhoto[];
+      questionBackgroundAsInstructions?: boolean;
     } | null;
     /** Optional list of extra discussion/opinion questions shown after
      *  the main eq_closing card and before eq_final_reflect. Each plays
@@ -260,6 +264,7 @@ export interface Tour {
       questionBackgroundAudioTitle?: string | null;
       questionBackgroundAudioAutoplayDisabled?: boolean;
       questionBackgroundPhotos?: StopPhoto[];
+      questionBackgroundAsInstructions?: boolean;
     }>;
     closingAudioUrl: string | null;     // Audio for the closing discuss screen
     closingAudioTitle: string | null;
@@ -301,6 +306,7 @@ export interface Tour {
   midwayQuestionBackgroundAudioTitle?: string | null;
   midwayQuestionBackgroundAudioAutoplayDisabled?: boolean;
   midwayQuestionBackgroundPhotos?: StopPhoto[];
+  midwayQuestionBackgroundAsInstructions?: boolean;
 
   createdAt: string;                 // ISO 8601
   updatedAt: string;                 // ISO 8601
@@ -409,6 +415,7 @@ export interface Stop {
     questionBackgroundAudioAutoplayDisabled?: boolean;
     /** Optional photos for the question background section. */
     questionBackgroundPhotos?: StopPhoto[];
+    questionBackgroundAsInstructions?: boolean;
     photos: StopPhoto[];
     audioUrl: string | null;
     audioTitle: string | null;
@@ -434,7 +441,7 @@ export interface Stop {
 
   // Extra wonder + context rounds (optional, after the initial reveal, before the bridge)
   extraRounds: Array<{
-    wonder: { question: string; questionType: 'discuss' | 'opinion'; questionBackground?: string; questionBackgroundAudioUrl?: string | null; questionBackgroundAudioTitle?: string | null; questionBackgroundAudioAutoplayDisabled?: boolean; questionBackgroundPhotos?: StopPhoto[]; photos: StopPhoto[]; audioUrl: string | null; audioTitle: string | null; audioAutoplayDisabled?: boolean } | null;
+    wonder: { question: string; questionType: 'discuss' | 'opinion'; questionBackground?: string; questionBackgroundAudioUrl?: string | null; questionBackgroundAudioTitle?: string | null; questionBackgroundAudioAutoplayDisabled?: boolean; questionBackgroundPhotos?: StopPhoto[]; questionBackgroundAsInstructions?: boolean; photos: StopPhoto[]; audioUrl: string | null; audioTitle: string | null; audioAutoplayDisabled?: boolean } | null;
     reveal: {
       text: string;
       photos: StopPhoto[];

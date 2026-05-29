@@ -17,7 +17,7 @@ import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import QuestionText from './QuestionText';
 import SnapScrollHint from './SnapScrollHint';
-import ActionTitle from './ActionTitle';
+import ActionTitle, { InstructionsTitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
@@ -86,8 +86,8 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
     };
   }, [hasBackground, questionRevealed]);
 
+  const asInstructions = !!wonder.questionBackgroundAsInstructions;
   const discussTitle = <ActionTitle action="DISCUSS" opinion={isOpinion} />;
-  const learnTitle = <ActionTitle action="LEARN" />;
 
   const continueRow = (
     <div className="space-y-2">
@@ -132,7 +132,11 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
         className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        {learnTitle}
+        {asInstructions ? (
+          <InstructionsTitle />
+        ) : (
+          <ActionTitle action="LEARN" subtitle="Background" />
+        )}
         {wonder.questionBackgroundAudioUrl && (
           <AudioButton
             audioUrl={wonder.questionBackgroundAudioUrl}

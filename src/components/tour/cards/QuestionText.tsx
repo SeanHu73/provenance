@@ -2,9 +2,8 @@
 
 /**
  * Styled discussion question text — body serif (Newsreader), larger
- * than the surrounding body text, left-aligned, themed to bronze
- * (--th-accent-dark) so it sits distinct from the page title (which
- * uses the theme primary). Used across all discussion-question cards
+ * than the surrounding body text, left-aligned, themed to the theme
+ * primary (--th-primary). Used across all discussion-question cards
  * (per-stop wonder, EQ discuss, EQ additional, EQ closing echo,
  * midway check-in).
  */
@@ -27,7 +26,7 @@ export default function QuestionText({ text, sizeClass = 'text-[30px]', classNam
   return (
     <p
       className={`${sizeClass} leading-snug font-serif text-left ${className}`}
-      style={{ color: 'var(--th-accent-dark)' }}
+      style={{ color: 'var(--th-primary)' }}
     >
       <FormattedText text={stripped} />
     </p>

@@ -37,7 +37,7 @@ export default function NoticeMapDisplay({ map }: Props) {
           <circle cx="12" cy="9" r="2.5" fill="var(--aged-gold)" stroke="none" />
         </svg>
         <span className="text-sm font-semibold" style={{ color: 'var(--aged-gold)' }}>
-          Tap for hint
+          Tap for specific location
         </span>
       </button>
     );

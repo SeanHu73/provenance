@@ -13,7 +13,7 @@ import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
 import SnapScrollHint from './SnapScrollHint';
-import ActionTitle from './ActionTitle';
+import ActionTitle, { InstructionsTitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
@@ -67,12 +67,9 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
   const isOpinion = aq.questionType === 'opinion';
   const bgAutoplay = autoplayPref && !aq.questionBackgroundAudioAutoplayDisabled;
 
-  // Section-1 background → LEARN with the Investigation eyebrow.
-  const learnTitle = <ActionTitle action="LEARN" investigation />;
-  // Section-2 question → DISCUSS (opinion pill when applicable).
-  const discussTitle = <ActionTitle action="DISCUSS" opinion={isOpinion} />;
-  // Single-section fallback: Investigation + DISCUSS together.
-  const fallbackTitle = <ActionTitle action="DISCUSS" opinion={isOpinion} investigation />;
+  const asInstructions = !!aq.questionBackgroundAsInstructions;
+  // Section 2 → DISCUSS + Investigation + Opinion pill when applicable.
+  const discussTitle = <ActionTitle action="DISCUSS" opinion={isOpinion} investigation />;
 
   const instruction = (
     <p className="text-[18px] text-text-secondary italic leading-relaxed">
@@ -101,7 +98,7 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
   if (!hasBackground) {
     return (
       <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
-        {fallbackTitle}
+        {discussTitle}
         <QuestionText text={aq.question} />
         {instruction}
         {continueRow}
@@ -118,7 +115,11 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
         className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        {learnTitle}
+        {asInstructions ? (
+          <InstructionsTitle />
+        ) : (
+          <ActionTitle action="LEARN" investigation subtitle="Background" />
+        )}
         {aq.questionBackgroundAudioUrl && (
           <AudioButton
             audioUrl={aq.questionBackgroundAudioUrl}

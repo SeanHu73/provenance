@@ -17,7 +17,7 @@ import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
 import SnapScrollHint from './SnapScrollHint';
-import ActionTitle from './ActionTitle';
+import ActionTitle, { InstructionsTitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
@@ -83,9 +83,8 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
   const isOpinion = item.questionType === 'opinion';
   const bgAutoplay = autoplayPref && !item.questionBackgroundAudioAutoplayDisabled;
 
-  const learnTitle = <ActionTitle action="LEARN" investigation />;
-  const discussTitle = <ActionTitle action="DISCUSS" opinion={isOpinion} />;
-  const fallbackTitle = <ActionTitle action="DISCUSS" opinion={isOpinion} investigation />;
+  const asInstructions = !!item.questionBackgroundAsInstructions;
+  const discussTitle = <ActionTitle action="DISCUSS" opinion={isOpinion} investigation />;
 
   const instruction = (
     <p className="text-[18px] text-text-secondary italic leading-relaxed">
@@ -116,7 +115,7 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
   if (!hasBackground) {
     return (
       <div key={`closing-add-${idx}`} className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
-        {fallbackTitle}
+        {discussTitle}
         <QuestionText text={item.question} />
         {instruction}
         {continueRow}
@@ -134,7 +133,11 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
         className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        {learnTitle}
+        {asInstructions ? (
+          <InstructionsTitle />
+        ) : (
+          <ActionTitle action="LEARN" investigation subtitle="Background" />
+        )}
         {item.questionBackgroundAudioUrl && (
           <AudioButton
             audioUrl={item.questionBackgroundAudioUrl}

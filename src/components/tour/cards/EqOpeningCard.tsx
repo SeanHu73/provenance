@@ -73,10 +73,7 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
         className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        <ActionTitle action="RESPOND" investigation />
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
-          Share your discussion...
-        </p>
+        <ActionTitle action="RESPOND" investigation subtitle="Share your discussion..." />
         <div className="space-y-2">
           <p className="text-[18px] leading-relaxed text-text-primary">
             You will only be asked to record an answer here and at the end. All others are optional.
@@ -101,6 +98,7 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
           transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
         }}
       >
+        <ActionTitle action="RESPOND" investigation />
         <QuestionText text={eq.question} />
 
         {/* Theory input */}

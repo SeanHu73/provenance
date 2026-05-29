@@ -773,6 +773,15 @@ export default function TourEditorPage() {
                 uploadPath={`memorial-church/photos/tours/${tourId}/eq_question_background`}
                 onUploadPhoto={uploadPhoto}
               />
+              <label className="flex items-center gap-2 text-xs text-stone-700">
+                <input
+                  type="checkbox"
+                  checked={!!tour.essentialQuestion.questionBackgroundAsInstructions}
+                  onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, questionBackgroundAsInstructions: e.target.checked })}
+                  className="rounded"
+                />
+                <span>Show this as <em>Instructions</em> (italic title, no LEARN label)</span>
+              </label>
               <div className="block">
                 <RichTextarea
                   label="The question"
@@ -922,6 +931,15 @@ export default function TourEditorPage() {
                       uploadPath={`memorial-church/photos/tours/${tourId}/eq_additional_question_background`}
                       onUploadPhoto={uploadPhoto}
                     />
+                    <label className="flex items-center gap-2 text-xs text-stone-700">
+                      <input
+                        type="checkbox"
+                        checked={!!tour.essentialQuestion.additionalQuestion.questionBackgroundAsInstructions}
+                        onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, questionBackgroundAsInstructions: e.target.checked } })}
+                        className="rounded"
+                      />
+                      <span>Show this as <em>Instructions</em> (italic title, no LEARN label)</span>
+                    </label>
                     <RichTextarea
                       label="The question"
                       value={tour.essentialQuestion.additionalQuestion.question}
@@ -1093,6 +1111,19 @@ export default function TourEditorPage() {
                           uploadPath={`memorial-church/photos/tours/${tourId}/eq_closing_additional_${i}_background`}
                           onUploadPhoto={uploadPhoto}
                         />
+                        <label className="flex items-center gap-2 text-xs text-stone-700">
+                          <input
+                            type="checkbox"
+                            checked={!!item.questionBackgroundAsInstructions}
+                            onChange={(e) => {
+                              const next = [...(tour.essentialQuestion!.additionalClosingQuestions || [])];
+                              next[i] = { ...next[i], questionBackgroundAsInstructions: e.target.checked };
+                              updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalClosingQuestions: next });
+                            }}
+                            className="rounded"
+                          />
+                          <span>Show this as <em>Instructions</em> (italic title, no LEARN label)</span>
+                        </label>
                         <RichTextarea
                           label="The question"
                           value={item.question}
@@ -1363,6 +1394,15 @@ export default function TourEditorPage() {
                   uploadPath={`memorial-church/photos/tours/${tourId}/midway_question_background`}
                   onUploadPhoto={uploadPhoto}
                 />
+                <label className="flex items-center gap-2 text-xs text-stone-700">
+                  <input
+                    type="checkbox"
+                    checked={!!tour.midwayQuestionBackgroundAsInstructions}
+                    onChange={(e) => updateField('midwayQuestionBackgroundAsInstructions', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span>Show this as <em>Instructions</em> (italic title, no LEARN label)</span>
+                </label>
                 <RichTextarea
                   label="Midway check-in question"
                   value={tour.midwayQuestion || ''}
@@ -1778,6 +1818,15 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
               uploadPath={`memorial-church/photos/tours/${tourId}/wonder_${stop.id}_background`}
               onUploadPhoto={onUploadPhoto}
             />
+            <label className="flex items-center gap-2 text-xs text-stone-700">
+              <input
+                type="checkbox"
+                checked={!!stop.wonder!.questionBackgroundAsInstructions}
+                onChange={(e) => onChange({ wonder: { ...stop.wonder!, questionBackgroundAsInstructions: e.target.checked } })}
+                className="rounded"
+              />
+              <span>Show this as <em>Instructions</em> (italic title, no LEARN label)</span>
+            </label>
             <RichTextarea
               label="Question (prompts group conversation)"
               value={stop.wonder.question}
@@ -1945,6 +1994,19 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
                         uploadPath={`memorial-church/photos/tours/${tourId}/extra_wonder_${stop.id}_${i}_background`}
                         onUploadPhoto={onUploadPhoto}
                       />
+                      <label className="flex items-center gap-2 text-xs text-stone-700">
+                        <input
+                          type="checkbox"
+                          checked={!!round.wonder.questionBackgroundAsInstructions}
+                          onChange={(e) => {
+                            const next = [...(stop.extraRounds || [])];
+                            next[i] = { ...next[i], wonder: { ...next[i].wonder!, questionBackgroundAsInstructions: e.target.checked } };
+                            onChange({ extraRounds: next });
+                          }}
+                          className="rounded"
+                        />
+                        <span>Show this as <em>Instructions</em> (italic title, no LEARN label)</span>
+                      </label>
                       <RichTextarea
                         label="Discussion question"
                         value={round.wonder.question}

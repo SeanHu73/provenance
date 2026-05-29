@@ -105,10 +105,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   // Background block (shared across snap and non-snap layouts)
   const backgroundBlock = (
     <>
-      <ActionTitle action="LEARN" />
-      <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
-        Background...
-      </p>
+      <ActionTitle action="LEARN" subtitle="Background" />
       {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedAutoplay} />}
       {stop.seed.text ? (
         <PhotoContent

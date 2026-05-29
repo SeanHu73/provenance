@@ -132,10 +132,7 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
           className="relative min-h-full flex flex-col justify-center space-y-6 px-5 pt-10 pb-6"
           style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
         >
-          <ActionTitle action="LEARN" investigation />
-          <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
-            Tour complete
-          </p>
+          <ActionTitle action="LEARN" investigation subtitle="Tour complete" />
           {eq.closingFraming && (
             <p className="text-[19px] leading-relaxed font-serif text-text-primary">
               <FormattedText text={eq.closingFraming} />
@@ -169,10 +166,7 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
             transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
           }}
         >
-          <ActionTitle action="RESPOND" />
-          <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
-            Closing questions
-          </p>
+          <ActionTitle action="RESPOND" investigation subtitle="Closing questions" />
 
           {/* Main EQ closing question */}
           <div className="space-y-3">

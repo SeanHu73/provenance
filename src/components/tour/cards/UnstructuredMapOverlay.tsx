@@ -12,7 +12,7 @@ import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
 import SnapScrollHint from './SnapScrollHint';
-import ActionTitle from './ActionTitle';
+import ActionTitle, { InstructionsTitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
@@ -806,10 +806,7 @@ export function MidwayCheckinCard({
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <div>
-          <ActionTitle action="LEARN" investigation className="mb-2" />
-          <p className="text-[22px] uppercase tracking-[0.12em] font-display font-semibold text-aged-gold mb-1">
-            Mid point check-in
-          </p>
+          <ActionTitle action="LEARN" investigation subtitle="Mid point check-in" className="mb-3" />
           <p className="text-[18px] font-serif text-text-primary leading-relaxed">
             So these are the stops you have seen so far...
           </p>
@@ -832,7 +829,11 @@ export function MidwayCheckinCard({
           className="min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
           style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
         >
-          <ActionTitle action="LEARN" />
+          {tour.midwayQuestionBackgroundAsInstructions ? (
+            <InstructionsTitle />
+          ) : (
+            <ActionTitle action="LEARN" subtitle="Background" />
+          )}
           {tour.midwayQuestionBackgroundAudioUrl && (
             <AudioButton
               audioUrl={tour.midwayQuestionBackgroundAudioUrl}
@@ -860,7 +861,7 @@ export function MidwayCheckinCard({
           transition: 'opacity 250ms ease-out, transform 250ms ease-out',
         }}
       >
-        <ActionTitle action="DISCUSS" />
+        <ActionTitle action="DISCUSS" investigation />
         <QuestionText text={tour.midwayQuestion || ''} sizeClass="text-[26px]" />
 
         <div className="flex gap-2 items-start">

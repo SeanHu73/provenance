@@ -29,10 +29,7 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <ActionTitle action="FIND" investigation />
-      <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
-        Setting the scene...
-      </p>
+      <ActionTitle action="FIND" investigation subtitle="Setting the scene..." />
 
       <p className="text-[20px] font-semibold text-text-primary">
         Are you looking at this:
