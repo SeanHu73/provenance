@@ -97,6 +97,26 @@ export default function IntroScreens({ tour, onComplete, onPointAtQuestion, onPo
     setAutoplayPref(choice === 'on');
   };
 
+  // Both How-it-works and What-you-do screens take over the full card
+  // (own snap-scroll + map fill). Progress dots float on top.
+  if (current === HOWITWORKS_INDEX || current === WHATYOUDO_INDEX) {
+    return (
+      <>
+        <FloatingProgressDots count={TOTAL} current={current} />
+        {current === HOWITWORKS_INDEX ? (
+          <HowItWorksScreen
+            tour={tour}
+            isInGroup={inRoom}
+            isHost={isHost}
+            onContinue={() => setCurrent(current + 1)}
+          />
+        ) : (
+          <WhatYouDoScreen onAdvance={() => setCurrent(current + 1)} />
+        )}
+      </>
+    );
+  }
+
   return (
     <div className="animate-fade-in flex flex-col justify-center min-h-full space-y-7 text-center">
       {/* Progress dots */}
@@ -111,13 +131,9 @@ export default function IntroScreens({ tour, onComplete, onPointAtQuestion, onPo
       </div>
 
       <div className="space-y-5 px-2" key={current}>
-        {/* Title — suppressed on the action-title intro screen which
-            substitutes a tap-revealed FIND/LEARN/DISCUSS sequence. */}
-        {current !== WHATYOUDO_INDEX && (
-          <p className="text-[28px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold animate-fade-in">
-            {TITLES[current]}
-          </p>
-        )}
+        <p className="text-[28px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold animate-fade-in">
+          {TITLES[current]}
+        </p>
 
         {current === SETUP_INDEX && (
           <SetUpScreen
@@ -134,19 +150,6 @@ export default function IntroScreens({ tour, onComplete, onPointAtQuestion, onPo
             Learn to see the world like a historian! History is like detective work.
             What you notice and what you ask will shape how you reconstruct the past.
           </p>
-        )}
-
-        {current === HOWITWORKS_INDEX && (
-          <HowItWorksScreen
-            tour={tour}
-            isInGroup={inRoom}
-            isHost={isHost}
-            onContinue={() => setCurrent(current + 1)}
-          />
-        )}
-
-        {current === WHATYOUDO_INDEX && (
-          <WhatYouDoScreen onAdvance={() => setCurrent(current + 1)} />
         )}
 
         {current === THINKING_INDEX && (
@@ -173,10 +176,10 @@ export default function IntroScreens({ tour, onComplete, onPointAtQuestion, onPo
         )}
       </div>
 
-      {/* Navigation — hidden on screens that own their own advance flow. */}
-      {current !== HOWITWORKS_INDEX
-        && current !== WHATYOUDO_INDEX
-        && current !== THINKING_INDEX && (
+      {/* Navigation — hidden on the Your Thinking screen, which owns
+          its own advance flow. (How it works and What you do already
+          rendered above in the takeover branch.) */}
+      {current !== THINKING_INDEX && (
         <div className="space-y-3">
           <button
             onClick={isLast ? onComplete : () => setCurrent(current + 1)}
@@ -204,6 +207,25 @@ export default function IntroScreens({ tour, onComplete, onPointAtQuestion, onPo
           onDismiss={() => setRoomSheet(null)}
         />
       )}
+    </div>
+  );
+}
+
+/* ─── Floating progress dots overlay (takeover screens) ───────── */
+
+function FloatingProgressDots({ count, current }: { count: number; current: number }) {
+  return (
+    <div className="absolute top-4 left-0 right-0 z-30 flex justify-center gap-2 pointer-events-none">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="w-2 h-2 rounded-full"
+          style={{
+            backgroundColor: i <= current ? 'var(--th-primary)' : 'var(--th-border)',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -301,7 +323,6 @@ function HowItWorksScreen({
   onContinue: () => void;
 }) {
   const [step, setStep] = useState<HowStep>('map-intro');
-  // Auto-spotlight after 3s.
   useEffect(() => {
     if (step !== 'map-intro') return;
     const t = setTimeout(() => setStep('map-pin-spotlight'), 3000);
@@ -312,24 +333,34 @@ function HowItWorksScreen({
   const guestCopy = 'You can see the pins, but require the host to start.';
 
   return (
-    <div className="space-y-5">
-      {step === 'map-intro' && (
-        <p className={bodyClass}>You will find <strong>pins</strong> on this map.</p>
-      )}
-      {(step === 'map-pin-spotlight' || step === 'peek-open' || step === 'participant-waiting') && (
-        <p className="text-[18px] text-text-secondary italic">
-          The map shows tour stops as pins.
-        </p>
-      )}
-
+    <div className="absolute inset-0 overflow-hidden animate-fade-in">
+      {/* Full-bleed satellite map — same look as the real tour map. */}
       <IntroMapMockup
         tour={tour}
+        fill
         onPinTap={() => {
           if (step === 'map-pin-spotlight') setStep('peek-open');
         }}
         pinLabel={step === 'map-pin-spotlight'}
       />
 
+      {/* Top intro line — sits on top of the map with a translucent
+          backing so it stays readable on satellite imagery. */}
+      {step === 'map-intro' && (
+        <div className="absolute top-14 left-0 right-0 px-5 z-20 pointer-events-none animate-fade-in">
+          <div
+            className="mx-auto inline-block max-w-md px-5 py-3 rounded-2xl"
+            style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+          >
+            <p className="text-[22px] font-serif text-warm-white leading-snug">
+              You will find <strong>pins</strong> on this map.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Spotlight on the centred pin once the intro line has had
+          time to register. */}
       {step === 'map-pin-spotlight' && (
         <SpotlightOverlay
           targetSelector="[data-onboard-map-pin]"
@@ -340,27 +371,31 @@ function HowItWorksScreen({
         />
       )}
 
+      {/* Bottom journal peek — slides up from the bottom of the card
+          when the explorer taps the pin, exactly like the real journal
+          peek bottom sheet. */}
       {step === 'peek-open' && (
-        <MockJournalPeek
-          tour={tour}
-          isInGroup={isInGroup}
-          isHost={isHost}
-          hostCopy={hostCopy}
-          guestCopy={guestCopy}
-          onBegin={() => {
-            // Solo or host → go straight to the next intro screen.
-            // Non-host in a group → mocked "Your friend has begun…" step.
-            if (isInGroup && !isHost) {
-              setStep('participant-waiting');
-            } else {
-              onContinue();
-            }
-          }}
-        />
+        <div className="absolute inset-x-0 bottom-0 z-30 px-3 pb-3 animate-slide-up">
+          <MockJournalPeek
+            tour={tour}
+            isInGroup={isInGroup}
+            isHost={isHost}
+            hostCopy={hostCopy}
+            guestCopy={guestCopy}
+            onBegin={() => {
+              if (isInGroup && !isHost) setStep('participant-waiting');
+              else onContinue();
+            }}
+          />
+        </div>
       )}
 
       {step === 'participant-waiting' && (
-        <MockParticipantImIn onTap={onContinue} />
+        <div className="absolute inset-x-0 bottom-0 z-30 px-3 pb-3 animate-slide-up">
+          <div className="rounded-2xl p-5 shadow-lg" style={{ backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)' }}>
+            <MockParticipantImIn onTap={onContinue} />
+          </div>
+        </div>
       )}
     </div>
   );
@@ -461,9 +496,6 @@ function WhatYouDoScreen({ onAdvance }: { onAdvance: () => void }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const developRef = useRef<HTMLElement | null>(null);
 
-  // Once the explorer has revealed LEARN/DISCUSS, the next tap snaps
-  // to the Develop section. We programmatically scrollIntoView once
-  // step flips to 'develop'.
   useEffect(() => {
     if (step !== 'develop') return;
     const el = developRef.current;
@@ -479,38 +511,40 @@ function WhatYouDoScreen({ onAdvance }: { onAdvance: () => void }) {
   return (
     <div
       ref={scrollRef}
-      className="absolute inset-0 overflow-y-auto"
+      className="absolute inset-0 overflow-y-auto animate-fade-in"
       style={{ scrollSnapType: 'y mandatory' }}
     >
-      {/* Section 1 — actions reveal sequence */}
+      {/* Section 1 — actions reveal sequence. min-h-full sizes to the
+          scroll container's height so each section snaps cleanly to
+          the card boundaries (mirrors SeedCard's snap pattern). */}
       <section
         onClick={step === 'develop' ? undefined : advanceTap}
-        className="relative min-h-full flex flex-col justify-center space-y-8 px-5 pt-10 pb-6 cursor-pointer select-none"
+        className="relative min-h-full flex flex-col justify-center space-y-8 px-6 pt-16 pb-8 cursor-pointer select-none"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        <div className="space-y-3">
-          <p className="text-[24px] italic text-text-secondary">Each stop will have you</p>
+        <div className="space-y-3 text-left">
+          <p className="text-[24px] italic" style={{ color: 'var(--text-secondary)' }}>Each stop will have you</p>
           <ActionRow label="FIND" />
-          <p className="text-[16px] text-text-primary">{ACTION_DESCRIPTIONS.FIND}</p>
+          <p className="text-[17px] text-text-primary">{ACTION_DESCRIPTIONS.FIND}</p>
         </div>
 
         {(step === 'learn-discuss' || step === 'develop') && (
-          <div className="space-y-6 animate-fade-in">
-            <p className="text-[24px] italic text-text-secondary">Then you will</p>
+          <div className="space-y-6 text-left animate-fade-in">
+            <p className="text-[24px] italic" style={{ color: 'var(--text-secondary)' }}>Then you will</p>
             <div className="space-y-2">
               <ActionRow label="LEARN" />
-              <p className="text-[16px] text-text-primary">{ACTION_DESCRIPTIONS.LEARN}</p>
+              <p className="text-[17px] text-text-primary">{ACTION_DESCRIPTIONS.LEARN}</p>
             </div>
-            <p className="text-[24px] italic text-text-secondary text-center">or</p>
+            <p className="text-[24px] italic text-center" style={{ color: 'var(--text-secondary)' }}>or</p>
             <div className="space-y-2">
               <ActionRow label="DISCUSS" />
-              <p className="text-[16px] text-text-primary">{ACTION_DESCRIPTIONS.DISCUSS}</p>
+              <p className="text-[17px] text-text-primary">{ACTION_DESCRIPTIONS.DISCUSS}</p>
             </div>
           </div>
         )}
 
         {step !== 'develop' && (
-          <p className="text-[14px] italic text-text-secondary animate-fade-in">
+          <p className="text-[14px] italic text-center animate-fade-in" style={{ color: 'var(--text-secondary)' }}>
             Tap the screen to continue&hellip;
           </p>
         )}
@@ -519,7 +553,7 @@ function WhatYouDoScreen({ onAdvance }: { onAdvance: () => void }) {
       {/* Section 2 — Develop your own historical explanation */}
       <section
         ref={developRef}
-        className="min-h-full flex flex-col justify-center space-y-8 px-5 pt-10 pb-6"
+        className="min-h-full flex flex-col justify-center space-y-10 px-6 pt-16 pb-8"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <p className="text-[30px] font-display font-bold leading-snug text-text-primary text-center">
@@ -682,18 +716,18 @@ function BouncingDownArrow() {
 function ShareCallout() {
   return (
     <div
-      className="inline-block max-w-md text-left px-5 py-4 rounded-2xl border-2"
+      className="block w-full text-left px-5 py-4 rounded-2xl border-2"
       style={{
         backgroundColor: 'var(--th-surface)',
         borderColor: 'var(--th-secondary)',
-        color: 'var(--th-text-primary)',
+        color: '#1f1410',
         boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
       }}
     >
-      <p className="text-[18px] font-display font-semibold leading-snug">
+      <p className="text-[18px] font-display font-semibold leading-snug" style={{ color: '#1f1410' }}>
         <strong>SHARE</strong> to the community:
       </p>
-      <p className="mt-1 text-[16px] font-serif leading-snug">
+      <p className="mt-1 text-[16px] font-serif leading-snug" style={{ color: '#1f1410' }}>
         If something makes you curious, or you have a good inquiry, tap here to share!
       </p>
     </div>

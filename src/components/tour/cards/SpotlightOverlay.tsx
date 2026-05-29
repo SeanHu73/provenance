@@ -181,7 +181,7 @@ export default function SpotlightOverlay({
               style={
                 dim
                   ? { color: 'var(--th-surface)', textShadow: '0 2px 8px rgba(0,0,0,0.6)' }
-                  : { color: 'var(--th-text-primary)' }
+                  : { color: 'var(--text-primary)' }
               }
             >
               {message}

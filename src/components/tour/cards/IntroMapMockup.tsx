@@ -24,16 +24,24 @@ interface Props {
   onPinTap: () => void;
   /** When true, the "Tap to start" label fades up. */
   pinLabel?: boolean;
+  /** When true, the wrapper has no aspect-ratio constraint and fills
+   *  its parent (h/w 100%). Used by the take-over How It Works layout
+   *  so the map covers the card just like the real tour map. */
+  fill?: boolean;
 }
 
-export default function IntroMapMockup({ tour, onPinTap, pinLabel = false }: Props) {
+export default function IntroMapMockup({ tour, onPinTap, pinLabel = false, fill = false }: Props) {
   const location = tour.location ?? FALLBACK_LOCATION;
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   return (
     <div
-      className="relative w-full rounded-2xl overflow-hidden shadow-md border-2 border-aged-gold/30"
-      style={{ aspectRatio: '4 / 3', backgroundColor: '#E8D8C0' }}
+      className={
+        fill
+          ? 'relative w-full h-full overflow-hidden'
+          : 'relative w-full rounded-2xl overflow-hidden shadow-md border-2 border-aged-gold/30'
+      }
+      style={fill ? { backgroundColor: '#E8D8C0' } : { aspectRatio: '4 / 3', backgroundColor: '#E8D8C0' }}
     >
       {apiKey ? (
         <APIProvider apiKey={apiKey}>
@@ -42,7 +50,7 @@ export default function IntroMapMockup({ tour, onPinTap, pinLabel = false }: Pro
             defaultCenter={location}
             defaultZoom={17}
             defaultTilt={0}
-            mapTypeId="roadmap"
+            mapTypeId="satellite"
             gestureHandling="none"
             disableDefaultUI
             clickableIcons={false}
