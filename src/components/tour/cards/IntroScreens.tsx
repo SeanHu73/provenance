@@ -309,7 +309,7 @@ type HowStep =
   | 'map-intro'        // "You will find pins on this map"
   | 'map-pin-spotlight' // darken + "Click on the pin"
   | 'peek-open'         // mocked journal peek
-  | 'participant-waiting'; // group non-host clicked "Begin"; needs "I'm in" mocked
+  | 'host-waiting';     // host tapped Begin; mocking "waiting for friend"
 
 function HowItWorksScreen({
   tour,
@@ -328,6 +328,16 @@ function HowItWorksScreen({
     const t = setTimeout(() => setStep('map-pin-spotlight'), 3000);
     return () => clearTimeout(t);
   }, [step]);
+
+  // Host-side mocked wait — after the host taps Begin, simulate the
+  // friend tapping "I'm in" by auto-advancing after ~2.5s. Without
+  // this, a host on a single-device onboarding would just sit on the
+  // waiting screen forever.
+  useEffect(() => {
+    if (step !== 'host-waiting') return;
+    const t = setTimeout(() => onContinue(), 2500);
+    return () => clearTimeout(t);
+  }, [step, onContinue]);
 
   const hostCopy = 'You have control over where the group explores.';
   const guestCopy = 'You can see the pins, but require the host to start.';
@@ -372,8 +382,8 @@ function HowItWorksScreen({
       )}
 
       {/* Bottom journal peek — slides up from the bottom of the card
-          when the explorer taps the pin, exactly like the real journal
-          peek bottom sheet. */}
+          when the explorer taps the pin, exactly like the real
+          journal peek bottom sheet. */}
       {step === 'peek-open' && (
         <div className="absolute inset-x-0 bottom-0 z-30 px-3 pb-3 animate-slide-up">
           <MockJournalPeek
@@ -383,18 +393,21 @@ function HowItWorksScreen({
             hostCopy={hostCopy}
             guestCopy={guestCopy}
             onBegin={() => {
-              if (isInGroup && !isHost) setStep('participant-waiting');
+              // Host in a group → enter the host-waiting mock so we
+              // demo the coordination instead of locking the
+              // participant out. Solo or "any other path" go
+              // straight to the next intro screen.
+              if (isInGroup && isHost) setStep('host-waiting');
               else onContinue();
             }}
+            onParticipantImIn={onContinue}
           />
         </div>
       )}
 
-      {step === 'participant-waiting' && (
+      {step === 'host-waiting' && (
         <div className="absolute inset-x-0 bottom-0 z-30 px-3 pb-3 animate-slide-up">
-          <div className="rounded-2xl p-5 shadow-lg" style={{ backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)' }}>
-            <MockParticipantImIn onTap={onContinue} />
-          </div>
+          <HostWaitingCard />
         </div>
       )}
     </div>
@@ -408,6 +421,7 @@ function MockJournalPeek({
   hostCopy,
   guestCopy,
   onBegin,
+  onParticipantImIn,
 }: {
   tour: Tour;
   isInGroup: boolean;
@@ -415,10 +429,10 @@ function MockJournalPeek({
   hostCopy: string;
   guestCopy: string;
   onBegin: () => void;
+  onParticipantImIn: () => void;
 }) {
   // Pull the first real stop from the tour so the peek displays
-  // authentic content instead of "sample" placeholder text. Falls back
-  // gracefully if the tour hasn't been authored yet.
+  // authentic content instead of "sample" placeholder text.
   const stops = tour.unstructuredStops ?? tour.stops ?? [];
   const sample = stops[0];
   const stopTitle = sample?.title || 'Tour stop';
@@ -428,6 +442,8 @@ function MockJournalPeek({
     .replace(/\*([^*]+)\*/g, '$1')
     .trim()
     .slice(0, 220);
+
+  const isParticipant = isInGroup && !isHost;
 
   return (
     <div className="rounded-2xl shadow-lg p-5 space-y-4 text-left animate-fade-in" style={{ backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)' }}>
@@ -449,37 +465,60 @@ function MockJournalPeek({
       )}
       <button
         onClick={onBegin}
-        disabled={isInGroup && !isHost}
+        disabled={isParticipant}
         className="w-full py-3 rounded-lg text-[17px] font-semibold text-white disabled:opacity-40"
         style={{ backgroundColor: 'var(--th-primary)' }}
       >
         Begin this stop
       </button>
-      {isInGroup && !isHost && (
-        <p className="text-[13px] text-center text-text-secondary italic">
-          Only the host can begin a stop.
-        </p>
+      {/* For participant onboarding we mock that the host has already
+          tapped Begin and show their own "I'm in" prompt so they can
+          advance. Without this they'd be locked out of the flow. */}
+      {isParticipant && (
+        <div className="space-y-2 border-t pt-3" style={{ borderColor: 'var(--th-border)' }}>
+          <p className="text-[14px] italic text-center" style={{ color: 'var(--text-secondary)' }}>
+            Your host has begun the stop. Tap to join.
+          </p>
+          <button
+            onClick={onParticipantImIn}
+            className="w-full py-3 rounded-lg text-[17px] font-semibold text-white"
+            style={{ backgroundColor: 'var(--th-primary)' }}
+          >
+            I&apos;m in — let&apos;s go
+          </button>
+        </div>
       )}
     </div>
   );
 }
 
-function MockParticipantImIn({ onTap }: { onTap: () => void }) {
+function HostWaitingCard() {
   return (
-    <div className="space-y-4 animate-fade-in">
-      <p className="text-[18px] text-text-secondary italic">
-        The host has begun the stop. Tap <strong>I&apos;m in</strong> so the group can move together.
+    <div className="rounded-2xl shadow-lg p-5 text-center animate-fade-in" style={{ backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)' }}>
+      <p className="text-[14px] uppercase tracking-[0.18em] font-display font-semibold" style={{ color: 'var(--th-primary)' }}>
+        Stop 1
       </p>
-      <button
-        onClick={onTap}
-        className="w-full py-3.5 rounded-lg text-[18px] font-semibold text-white"
-        style={{ backgroundColor: 'var(--th-primary)' }}
-      >
-        I&apos;m in — let&apos;s go
-      </button>
+      <p className="mt-2 text-[18px] font-serif text-text-primary italic leading-snug">
+        Waiting for your friend to tap <strong>I&apos;m in</strong>&hellip;
+      </p>
+      <div className="mt-4 flex justify-center">
+        <div
+          className="w-2 h-2 rounded-full animate-bounce"
+          style={{ backgroundColor: 'var(--th-primary)', animationDelay: '0ms' }}
+        />
+        <div
+          className="w-2 h-2 rounded-full animate-bounce ml-1"
+          style={{ backgroundColor: 'var(--th-primary)', animationDelay: '120ms' }}
+        />
+        <div
+          className="w-2 h-2 rounded-full animate-bounce ml-1"
+          style={{ backgroundColor: 'var(--th-primary)', animationDelay: '240ms' }}
+        />
+      </div>
     </div>
   );
 }
+
 
 /* ─── What you do (action-title teaser) ────────────────────────── */
 
@@ -523,14 +562,14 @@ function WhatYouDoScreen({ onAdvance }: { onAdvance: () => void }) {
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <div className="space-y-3 text-left">
-          <p className="text-[24px] italic" style={{ color: 'var(--text-secondary)' }}>Each stop will have you</p>
+          <p className="text-[32px] italic leading-tight" style={{ color: 'var(--text-secondary)' }}>Each stop will have you</p>
           <ActionRow label="FIND" />
           <p className="text-[17px] text-text-primary">{ACTION_DESCRIPTIONS.FIND}</p>
         </div>
 
         {(step === 'learn-discuss' || step === 'develop') && (
           <div className="space-y-6 text-left animate-fade-in">
-            <p className="text-[24px] italic" style={{ color: 'var(--text-secondary)' }}>Then you will</p>
+            <p className="text-[32px] italic leading-tight" style={{ color: 'var(--text-secondary)' }}>Then you will</p>
             <div className="space-y-2">
               <ActionRow label="LEARN" />
               <p className="text-[17px] text-text-primary">{ACTION_DESCRIPTIONS.LEARN}</p>
@@ -553,12 +592,17 @@ function WhatYouDoScreen({ onAdvance }: { onAdvance: () => void }) {
       {/* Section 2 — Develop your own historical explanation */}
       <section
         ref={developRef}
-        className="min-h-full flex flex-col justify-center space-y-10 px-6 pt-16 pb-8"
+        className="min-h-full flex flex-col justify-center space-y-8 px-6 pt-16 pb-8"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        <p className="text-[30px] font-display font-bold leading-snug text-text-primary text-center">
-          Develop your own historical explanation as you question and discuss together!
-        </p>
+        <div className="space-y-4 text-left">
+          <p className="text-[26px] italic leading-tight" style={{ color: 'var(--text-secondary)' }}>
+            Through this tour, be able to&hellip;
+          </p>
+          <p className="text-[30px] font-display font-bold leading-snug text-text-primary">
+            Develop your own historical explanation as you question and discuss together!
+          </p>
+        </div>
         <button
           onClick={onAdvance}
           className="w-full py-3.5 rounded-lg text-[18px] font-semibold bg-aged-gold text-white"
@@ -724,10 +768,10 @@ function ShareCallout() {
         boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
       }}
     >
-      <p className="text-[18px] font-display font-semibold leading-snug" style={{ color: '#1f1410' }}>
+      <p className="text-[22px] font-display font-semibold leading-snug" style={{ color: '#1f1410' }}>
         <strong>SHARE</strong> to the community:
       </p>
-      <p className="mt-1 text-[16px] font-serif leading-snug" style={{ color: '#1f1410' }}>
+      <p className="mt-2 text-[19px] font-serif leading-snug" style={{ color: '#1f1410' }}>
         If something makes you curious, or you have a good inquiry, tap here to share!
       </p>
     </div>

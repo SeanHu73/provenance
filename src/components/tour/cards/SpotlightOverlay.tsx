@@ -169,10 +169,11 @@ export default function SpotlightOverlay({
         // spotlit element. `bottom` is computed so the stack's bottom
         // edge sits ~12 px above the spotlight ring.
         <div
-          className="absolute left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center gap-3 px-5"
+          className="absolute left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center gap-3 px-2"
           style={{
             bottom: `calc(100vh - ${holeTop}px + 12px)`,
-            maxWidth: '92vw',
+            maxWidth: '96vw',
+            width: '96vw',
           }}
         >
           {message && (
