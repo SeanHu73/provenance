@@ -101,9 +101,21 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
     !!(wonder.opinionSpectrumRight || '').trim();
 
   // User-choice mode: explorer (or first non-host picker) chooses the
-  // question from a list or proposes their own.
-  const userChoiceOptions = wonder.userChoiceQuestions ?? [];
-  const useUserChoice = !!wonder.userChoiceEnabled && userChoiceOptions.filter((q) => q.trim()).length > 0;
+  // question from a list or proposes their own. The originally-typed
+  // wonder.question is always included as the first option so admins
+  // don't have to retype it; duplicates and blanks are stripped.
+  const userChoiceOptions = useMemo(() => {
+    if (!wonder.userChoiceEnabled) return [];
+    const out: string[] = [];
+    const main = (wonder.question || '').trim();
+    if (main) out.push(main);
+    for (const q of wonder.userChoiceQuestions ?? []) {
+      const trimmed = q.trim();
+      if (trimmed && !out.includes(trimmed)) out.push(trimmed);
+    }
+    return out;
+  }, [wonder.userChoiceEnabled, wonder.question, wonder.userChoiceQuestions]);
+  const useUserChoice = !!wonder.userChoiceEnabled && userChoiceOptions.length > 0;
   const userChoiceKey = opinionKey; // share the same key shape
 
   // Picker = first non-host member by joinedAt. Solo → self is picker.
@@ -184,7 +196,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
           {discussTitle}
           {isPicker ? (
             <UserChoicePanel
-              options={userChoiceOptions.filter((q) => q.trim())}
+              options={userChoiceOptions}
               onPick={handlePick}
               stopId={stop.id}
             />
