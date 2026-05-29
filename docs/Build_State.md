@@ -1,8 +1,9 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-05-27
-(see §8 final entry and the new §12 on multi-device rooms).
-Read this instead of re-discovering the codebase.*
+*Handoff document for the next Claude Code session. Last updated 2026-05-29
+(see §8 final entry: action titles, opinion-dial / user-choice gamification,
+onboarding overhaul, and a Sheets logging expansion). Read this instead of
+re-discovering the codebase.*
 
 ---
 
@@ -62,6 +63,11 @@ Map (tour pin) → Journal Peek → Intro screens → [Meet Your Guide] →
 | Journal | `src/components/tour/Journal.tsx` | Main tour playback overlay — phases, transitions, footer |
 | TourFooter | `src/components/tour/TourFooter.tsx` | Shared Journal + Ask (?) bar plus their overlays. Used by `Journal.tsx` and by `page.tsx` for map/midway/closing phases |
 | ProgressBar | `src/components/tour/ProgressBar.tsx` | Stop pills + amber fill bar + swipeable tracker |
+| ActionTitle | `cards/ActionTitle.tsx` | Shared page-level action header (DISCUSS / LEARN / FIND / RESPOND) — bronze 44px label, right-aligned icon, optional "The Investigation" black subtitle and grey "Opinion" pill. Exports `SectionSubtitle` (theme-primary 22px secondary line) and `InstructionsTitle` (italic alt). See 2026-05-27 entry in §8 |
+| OpinionDial | `cards/OpinionDial.tsx` | Semicircular SVG dial used in rooms when an opinion question has admin-authored spectrum labels. Pick → reveal → average-distance comparison with similar/different verdict. Fires `onResolved` so the parent can log the round. See 2026-05-28 entry in §8 |
+| UserChoicePanel | `cards/UserChoicePanel.tsx` | Picker UI for User Choice Questions — list of authored options plus an italic "Propose Your Own Question" button that opens a textbox + mic. Custom questions are banked to the picker's Inquiries via `bankQuestion`. See 2026-05-28 entry in §8 |
+| SpotlightOverlay | `cards/SpotlightOverlay.tsx` | Generic darken-and-spotlight overlay for the onboarding flow. Queries a target by data-attribute selector, four pointer-events-auto dim panels surrounding the rect so the target stays clickable, optional `dim={false}` ring-only mode (keeps underlying UI visible), message + arrow stacked above the target. See 2026-05-29 entry in §8 |
+| IntroMapMockup | `cards/IntroMapMockup.tsx` | Onboarding map embed — real `@vis.gl/react-google-maps` stack with `gestureHandling="none"` + `disableDefaultUI` so it reads like a satellite screenshot but is the live Google Map. `fill` prop drops the aspect-ratio constraint for the take-over How-It-Works layout. Pin replicates the live `TourParentPin` (CSS-mask `LogoGlyph` on a disc with animate-ping ring). See 2026-05-29 entry in §8 |
 | JournalOverlay | `src/components/tour/JournalOverlay.tsx` | Stops/Questions/Theory tabs |
 | JournalPeek | `src/components/tour/JournalPeek.tsx` | Bottom sheet on map pin tap |
 | SeedCard | `cards/SeedCard.tsx` | Merged Background + Look Around screen |
@@ -78,7 +84,7 @@ Map (tour pin) → Journal Peek → Intro screens → [Meet Your Guide] →
 | EqFinalReflectCard | `cards/EqFinalReflectCard.tsx` | Final sliders + chips |
 | EqQuestionsCard | `cards/EqQuestionsCard.tsx` | Final questions + question list |
 | EndCard | `cards/EndCard.tsx` | Learning arc + explore on your own |
-| IntroScreens | `cards/IntroScreens.tsx` | Onboarding sequence (5 screens, ? cue arrow, phone-setup choice) |
+| IntroScreens | `cards/IntroScreens.tsx` | Onboarding sequence — 7 screens (Set Up / Welcome / How it works / What you do / Your thinking matters / Audio / One last thing). How-it-works and What-you-do early-return as take-over layouts with `FloatingProgressDots` over them. Spotlights target the real footer buttons by `data-*` attribute. See 2026-05-29 entry in §8 |
 | MeetGuideCard | `cards/MeetGuideCard.tsx` | "Meet Your Guide" — photo, name, title, audio, intro |
 | GuideOutroCard | `cards/GuideOutroCard.tsx` | "Last words from &lt;guide&gt;" — closing photo + audio + message |
 | DetourFlow | `cards/DetourFlow.tsx` | Artefact side-paths |
@@ -247,7 +253,7 @@ Explorer photos are tappable for fullscreen (portal, pinch-zoom, close button at
 | `memorial-church-contributions` | Learner contributions |
 | `memorial-church-questions` | Legacy question log |
 | `memorial-church-migrations` | Migration receipts |
-| `memorial-church-rooms` | Multi-device group rooms (§12) — code, members, transition + barrier state |
+| `memorial-church-rooms` | Multi-device group rooms (§12) — code, members, transition + barrier state. Now also carries `opinionDials` (per-question position + revealedBy maps) and `userChoiceSelections` (per-question `{ chosenBy, question, isCustom }`) for the 2026-05-28 gamification. |
 
 ### Security Rules
 
@@ -268,15 +274,29 @@ All tour events log to Google Sheets via `/api/log-tour` → `SHEETS_WEBHOOK_URL
 Uses `navigator.sendBeacon` for mobile reliability.
 
 Events: reflection, question_banked, question_routed, eq_opening, eq_closing,
-eq_final_reflect, stop_entered, tour_complete. Each row includes sessionId
-for grouping.
+eq_final_reflect, stop_entered, tour_complete, **opinion_dial**,
+**user_choice_picked**. Each row includes `sessionId` for grouping and (as of
+2026-05-29) `roomCode` / `isHost` / `memberCount` for joining rows by group
+session — `tour-logger.ts` keeps a module-level log context that
+`RoomContext` updates whenever the room state changes.
 
-Apps Script columns (24): Logged At, Timestamp, Session ID, Source, Event/Type,
-Tour Title, Stop Title, Stop #, Reflection Score, Follow-Up Response,
-Question, Question Routing, Stops Completed, Duration (min),
-EQ Initial Theory, EQ Initial Reasoning, EQ Final Reflection,
-EQ Final Reasoning, EQ Cognitive Slider, EQ Perceptual Slider,
-EQ What Changed, EQ Why Changed, Observation, Answer.
+Apps Script columns (36 — original 24 plus 12 added 2026-05-29):
+- **Original (1–24)**: Logged At, Timestamp, Session ID, Source, Event/Type,
+  Tour Title, Stop Title, Stop #, Reflection Score, Follow-Up Response,
+  Question, Question Routing, Stops Completed, Duration (min),
+  EQ Initial Theory, EQ Initial Reasoning, EQ Final Reflection,
+  EQ Final Reasoning, EQ Cognitive Slider, EQ Perceptual Slider,
+  EQ What Changed, EQ Why Changed, Observation, Answer.
+- **Added 2026-05-29 (25–36)**: Room Code, Is Host, Member Count,
+  Question Key, Opinion Left Label, Opinion Right Label, Opinion My
+  Position, Opinion Other Positions, Opinion Similarity, Opinion Avg
+  Distance, User Choice Question, User Choice Is Custom.
+
+Two adoption docs accompany the 2026-05-29 logging update:
+`docs/Sheets_Logging_Update.md` (per-field reference + cross-referencing
+guidance) and `docs/sheets-apps-script.gs` (the full Apps Script — paste
+in, run `addHeaders()` once, redeploy as new version of the existing
+Web App; `SHEETS_WEBHOOK_URL` does not change).
 
 ---
 
@@ -327,6 +347,9 @@ Tailwind CSS 4, TypeScript 5, @vis.gl/react-google-maps 1.8.3.
 - **`panTo()` range limit**: Google Maps only animates `panTo()` smoothly when the destination is within roughly one screen's width/height. For larger distances it jumps immediately. The fly animation therefore uses a `requestAnimationFrame` loop with `setCenter()` each frame for phase 1 (pan), and `setZoom()` each frame for phase 3 (zoom out). See `MapFlyer` in `Map.tsx`.
 - **`isFinalStop`** only governs linear tours. In unstructured mode `advanceToNextStopUnstructured` ignores it; the final stop is whichever logical stop the explorer completes last. Code that branches on `isFinalStop` must also check `!tour.unstructuredMode`.
 - **Logical stops**: in unstructured mode count `getLogicalStops(tour)` (standalone stops + the leader of each merge group), not `tour.stops.length`. `completionOrder` holds *logical* stop IDs and is populated only when a stop is completed.
+- **Full-screen dim with a clickable target**: `box-shadow: 0 0 0 9999px rgba(0,0,0,X)` paints the dim *visually* but the dim is **not** a hit region — the element's own bounding box is. So putting a `pointer-events-auto` `fixed inset-0` parent around the spotlight will swallow every click before it reaches the target. `SpotlightOverlay` instead uses four `pointer-events-auto` panels surrounding the target rect (with the parent `pointer-events-none`) so taps on the target pass straight through; only the visual ring sits on top, and it's `pointer-events-none`. Same lesson applies to any "modal that leaves a hole".
+- **CSS token `--th-text-primary` does not exist**: text colours are aliased *without* the `--th-` prefix (`--text-primary`, `--text-secondary`). Using `var(--th-text-primary)` silently falls back to inherited colour — caused the SHARE callout to render cream-on-cream during onboarding. Use `var(--text-primary)` or the Tailwind `text-text-primary` utility (exposed via `@theme inline`).
+- **Static Maps API requires its own enablement** in the GCP project. The live Map's API key works for Maps JavaScript API but not necessarily Static Maps. The onboarding map embeds `@vis.gl/react-google-maps` with `gestureHandling="none" + disableDefaultUI` instead — looks static, uses the existing enablement.
 
 ---
 
@@ -1430,6 +1453,229 @@ participant can each peek independently.
 
 ---
 
+### Action titles, gamification, onboarding overhaul, Sheets logging (2026-05-27 → 2026-05-29)
+
+A two-day session, the biggest since the v2 build. Six interlocking
+threads, all live on `master` (commits `ec5c192` → `5e6b973`).
+
+**Inquiry reminder polish.** The every-third-stop reminder used to
+render `fixed inset-0` inside `RevealCard`, which sits under a
+framer-motion transformed ancestor — `position: fixed` was being
+scoped to the card area only, so the dim never covered the footer
+and the arrow ended up floating mid-card. Portal-to-`document.body`
+moves the overlay above any transformed ancestors. The reminder now
+spotlights the *real* Inquiries button: 9999px box-shadow on a
+transparent rect over the button (found by `data-inquiries-button`),
+white halo ring, 32 px headline "SHARE: Do you have any inquiries?",
+big bouncing arrow in `--th-secondary`. Hold extended 2 s → 5.5 s
+total (7%/93% keyframes for short fades).
+
+**Action titles — DISCUSS / LEARN / FIND / RESPOND.** New shared
+`ActionTitle` component drives the page-level header on every learner
+card. Final styling:
+
+- 44 px bronze label (`--th-accent-dark`) on the left of the row.
+- 64 px matching icon on the right with `pr-2` margin from the card
+  edge. Icons: speech-with-sound-waves (DISCUSS), lightbulb (LEARN),
+  magnifying-glass (FIND), pen-on-paper (RESPOND).
+- Optional dark-grey + white "Opinion" pill (`bg #3F3F46`).
+- Optional "The Investigation" subtitle in pure black, 22 px,
+  uppercase display — rendered BELOW the action label on every EQ
+  card except `EqSceneCard` and `EqOpeningCard` section 1 (the
+  framing screen). Kept on `EqOpeningCard` section 2 so RESPOND +
+  Investigation appears again when the explorer scrolls to the
+  recording form.
+- Legacy per-screen subtitles ("Background", "Context", "Setting the
+  scene…", "Tour complete", "Closing questions", "Mid point
+  check-in", "Share your discussion…") are no longer attached to
+  ActionTitle. Each card renders the exported `SectionSubtitle`
+  helper (theme-primary, 22 px, uppercase) DIRECTLY ABOVE the text /
+  question it labels, with a tight `mb-2`, so the subtitle visually
+  pairs with its content instead of the action header.
+- `InstructionsTitle` is an italic theme-primary alternative used in
+  place of ActionTitle when an admin flips a question background
+  into "Instructions mode" (see below).
+
+`QuestionText` switched from bronze to theme-primary so EQ-style
+questions now read in the dominant theme colour. Admin checkbox
+"Show this as Instructions" added under all six question-background
+blocks (EQ main, EQ additional, EQ closing additional[i], midway,
+per-stop wonder, extra-round wonder) — when on, the explorer sees
+the italic *Instructions* title instead of LEARN + "Background".
+`NoticeMapDisplay`'s reveal text changed from "Tap for hint" to
+"Tap for specific location".
+
+**Opinion-dial gamification (group only).** Every opinion-type
+question can now be authored with a left/right spectrum (admin: text
+inputs that appear when `questionType === 'opinion'` in per-stop
+wonder, extra-round wonder, EQ additional, EQ closing additional).
+In rooms when both labels are present, the regular continue-row is
+replaced by `OpinionDial`:
+
+- 180° SVG arc with a draggable handle (pointer-events captured for
+  touch + mouse). Left/right labels at the ends.
+- "Find out where your friend is" button unlocks once a position is
+  set; while waiting for partners: "Waiting for the group to
+  reveal…".
+- Once every member has revealed, other members' positions render as
+  contrasting `--th-secondary` dots. Message picks "Quite similar!"
+  when average distance from this member to others is < 0.25, else
+  "Wow, quite different. Why's that?". A Continue button + the
+  parent's BackButton complete the round.
+- State lives in the room doc under `opinionDials[key]` (positions
+  map + revealedBy list, keyed identically to barriers as
+  `${stopId}:wonder:${round}` or `eq:additional:0`). Two
+  transactional writers in `room-store.ts` — `setOpinionDialPosition`
+  (idempotent + clamped; locked once a member reveals) and
+  `revealOpinionDial` (appends to revealedBy iff that member has
+  already picked).
+- `onResolved` callback fires exactly once per round (guarded with a
+  `useRef` so effect re-runs don't double-fire); parent cards
+  forward to `logOpinionDial` (see logging below).
+
+**User-Choice Questions.** New admin toggle on per-stop wonder and
+extra-round wonder ("User Choice Question"). When on, the admin
+authors a list of question options. The originally-typed `question`
+field is automatically prepended to the picker's list at runtime
+(dedup + blank-trim), so admins don't have to retype the question
+they already wrote.
+
+Explorer: `WonderCard` renders two snap-scroll sections — choice on
+top, question revealed below as soon as a choice arrives. On pick,
+the parent calls `scrollIntoView` on the question section. The
+chosen question replaces `wonder.question` for the rest of the round
+via an `effectiveQuestion` derived value, so audio / photos / barriers
+work unchanged.
+
+Group: picker = first non-host member by `joinedAt`. Picker sees
+`UserChoicePanel` (each option a tappable button + italic
+"Propose Your Own Question" at the bottom that opens a textbox + mic).
+Host + other non-hosts see a centred italic *"Your friend is
+choosing a question…"*. Source of truth is `room.userChoiceSelections[key]`,
+written via `selectUserChoiceQuestion` (transactional first-write-wins).
+Custom questions are also banked to the picker's Inquiries via
+`TourContext.bankQuestion`.
+
+**Onboarding overhaul.** `IntroScreens` rebuilt as a 7-screen flow
+(was 6) with two screens that take over the entire card. New
+supporting components:
+
+- `SpotlightOverlay` — generic portal-based dim. Outer is
+  `pointer-events-none`; four dim panels surround the target rect
+  with `pointer-events-auto` (so the target stays clickable through
+  the hole); visual ring is `pointer-events-none`. Polling every
+  250 ms latches onto targets that mount after the overlay (e.g.
+  the Inquiries close X). `dim={false}` mode draws only the circle
+  ring — used for the close-X cue so the modal stays readable. The
+  message + arrow stack sits in a single block ABOVE the target
+  (`bottom: calc(100vh - holeTop + 12px)`), 96vw wide.
+- `IntroMapMockup` — real `@vis.gl/react-google-maps` embed,
+  `gestureHandling="none" + disableDefaultUI`, `mapTypeId="satellite"`,
+  same `mapId` the live tour uses. `fill` prop drops the aspect-ratio
+  constraint so the map covers the whole card on the take-over
+  layout. Pin replicates the live `TourParentPin` exactly — CSS-mask
+  `LogoGlyph` (white `pin-glyph-base.png` + theme-primary
+  `pin-glyph-p.png`) inside a 60 px disc with white border, drop
+  shadow, animate-ping outer ring. (An earlier Static Maps cut
+  failed silently because Static Maps API wasn't enabled in the
+  project — see §7.)
+- `FloatingProgressDots` — absolute-top z-30 overlay used by the
+  take-over screens so the progress chrome stays visible above the
+  full-card content.
+
+The 7 screens:
+
+1. **Set Up** — solo vs group with "best experience" bolded.
+   Dropped the earlier per-choice helper paragraphs ("We suggest
+   everyone use earphones…" for Everyone, "When you see information
+   and questions…" for Only Me). Earphones tip moved to the Audio
+   screen.
+2. **Welcome** — text bumped, otherwise unchanged.
+3. **How it works** — take-over satellite map with the
+   pulsing-ring pin centred. "You will find pins on this map" as a
+   translucent dark capsule on top → 3 s → `SpotlightOverlay`
+   highlights the pin with "Click on the pin to explore the stop!"
+   → tap → `MockJournalPeek` slides up from the bottom (uses the
+   tour's actual first stop's title + a snippet of `seed.text`, not
+   "Sample stop"). Group host sees the host copy + Begin → goes to
+   a new `host-waiting` step (auto-advances after 2.5 s mocking the
+   participant tapping I'm In). Group participant sees Begin
+   disabled and a separate "I'm in — let's go" button in the same
+   sheet so they have a way to advance (fixes the earlier lockout
+   where only the host could move forward). Solo: Begin →
+   onContinue.
+4. **What you do** (NEW) — take-over snap-scroll. Section 1 reveals
+   FIND on first tap (regular text below: *"Look for something in
+   the area."*), then LEARN + DISCUSS on second tap (each with
+   their own descriptions), with italic "Each stop will have you"
+   / "Then you will" connectors at 32 px and a smaller "or"
+   between LEARN and DISCUSS. Third tap snaps via `scrollIntoView`
+   to section 2 — "Through this tour, be able to…" italic
+   subtitle plus the 30 px display "Develop your own historical
+   explanation as you question and discuss together!" + Next.
+5. **Your thinking matters** — "Together, build on ideas or
+   disagree!" on first tap → `SpotlightOverlay` highlights the real
+   Inquiries button with a bouncing down-arrow and the
+   `ShareCallout` textbox (cream surface, secondary-coloured
+   border, 22 px bold SHARE header + 19 px body, explicit `#1f1410`
+   text because `var(--th-text-primary)` doesn't exist). Polling
+   detects `[data-question-close]` mounting → swap to a circle
+   `SpotlightOverlay` with `dim={false}` so the inquiry modal stays
+   visible while the X is circled. Modal close removes the X from
+   the DOM → auto-advance.
+6. **Audio** — autoplay choice (Auto-play / Tap to play). After
+   picking: `SpotlightOverlay` highlights the real `data-auto-button`
+   in the footer with "You can toggle at anytime. Tap anywhere
+   else to continue." (no arrow). Outside-tap → second pass of the
+   Audio screen with an earphone glyph + "Use earphones if you can!
+   Or read to each other. Be respectful indoors."
+7. **One last thing** — "Don't forget to LOOK UP!" (uppercase +
+   bold), "see more" and "think together" bolded.
+
+`TourFooter` gained `data-auto-button` on the Auto pill and
+`data-question-close` on the modal X (with the X bumped from
+w-8/text-lg to w-10/text-2xl so the circle spotlight reads well).
+
+**Sheets logging update.** `tour-logger.ts` got a module-level
+`logContext` slot (roomCode, isHost, memberCount) updated by
+`RoomContext` whenever the room state changes, merged onto every
+event row in `fire()`. Two new event types:
+
+- `opinion_dial` — fired by each member's device once everyone has
+  revealed; carries `questionKey`, `questionText`, both spectrum
+  labels, this member's `opinionMyPosition`, comma-separated
+  `opinionOtherPositions`, `opinionSimilarity`
+  (`'similar'` | `'different'`), and `opinionAvgDistance`. Wired in
+  via `OpinionDial.onResolved` from `WonderCard`, `EqAdditionalCard`,
+  and `EqClosingAdditionalCard`.
+- `user_choice_picked` — fired by the picker only (solo or first
+  non-host) when they commit a User Choice Question. Carries
+  `userChoiceQuestion` and `userChoiceIsCustom`. Custom picks also
+  fire the existing `question_banked` event (two separate facts).
+
+API route `TourLogEntry` shape extended with the new optional fields
+so the Next.js endpoint forwards them unchanged to the Sheets
+webhook. Sheet now expects 36 columns (24 original + 12 new — see
+§4). Two adoption docs added: `docs/Sheets_Logging_Update.md` (field
+reference, cross-referencing guidance) and `docs/sheets-apps-script.gs`
+(full Apps Script — paste in, run `addHeaders()` once, redeploy
+existing Web app as new version; `SHEETS_WEBHOOK_URL` unchanged).
+
+**Lessons captured this session (added to §7)**
+
+- Full-screen dim + clickable target: box-shadow paints visually but
+  doesn't extend the hit area, so an inset-0 parent with
+  pointer-events-auto swallows every click. Split the dim into four
+  panels around the target rect, parent pointer-events-none.
+- `var(--th-text-primary)` doesn't exist (text colours are aliased
+  without the `--th-` prefix). Silent inheritance fallback caused
+  white-on-cream onboarding text.
+- Static Maps API needs its own GCP enablement; embedding the live
+  Map with `gestureHandling="none"` reads as a static screenshot
+  without the dependency.
+
+---
+
 ## 11. Splash Screen
 
 Added 2026-05-25. First-load brand intro that plays once per browser
@@ -1624,4 +1870,9 @@ independently.
 *End of handoff. The room system (§12), splash screen (§11),
 unstructured exploration mode (§10), theme system (§9), and the
 parallel `unstructuredStops` authoring path are all live on
-`master`.*
+`master`. The 2026-05-27 → 2026-05-29 session (latest entry in §8)
+shipped the action-title system, opinion-dial gamification,
+user-choice questions, the onboarding overhaul, and the Sheets
+logging update — adoption requires running `addHeaders()` once in
+the Apps Script editor and redeploying the existing Web app as a
+new version (see §4 and `docs/sheets-apps-script.gs`).*
