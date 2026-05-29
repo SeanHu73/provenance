@@ -11,6 +11,7 @@ import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import FullscreenPhoto from './FullscreenPhoto';
 import FormattedText from './FormattedText';
+import ActionTitle from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
@@ -28,6 +29,7 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
       {/* Title */}
+      <ActionTitle action="FIND" investigation />
       <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
         Setting the scene...
       </p>

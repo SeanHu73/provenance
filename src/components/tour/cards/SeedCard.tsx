@@ -19,6 +19,7 @@ import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import NoticeMapDisplay from './NoticeMapDisplay';
 import SnapScrollHint from './SnapScrollHint';
+import ActionTitle from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
@@ -104,6 +105,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   // Background block (shared across snap and non-snap layouts)
   const backgroundBlock = (
     <>
+      <ActionTitle action="LEARN" />
       <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
         Background...
       </p>
@@ -124,9 +126,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   // Look Around block (only when hasNoticeSection)
   const lookAroundBlock = (
     <>
-      <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
-        Look around...
-      </p>
+      <ActionTitle action="FIND" />
       {onPeekMap && stop.location && (
         <div>
           <button

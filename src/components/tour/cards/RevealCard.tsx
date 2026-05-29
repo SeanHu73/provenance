@@ -7,6 +7,7 @@ import FullscreenPhoto from './FullscreenPhoto';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import InquiryReminder from './InquiryReminder';
+import ActionTitle from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useTour } from '@/context/TourContext';
 
@@ -40,6 +41,7 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
   return (
     <div className="animate-fade-in space-y-4 min-h-full flex flex-col justify-center">
       {/* Title */}
+      <ActionTitle action="LEARN" />
       <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
         Context
       </p>

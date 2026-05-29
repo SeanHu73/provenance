@@ -17,6 +17,7 @@ import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import QuestionText from './QuestionText';
 import SnapScrollHint from './SnapScrollHint';
+import ActionTitle from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
@@ -52,7 +53,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
       ? "We've talked — show us"
       : "We've talked — what's next?";
 
-  const title = wonder.questionType === 'opinion' ? "What’s your opinion?" : 'Chance to discuss...';
+  const isOpinion = wonder.questionType === 'opinion';
 
   // Reveal state for the question section in the snap layout.
   const questionRef = useRef<HTMLElement | null>(null);
@@ -85,11 +86,8 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
     };
   }, [hasBackground, questionRevealed]);
 
-  const titleBlock = (
-    <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
-      {title}
-    </p>
-  );
+  const discussTitle = <ActionTitle action="DISCUSS" opinion={isOpinion} />;
+  const learnTitle = <ActionTitle action="LEARN" />;
 
   const continueRow = (
     <div className="space-y-2">
@@ -113,7 +111,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
   if (!hasBackground) {
     return (
       <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
-        {titleBlock}
+        {discussTitle}
         {wonder.audioUrl && <AudioButton audioUrl={wonder.audioUrl} title={wonder.audioTitle} autoplay={wonderAutoplay} />}
         <QuestionText text={wonder.question} />
         {wonder.photos && wonder.photos.length > 0 && (
@@ -134,7 +132,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
         className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        {titleBlock}
+        {learnTitle}
         {wonder.questionBackgroundAudioUrl && (
           <AudioButton
             audioUrl={wonder.questionBackgroundAudioUrl}
@@ -167,9 +165,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
           transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
         }}
       >
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
-          Discuss
-        </p>
+        {discussTitle}
         <QuestionText text={wonder.question} />
         {continueRow}
       </section>

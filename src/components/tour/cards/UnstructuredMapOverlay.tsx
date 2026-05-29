@@ -12,6 +12,7 @@ import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
 import SnapScrollHint from './SnapScrollHint';
+import ActionTitle from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
@@ -805,6 +806,7 @@ export function MidwayCheckinCard({
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <div>
+          <ActionTitle action="LEARN" investigation className="mb-2" />
           <p className="text-[22px] uppercase tracking-[0.12em] font-display font-semibold text-aged-gold mb-1">
             Mid point check-in
           </p>
@@ -830,6 +832,7 @@ export function MidwayCheckinCard({
           className="min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
           style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
         >
+          <ActionTitle action="LEARN" />
           {tour.midwayQuestionBackgroundAudioUrl && (
             <AudioButton
               audioUrl={tour.midwayQuestionBackgroundAudioUrl}
@@ -857,9 +860,7 @@ export function MidwayCheckinCard({
           transition: 'opacity 250ms ease-out, transform 250ms ease-out',
         }}
       >
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
-          Discuss
-        </p>
+        <ActionTitle action="DISCUSS" />
         <QuestionText text={tour.midwayQuestion || ''} sizeClass="text-[26px]" />
 
         <div className="flex gap-2 items-start">

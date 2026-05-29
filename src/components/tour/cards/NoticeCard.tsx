@@ -5,6 +5,7 @@ import { Stop } from '@/lib/types';
 import PhotoContent from './PhotoContent';
 import AudioButton from './AudioButton';
 import NoticeMapDisplay from './NoticeMapDisplay';
+import ActionTitle from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 interface Props {
@@ -34,9 +35,7 @@ export default function NoticeCard({ stop, onContinue }: Props) {
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <p className="text-[26px] uppercase tracking-[0.14em] font-display text-accent-dark font-semibold">
-        Look around...
-      </p>
+      <ActionTitle action="FIND" />
 
       {/* Audio player */}
       {stop.notice.audioUrl && <AudioButton audioUrl={stop.notice.audioUrl} title={stop.notice.audioTitle} autoplay={shouldAutoplay} />}

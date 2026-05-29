@@ -16,6 +16,7 @@ import BackButton from './BackButton';
 import MicButton from '../MicButton';
 import QuestionText from './QuestionText';
 import SnapScrollHint from './SnapScrollHint';
+import ActionTitle from './ActionTitle';
 
 interface Props {
   tour: Tour;
@@ -72,6 +73,7 @@ export default function EqOpeningCard({ tour, onComplete }: Props) {
         className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
+        <ActionTitle action="RESPOND" investigation />
         <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
           Share your discussion...
         </p>

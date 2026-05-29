@@ -13,6 +13,7 @@ import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
 import SnapScrollHint from './SnapScrollHint';
+import ActionTitle from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 
@@ -66,11 +67,12 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
   const isOpinion = aq.questionType === 'opinion';
   const bgAutoplay = autoplayPref && !aq.questionBackgroundAudioAutoplayDisabled;
 
-  const titleBlock = (
-    <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
-      {isOpinion ? "What's your opinion?" : 'Chance to discuss...'}
-    </p>
-  );
+  // Section-1 background → LEARN with the Investigation eyebrow.
+  const learnTitle = <ActionTitle action="LEARN" investigation />;
+  // Section-2 question → DISCUSS (opinion pill when applicable).
+  const discussTitle = <ActionTitle action="DISCUSS" opinion={isOpinion} />;
+  // Single-section fallback: Investigation + DISCUSS together.
+  const fallbackTitle = <ActionTitle action="DISCUSS" opinion={isOpinion} investigation />;
 
   const instruction = (
     <p className="text-[18px] text-text-secondary italic leading-relaxed">
@@ -99,7 +101,7 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
   if (!hasBackground) {
     return (
       <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
-        {titleBlock}
+        {fallbackTitle}
         <QuestionText text={aq.question} />
         {instruction}
         {continueRow}
@@ -116,7 +118,7 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
         className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        {titleBlock}
+        {learnTitle}
         {aq.questionBackgroundAudioUrl && (
           <AudioButton
             audioUrl={aq.questionBackgroundAudioUrl}
@@ -143,9 +145,7 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
           transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
         }}
       >
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
-          Discuss
-        </p>
+        {discussTitle}
         <QuestionText text={aq.question} />
         {instruction}
         {continueRow}

@@ -16,6 +16,7 @@ import AudioButton from './AudioButton';
 import QuestionText from './QuestionText';
 import PhotoContent from './PhotoContent';
 import SnapScrollHint from './SnapScrollHint';
+import ActionTitle from './ActionTitle';
 import { useRoomBarrier } from '@/components/room/useRoomBarrier';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
@@ -65,11 +66,12 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
     };
   }, [hasBackground, questionRevealed]);
 
-  const titleBlock = (
-    <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
-      Question for you!
-    </p>
-  );
+  // Section-1 background → LEARN with the Investigation eyebrow.
+  const learnTitle = <ActionTitle action="LEARN" investigation />;
+  // Section-2 question → DISCUSS (no eyebrow; one Investigation per card).
+  const discussTitle = <ActionTitle action="DISCUSS" />;
+  // Single-section fallback (no background) gets both: Investigation + DISCUSS.
+  const fallbackTitle = <ActionTitle action="DISCUSS" investigation />;
 
   const instruction = (
     <p className="text-[18px] text-text-secondary italic leading-relaxed">
@@ -97,7 +99,7 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
   if (!hasBackground) {
     return (
       <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
-        {titleBlock}
+        {fallbackTitle}
         <QuestionText text={eq.question} />
         {instruction}
         {continueRow}
@@ -115,7 +117,7 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
         className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        {titleBlock}
+        {learnTitle}
         {eq.questionBackgroundAudioUrl && (
           <AudioButton
             audioUrl={eq.questionBackgroundAudioUrl}
@@ -142,9 +144,7 @@ export default function EqDiscussCard({ tour, onContinue }: Props) {
           transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
         }}
       >
-        <p className="text-[26px] uppercase tracking-[0.14em] font-display text-aged-gold font-semibold">
-          Discuss
-        </p>
+        {discussTitle}
         <QuestionText text={eq.question} />
         {instruction}
         {continueRow}
