@@ -10,6 +10,7 @@ import InquiryReminder from './InquiryReminder';
 import ActionTitle, { SectionSubtitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useTour } from '@/context/TourContext';
+import { getTourMode } from '@/lib/tours-store';
 
 interface Props {
   stop: Stop;
@@ -28,9 +29,10 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
   // Context screen that the "? Inquiries" footer button is there for
   // questions. Counts by completedStops length + the stop we're
   // currently sitting in.
-  const { session } = useTour();
+  const { session, tour } = useTour();
   const stopNumber = (session?.completedStops.length ?? 0) + 1;
-  const showInquiryReminder = stopNumber > 0 && stopNumber % 3 === 0;
+  // Context-Prototype has no Inquiries feature, so never flash the reminder.
+  const showInquiryReminder = !!tour && getTourMode(tour) !== 'context' && stopNumber > 0 && stopNumber % 3 === 0;
 
   // Collect all photos (legacy + array)
   const allPhotos = [

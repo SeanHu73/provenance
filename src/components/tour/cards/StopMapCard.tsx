@@ -11,7 +11,6 @@ import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-goo
 import { Tour, TourSession } from '@/lib/types';
 import { getActiveStops } from '@/lib/tours-store';
 import { getContextOrderedStops } from '@/lib/tour-session';
-import BackButton from './BackButton';
 
 const FALLBACK_LOCATION = { lat: 37.42700, lng: -122.17015 };
 const MAP_ID = 'b8f339c02d8c7d5bd3f12d1b';
@@ -92,12 +91,11 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
         </span>
       </div>
 
-      {/* Floating controls over the map */}
-      <div className="absolute bottom-0 inset-x-0 p-4 flex gap-2" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.35), transparent)' }}>
-        <BackButton />
+      {/* Floating continue control over the map */}
+      <div className="absolute bottom-0 inset-x-0 p-4" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.35), transparent)' }}>
         <button
           onClick={onContinue}
-          className="flex-1 py-3 rounded-lg text-base font-semibold bg-olive text-white shadow-lg"
+          className="w-full py-3 rounded-lg text-base font-semibold bg-olive text-white shadow-lg"
         >
           I&apos;m here — continue
         </button>

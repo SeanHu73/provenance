@@ -36,14 +36,16 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
   // surfaces the current Act's title on the footer bar, next to Journal.
   const isContext = getTourMode(tour) === 'context';
   const showInquiries = !isContext;
-  let actLabel: string | null = null;
+  let actNumLabel: string | null = null;
+  let actTitleText = '';
   const inActPhase = ['act_intro', 'act_opening', 'act_closing', 'stop_map', 'seed', 'notice', 'wonder', 'reveal', 'reflect', 'whats_next', 'branch'].includes(session.currentPhase);
   if (isContext && inActPhase) {
     const currentStop = getActiveStops(tour)[session.currentStopIndex];
     const act = currentStop ? findActOfStop(tour, currentStop.id) : null;
     if (act) {
       const num = getActs(tour).findIndex((a) => a.id === act.id) + 1;
-      actLabel = act.title.trim() ? `Act ${num}: ${act.title}` : `Act ${num}`;
+      actNumLabel = `Act ${num}`;
+      actTitleText = act.title.trim();
     }
   }
 
@@ -65,15 +67,17 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
           Journal
         </button>
 
-        {/* Current Act title (context mode) — sits next to Journal. */}
-        {actLabel && (
-          <span
-            className="flex-1 min-w-0 text-center font-display font-semibold tracking-wide truncate"
-            style={{ color: 'var(--cream, #FFF8EE)', fontSize: 17 }}
-            title={actLabel}
+        {/* Current Act (context mode) — sits next to Journal: number on top,
+            title in italics below, truncated so it always fits. */}
+        {actNumLabel && (
+          <div
+            className="flex-1 min-w-0 text-center leading-tight"
+            style={{ color: 'var(--cream, #FFF8EE)' }}
+            title={actTitleText ? `${actNumLabel}: ${actTitleText}` : actNumLabel}
           >
-            {actLabel}
-          </span>
+            <div className="font-display font-bold tracking-wide" style={{ fontSize: 19 }}>{actNumLabel}</div>
+            {actTitleText && <div className="italic truncate" style={{ fontSize: 12 }}>{actTitleText}</div>}
+          </div>
         )}
         {showInquiries && (
         <button
