@@ -175,7 +175,7 @@ function LinearProgressBar({ tour, session }: Props) {
   } else if (session.currentPhase === 'end') {
     pct = 100;
   } else {
-    const stopPhases = ['act_intro', 'act_opening', 'stop_map', 'seed', 'wonder', 'reveal', 'reflect', 'whats_next', 'act_closing', 'branch'];
+    const stopPhases = ['act_intro', 'act_opening', 'stop_map', 'seed', 'wonder', 'reveal', 'reflect', 'whats_next', 'act_closing', 'act_questions', 'branch'];
     const pi = stopPhases.indexOf(session.currentPhase);
     const sub = pi >= 0 ? pi / stopPhases.length : 0.5;
     const base = hasIntro ? 1 : 0;

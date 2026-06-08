@@ -3,19 +3,25 @@
 /**
  * Context-Prototype — an Act's opening or closing question.
  *
- * Shows the act title on a bar at the top, a "Share what you think" header
- * with a talking-person icon, then the authored question. The explorer
- * responds by voice (transcribed) or by typing. The textbox is optional:
- * Continue always advances, recording whatever was entered.
+ * Opening: a single screen — "Share what you think" header + the question +
+ * the response input (choose Type or Record).
+ *
+ * Closing: a two-section snap-scroll — first a "Thank you for completing
+ * Act N…" panel that cues a scroll down to the "Share what you think"
+ * question + response input.
+ *
+ * The response is optional: Continue always advances, recording whatever was
+ * entered.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Act } from '@/lib/types';
 import { useTour } from '@/context/TourContext';
 import { logActQuestion } from '@/lib/tour-logger';
 import BackButton from './BackButton';
-import MicButton from '../MicButton';
 import QuestionText from './QuestionText';
+import ResponseInput from './ResponseInput';
+import SnapScrollHint from './SnapScrollHint';
 
 interface Props {
   act: Act;
@@ -23,6 +29,9 @@ interface Props {
   kind: 'opening' | 'closing';
   onComplete: (response: string) => void;
 }
+
+const REVEAL_DELAY_MS = 200;
+const REVEAL_TRANSITION_MS = 250;
 
 export default function ActQuestionCard({ act, actNumber, kind, onComplete }: Props) {
   const { tour, session } = useTour();
@@ -46,43 +55,95 @@ export default function ActQuestionCard({ act, actNumber, kind, onComplete }: Pr
     onComplete(text);
   };
 
-  return (
-    <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center px-1 py-2">
-      {/* "Share what you think" header — talking-person icon on the right
-          (the Act title now lives on the footer bar, next to Journal). */}
-      <div className="flex items-end justify-between gap-3 pr-1" style={{ color: 'var(--th-accent-dark)' }}>
-        <h2 className="uppercase tracking-[0.1em] font-display font-bold leading-none" style={{ fontSize: 30 }}>
-          Share what<br />you think
-        </h2>
-        <TalkingPersonIcon size={60} />
-      </div>
+  const header = (
+    <div className="flex items-end justify-between gap-3 pr-1" style={{ color: 'var(--th-accent-dark)' }}>
+      <h2 className="uppercase tracking-[0.1em] font-display font-bold leading-none" style={{ fontSize: 30 }}>
+        Share what<br />you think
+      </h2>
+      <TalkingPersonIcon size={60} />
+    </div>
+  );
 
+  const questionAndResponse = (
+    <>
+      {header}
       <QuestionText text={question} />
-
-      {/* Voice + text response */}
-      <div className="space-y-2">
-        <div className="flex gap-2">
-          <textarea
-            value={response}
-            onChange={(e) => setResponse(e.target.value)}
-            placeholder="Record your answer, or type it here…"
-            rows={3}
-            className="flex-1 px-4 py-3 rounded-lg text-[20px] font-serif text-text-primary placeholder:text-text-secondary/40 focus:outline-none transition-all border-2 border-sandstone-light bg-white"
-          />
-          <MicButton onTranscript={(t) => setResponse((prev) => (prev ? prev + ' ' + t : t))} />
-        </div>
-      </div>
-
-      {/* Continue — always available (response optional) */}
+      <ResponseInput value={response} onChange={setResponse} placeholder="Record your answer, or type it here…" />
       <div className="flex gap-2">
         <BackButton />
-        <button
-          onClick={submit}
-          className="flex-1 py-3 rounded-lg text-base font-semibold bg-olive text-white"
-        >
+        <button onClick={submit} className="flex-1 py-3 rounded-lg text-base font-semibold bg-olive text-white">
           Continue
         </button>
       </div>
+    </>
+  );
+
+  // ── Opening: single section ──
+  if (kind === 'opening') {
+    return (
+      <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center px-1 py-2">
+        {questionAndResponse}
+      </div>
+    );
+  }
+
+  // ── Closing: thank-you intro → snap → question ──
+  return <ClosingSnap actNumber={actNumber}>{questionAndResponse}</ClosingSnap>;
+}
+
+function ClosingSnap({ actNumber, children }: { actNumber: number; children: React.ReactNode }) {
+  const formSectionRef = useRef<HTMLElement | null>(null);
+  const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    if (revealed) return;
+    const el = formSectionRef.current;
+    if (!el) return;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(10);
+            timeoutId = setTimeout(() => setRevealed(true), REVEAL_DELAY_MS);
+            obs.disconnect();
+            return;
+          }
+        }
+      },
+      { threshold: 0.1 },
+    );
+    obs.observe(el);
+    return () => { obs.disconnect(); if (timeoutId) clearTimeout(timeoutId); };
+  }, [revealed]);
+
+  return (
+    <div className="animate-fade-in absolute inset-0 overflow-y-auto" style={{ scrollSnapType: 'y mandatory' }}>
+      <section
+        className="relative min-h-full flex flex-col justify-center space-y-4 px-5 pt-10 pb-6 text-center"
+        style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+      >
+        <p className="font-display font-bold leading-tight text-text-primary" style={{ fontSize: 'clamp(26px, 6.5vw, 38px)' }}>
+          Thank you for completing Act {actNumber}.
+        </p>
+        <p className="text-[20px] italic text-text-secondary leading-relaxed">
+          Let&apos;s see what you learned…
+        </p>
+        <SnapScrollHint />
+      </section>
+      <section
+        ref={formSectionRef}
+        className="min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
+        style={{
+          scrollSnapAlign: 'start',
+          scrollSnapStop: 'always',
+          opacity: revealed ? 1 : 0,
+          transform: revealed ? 'translateY(0)' : 'translateY(20px)',
+          transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
+        }}
+      >
+        {children}
+      </section>
     </div>
   );
 }

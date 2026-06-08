@@ -11,14 +11,23 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 interface Props {
   onTranscript: (text: string) => void;
   /** Size variant */
-  size?: 'sm' | 'lg';
+  size?: 'xs' | 'sm' | 'lg' | 'xl';
+  /** Visual style — 'filled' (gold) or 'outline' (transparent circle + ring). */
+  variant?: 'filled' | 'outline';
 }
 
 type MicState = 'idle' | 'recording' | 'transcribing' | 'error';
 
 const MAX_RECORDING_MS = 120_000;
 
-export default function MicButton({ onTranscript, size = 'sm' }: Props) {
+const SIZES = {
+  xs: { box: 'w-12 h-12', icon: 18, rounded: 'rounded-lg' },
+  sm: { box: 'w-16 h-20 self-center', icon: 26, rounded: 'rounded-lg' },
+  lg: { box: 'w-16 h-16', icon: 24, rounded: 'rounded-lg' },
+  xl: { box: 'w-24 h-24', icon: 40, rounded: 'rounded-full' },
+} as const;
+
+export default function MicButton({ onTranscript, size = 'sm', variant = 'filled' }: Props) {
   const [state, setState] = useState<MicState>('idle');
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState('');
@@ -104,14 +113,13 @@ export default function MicButton({ onTranscript, size = 'sm' }: Props) {
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
-  const btnSize = size === 'lg' ? 'w-16 h-16' : 'w-16 h-20 self-center';
-  const iconSize = size === 'lg' ? 24 : 26;
+  const { box, icon: iconSize, rounded } = SIZES[size];
 
   if (state === 'recording') {
     return (
       <button
         onClick={stopRecording}
-        className={`${btnSize} shrink-0 rounded-lg bg-red-500 text-white flex flex-col items-center justify-center gap-0.5 animate-pulse`}
+        className={`${box} ${rounded} shrink-0 bg-red-500 text-white flex flex-col items-center justify-center gap-0.5 animate-pulse shadow-md`}
         title="Stop recording"
       >
         <div className="w-3 h-3 rounded-sm bg-white" />
@@ -122,7 +130,7 @@ export default function MicButton({ onTranscript, size = 'sm' }: Props) {
 
   if (state === 'transcribing') {
     return (
-      <div className={`${btnSize} shrink-0 rounded-lg bg-sandstone-light/50 flex items-center justify-center`}>
+      <div className={`${box} ${rounded} shrink-0 bg-sandstone-light/50 flex items-center justify-center`}>
         <div className="w-4 h-4 border-2 border-aged-gold border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -132,7 +140,7 @@ export default function MicButton({ onTranscript, size = 'sm' }: Props) {
     return (
       <button
         onClick={() => { setError(''); setState('idle'); }}
-        className={`${btnSize} shrink-0 rounded-lg bg-red-100 text-red-600 flex items-center justify-center text-xs`}
+        className={`${box} ${rounded} shrink-0 bg-red-100 text-red-600 flex items-center justify-center text-xs`}
         title={error}
       >
         !
@@ -140,10 +148,14 @@ export default function MicButton({ onTranscript, size = 'sm' }: Props) {
     );
   }
 
+  const idleClass = variant === 'outline'
+    ? 'bg-transparent border-[3px] border-aged-gold text-aged-gold shadow-lg hover:bg-aged-gold/10'
+    : 'bg-aged-gold text-white hover:bg-aged-gold-light';
+
   return (
     <button
       onClick={startRecording}
-      className={`${btnSize} shrink-0 rounded-lg bg-aged-gold text-white flex items-center justify-center hover:bg-aged-gold-light transition-colors`}
+      className={`${box} ${rounded} shrink-0 flex items-center justify-center transition-colors ${idleClass}`}
       title="Record voice"
     >
       <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="currentColor">

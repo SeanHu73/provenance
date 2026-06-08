@@ -42,6 +42,7 @@ import {
   completeActIntro as completeActIntroImpl,
   completeActOpening as completeActOpeningImpl,
   completeActClosing as completeActClosingImpl,
+  completeActQuestions as completeActQuestionsImpl,
   completeStopMap as completeStopMapImpl,
   loadTourSession,
   saveTourSession,
@@ -84,6 +85,7 @@ interface TourContextValue {
   completeActIntro: () => void;
   completeActOpening: (response: string) => void;
   completeActClosing: (response: string) => void;
+  completeActQuestions: () => void;
   completeStopMap: () => void;
   // Unstructured exploration mode
   enterUnstructuredStop: (stopIndex: number) => void;
@@ -586,6 +588,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(completeActIntroImpl(session, tour));
   }, [session, tour, persist]);
 
+  const completeActQuestionsFn = useCallback(() => {
+    if (!session || !tour) return;
+    persist(completeActQuestionsImpl(session, tour));
+  }, [session, tour, persist]);
+
   const completeStopMapFn = useCallback(() => {
     if (!session || !tour) return;
     const next = completeStopMapImpl(session);
@@ -647,6 +654,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeActIntro: completeActIntroFn,
       completeActOpening: completeActOpeningFn,
       completeActClosing: completeActClosingFn,
+      completeActQuestions: completeActQuestionsFn,
       completeStopMap: completeStopMapFn,
       enterUnstructuredStop: enterUnstructuredStopFn,
       completeMidwayCheckin: completeMidwayCheckinFn,

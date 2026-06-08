@@ -39,6 +39,7 @@ import WhatsNext from './cards/WhatsNext';
 import BranchCard from './cards/BranchCard';
 import EndCard from './cards/EndCard';
 import ActQuestionCard from './cards/ActQuestionCard';
+import ActQuestionsCard from './cards/ActQuestionsCard';
 import ActIntroCard from './cards/ActIntroCard';
 import StopMapCard from './cards/StopMapCard';
 
@@ -73,6 +74,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeActIntro,
     completeActOpening,
     completeActClosing,
+    completeActQuestions,
     completeStopMap,
   } = useTour();
 
@@ -323,6 +325,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
           const actNumber = getActs(tour).findIndex((a) => a.id === act.id) + 1;
           return <ActQuestionCard key={`${act.id}-closing`} act={act} actNumber={actNumber} kind="closing" onComplete={completeActClosing} />;
         })()}
+
+        {phase === 'act_questions' && currentStop && (
+          <ActQuestionsCard onComplete={completeActQuestions} />
+        )}
 
         {phase === 'notice' && currentStop && (
           <NoticeCard key={currentStop.id} stop={currentStop} onContinue={advancePhase} />

@@ -297,7 +297,7 @@ function enterFirstContextAct(session: TourSession, tour: Tour): TourSession {
   return positionAtAct(session, tour, acts[0]);
 }
 
-/** After an act finishes, move to the next act (or the closing flow). */
+/** After an act fully wraps up, move to the next act (or end the tour). */
 function advanceToNextActOrClosing(session: TourSession, tour: Tour, currentAct: Act | null): TourSession {
   const acts = getActs(tour);
   const idx = currentAct ? acts.findIndex((a) => a.id === currentAct.id) : -1;
@@ -305,11 +305,17 @@ function advanceToNextActOrClosing(session: TourSession, tour: Tour, currentAct:
   if (nextAct) {
     return positionAtAct({ ...session, phaseHistory: pushHistory(session) }, tour, nextAct);
   }
-  // No more acts → "Any remaining questions?" closing path (context has no EQ).
+  // No more acts → end the tour (the per-act questions screens replace the
+  // single tour-level "Any remaining questions" closing in context mode).
+  return finishContextTour({ ...session, phaseHistory: pushHistory(session) }, tour);
+}
+
+/** Final phase of a context tour: the guide's closing message if present,
+ *  else the end card. */
+function finishContextTour(session: TourSession, tour: Tour): TourSession {
   return {
     ...session,
-    phaseHistory: pushHistory(session),
-    currentPhase: 'eq_questions',
+    currentPhase: (tour.guide?.thankYouMessage || tour.guide?.thankYouAudioUrl) ? 'guide_outro' : 'end',
     currentRound: 0,
     completedAt: new Date().toISOString(),
   };
@@ -443,7 +449,7 @@ function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession
   }
 
   // Last stop in the act — show the act's closing question if authored,
-  // otherwise move straight to the next act / closing.
+  // otherwise go straight to the per-act "any remaining questions" wrap-up.
   if (act.closingQuestion?.prompt?.trim()) {
     return {
       ...session,
@@ -452,7 +458,12 @@ function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession
       completedStops,
     };
   }
-  return advanceToNextActOrClosing({ ...session, completedStops }, tour, act);
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'act_questions',
+    completedStops,
+  };
 }
 
 /** Called after a stop completes in unstructured mode. */
@@ -683,15 +694,26 @@ export function completeStopMap(session: TourSession): TourSession {
   };
 }
 
-/** Context mode: explorer answers an act's closing question → next act / closing. */
+/** Context mode: explorer answers an act's closing question → the per-act
+ *  "any remaining questions" wrap-up. */
 export function completeActClosing(session: TourSession, tour: Tour, response: string): TourSession {
   const stop = getActiveStops(tour)[session.currentStopIndex];
   const act = stop ? findActOfStop(tour, stop.id) : null;
-  const withResponse: TourSession = {
+  return {
     ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'act_questions',
+    currentRound: 0,
     actResponses: act ? setActResponse(session.actResponses, act.id, 'closing', response) : session.actResponses,
   };
-  return advanceToNextActOrClosing(withResponse, tour, act);
+}
+
+/** Context mode: explorer finishes the per-act "any remaining questions"
+ *  wrap-up → next act, or the end of the tour. */
+export function completeActQuestions(session: TourSession, tour: Tour): TourSession {
+  const stop = getActiveStops(tour)[session.currentStopIndex];
+  const act = stop ? findActOfStop(tour, stop.id) : null;
+  return advanceToNextActOrClosing(session, tour, act);
 }
 
 export function completeEqScene(session: TourSession): TourSession {
