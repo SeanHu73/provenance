@@ -16,7 +16,6 @@ import { logActQuestion } from '@/lib/tour-logger';
 import BackButton from './BackButton';
 import MicButton from '../MicButton';
 import QuestionText from './QuestionText';
-import { SectionSubtitle } from './ActionTitle';
 
 interface Props {
   act: Act;
@@ -56,12 +55,6 @@ export default function ActQuestionCard({ act, actNumber, kind, onComplete }: Pr
           Share what<br />you think
         </h2>
         <TalkingPersonIcon size={60} />
-      </div>
-
-      <div>
-        <SectionSubtitle className="mb-2">
-          {kind === 'opening' ? 'Before we begin…' : 'Before we move on…'}
-        </SectionSubtitle>
       </div>
 
       <QuestionText text={question} />

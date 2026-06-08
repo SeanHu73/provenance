@@ -34,25 +34,36 @@ export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props)
 
   if (typeof document === 'undefined') return null;
 
-  const label = actTitle.trim() ? `Act ${actNumber}: ${actTitle}` : `Act ${actNumber}`;
-
   return createPortal(
     <div
       onClick={onComplete}
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black cursor-pointer select-none px-8"
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black cursor-pointer select-none px-8 text-center"
       style={{ opacity: mounted ? 1 : 0, transition: 'opacity 600ms ease-in' }}
     >
-      <h1
-        className="font-display text-center text-warm-white leading-tight"
+      <div
         style={{
-          fontSize: 'clamp(28px, 7vw, 52px)',
           opacity: mounted ? 1 : 0,
-          transform: mounted ? 'translateY(0)' : 'translateY(12px)',
+          transform: mounted ? 'translateY(0)' : 'translateY(14px)',
           transition: 'opacity 700ms ease-out 300ms, transform 700ms ease-out 300ms',
         }}
       >
-        {label}
-      </h1>
+        {/* "Act N" — amber, very large */}
+        <div
+          className="font-display font-bold leading-none"
+          style={{ fontSize: 'clamp(48px, 15vw, 104px)', color: '#F59E0B' }}
+        >
+          Act {actNumber}
+        </div>
+        {/* Act name — white, regular, slightly smaller but still large */}
+        {actTitle.trim() && (
+          <div
+            className="font-serif text-warm-white leading-tight mt-3"
+            style={{ fontSize: 'clamp(28px, 8vw, 60px)' }}
+          >
+            {actTitle}
+          </div>
+        )}
+      </div>
     </div>,
     document.body,
   );
