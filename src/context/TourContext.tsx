@@ -39,8 +39,10 @@ import {
   selectUnstructuredStop as selectUnstructuredStopImpl,
   completeMidwayCheckin as completeMidwayCheckinImpl,
   completeOpeningFrame as completeOpeningFrameImpl,
+  completeActIntro as completeActIntroImpl,
   completeActOpening as completeActOpeningImpl,
   completeActClosing as completeActClosingImpl,
+  completeStopMap as completeStopMapImpl,
   loadTourSession,
   saveTourSession,
   clearTourSession,
@@ -79,8 +81,10 @@ interface TourContextValue {
   endTour: () => void;
   // Context-Prototype mode
   completeOpeningFrame: () => void;
+  completeActIntro: () => void;
   completeActOpening: (response: string) => void;
   completeActClosing: (response: string) => void;
+  completeStopMap: () => void;
   // Unstructured exploration mode
   enterUnstructuredStop: (stopIndex: number) => void;
   completeMidwayCheckin: (responseText: string) => void;
@@ -577,6 +581,18 @@ export function TourProvider({ children }: { children: ReactNode }) {
     logSeedIfEntered(next, tour);
   }, [session, tour, persist, logSeedIfEntered]);
 
+  const completeActIntroFn = useCallback(() => {
+    if (!session || !tour) return;
+    persist(completeActIntroImpl(session, tour));
+  }, [session, tour, persist]);
+
+  const completeStopMapFn = useCallback(() => {
+    if (!session || !tour) return;
+    const next = completeStopMapImpl(session);
+    persist(next);
+    logSeedIfEntered(next, tour);
+  }, [session, tour, persist, logSeedIfEntered]);
+
   const completeActOpeningFn = useCallback((response: string) => {
     if (!session || !tour) return;
     const next = completeActOpeningImpl(session, tour, response);
@@ -628,8 +644,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeGuideOutro: completeGuideOutroFn,
       endTour,
       completeOpeningFrame: completeOpeningFrameFn,
+      completeActIntro: completeActIntroFn,
       completeActOpening: completeActOpeningFn,
       completeActClosing: completeActClosingFn,
+      completeStopMap: completeStopMapFn,
       enterUnstructuredStop: enterUnstructuredStopFn,
       completeMidwayCheckin: completeMidwayCheckinFn,
       selectedUnstructuredStopId,

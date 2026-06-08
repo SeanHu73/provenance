@@ -275,16 +275,16 @@ function indexOfStopId(tour: Tour, stopId: string): number {
   return getActiveStops(tour).findIndex((s) => s.id === stopId);
 }
 
-/** Position the session at the first stop of an act: the act's opening
- *  question if one is authored, otherwise straight into the stop's seed. */
+/** Position the session at the start of an act. Every act begins with the
+ *  `act_intro` splash (which then routes to the opening question or the first
+ *  stop's map). currentStopIndex is parked on the act's first stop. */
 function positionAtAct(session: TourSession, tour: Tour, act: Act): TourSession {
   const idx = indexOfStopId(tour, act.stopIds[0]);
-  const hasOpening = !!act.openingQuestion?.prompt?.trim();
   return {
     ...session,
     currentStopIndex: idx >= 0 ? idx : session.currentStopIndex,
     currentRound: 0,
-    currentPhase: hasOpening ? 'act_opening' : 'seed',
+    currentPhase: 'act_intro',
   };
 }
 
@@ -437,7 +437,7 @@ function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession
       phaseHistory: pushHistory(session),
       currentStopIndex: nextIdx >= 0 ? nextIdx : session.currentStopIndex,
       currentRound: 0,
-      currentPhase: 'seed',
+      currentPhase: 'stop_map',
       completedStops,
     };
   }
@@ -645,16 +645,41 @@ export function completeOpeningFrame(session: TourSession, tour: Tour): TourSess
   return enterFirstContextAct({ ...session, phaseHistory: pushHistory(session) }, tour);
 }
 
-/** Context mode: explorer answers an act's opening question → first stop seed. */
+/** Context mode: the "Act N: Title" splash finished (auto after a hold, or
+ *  tapped). Route to the act's opening question if authored, else the first
+ *  stop's map. currentStopIndex is already on the act's first stop. */
+export function completeActIntro(session: TourSession, tour: Tour): TourSession {
+  const stop = getActiveStops(tour)[session.currentStopIndex];
+  const act = stop ? findActOfStop(tour, stop.id) : null;
+  const hasOpening = !!act?.openingQuestion?.prompt?.trim();
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: hasOpening ? 'act_opening' : 'stop_map',
+    currentRound: 0,
+  };
+}
+
+/** Context mode: explorer answers an act's opening question → first stop map. */
 export function completeActOpening(session: TourSession, tour: Tour, response: string): TourSession {
   const stop = getActiveStops(tour)[session.currentStopIndex];
   const act = stop ? findActOfStop(tour, stop.id) : null;
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: 'seed',
+    currentPhase: 'stop_map',
     currentRound: 0,
     actResponses: act ? setActResponse(session.actResponses, act.id, 'opening', response) : session.actResponses,
+  };
+}
+
+/** Context mode: explorer has seen the "walk to your next stop" map → seed. */
+export function completeStopMap(session: TourSession): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'seed',
+    currentRound: 0,
   };
 }
 

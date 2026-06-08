@@ -15,7 +15,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { canUseBlur } from '@/lib/device-capability';
 import { getActiveStops, getTourMode } from '@/lib/tours-store';
-import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop } from '@/lib/tour-session';
+import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs } from '@/lib/tour-session';
 import IntroScreens from './cards/IntroScreens';
 import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
@@ -39,6 +39,8 @@ import WhatsNext from './cards/WhatsNext';
 import BranchCard from './cards/BranchCard';
 import EndCard from './cards/EndCard';
 import ActQuestionCard from './cards/ActQuestionCard';
+import ActIntroCard from './cards/ActIntroCard';
+import StopMapCard from './cards/StopMapCard';
 
 interface JournalProps {
   /** If provided, renders a "View on map" button (for stops at a different location). */
@@ -68,8 +70,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeEqClosingAdditional,
     completeEqFinalReflect,
     completeOpeningFrame,
+    completeActIntro,
     completeActOpening,
     completeActClosing,
+    completeStopMap,
   } = useTour();
 
   const [paused, setPaused] = useState(false);
@@ -108,7 +112,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const stopNum = session.currentStopIndex + 1;
 
   // Progress bar visibility — show during stops, hide on pre-tour/end screens
-  const showProgress = !['intro', 'meet_guide', 'guide_outro', 'end'].includes(phase);
+  const showProgress = !['intro', 'meet_guide', 'guide_outro', 'end', 'act_intro'].includes(phase);
 
   // Determine transition type from the phase history.
   // Look at the previous entry — if it was in the same stop, slide. Otherwise fade.
@@ -286,17 +290,32 @@ export default function Journal({ onMapPeek }: JournalProps) {
           <SeedCard stop={currentStop} onContinue={advancePhase} onPeekMap={onMapPeek} />
         )}
 
+        {/* Context-Prototype: "Act N: Title" splash */}
+        {phase === 'act_intro' && currentStop && (() => {
+          const act = findActOfStop(tour, currentStop.id);
+          if (!act) return null;
+          const actNumber = getActs(tour).findIndex((a) => a.id === act.id) + 1;
+          return <ActIntroCard key={`${act.id}-intro`} actNumber={actNumber} actTitle={act.title} onComplete={completeActIntro} />;
+        })()}
+
+        {/* Context-Prototype: "walk to your next stop" map */}
+        {phase === 'stop_map' && currentStop && (
+          <StopMapCard tour={tour} session={session} onContinue={completeStopMap} />
+        )}
+
         {/* Context-Prototype: Act opening / closing questions */}
         {phase === 'act_opening' && currentStop && (() => {
           const act = findActOfStop(tour, currentStop.id);
           if (!act) return null;
-          return <ActQuestionCard key={`${act.id}-opening`} act={act} kind="opening" onComplete={completeActOpening} />;
+          const actNumber = getActs(tour).findIndex((a) => a.id === act.id) + 1;
+          return <ActQuestionCard key={`${act.id}-opening`} act={act} actNumber={actNumber} kind="opening" onComplete={completeActOpening} />;
         })()}
 
         {phase === 'act_closing' && currentStop && (() => {
           const act = findActOfStop(tour, currentStop.id);
           if (!act) return null;
-          return <ActQuestionCard key={`${act.id}-closing`} act={act} kind="closing" onComplete={completeActClosing} />;
+          const actNumber = getActs(tour).findIndex((a) => a.id === act.id) + 1;
+          return <ActQuestionCard key={`${act.id}-closing`} act={act} actNumber={actNumber} kind="closing" onComplete={completeActClosing} />;
         })()}
 
         {phase === 'notice' && currentStop && (

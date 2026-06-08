@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { Tour, TourSession } from '@/lib/types';
-import { getActiveStops } from '@/lib/tours-store';
+import { getActiveStops, getTourMode } from '@/lib/tours-store';
 import PhotoContent from './cards/PhotoContent';
 import FullscreenPhoto from './cards/FullscreenPhoto';
 import FormattedText from './cards/FormattedText';
@@ -45,11 +45,14 @@ export default function JournalOverlay({ tour, session, onClose, closingPeek = f
 
   const completedIds = new Set(session.completedStops);
   const currentIdx = session.currentStopIndex;
+  const isContext = getTourMode(tour) === 'context';
 
+  // Context mode renames "Your Theory" → "Your Responses" and drops the
+  // Inquiries (Questions) tab.
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: 'stops', label: 'Stops' },
-    { id: 'questions', label: `Questions${session.bankedQuestions.length > 0 ? ` (${session.bankedQuestions.length})` : ''}` },
-    { id: 'theory', label: 'Your Theory' },
+    ...(isContext ? [] : [{ id: 'questions' as Tab, label: `Questions${session.bankedQuestions.length > 0 ? ` (${session.bankedQuestions.length})` : ''}` }]),
+    { id: 'theory', label: isContext ? 'Your Responses' : 'Your Theory' },
   ];
 
   return (
@@ -274,8 +277,75 @@ export default function JournalOverlay({ tour, session, onClose, closingPeek = f
             </div>
           )}
 
-          {/* ── Your Theory tab ── */}
-          {tab === 'theory' && (
+          {/* ── Your Responses tab (context mode) ── */}
+          {tab === 'theory' && isContext && (
+            <div className="space-y-4">
+              {(() => {
+                const actBlocks = (tour.acts || []).map((act, i) => {
+                  const resp = session.actResponses?.[act.id];
+                  const opening = act.openingQuestion?.prompt;
+                  const closing = act.closingQuestion?.prompt;
+                  if (!opening && !closing) return null;
+                  return (
+                    <div key={act.id} className="p-4 rounded-xl bg-white border border-sandstone-light space-y-3">
+                      <p className="text-[10px] text-aged-gold uppercase tracking-wide font-semibold">{act.title || `Act ${i + 1}`}</p>
+                      {opening && (
+                        <div>
+                          <p className="text-sm font-serif font-semibold text-text-primary">&ldquo;<FormattedText text={opening} />&rdquo;</p>
+                          <p className="text-[10px] text-text-secondary uppercase tracking-wide mt-1">Your response</p>
+                          <p className="text-sm font-serif text-text-primary mt-0.5">
+                            {resp?.opening?.trim() || <span className="italic text-text-secondary/60">No response recorded</span>}
+                          </p>
+                        </div>
+                      )}
+                      {closing && (
+                        <div>
+                          <p className="text-sm font-serif font-semibold text-text-primary">&ldquo;<FormattedText text={closing} />&rdquo;</p>
+                          <p className="text-[10px] text-text-secondary uppercase tracking-wide mt-1">Your response</p>
+                          <p className="text-sm font-serif text-text-primary mt-0.5">
+                            {resp?.closing?.trim() || <span className="italic text-text-secondary/60">No response recorded</span>}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }).filter(Boolean);
+
+                if (actBlocks.length === 0 && session.reflections.length === 0) {
+                  return (
+                    <p className="text-sm text-text-secondary italic text-center py-8">
+                      Your responses will appear here as you progress through the tour.
+                    </p>
+                  );
+                }
+                return actBlocks;
+              })()}
+
+              {/* Per-stop reflections */}
+              {session.reflections.map((r, i) => {
+                const stop = getActiveStops(tour).find((s) => s.id === r.stopId);
+                return (
+                  <div key={i} className="p-3 rounded-lg bg-white border border-sandstone-light">
+                    <p className="text-xs font-semibold text-text-primary">{stop?.title || `Stop ${i + 1}`}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex-1 h-1.5 bg-sandstone-light rounded-full">
+                        <div className="h-full bg-aged-gold rounded-full" style={{ width: `${Math.max(r.sliderValue, 0) * 100}%` }} />
+                      </div>
+                      <span className="text-[10px] text-text-secondary">
+                        {r.sliderValue < 0 ? 'Skipped' : r.sliderValue < 0.3 ? 'Confirmed' : r.sliderValue > 0.7 ? 'Shifted' : 'Somewhat'}
+                      </span>
+                    </div>
+                    {r.followUpResponse && r.followUpResponse !== 'skipped' && (
+                      <p className="text-[10px] text-text-secondary mt-1 italic">{r.followUpResponse}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Your Theory tab (linear / unstructured) ── */}
+          {tab === 'theory' && !isContext && (
             <div className="space-y-4">
               {/* Essential question responses */}
               {session.essentialQuestionResponses && tour.essentialQuestion && (

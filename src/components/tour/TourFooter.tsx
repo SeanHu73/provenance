@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Tour, TourSession } from '@/lib/types';
+import { getTourMode } from '@/lib/tours-store';
 import { useTour } from '@/context/TourContext';
 import JournalOverlay from './JournalOverlay';
 import MicButton from './MicButton';
@@ -30,6 +31,8 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
   const [showRoomMenu, setShowRoomMenu] = useState(false);
   const [autoplayPref, setAutoplayPref] = useAudioAutoplay();
   const { room, isInRoom } = useRoom();
+  // Context-Prototype hides the Inquiries (ask a question) affordance.
+  const showInquiries = getTourMode(tour) !== 'context';
 
   return (
     <>
@@ -48,6 +51,7 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
           </svg>
           Journal
         </button>
+        {showInquiries && (
         <button
           data-inquiries-button
           onClick={() => setShowQuestionInput(true)}
@@ -77,6 +81,7 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
             </span>
           )}
         </button>
+        )}
         <button
           data-auto-button
           onClick={() => setAutoplayPref(!autoplayPref)}
