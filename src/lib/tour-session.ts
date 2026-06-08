@@ -709,8 +709,18 @@ export function completeActClosing(session: TourSession, tour: Tour, response: s
 }
 
 /** Context mode: explorer finishes the per-act "any remaining questions"
- *  wrap-up → next act, or the end of the tour. */
-export function completeActQuestions(session: TourSession, tour: Tour): TourSession {
+ *  wrap-up → the Community Forum. */
+export function completeActQuestions(session: TourSession): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'community_forum',
+    currentRound: 0,
+  };
+}
+
+/** Context mode: explorer leaves the Community Forum → next act / end. */
+export function completeCommunityForum(session: TourSession, tour: Tour): TourSession {
   const stop = getActiveStops(tour)[session.currentStopIndex];
   const act = stop ? findActOfStop(tour, stop.id) : null;
   return advanceToNextActOrClosing(session, tour, act);

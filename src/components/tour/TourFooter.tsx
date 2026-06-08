@@ -38,7 +38,7 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
   const showInquiries = !isContext;
   let actNumLabel: string | null = null;
   let actTitleText = '';
-  const inActPhase = ['act_intro', 'act_opening', 'act_closing', 'act_questions', 'stop_map', 'seed', 'notice', 'wonder', 'reveal', 'reflect', 'whats_next', 'branch'].includes(session.currentPhase);
+  const inActPhase = ['act_intro', 'act_opening', 'act_closing', 'act_questions', 'community_forum', 'stop_map', 'seed', 'notice', 'wonder', 'reveal', 'reflect', 'whats_next', 'branch'].includes(session.currentPhase);
   if (isContext && inActPhase) {
     const currentStop = getActiveStops(tour)[session.currentStopIndex];
     const act = currentStop ? findActOfStop(tour, currentStop.id) : null;

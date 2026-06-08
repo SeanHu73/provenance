@@ -577,7 +577,7 @@ export interface WebNode {
   y: number;
 }
 
-export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'act_intro' | 'act_opening' | 'act_closing' | 'act_questions' | 'stop_map';
+export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'act_intro' | 'act_opening' | 'act_closing' | 'act_questions' | 'stop_map' | 'community_forum';
 
 export interface TourSession {
   id: string;
@@ -639,6 +639,31 @@ export interface CommunalResponse {
   sessionId: string;
   responseText: string;
   timestamp: string;
+}
+
+// ─── Community Forum (Context-Prototype) ─────────────────────────
+// Explorer-submitted questions + responses, moderated in /admin/community.
+// Only `approved` items surface in the explorer Community Forum.
+
+export type ModerationStatus = 'pending' | 'approved';
+
+export interface ForumQuestion {
+  id: string;
+  tourId: string;
+  text: string;
+  sessionId: string;
+  status: ModerationStatus;
+  createdAt: string;
+}
+
+export interface ForumResponse {
+  id: string;
+  questionId: string;
+  tourId: string;
+  text: string;
+  sessionId: string;
+  status: ModerationStatus;
+  createdAt: string;
 }
 
 // ─── Rooms (multi-device group tours) ────────────────────────────

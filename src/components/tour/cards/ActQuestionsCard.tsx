@@ -9,10 +9,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTour } from '@/context/TourContext';
+import { submitForumQuestion } from '@/lib/community-store';
 import BackButton from './BackButton';
 import ResponseInput from './ResponseInput';
 import SnapScrollHint from './SnapScrollHint';
-import { SectionSubtitle } from './ActionTitle';
 
 interface Props {
   onComplete: () => void;
@@ -61,6 +61,8 @@ export default function ActQuestionsCard({ onComplete }: Props) {
         aiResponse: 'banked',
         timestamp: new Date().toISOString(),
       });
+      // Also submit to the moderated community queue.
+      void submitForumQuestion(tour.id, q, session.id);
     }
     onComplete();
   };
@@ -68,13 +70,13 @@ export default function ActQuestionsCard({ onComplete }: Props) {
   return (
     <div className="animate-fade-in absolute inset-0 overflow-y-auto" style={{ scrollSnapType: 'y mandatory' }}>
       <section
-        className="relative min-h-full flex flex-col justify-center space-y-4 px-5 pt-10 pb-6 text-center"
+        className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        <p className="font-display font-bold leading-tight text-text-primary" style={{ fontSize: 'clamp(24px, 6vw, 34px)' }}>
+        <p className="font-display font-bold leading-tight text-text-primary" style={{ fontSize: 'clamp(30px, 7.5vw, 46px)' }}>
           Before we wrap up this act…
         </p>
-        <p className="text-[20px] leading-relaxed text-text-secondary">
+        <p className="leading-relaxed text-text-secondary" style={{ fontSize: 'clamp(20px, 5vw, 28px)' }}>
           Is there anything else this tour has prompted you to ask? What else are you curious about?
         </p>
         <SnapScrollHint />
@@ -82,7 +84,7 @@ export default function ActQuestionsCard({ onComplete }: Props) {
 
       <section
         ref={formSectionRef}
-        className="min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
+        className="min-h-full flex flex-col justify-center space-y-4 px-5 pt-10 pb-6"
         style={{
           scrollSnapAlign: 'start',
           scrollSnapStop: 'always',
@@ -91,7 +93,14 @@ export default function ActQuestionsCard({ onComplete }: Props) {
           transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
         }}
       >
-        <SectionSubtitle>Any Remaining Questions</SectionSubtitle>
+        <div>
+          <p className="uppercase tracking-[0.12em] font-display font-semibold leading-tight" style={{ fontSize: 28, color: 'var(--th-primary)' }}>
+            Any Remaining Questions
+          </p>
+          <p className="mt-1 text-text-secondary" style={{ fontSize: 'clamp(16px, 4.5vw, 20px)' }}>
+            These will be shared with the community to see and respond to!
+          </p>
+        </div>
         <ResponseInput value={text} onChange={setText} placeholder="What are you curious about?" />
         <div className="flex gap-2">
           <BackButton />

@@ -120,13 +120,13 @@ function ClosingSnap({ actNumber, children }: { actNumber: number; children: Rea
   return (
     <div className="animate-fade-in absolute inset-0 overflow-y-auto" style={{ scrollSnapType: 'y mandatory' }}>
       <section
-        className="relative min-h-full flex flex-col justify-center space-y-4 px-5 pt-10 pb-6 text-center"
+        className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        <p className="font-display font-bold leading-tight text-text-primary" style={{ fontSize: 'clamp(26px, 6.5vw, 38px)' }}>
-          Thank you for completing Act {actNumber}.
+        <p className="font-display font-bold leading-tight text-text-primary" style={{ fontSize: 'clamp(34px, 8.5vw, 56px)' }}>
+          Thank you for completing <span style={{ color: '#F59E0B' }}>Act {actNumber}</span>.
         </p>
-        <p className="text-[20px] italic text-text-secondary leading-relaxed">
+        <p className="italic text-text-secondary leading-relaxed" style={{ fontSize: 'clamp(22px, 5.5vw, 32px)' }}>
           Let&apos;s see what you learned…
         </p>
         <SnapScrollHint />

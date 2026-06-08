@@ -40,6 +40,7 @@ import BranchCard from './cards/BranchCard';
 import EndCard from './cards/EndCard';
 import ActQuestionCard from './cards/ActQuestionCard';
 import ActQuestionsCard from './cards/ActQuestionsCard';
+import CommunityForumCard from './cards/CommunityForumCard';
 import ActIntroCard from './cards/ActIntroCard';
 import StopMapCard from './cards/StopMapCard';
 
@@ -75,6 +76,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeActOpening,
     completeActClosing,
     completeActQuestions,
+    completeCommunityForum,
     completeStopMap,
   } = useTour();
 
@@ -328,6 +330,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
         {phase === 'act_questions' && currentStop && (
           <ActQuestionsCard onComplete={completeActQuestions} />
+        )}
+
+        {phase === 'community_forum' && currentStop && (
+          <CommunityForumCard onComplete={completeCommunityForum} />
         )}
 
         {phase === 'notice' && currentStop && (
