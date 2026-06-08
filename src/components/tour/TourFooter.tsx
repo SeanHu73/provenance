@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { Tour, TourSession } from '@/lib/types';
-import { getTourMode } from '@/lib/tours-store';
+import { getTourMode, getActiveStops } from '@/lib/tours-store';
+import { findActOfStop, getActs } from '@/lib/tour-session';
 import { useTour } from '@/context/TourContext';
 import JournalOverlay from './JournalOverlay';
 import MicButton from './MicButton';
@@ -31,18 +32,30 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
   const [showRoomMenu, setShowRoomMenu] = useState(false);
   const [autoplayPref, setAutoplayPref] = useAudioAutoplay();
   const { room, isInRoom } = useRoom();
-  // Context-Prototype hides the Inquiries (ask a question) affordance.
-  const showInquiries = getTourMode(tour) !== 'context';
+  // Context-Prototype hides the Inquiries (ask a question) affordance and
+  // surfaces the current Act's title on the footer bar, next to Journal.
+  const isContext = getTourMode(tour) === 'context';
+  const showInquiries = !isContext;
+  let actLabel: string | null = null;
+  const inActPhase = ['act_intro', 'act_opening', 'act_closing', 'stop_map', 'seed', 'notice', 'wonder', 'reveal', 'reflect', 'whats_next', 'branch'].includes(session.currentPhase);
+  if (isContext && inActPhase) {
+    const currentStop = getActiveStops(tour)[session.currentStopIndex];
+    const act = currentStop ? findActOfStop(tour, currentStop.id) : null;
+    if (act) {
+      const num = getActs(tour).findIndex((a) => a.id === act.id) + 1;
+      actLabel = act.title.trim() ? `Act ${num}: ${act.title}` : `Act ${num}`;
+    }
+  }
 
   return (
     <>
       <div
-        className="shrink-0 px-4 py-3 border-t flex items-center justify-center gap-3"
+        className={`shrink-0 px-4 py-3 border-t flex items-center gap-3 ${isContext ? 'justify-between' : 'justify-center'}`}
         style={{ backgroundColor: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
       >
         <button
           onClick={() => setShowJournal(true)}
-          className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-base font-semibold text-warm-white bg-white/25 hover:bg-white/35 transition-colors border border-white/50"
+          className="shrink-0 flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-base font-semibold text-warm-white bg-white/25 hover:bg-white/35 transition-colors border border-white/50"
           style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' }}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -51,6 +64,17 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
           </svg>
           Journal
         </button>
+
+        {/* Current Act title (context mode) — sits next to Journal. */}
+        {actLabel && (
+          <span
+            className="flex-1 min-w-0 text-center font-display font-semibold tracking-wide truncate"
+            style={{ color: 'var(--cream, #FFF8EE)', fontSize: 17 }}
+            title={actLabel}
+          >
+            {actLabel}
+          </span>
+        )}
         {showInquiries && (
         <button
           data-inquiries-button

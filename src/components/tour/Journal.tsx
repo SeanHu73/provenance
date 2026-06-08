@@ -108,6 +108,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
   // Context-Prototype mode skips per-stop discussion (wonder) and bridge
   // (whats_next); the per-stop loop is seed → reveal → [reflect] only.
   const isContext = getTourMode(tour) === 'context';
+  // The stop map fills the whole card area edge-to-edge (no white card chrome).
+  const isFullBleed = phase === 'stop_map';
 
   const stopNum = session.currentStopIndex + 1;
 
@@ -236,11 +238,13 @@ export default function Journal({ onMapPeek }: JournalProps) {
               : { x: isBack ? '100%' : '-100%' }
             }
             transition={{ duration: isFade ? 0.4 : 0.12, ease: isFade ? 'easeInOut' : 'easeOut' }}
-            className="absolute inset-0 overflow-y-auto p-4 tour-scroll"
+            className={`absolute inset-0 overflow-y-auto tour-scroll ${isFullBleed ? '' : 'p-4'}`}
             ref={(el) => { scrollContainerRef.current = el; checkScroll(); }}
             onScroll={checkScroll}
           >
-            <div className={`relative min-h-full rounded-2xl shadow-lg px-5 py-6 flex flex-col justify-center ${
+            <div className={isFullBleed
+              ? 'relative min-h-full'
+              : `relative min-h-full rounded-2xl shadow-lg px-5 py-6 flex flex-col justify-center ${
               showBgPhoto
                 ? phase === 'reveal'
                   ? blurSupported
@@ -269,7 +273,9 @@ export default function Journal({ onMapPeek }: JournalProps) {
         {phase === 'opening_frame' && tour.openingFrame && (
           <EqSceneCard
             scene={tour.openingFrame}
+            subtitle="Setting the Scene"
             buttonLabel="Begin the tour"
+            openingVariant
             onContinue={completeOpeningFrame}
           />
         )}

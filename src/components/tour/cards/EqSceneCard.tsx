@@ -32,6 +32,9 @@ interface Props {
   scene?: SceneData | null;
   subtitle?: string;
   buttonLabel?: string;
+  /** Context Opening Frame layout: enlarge "Are you looking at this:" and
+   *  move the "Setting the Scene" label below the photo, above the text. */
+  openingVariant?: boolean;
   onContinue: () => void;
 }
 
@@ -40,6 +43,7 @@ export default function EqSceneCard({
   scene,
   subtitle = 'Setting the scene...',
   buttonLabel = "What's the question?",
+  openingVariant = false,
   onContinue,
 }: Props) {
   const eq: SceneData | null = scene ?? tour?.essentialQuestion ?? null;
@@ -54,12 +58,20 @@ export default function EqSceneCard({
       {/* Title */}
       <ActionTitle action="FIND" />
 
-      <div>
-        <SectionSubtitle className="mb-2">{subtitle}</SectionSubtitle>
-        <p className="text-[20px] font-semibold text-text-primary">
+      {/* Header — in the opening-frame variant the prompt is enlarged and the
+          "Setting the Scene" label moves below the photo (above the text). */}
+      {openingVariant ? (
+        <p className="text-[28px] font-semibold leading-tight text-text-primary">
           Are you looking at this:
         </p>
-      </div>
+      ) : (
+        <div>
+          <SectionSubtitle className="mb-2">{subtitle}</SectionSubtitle>
+          <p className="text-[20px] font-semibold text-text-primary">
+            Are you looking at this:
+          </p>
+        </div>
+      )}
 
       {/* Scene photo */}
       {eq.scenePhotoUrl && (
@@ -71,6 +83,10 @@ export default function EqSceneCard({
           <img src={eq.scenePhotoUrl} alt="" className="w-full max-h-64 object-contain" />
         </button>
       )}
+
+      {/* "Setting the Scene" label — opening-frame variant places it here,
+          below the photo and above the description. */}
+      {openingVariant && <SectionSubtitle>{subtitle}</SectionSubtitle>}
 
       {/* Scene description */}
       {eq.sceneDescription && (

@@ -31,8 +31,6 @@ export default function ActQuestionCard({ act, actNumber, kind, onComplete }: Pr
   const initial = session?.actResponses?.[act.id]?.[kind] ?? '';
   const [response, setResponse] = useState(initial);
 
-  const actLabel = act.title.trim() ? `Act ${actNumber}: ${act.title}` : `Act ${actNumber}`;
-
   const submit = () => {
     const text = response.trim();
     if (tour && session) {
@@ -51,17 +49,8 @@ export default function ActQuestionCard({ act, actNumber, kind, onComplete }: Pr
 
   return (
     <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center px-1 py-2">
-      {/* Act title bar */}
-      <div
-        className="rounded-lg px-3 py-2 text-center"
-        style={{ backgroundColor: 'var(--th-primary)' }}
-      >
-        <span className="font-display font-semibold tracking-wide" style={{ color: 'var(--cream, #FFF8EE)', fontSize: 18 }}>
-          {actLabel}
-        </span>
-      </div>
-
-      {/* "Share what you think" header — talking-person icon on the right */}
+      {/* "Share what you think" header — talking-person icon on the right
+          (the Act title now lives on the footer bar, next to Journal). */}
       <div className="flex items-end justify-between gap-3 pr-1" style={{ color: 'var(--th-accent-dark)' }}>
         <h2 className="uppercase tracking-[0.1em] font-display font-bold leading-none" style={{ fontSize: 30 }}>
           Share what<br />you think

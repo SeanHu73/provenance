@@ -51,53 +51,53 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
   const center = pins.find((p) => p.state === 'target')?.pos ?? base;
 
   return (
-    <div className="animate-fade-in min-h-full flex flex-col gap-4">
-      <div className="relative rounded-2xl overflow-hidden shadow-md border-2 border-aged-gold/30" style={{ height: '58vh', backgroundColor: '#E8D8C0' }}>
-        {apiKey ? (
-          <APIProvider apiKey={apiKey}>
-            <GoogleMap
-              mapId={MAP_ID}
-              defaultCenter={center}
-              defaultZoom={18}
-              defaultTilt={0}
-              gestureHandling="greedy"
-              disableDefaultUI
-              clickableIcons={false}
-              style={{ width: '100%', height: '100%' }}
-            >
-              {pins.map((pin) => (
-                <AdvancedMarker key={pin.id} position={pin.pos} zIndex={pin.state === 'target' ? 30 : pin.state === 'completed' ? 20 : 10}>
-                  <NumberedPin number={pin.number} state={pin.state} />
-                </AdvancedMarker>
-              ))}
-            </GoogleMap>
-          </APIProvider>
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-text-secondary text-sm italic">
-            Map requires API key
-          </div>
-        )}
-
-        {/* Flashing "walk to your next stop" cue */}
-        <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none" style={{ top: 12 }}>
-          <span
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] font-semibold uppercase tracking-wide shadow-lg animate-pulse"
-            style={{ backgroundColor: 'var(--th-primary)', color: 'var(--cream, #FFF8EE)' }}
+    <div className="absolute inset-0" style={{ backgroundColor: '#E8D8C0' }}>
+      {apiKey ? (
+        <APIProvider apiKey={apiKey}>
+          <GoogleMap
+            mapId={MAP_ID}
+            defaultCenter={center}
+            defaultZoom={18}
+            defaultTilt={0}
+            mapTypeId="satellite"
+            gestureHandling="greedy"
+            disableDefaultUI
+            clickableIcons={false}
+            style={{ width: '100%', height: '100%' }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-            Walk to your next stop
-          </span>
+            {pins.map((pin) => (
+              <AdvancedMarker key={pin.id} position={pin.pos} zIndex={pin.state === 'target' ? 30 : pin.state === 'completed' ? 20 : 10}>
+                <NumberedPin number={pin.number} state={pin.state} />
+              </AdvancedMarker>
+            ))}
+          </GoogleMap>
+        </APIProvider>
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center text-text-secondary text-sm italic">
+          Map requires API key
         </div>
+      )}
+
+      {/* Flashing "walk to your next stop" cue */}
+      <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none" style={{ top: 14 }}>
+        <span
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] font-semibold uppercase tracking-wide shadow-lg animate-pulse"
+          style={{ backgroundColor: 'var(--th-primary)', color: 'var(--cream, #FFF8EE)' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          Walk to your next stop
+        </span>
       </div>
 
-      <div className="flex gap-2">
+      {/* Floating controls over the map */}
+      <div className="absolute bottom-0 inset-x-0 p-4 flex gap-2" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.35), transparent)' }}>
         <BackButton />
         <button
           onClick={onContinue}
-          className="flex-1 py-3 rounded-lg text-base font-semibold bg-olive text-white"
+          className="flex-1 py-3 rounded-lg text-base font-semibold bg-olive text-white shadow-lg"
         >
           I&apos;m here — continue
         </button>
