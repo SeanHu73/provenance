@@ -10,7 +10,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { Tour, Stop, TourSession, TourPhase, BankedQuestion } from '@/lib/types';
-import { getTour, getActiveStops } from '@/lib/tours-store';
+import { getTour, getActiveStops, getTourMode } from '@/lib/tours-store';
 import { persistTourSession } from '@/lib/tour-sessions-store';
 import { useRoom } from './RoomContext';
 import { logReflection, logQuestionRouted, logTourComplete, logEqOpening, logEqClosing, logEqFinalReflect, logStopEntered } from '@/lib/tour-logger';
@@ -38,6 +38,9 @@ import {
   bankQuestion as bankQuestionImpl,
   selectUnstructuredStop as selectUnstructuredStopImpl,
   completeMidwayCheckin as completeMidwayCheckinImpl,
+  completeOpeningFrame as completeOpeningFrameImpl,
+  completeActOpening as completeActOpeningImpl,
+  completeActClosing as completeActClosingImpl,
   loadTourSession,
   saveTourSession,
   clearTourSession,
@@ -74,6 +77,10 @@ interface TourContextValue {
   finishTour: () => void;
   completeGuideOutro: () => void;
   endTour: () => void;
+  // Context-Prototype mode
+  completeOpeningFrame: () => void;
+  completeActOpening: (response: string) => void;
+  completeActClosing: (response: string) => void;
   // Unstructured exploration mode
   enterUnstructuredStop: (stopIndex: number) => void;
   completeMidwayCheckin: (responseText: string) => void;
@@ -368,17 +375,19 @@ export function TourProvider({ children }: { children: ReactNode }) {
   }, [session, tour, persist, room, isRoomHost, markStopCompletedInRoom, recordHostAdvanceInRoom]);
 
   const advancePhase = useCallback(() => {
-    if (!session || !currentStop) return;
-    const next = advancePhaseImpl(session, currentStop);
-    // Bridge unselected → no whats_next screen; advance straight to the
-    // next stop (or closing). The cards on the final in-stop screen
-    // relabel their "continue" button to reflect this.
-    if (next.currentPhase === 'whats_next' && !hasBridgeContent(currentStop)) {
+    if (!session || !currentStop || !tour) return;
+    // Context mode skips per-stop discussion questions entirely.
+    const isContext = getTourMode(tour) === 'context';
+    const next = advancePhaseImpl(session, currentStop, { skipWonder: isContext });
+    // Bridge unselected (or context mode, which has no bridge) → no whats_next
+    // screen; advance straight to the next stop (or closing). The cards on the
+    // final in-stop screen relabel their "continue" button to reflect this.
+    if (next.currentPhase === 'whats_next' && (isContext || !hasBridgeContent(currentStop))) {
       advanceStop();
       return;
     }
     persist(next);
-  }, [session, currentStop, persist, advanceStop]);
+  }, [session, currentStop, tour, persist, advanceStop]);
 
   const enterBranch = useCallback(() => {
     if (!session) return;
@@ -549,6 +558,39 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(completeGuideOutroImpl(session));
   }, [session, persist]);
 
+  // ── Context-Prototype actions ──
+  // Log a stop_entered event when a context transition lands on a stop's seed
+  // (these don't go through advanceStop, so they wouldn't be logged otherwise).
+  const logSeedIfEntered = useCallback((next: TourSession, t: Tour) => {
+    if (next.currentPhase === 'seed' && next.currentStopIndex >= 0) {
+      const stop = getActiveStops(t)[next.currentStopIndex];
+      if (stop) {
+        logStopEntered({ tourId: t.id, sessionId: next.id, tourTitle: t.title, stopIndex: next.currentStopIndex, stopTitle: stop.title || `Stop ${next.currentStopIndex + 1}` });
+      }
+    }
+  }, []);
+
+  const completeOpeningFrameFn = useCallback(() => {
+    if (!session || !tour) return;
+    const next = completeOpeningFrameImpl(session, tour);
+    persist(next);
+    logSeedIfEntered(next, tour);
+  }, [session, tour, persist, logSeedIfEntered]);
+
+  const completeActOpeningFn = useCallback((response: string) => {
+    if (!session || !tour) return;
+    const next = completeActOpeningImpl(session, tour, response);
+    persist(next);
+    logSeedIfEntered(next, tour);
+  }, [session, tour, persist, logSeedIfEntered]);
+
+  const completeActClosingFn = useCallback((response: string) => {
+    if (!session || !tour) return;
+    const next = completeActClosingImpl(session, tour, response);
+    persist(next);
+    logSeedIfEntered(next, tour);
+  }, [session, tour, persist, logSeedIfEntered]);
+
   const endTour = useCallback(() => {
     setTour(null);
     setSession(null);
@@ -585,6 +627,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
       finishTour: finishTourFn,
       completeGuideOutro: completeGuideOutroFn,
       endTour,
+      completeOpeningFrame: completeOpeningFrameFn,
+      completeActOpening: completeActOpeningFn,
+      completeActClosing: completeActClosingFn,
       enterUnstructuredStop: enterUnstructuredStopFn,
       completeMidwayCheckin: completeMidwayCheckinFn,
       selectedUnstructuredStopId,

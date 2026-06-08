@@ -19,7 +19,7 @@ import {
   deleteDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Tour, Stop, Detour } from './types';
+import { Tour, Stop, Detour, TourMode, Act, OpeningFrame } from './types';
 
 const TOURS_COLLECTION = 'memorial-church-tours';
 
@@ -117,44 +117,94 @@ export function newDetourId(): string {
   return `detour_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+export function newActId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `act_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Resolves the tour's playback mode. `tourMode` is the source of truth;
+ * when absent (legacy tours) we derive it from the older `unstructuredMode`
+ * boolean so existing Linear / Unstructured tours behave unchanged.
+ */
+export function getTourMode(tour: Tour): TourMode {
+  if (tour.tourMode) return tour.tourMode;
+  return tour.unstructuredMode ? 'unstructured' : 'linear';
+}
+
 /**
  * Returns the stops array the tour is currently operating on.
  *
- * Unstructured mode uses a parallel `unstructuredStops` array so its
- * writing can diverge from the linear set. If unstructured mode is on
- * but no parallel array has been authored yet (legacy tours), we fall
- * back to the linear `stops` so the tour still plays.
+ * Unstructured and Context modes each use a parallel stops array
+ * (`unstructuredStops` / `contextStops`) so their writing can diverge from
+ * the linear set. When the relevant parallel array is missing/empty (legacy
+ * tours, or context cloned from unstructured), we fall back so the tour
+ * still plays.
  */
 export function getActiveStops(tour: Tour): Stop[] {
-  if (tour.unstructuredMode && tour.unstructuredStops && tour.unstructuredStops.length > 0) {
+  const mode = getTourMode(tour);
+  if (mode === 'context') {
+    if (tour.contextStops && tour.contextStops.length > 0) return tour.contextStops;
+    if (tour.unstructuredStops && tour.unstructuredStops.length > 0) return tour.unstructuredStops;
+    return tour.stops;
+  }
+  if (mode === 'unstructured' && tour.unstructuredStops && tour.unstructuredStops.length > 0) {
     return tour.unstructuredStops;
   }
   return tour.stops;
 }
 
 /**
- * Returns a new Tour with the active stops array replaced. Writes to
- * `unstructuredStops` when unstructured mode is on, otherwise `stops`.
+ * Returns a new Tour with the active stops array replaced. Writes to the
+ * array matching the current mode (`contextStops` / `unstructuredStops` /
+ * `stops`).
  */
 export function setActiveStops(tour: Tour, stops: Stop[]): Tour {
-  if (tour.unstructuredMode) {
-    return { ...tour, unstructuredStops: stops };
-  }
+  const mode = getTourMode(tour);
+  if (mode === 'context') return { ...tour, contextStops: stops };
+  if (mode === 'unstructured') return { ...tour, unstructuredStops: stops };
   return { ...tour, stops };
 }
 
 /**
- * Deep-clone a stops array for use as the unstructured parallel set.
- * All stop and detour IDs are re-minted so the two arrays never share
- * IDs — keeps session references unambiguous.
+ * Deep-clone a stops array for use as a parallel mode-specific set.
+ * All stop and detour IDs are re-minted so the arrays never share IDs —
+ * keeps session references unambiguous.
  */
-export function duplicateStopsForUnstructured(stops: Stop[]): Stop[] {
+export function duplicateStops(stops: Stop[]): Stop[] {
   const cloned = JSON.parse(JSON.stringify(stops)) as Stop[];
   return cloned.map((s) => ({
     ...s,
     id: newStopId(),
     detours: (s.detours || []).map((d) => ({ ...d, id: newDetourId() })),
   }));
+}
+
+/** @deprecated Use {@link duplicateStops}. Kept as an alias for callers. */
+export const duplicateStopsForUnstructured = duplicateStops;
+
+/** A blank Opening Frame for context mode. */
+export function blankOpeningFrame(): OpeningFrame {
+  return {
+    scenePhotoUrl: null,
+    sceneDescription: '',
+    sceneAudioUrl: null,
+    sceneAudioTitle: null,
+    openingFraming: '',
+  };
+}
+
+/** A blank Act containing the given stop IDs. */
+export function blankAct(index: number, stopIds: string[] = []): Act {
+  return {
+    id: newActId(),
+    title: `Act ${index + 1}`,
+    stopIds,
+    openingQuestion: null,
+    closingQuestion: null,
+  };
 }
 
 export function blankDetour(): Detour {

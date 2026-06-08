@@ -14,17 +14,40 @@ import FormattedText from './FormattedText';
 import ActionTitle, { SectionSubtitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
+/** The scene fields this card renders. Both `Tour.essentialQuestion` and
+ *  `Tour.openingFrame` (Context-Prototype) satisfy this shape. */
+export interface SceneData {
+  scenePhotoUrl: string | null;
+  sceneDescription: string;
+  sceneAudioUrl: string | null;
+  sceneAudioTitle: string | null;
+  sceneAudioAutoplayDisabled?: boolean;
+  openingFraming: string;
+}
+
 interface Props {
-  tour: Tour;
+  /** EQ usage passes the tour and reads `essentialQuestion`. */
+  tour?: Tour;
+  /** Context-Prototype usage passes the Opening Frame data directly. */
+  scene?: SceneData | null;
+  subtitle?: string;
+  buttonLabel?: string;
   onContinue: () => void;
 }
 
-export default function EqSceneCard({ tour, onContinue }: Props) {
-  const eq = tour.essentialQuestion!;
+export default function EqSceneCard({
+  tour,
+  scene,
+  subtitle = 'Setting the scene...',
+  buttonLabel = "What's the question?",
+  onContinue,
+}: Props) {
+  const eq: SceneData | null = scene ?? tour?.essentialQuestion ?? null;
   const [autoplayPref] = useAudioAutoplay();
-  const shouldAutoplay = autoplayPref && !eq.sceneAudioAutoplayDisabled;
   const [framingOpen, setFramingOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  if (!eq) return null;
+  const shouldAutoplay = autoplayPref && !eq.sceneAudioAutoplayDisabled;
 
   return (
     <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
@@ -32,7 +55,7 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
       <ActionTitle action="FIND" />
 
       <div>
-        <SectionSubtitle className="mb-2">Setting the scene...</SectionSubtitle>
+        <SectionSubtitle className="mb-2">{subtitle}</SectionSubtitle>
         <p className="text-[20px] font-semibold text-text-primary">
           Are you looking at this:
         </p>
@@ -86,7 +109,7 @@ export default function EqSceneCard({ tour, onContinue }: Props) {
           onClick={onContinue}
           className="flex-1 py-3 rounded-lg text-base font-semibold bg-aged-gold text-white"
         >
-          What&apos;s the question?
+          {buttonLabel}
         </button>
       </div>
 

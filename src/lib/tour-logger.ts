@@ -238,6 +238,32 @@ export function logUserChoice(opts: {
   });
 }
 
+/** Context-Prototype Act question response — fired per device when an
+ *  explorer submits an act's opening or closing question. Reuses existing
+ *  Sheet columns (Stop Title ← act title, Question ← prompt, Answer ←
+ *  response) so no Apps Script schema change is required. */
+export function logActQuestion(opts: {
+  tourId: string;
+  sessionId: string;
+  tourTitle: string;
+  actTitle: string;
+  kind: 'opening' | 'closing';
+  question: string;
+  response: string;
+}): void {
+  fire({
+    event: 'act_question',
+    tourId: opts.tourId,
+    sessionId: opts.sessionId,
+    tourTitle: opts.tourTitle,
+    stopTitle: opts.actTitle,
+    actQuestionKind: opts.kind,
+    questionText: opts.question,
+    answer: opts.response,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 function fire(entry: Record<string, unknown>): void {
   // Merge the current room context onto every event row.
   const enriched = {

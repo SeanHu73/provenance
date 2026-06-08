@@ -14,8 +14,8 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { canUseBlur } from '@/lib/device-capability';
-import { getActiveStops } from '@/lib/tours-store';
-import { hasBridgeContent, nextPhaseWouldBeWhatsNext } from '@/lib/tour-session';
+import { getActiveStops, getTourMode } from '@/lib/tours-store';
+import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop } from '@/lib/tour-session';
 import IntroScreens from './cards/IntroScreens';
 import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
@@ -38,6 +38,7 @@ import FormattedText from './cards/FormattedText';
 import WhatsNext from './cards/WhatsNext';
 import BranchCard from './cards/BranchCard';
 import EndCard from './cards/EndCard';
+import ActQuestionCard from './cards/ActQuestionCard';
 
 interface JournalProps {
   /** If provided, renders a "View on map" button (for stops at a different location). */
@@ -66,6 +67,9 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeEqClosing,
     completeEqClosingAdditional,
     completeEqFinalReflect,
+    completeOpeningFrame,
+    completeActOpening,
+    completeActClosing,
   } = useTour();
 
   const [paused, setPaused] = useState(false);
@@ -97,6 +101,9 @@ export default function Journal({ onMapPeek }: JournalProps) {
   if (!tour || !session) return null;
 
   const phase = session.currentPhase;
+  // Context-Prototype mode skips per-stop discussion (wonder) and bridge
+  // (whats_next); the per-stop loop is seed → reveal → [reflect] only.
+  const isContext = getTourMode(tour) === 'context';
 
   const stopNum = session.currentStopIndex + 1;
 
@@ -254,6 +261,15 @@ export default function Journal({ onMapPeek }: JournalProps) {
           <EqSceneCard tour={tour} onContinue={completeEqScene} />
         )}
 
+        {/* Context-Prototype: Opening Frame ("Setting the Scene" only) */}
+        {phase === 'opening_frame' && tour.openingFrame && (
+          <EqSceneCard
+            scene={tour.openingFrame}
+            buttonLabel="Begin the tour"
+            onContinue={completeOpeningFrame}
+          />
+        )}
+
         {phase === 'eq_discuss' && tour.essentialQuestion && (
           <EqDiscussCard tour={tour} onContinue={completeEqDiscuss} />
         )}
@@ -269,6 +285,19 @@ export default function Journal({ onMapPeek }: JournalProps) {
         {phase === 'seed' && currentStop && (
           <SeedCard stop={currentStop} onContinue={advancePhase} onPeekMap={onMapPeek} />
         )}
+
+        {/* Context-Prototype: Act opening / closing questions */}
+        {phase === 'act_opening' && currentStop && (() => {
+          const act = findActOfStop(tour, currentStop.id);
+          if (!act) return null;
+          return <ActQuestionCard key={`${act.id}-opening`} act={act} kind="opening" onComplete={completeActOpening} />;
+        })()}
+
+        {phase === 'act_closing' && currentStop && (() => {
+          const act = findActOfStop(tour, currentStop.id);
+          if (!act) return null;
+          return <ActQuestionCard key={`${act.id}-closing`} act={act} kind="closing" onComplete={completeActClosing} />;
+        })()}
 
         {phase === 'notice' && currentStop && (
           <NoticeCard key={currentStop.id} stop={currentStop} onContinue={advancePhase} />
@@ -307,7 +336,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
           const round = session.currentRound;
           const extras = currentStop.extraRounds || [];
           const isFinalInStop =
-            nextPhaseWouldBeWhatsNext(currentStop, 'reveal', round) && !hasBridgeContent(currentStop);
+            nextPhaseWouldBeWhatsNext(currentStop, 'reveal', round, isContext)
+            && (isContext || !hasBridgeContent(currentStop));
 
           if (round === 0) {
             return (
@@ -379,7 +409,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
             onAskQuestion={enterBranch}
             onContinue={advanceStop}
             onAddReflection={(sliderValue, followUpResponse) => addReflection(sliderValue, followUpResponse)}
-            isFinalInStop={!hasBridgeContent(currentStop)}
+            isFinalInStop={isContext || !hasBridgeContent(currentStop)}
           />
         )}
 

@@ -2,8 +2,8 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { Tour, TourSession, Stop } from '@/lib/types';
-import { getLogicalStops } from '@/lib/tour-session';
-import { getActiveStops } from '@/lib/tours-store';
+import { getLogicalStops, getContextOrderedStops, hasOpeningFrameContent } from '@/lib/tour-session';
+import { getActiveStops, getTourMode } from '@/lib/tours-store';
 
 interface Props {
   tour: Tour;
@@ -126,13 +126,16 @@ function LinearProgressBar({ tour, session }: Props) {
   const currentRef = useRef<HTMLDivElement>(null);
   const [trackerOpen, setTrackerOpen] = useState(false);
 
-  const logicalStops = getLogicalStops(tour);
+  // Context-Prototype walks stops in Act order, so its progress reflects the
+  // flattened act sequence rather than the raw stops array.
+  const isContext = getTourMode(tour) === 'context';
+  const logicalStops = isContext ? getContextOrderedStops(tour) : getLogicalStops(tour);
   const completedIds = new Set(session.completedStops);
   const totalCount = logicalStops.length;
   const completedCount = logicalStops.filter(ls => completedIds.has(ls.id)).length;
 
   const isClosing = ['eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
-  const isIntroPhase = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional'].includes(session.currentPhase);
+  const isIntroPhase = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'opening_frame'].includes(session.currentPhase);
   const isInStopPhase = !isClosing && !isIntroPhase;
 
   let label = '';
@@ -160,7 +163,7 @@ function LinearProgressBar({ tour, session }: Props) {
   }, [session.currentStopIndex, session.currentPhase]);
 
   // Progress fill bar percentage
-  const hasIntro = !!tour.essentialQuestion;
+  const hasIntro = isContext ? hasOpeningFrameContent(tour) : !!tour.essentialQuestion;
   const totalSegments = totalCount + (hasIntro ? 1 : 0) + 1;
   let pct = 0;
   if (isIntroPhase) {
@@ -172,7 +175,7 @@ function LinearProgressBar({ tour, session }: Props) {
   } else if (session.currentPhase === 'end') {
     pct = 100;
   } else {
-    const stopPhases = ['seed', 'wonder', 'reveal', 'reflect', 'whats_next', 'branch'];
+    const stopPhases = ['act_opening', 'seed', 'wonder', 'reveal', 'reflect', 'whats_next', 'act_closing', 'branch'];
     const pi = stopPhases.indexOf(session.currentPhase);
     const sub = pi >= 0 ? pi / stopPhases.length : 0.5;
     const base = hasIntro ? 1 : 0;

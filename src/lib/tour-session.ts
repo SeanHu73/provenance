@@ -7,8 +7,8 @@
  * a single group visit.
  */
 
-import type { Tour, Stop, TourSession, TourPhase, BankedQuestion } from './types';
-import { getActiveStops } from './tours-store';
+import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act } from './types';
+import { getActiveStops, getTourMode } from './tours-store';
 
 export type { TourPhase };
 
@@ -26,31 +26,32 @@ const STORAGE_KEY = 'mc_tour_session_v1';
  * to the next round's wonder (or reveal if wonder is null). If not,
  * advance to reflect (or stay on reveal if reflect is null).
  */
-/** After a reveal (or skipped reveal), check for next round or go to reflect. */
+/** After a reveal (or skipped reveal), check for next round or go to reflect.
+ *  `skipWonder` (context mode) treats every extra-round wonder as absent so
+ *  only the context/reveal screens play. */
 function advanceFromReveal(
   currentRound: number,
   extras: Stop['extraRounds'],
-  stop: Stop
+  stop: Stop,
+  skipWonder = false
 ): { phase: TourPhase; round: number } {
   const nextRoundIndex = currentRound; // extraRounds[0] = round 1
   if (nextRoundIndex < extras.length) {
     const nextExtra = extras[nextRoundIndex];
-    if (nextExtra.wonder !== null) {
+    if (!skipWonder && nextExtra.wonder !== null) {
       return { phase: 'wonder', round: currentRound + 1 };
     }
     if (nextExtra.reveal !== null) {
       return { phase: 'reveal', round: currentRound + 1 };
     }
-    // Both null — skip this round entirely, try the next
-    return advanceFromReveal(currentRound + 1, extras, stop);
+    // Both null (or wonder skipped and no reveal) — skip this round, try the next
+    return advanceFromReveal(currentRound + 1, extras, stop, skipWonder);
   }
-  // No more rounds — go to reflect or whats_next
-  // Final stops without reflect skip whats_next entirely
+  // No more rounds — go to reflect or whats_next. (whats_next is intercepted
+  // by TourContext: skipped when there's no bridge, and always in context mode,
+  // where it serves only as the "end of stop" sentinel.)
   if (stop.reflect !== null) {
     return { phase: 'reflect', round: currentRound };
-  }
-  if (stop.isFinalStop) {
-    return { phase: 'whats_next', round: currentRound }; // whats_next will auto-continue to closing
   }
   return { phase: 'whats_next', round: currentRound };
 }
@@ -58,7 +59,8 @@ function advanceFromReveal(
 function nextPhaseAndRound(
   current: TourPhase,
   currentRound: number,
-  stop: Stop
+  stop: Stop,
+  skipWonder = false
 ): { phase: TourPhase; round: number } {
   const extras = stop.extraRounds || [];
 
@@ -67,7 +69,7 @@ function nextPhaseAndRound(
       // Seed + Notice are merged into one screen.
       // Skip notice, go directly to wonder or reveal.
       const wonder = stop.wonder;
-      return wonder !== null
+      return (!skipWonder && wonder !== null)
         ? { phase: 'wonder', round: 0 }
         : { phase: 'reveal', round: 0 };
     }
@@ -75,7 +77,7 @@ function nextPhaseAndRound(
     case 'notice': {
       // Legacy — shouldn't be reached, but handle gracefully
       const wonder = stop.wonder;
-      return wonder !== null
+      return (!skipWonder && wonder !== null)
         ? { phase: 'wonder', round: 0 }
         : { phase: 'reveal', round: 0 };
     }
@@ -94,7 +96,7 @@ function nextPhaseAndRound(
     }
 
     case 'reveal':
-      return advanceFromReveal(currentRound, extras, stop);
+      return advanceFromReveal(currentRound, extras, stop, skipWonder);
 
     default:
       return { phase: current, round: currentRound };
@@ -119,9 +121,10 @@ export function hasBridgeContent(stop: Stop): boolean {
 export function nextPhaseWouldBeWhatsNext(
   stop: Stop,
   currentPhase: TourPhase,
-  currentRound: number
+  currentRound: number,
+  skipWonder = false
 ): boolean {
-  return nextPhaseAndRound(currentPhase, currentRound, stop).phase === 'whats_next';
+  return nextPhaseAndRound(currentPhase, currentRound, stop, skipWonder).phase === 'whats_next';
 }
 
 /** Push current state onto the phase history before a transition. */
@@ -211,6 +214,118 @@ export function getNextStopInGroup(
   return getStopsInGroup(tour, groupId).find((s) => !completedSet.has(s.id)) ?? null;
 }
 
+// ── Context-Prototype (Acts) helpers ────────────────────────────
+
+/** Acts that still resolve to at least one real stop, in authored order.
+ *  Stop IDs that no longer exist (deleted stops) are filtered out, and
+ *  empty acts are dropped so the playback flow never stalls. */
+export function getActs(tour: Tour): Act[] {
+  const activeStops = getActiveStops(tour);
+  const stopIds = new Set(activeStops.map((s) => s.id));
+  const authored = (tour.acts || [])
+    .map((a) => ({ ...a, stopIds: (a.stopIds || []).filter((id) => stopIds.has(id)) }))
+    .filter((a) => a.stopIds.length > 0);
+  if (authored.length > 0) return authored;
+  // Fallback: no usable acts authored — play every stop as one implicit act
+  // so the tour still runs (no opening/closing questions).
+  if (activeStops.length > 0) {
+    return [{
+      id: '__implicit_act__',
+      title: '',
+      stopIds: activeStops.map((s) => s.id),
+      openingQuestion: null,
+      closingQuestion: null,
+    }];
+  }
+  return [];
+}
+
+/** The flattened context playback order — each act's stops, in act order. */
+export function getContextOrderedStops(tour: Tour): Stop[] {
+  const byId = new Map(getActiveStops(tour).map((s) => [s.id, s] as const));
+  const result: Stop[] = [];
+  for (const act of getActs(tour)) {
+    for (const id of act.stopIds) {
+      const s = byId.get(id);
+      if (s) result.push(s);
+    }
+  }
+  return result;
+}
+
+/** The act a stop belongs to (among acts with resolvable stops), or null. */
+export function findActOfStop(tour: Tour, stopId: string): Act | null {
+  return getActs(tour).find((a) => a.stopIds.includes(stopId)) ?? null;
+}
+
+/** Whether the tour's Opening Frame carries any content worth showing. */
+export function hasOpeningFrameContent(tour: Tour): boolean {
+  const f = tour.openingFrame;
+  if (!f) return false;
+  return !!(
+    f.scenePhotoUrl ||
+    (f.sceneDescription || '').trim() ||
+    f.sceneAudioUrl ||
+    (f.openingFraming || '').trim()
+  );
+}
+
+/** Index of a stop ID within the active stops array (currentStopIndex space). */
+function indexOfStopId(tour: Tour, stopId: string): number {
+  return getActiveStops(tour).findIndex((s) => s.id === stopId);
+}
+
+/** Position the session at the first stop of an act: the act's opening
+ *  question if one is authored, otherwise straight into the stop's seed. */
+function positionAtAct(session: TourSession, tour: Tour, act: Act): TourSession {
+  const idx = indexOfStopId(tour, act.stopIds[0]);
+  const hasOpening = !!act.openingQuestion?.prompt?.trim();
+  return {
+    ...session,
+    currentStopIndex: idx >= 0 ? idx : session.currentStopIndex,
+    currentRound: 0,
+    currentPhase: hasOpening ? 'act_opening' : 'seed',
+  };
+}
+
+/** Enter the first act of a context tour. No acts → straight to closing. */
+function enterFirstContextAct(session: TourSession, tour: Tour): TourSession {
+  const acts = getActs(tour);
+  if (acts.length === 0) {
+    return { ...session, currentPhase: 'eq_questions', currentRound: 0, completedAt: new Date().toISOString() };
+  }
+  return positionAtAct(session, tour, acts[0]);
+}
+
+/** After an act finishes, move to the next act (or the closing flow). */
+function advanceToNextActOrClosing(session: TourSession, tour: Tour, currentAct: Act | null): TourSession {
+  const acts = getActs(tour);
+  const idx = currentAct ? acts.findIndex((a) => a.id === currentAct.id) : -1;
+  const nextAct = idx >= 0 ? acts[idx + 1] : undefined;
+  if (nextAct) {
+    return positionAtAct({ ...session, phaseHistory: pushHistory(session) }, tour, nextAct);
+  }
+  // No more acts → "Any remaining questions?" closing path (context has no EQ).
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'eq_questions',
+    currentRound: 0,
+    completedAt: new Date().toISOString(),
+  };
+}
+
+/** Merge a single act-question response into the session map. */
+function setActResponse(
+  map: TourSession['actResponses'],
+  actId: string,
+  kind: 'opening' | 'closing',
+  value: string
+): TourSession['actResponses'] {
+  const prev = map || {};
+  return { ...prev, [actId]: { ...(prev[actId] || {}), [kind]: value } };
+}
+
 /** Generate a fresh TourSession id. Exposed so room flows can mint
  *  an id before creating the session (we hand the same id to the
  *  room doc as the member's sessionId). */
@@ -239,12 +354,22 @@ export function createSession(tour: Tour, opts?: { id?: string }): TourSession {
   };
 }
 
-export function advancePhase(session: TourSession, stop: Stop): TourSession {
-  const { phase, round } = nextPhaseAndRound(session.currentPhase, session.currentRound, stop);
+export function advancePhase(
+  session: TourSession,
+  stop: Stop,
+  opts?: { skipWonder?: boolean }
+): TourSession {
+  const { phase, round } = nextPhaseAndRound(
+    session.currentPhase,
+    session.currentRound,
+    stop,
+    opts?.skipWonder ?? false,
+  );
   return { ...session, phaseHistory: pushHistory(session), currentPhase: phase, currentRound: round };
 }
 
 export function advanceToNextStop(session: TourSession, tour: Tour): TourSession {
+  if (getTourMode(tour) === 'context') return advanceToNextStopContext(session, tour);
   if (tour.unstructuredMode) return advanceToNextStopUnstructured(session, tour);
 
   const stops = getActiveStops(tour);
@@ -275,6 +400,59 @@ export function advanceToNextStop(session: TourSession, tour: Tour): TourSession
       ? [...session.completedStops, currentStop.id]
       : session.completedStops,
   };
+}
+
+/** Called after a stop completes in Context-Prototype mode. Walks stops in
+ *  Act order, inserting the act's closing question at the end of an act and
+ *  the next act's opening question at its start. */
+function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession {
+  const stops = getActiveStops(tour);
+  const currentStop = stops[session.currentStopIndex];
+  if (!currentStop) return session;
+
+  const completedStops = session.completedStops.includes(currentStop.id)
+    ? session.completedStops
+    : [...session.completedStops, currentStop.id];
+
+  const act = findActOfStop(tour, currentStop.id);
+  if (!act) {
+    // Stop belongs to no act (shouldn't happen) — end the tour gracefully.
+    return {
+      ...session,
+      phaseHistory: pushHistory(session),
+      currentPhase: 'eq_questions',
+      currentRound: 0,
+      completedStops,
+      completedAt: new Date().toISOString(),
+    };
+  }
+
+  const posInAct = act.stopIds.indexOf(currentStop.id);
+  const isLastInAct = posInAct === act.stopIds.length - 1;
+
+  if (!isLastInAct) {
+    const nextIdx = indexOfStopId(tour, act.stopIds[posInAct + 1]);
+    return {
+      ...session,
+      phaseHistory: pushHistory(session),
+      currentStopIndex: nextIdx >= 0 ? nextIdx : session.currentStopIndex,
+      currentRound: 0,
+      currentPhase: 'seed',
+      completedStops,
+    };
+  }
+
+  // Last stop in the act — show the act's closing question if authored,
+  // otherwise move straight to the next act / closing.
+  if (act.closingQuestion?.prompt?.trim()) {
+    return {
+      ...session,
+      phaseHistory: pushHistory(session),
+      currentPhase: 'act_closing',
+      completedStops,
+    };
+  }
+  return advanceToNextActOrClosing({ ...session, completedStops }, tour, act);
 }
 
 /** Called after a stop completes in unstructured mode. */
@@ -426,7 +604,7 @@ export function recordDetourVisit(
   };
 }
 
-/** Phase that follows the "Meet Your Guide" screen. */
+/** Phase that follows the "Meet Your Guide" screen (non-context modes). */
 function afterGuide(tour: Tour): TourPhase {
   return tour.essentialQuestion
     ? 'eq_scene'
@@ -435,21 +613,60 @@ function afterGuide(tour: Tour): TourPhase {
       : 'seed';
 }
 
+/** Route into the tour body after intro / meet-guide. Context mode shows the
+ *  Opening Frame (if authored) then enters the first act, positioning the
+ *  session at the right stop; other modes use afterGuide. Assumes the caller
+ *  has NOT yet pushed history. */
+function routeAfterGuide(session: TourSession, tour: Tour): TourSession {
+  const base = { ...session, phaseHistory: pushHistory(session) };
+  if (getTourMode(tour) === 'context') {
+    if (hasOpeningFrameContent(tour)) {
+      return { ...base, currentPhase: 'opening_frame' };
+    }
+    return enterFirstContextAct(base, tour);
+  }
+  return { ...base, currentPhase: afterGuide(tour) };
+}
+
 export function completeIntro(session: TourSession, tour: Tour): TourSession {
-  return {
-    ...session,
-    phaseHistory: pushHistory(session),
-    // "Meet Your Guide" shows whenever the tour has a named guide.
-    currentPhase: tour.guide?.name ? 'meet_guide' : afterGuide(tour),
-  };
+  // "Meet Your Guide" shows whenever the tour has a named guide.
+  if (tour.guide?.name) {
+    return { ...session, phaseHistory: pushHistory(session), currentPhase: 'meet_guide' };
+  }
+  return routeAfterGuide(session, tour);
 }
 
 export function completeMeetGuide(session: TourSession, tour: Tour): TourSession {
+  return routeAfterGuide(session, tour);
+}
+
+/** Context mode: the Opening Frame "Begin the tour" button → first act. */
+export function completeOpeningFrame(session: TourSession, tour: Tour): TourSession {
+  return enterFirstContextAct({ ...session, phaseHistory: pushHistory(session) }, tour);
+}
+
+/** Context mode: explorer answers an act's opening question → first stop seed. */
+export function completeActOpening(session: TourSession, tour: Tour, response: string): TourSession {
+  const stop = getActiveStops(tour)[session.currentStopIndex];
+  const act = stop ? findActOfStop(tour, stop.id) : null;
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: afterGuide(tour),
+    currentPhase: 'seed',
+    currentRound: 0,
+    actResponses: act ? setActResponse(session.actResponses, act.id, 'opening', response) : session.actResponses,
   };
+}
+
+/** Context mode: explorer answers an act's closing question → next act / closing. */
+export function completeActClosing(session: TourSession, tour: Tour, response: string): TourSession {
+  const stop = getActiveStops(tour)[session.currentStopIndex];
+  const act = stop ? findActOfStop(tour, stop.id) : null;
+  const withResponse: TourSession = {
+    ...session,
+    actResponses: act ? setActResponse(session.actResponses, act.id, 'closing', response) : session.actResponses,
+  };
+  return advanceToNextActOrClosing(withResponse, tour, act);
 }
 
 export function completeEqScene(session: TourSession): TourSession {

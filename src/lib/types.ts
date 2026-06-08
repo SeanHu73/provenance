@@ -179,6 +179,45 @@ export interface AskResponse {
 
 // ─── Provenance v2: Tours ─────────────────────────────────────────
 
+/** Tour playback mode. Source of truth for which experience to render.
+ *  - `linear`        — fixed authored sequence (the original default)
+ *  - `unstructured`  — explorer chooses stop order on a full-screen map
+ *  - `context`       — Context-Prototype: sequential, no essential question
+ *                      (Opening Frame only), no per-stop discussion / bridge;
+ *                      stops are grouped into ordered Acts, each with an
+ *                      optional opening + closing question. */
+export type TourMode = 'linear' | 'unstructured' | 'context';
+
+/** Opening Frame for Context-Prototype mode — the "Setting the Scene"
+ *  screen kept when the essential question is removed. Mirrors the scene
+ *  fields on `Tour.essentialQuestion` but stands on its own so the EQ can
+ *  be genuinely absent in context mode. */
+export interface OpeningFrame {
+  scenePhotoUrl: string | null;
+  sceneDescription: string;
+  sceneAudioUrl: string | null;
+  sceneAudioTitle: string | null;
+  sceneAudioAutoplayDisabled?: boolean;
+  openingFraming: string;            // Collapsible "tap to read along" text below the scene
+}
+
+/** An authored question shown at the start or end of an Act. The explorer
+ *  responds by voice (transcribed) or by typing — the response is stored on
+ *  the session, not here. Blank `prompt` → the screen is skipped. */
+export interface ActQuestion {
+  prompt: string;
+}
+
+/** A group of stops in Context-Prototype mode. Stops play sequentially in
+ *  `stopIds` order; acts play in array order. */
+export interface Act {
+  id: string;
+  title: string;
+  stopIds: string[];                 // Ordered stop IDs into `Tour.contextStops`
+  openingQuestion: ActQuestion | null;
+  closingQuestion: ActQuestion | null;
+}
+
 export interface Tour {
   id: string;
   title: string;                     // "Memorial Church"
@@ -294,6 +333,9 @@ export interface Tour {
     finalReasoningSourcePrompt?: string;  // default: "Why did it change or not?"
     finalReasoningSourceOptions?: string[]; // default: ['What we could see here', 'Something we discussed', 'Something we already knew', 'A guess']
   } | null;
+  // Playback mode — source of truth. When absent, derived from
+  // `unstructuredMode` for backward compatibility (see getTourMode).
+  tourMode?: TourMode;
   // Unstructured exploration mode
   unstructuredMode?: boolean;        // Default false — when true, explorer chooses stop order
   // Parallel stops array used when unstructuredMode is true. Authored
@@ -302,6 +344,15 @@ export interface Tour {
   // enables unstructuredMode for the first time. Falls back to `stops`
   // if missing (legacy tours).
   unstructuredStops?: Stop[];
+  // Parallel stops array used when tourMode === 'context'. Cloned from the
+  // unstructured set (or linear) when context mode is first enabled, so its
+  // writing can diverge from the other modes.
+  contextStops?: Stop[];
+  // Ordered Acts for context mode. Each references stop IDs in `contextStops`.
+  acts?: Act[];
+  // Opening Frame shown at the start of a context-mode tour (in place of the
+  // essential-question opening). Null/absent → no opening frame screen.
+  openingFrame?: OpeningFrame | null;
   defaultZoom?: number;              // Starting map zoom level (14–20). Default 17 if unset.
   categories?: string[];             // Author-defined category list for organising stops
   midwayEnabled?: boolean;           // Default false
@@ -526,7 +577,7 @@ export interface WebNode {
   y: number;
 }
 
-export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin';
+export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'act_opening' | 'act_closing';
 
 export interface TourSession {
   id: string;
@@ -559,6 +610,8 @@ export interface TourSession {
      *  parallel to that array. */
     additionalClosingResponses?: string[];
   } | null;
+  /** Context-Prototype Act question responses, keyed by act id. */
+  actResponses?: Record<string, { opening?: string; closing?: string }>;
   startedAt: string;
   completedAt: string | null;
 }

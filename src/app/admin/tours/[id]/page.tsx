@@ -19,8 +19,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-google-maps';
-import { Tour, Stop, Detour, StopPhoto } from '@/lib/types';
-import { getTour, saveTour, deleteTour, blankStop, blankDetour, getActiveStops, setActiveStops, duplicateStopsForUnstructured } from '@/lib/tours-store';
+import { Tour, Stop, Detour, StopPhoto, Act, TourMode } from '@/lib/types';
+import { getTour, saveTour, deleteTour, blankStop, blankDetour, getActiveStops, setActiveStops, duplicateStops, getTourMode, blankAct, blankOpeningFrame } from '@/lib/tours-store';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import RichTextarea from '@/components/admin/RichTextarea';
@@ -84,6 +84,27 @@ const KNOWN_ENTRIES: Array<{ id: string; title: string }> = [
   { id: '10.3', title: 'Clock Tower' },
 ];
 
+/**
+ * Normalize a tour's Acts so they cover exactly the given stops:
+ * drops stop IDs that no longer exist, guarantees at least one act, and
+ * appends any unassigned stops (in their array order) to the last act.
+ * Enforces the "every stop in exactly one act" rule.
+ */
+function ensureActsCoverStops(acts: Act[] | undefined, stops: Stop[]): Act[] {
+  const validIds = new Set(stops.map((s) => s.id));
+  let result: Act[] = (acts && acts.length > 0)
+    ? acts.map((a) => ({ ...a, stopIds: (a.stopIds || []).filter((id) => validIds.has(id)) }))
+    : [blankAct(0, [])];
+  const assigned = new Set(result.flatMap((a) => a.stopIds));
+  const unassigned = stops.filter((s) => !assigned.has(s.id)).map((s) => s.id);
+  if (unassigned.length > 0) {
+    result = result.map((a, i) =>
+      i === result.length - 1 ? { ...a, stopIds: [...a.stopIds, ...unassigned] } : a,
+    );
+  }
+  return result;
+}
+
 export default function TourEditorPage() {
   const params = useParams();
   const router = useRouter();
@@ -95,6 +116,8 @@ export default function TourEditorPage() {
   const [expandedStopId, setExpandedStopId] = useState<string | null>(null);
   const [previewStopId, setPreviewStopId] = useState<string | null>(null);
   const [previewPhase, setPreviewPhase] = useState(0);
+  // Context-Prototype: id of the stop currently being dragged between acts.
+  const [dragStopId, setDragStopId] = useState<string | null>(null);
   // Authoring-time textbox size — persisted across sessions so an admin's
   // preference sticks. Applied via the data-admin-text-size attribute on
   // the page root; CSS in globals.css scales every textarea / text input
@@ -142,6 +165,22 @@ export default function TourEditorPage() {
     setSaving(false);
   }, []);
 
+  // Context mode invariant: every stop belongs to exactly one act. Self-heal
+  // any tour whose acts don't yet cover all of its context stops (e.g. data
+  // authored before this feature, or a stop added elsewhere).
+  useEffect(() => {
+    if (!tour || getTourMode(tour) !== 'context') return;
+    const stops = getActiveStops(tour);
+    if (stops.length === 0) return;
+    const assigned = new Set((tour.acts || []).flatMap((a) => a.stopIds || []));
+    const covered = (tour.acts || []).length > 0 && stops.every((s) => assigned.has(s.id));
+    if (!covered) {
+      const next = { ...tour, acts: ensureActsCoverStops(tour.acts, stops) };
+      setTour(next);
+      persist(next);
+    }
+  }, [tour, persist]);
+
   // ── Tour metadata helpers ──
 
   const updateField = <K extends keyof Tour>(key: K, value: Tour[K]) => {
@@ -182,7 +221,15 @@ export default function TourEditorPage() {
     if (!tour) return;
     const active = getActiveStops(tour);
     const stop = blankStop(active.length);
-    const next = setActiveStops(tour, [...active, stop]);
+    let next = setActiveStops(tour, [...active, stop]);
+    // Context mode: new stops join the last act so every stop has a home.
+    if (getTourMode(tour) === 'context') {
+      const acts = (next.acts && next.acts.length > 0) ? next.acts : [blankAct(0, [])];
+      next = {
+        ...next,
+        acts: acts.map((a, i) => (i === acts.length - 1 ? { ...a, stopIds: [...a.stopIds, stop.id] } : a)),
+      };
+    }
     setTour(next);
     setExpandedStopId(stop.id);
     persist(next);
@@ -195,10 +242,121 @@ export default function TourEditorPage() {
     const nextStops = active
       .filter((s) => s.id !== stopId)
       .map((s, i) => ({ ...s, order: i }));
-    const next = setActiveStops(tour, nextStops);
+    let next = setActiveStops(tour, nextStops);
+    if (getTourMode(tour) === 'context' && next.acts) {
+      next = { ...next, acts: next.acts.map((a) => ({ ...a, stopIds: a.stopIds.filter((id) => id !== stopId) })) };
+    }
     setTour(next);
     if (expandedStopId === stopId) setExpandedStopId(null);
     persist(next);
+  };
+
+  // ── Mode + Acts (Context-Prototype) helpers ──
+
+  const setMode = (newMode: TourMode) => {
+    if (!tour) return;
+    if (getTourMode(tour) === newMode) return;
+    let next: Tour = { ...tour, tourMode: newMode, unstructuredMode: newMode === 'unstructured' };
+    if (newMode === 'unstructured') {
+      if (!tour.unstructuredStops || tour.unstructuredStops.length === 0) {
+        next.unstructuredStops = duplicateStops(tour.stops);
+      }
+    } else if (newMode === 'context') {
+      if (!tour.contextStops || tour.contextStops.length === 0) {
+        const src = (tour.unstructuredStops && tour.unstructuredStops.length > 0) ? tour.unstructuredStops : tour.stops;
+        next.contextStops = duplicateStops(src);
+      }
+      next.acts = ensureActsCoverStops(next.acts, next.contextStops || []);
+      if (!next.openingFrame) {
+        const eq = tour.essentialQuestion;
+        next.openingFrame = eq
+          ? {
+              scenePhotoUrl: eq.scenePhotoUrl,
+              sceneDescription: eq.sceneDescription,
+              sceneAudioUrl: eq.sceneAudioUrl,
+              sceneAudioTitle: eq.sceneAudioTitle,
+              sceneAudioAutoplayDisabled: eq.sceneAudioAutoplayDisabled,
+              openingFraming: eq.openingFraming,
+            }
+          : blankOpeningFrame();
+      }
+    }
+    setTour(next);
+    setExpandedStopId(null);
+    persist(next);
+  };
+
+  const updateActs = (nextActs: Act[]) => {
+    if (!tour) return;
+    const next = { ...tour, acts: nextActs };
+    setTour(next);
+    persist(next);
+  };
+
+  const addAct = () => {
+    const acts = tour?.acts || [];
+    updateActs([...acts, blankAct(acts.length, [])]);
+  };
+
+  const removeAct = (actId: string) => {
+    const acts = tour?.acts || [];
+    if (acts.length <= 1) { alert('A context tour needs at least one act.'); return; }
+    const target = acts.find((a) => a.id === actId);
+    if (!target) return;
+    if (target.stopIds.length > 0 && !confirm('This act has stops. They will move to the previous act. Continue?')) return;
+    const idx = acts.findIndex((a) => a.id === actId);
+    const fallbackIdx = idx > 0 ? idx - 1 : 1; // move orphaned stops to a neighbour
+    const next = acts
+      .map((a, i) => (i === fallbackIdx ? { ...a, stopIds: [...a.stopIds, ...target.stopIds] } : a))
+      .filter((a) => a.id !== actId);
+    updateActs(next);
+  };
+
+  const updateAct = (actId: string, patch: Partial<Act>) => {
+    const acts = tour?.acts || [];
+    updateActs(acts.map((a) => (a.id === actId ? { ...a, ...patch } : a)));
+  };
+
+  const setActQuestion = (actId: string, kind: 'openingQuestion' | 'closingQuestion', prompt: string) => {
+    updateAct(actId, { [kind]: prompt.trim() ? { prompt } : null } as Partial<Act>);
+  };
+
+  const moveAct = (actId: string, direction: -1 | 1) => {
+    const acts = tour?.acts || [];
+    const idx = acts.findIndex((a) => a.id === actId);
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= acts.length) return;
+    const next = [...acts];
+    [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+    updateActs(next);
+  };
+
+  // Move a stop into a target act at a given index (append when undefined).
+  const assignStopToAct = (stopId: string, targetActId: string, targetIndex?: number) => {
+    const acts = tour?.acts || [];
+    const cleaned = acts.map((a) => ({ ...a, stopIds: a.stopIds.filter((id) => id !== stopId) }));
+    const next = cleaned.map((a) => {
+      if (a.id !== targetActId) return a;
+      const ids = [...a.stopIds];
+      const i = targetIndex === undefined ? ids.length : Math.max(0, Math.min(targetIndex, ids.length));
+      ids.splice(i, 0, stopId);
+      return { ...a, stopIds: ids };
+    });
+    updateActs(next);
+    setDragStopId(null);
+  };
+
+  // Reorder a stop within its own act by one position.
+  const moveStopInAct = (actId: string, stopId: string, direction: -1 | 1) => {
+    const acts = tour?.acts || [];
+    const act = acts.find((a) => a.id === actId);
+    if (!act) return;
+    const idx = act.stopIds.indexOf(stopId);
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= act.stopIds.length) return;
+    const ids = [...act.stopIds];
+    [ids[idx], ids[newIdx]] = [ids[newIdx], ids[idx]];
+    updateAct(actId, { stopIds: ids });
   };
 
   const moveStop = (stopId: string, direction: -1 | 1) => {
@@ -254,6 +412,90 @@ export default function TourEditorPage() {
 
   const activeStops = getActiveStops(tour);
   const previewStop = previewStopId ? activeStops.find((s) => s.id === previewStopId) : null;
+  const mode: TourMode = getTourMode(tour);
+  const acts: Act[] = tour.acts || [];
+
+  // Shared stop-row renderer — used by both the flat (linear/unstructured)
+  // list and the context-mode Acts organizer.
+  const renderStopRow = (
+    stop: Stop,
+    displayNum: number,
+    opts: {
+      onUp: () => void;
+      onDown: () => void;
+      upDisabled: boolean;
+      downDisabled: boolean;
+      actControl?: React.ReactNode;
+      draggable?: boolean;
+      onDropBefore?: () => void;
+    },
+  ) => (
+    <li
+      key={stop.id}
+      ref={(el) => { stopRefs.current[stop.id] = el; }}
+      draggable={opts.draggable}
+      onDragStart={opts.draggable ? (e) => { e.stopPropagation(); setDragStopId(stop.id); } : undefined}
+      onDragEnd={opts.draggable ? () => setDragStopId(null) : undefined}
+      onDragOver={opts.onDropBefore ? (e) => { e.preventDefault(); } : undefined}
+      onDrop={opts.onDropBefore ? (e) => { e.preventDefault(); e.stopPropagation(); opts.onDropBefore!(); } : undefined}
+      className={`border rounded bg-white ${dragStopId === stop.id ? 'border-blue-400 opacity-60' : 'border-stone-300'}`}
+    >
+      <div
+        className="flex items-center gap-3 p-3 cursor-pointer hover:bg-stone-50"
+        onClick={() => setExpandedStopId(expandedStopId === stop.id ? null : stop.id)}
+      >
+        {opts.draggable && <span className="text-stone-300 cursor-grab select-none" title="Drag to reorder or move to another act">&#x2630;</span>}
+        <span className="text-xs font-mono text-stone-400 w-6 text-center">{displayNum}</span>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate">
+            {stop.title || <em className="text-stone-400">Untitled stop</em>}
+          </div>
+          <div className="text-xs text-stone-500 mt-0.5">
+            {stop.physicalLocationTag}
+            {stop.location && <> &middot; <span className="text-amber-700">has map pin</span></>}
+            {mode !== 'context' && <>{' '}&middot; {stop.wonder === null ? 'No wonder' : stop.wonder.question ? 'Wonder set' : 'Wonder empty'}</>}
+            {' '}&middot; {stop.reveal.text ? 'Reveal set' : 'No reveal'}
+          </div>
+        </div>
+        <div className="flex gap-1 items-center" onClick={(e) => e.stopPropagation()}>
+          {opts.actControl}
+          <button
+            onClick={opts.onUp}
+            disabled={opts.upDisabled}
+            className="px-1.5 py-0.5 text-xs rounded bg-stone-100 hover:bg-stone-200 disabled:opacity-30"
+            title="Move up"
+          >&uarr;</button>
+          <button
+            onClick={opts.onDown}
+            disabled={opts.downDisabled}
+            className="px-1.5 py-0.5 text-xs rounded bg-stone-100 hover:bg-stone-200 disabled:opacity-30"
+            title="Move down"
+          >&darr;</button>
+          <button
+            onClick={() => { setPreviewStopId(stop.id); setPreviewPhase(0); }}
+            className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-800 hover:bg-amber-200"
+            title="Preview"
+          >Preview</button>
+          <button
+            onClick={() => removeStop(stop.id)}
+            className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200"
+            title="Delete"
+          >&times;</button>
+        </div>
+      </div>
+
+      {expandedStopId === stop.id && (
+        <StopEditor
+          stop={stop}
+          tourId={tourId}
+          tourCategories={tour.categories || []}
+          onChange={(patch) => updateStop(stop.id, patch)}
+          onUploadPhoto={uploadPhoto}
+          hideDiscussionAndBridge={mode === 'context'}
+        />
+      )}
+    </li>
+  );
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 p-6 font-sans" data-admin-text-size={adminTextSize}>
@@ -299,6 +541,38 @@ export default function TourEditorPage() {
             </div>
           </div>
         </header>
+
+        {/* Tour mode — the experience this tour delivers. */}
+        <section className="mb-8 p-4 rounded border-2 border-blue-300 bg-blue-50/40 space-y-3">
+          <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Tour mode</h2>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { id: 'linear' as const, title: 'Linear', blurb: 'Fixed authored sequence of stops.' },
+              { id: 'unstructured' as const, title: 'Unstructured', blurb: 'Explorers pick stop order on a map.' },
+              { id: 'context' as const, title: 'Context-Prototype', blurb: 'Sequential. No essential question or per-stop discussion — stops grouped into Acts with opening/closing questions.' },
+            ]).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setMode(opt.id)}
+                aria-pressed={mode === opt.id}
+                className={`text-left p-3 rounded border-2 transition-colors ${
+                  mode === opt.id
+                    ? 'border-blue-600 bg-white shadow-sm'
+                    : 'border-stone-200 bg-white/60 hover:border-stone-300'
+                }`}
+              >
+                <div className={`text-sm font-semibold ${mode === opt.id ? 'text-blue-700' : 'text-stone-700'}`}>{opt.title}</div>
+                <p className="text-[10px] text-stone-500 mt-0.5 leading-snug">{opt.blurb}</p>
+              </button>
+            ))}
+          </div>
+          {mode === 'context' && (
+            <p className="text-[10px] text-amber-700">
+              Context-Prototype keeps its own stops set (cloned when you first switch). The Essential Question and per-stop discussion/bridge are hidden in this mode.
+            </p>
+          )}
+        </section>
 
         {/* Tour metadata */}
         <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-4">
@@ -709,8 +983,18 @@ export default function TourEditorPage() {
           </div>
         </section>
 
-        {/* Essential question */}
-        <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-4">
+        {/* Opening Frame — Context-Prototype only (replaces the Essential Question) */}
+        {mode === 'context' && (
+          <OpeningFrameEditor
+            frame={tour.openingFrame ?? blankOpeningFrame()}
+            tourId={tourId}
+            onChange={(frame) => updateField('openingFrame', frame)}
+            onUploadPhoto={uploadPhoto}
+          />
+        )}
+
+        {/* Essential question — hidden in Context-Prototype mode */}
+        <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-4" hidden={mode === 'context'}>
           <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Essential Question</h2>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -1290,41 +1574,10 @@ export default function TourEditorPage() {
           )}
         </section>
 
-        {/* Unstructured exploration mode */}
-        <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-4">
+        {/* Unstructured exploration settings — only relevant in Unstructured mode */}
+        <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-4" hidden={mode !== 'unstructured'}>
           <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Unstructured Exploration</h2>
-          <label className="flex items-start gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={tour.unstructuredMode ?? false}
-              onChange={(e) => {
-                const turningOn = e.target.checked;
-                if (
-                  turningOn &&
-                  (!tour.unstructuredStops || tour.unstructuredStops.length === 0) &&
-                  tour.stops.length > 0
-                ) {
-                  // First time turning unstructured on for this tour —
-                  // seed the parallel stops array with a deep copy of
-                  // the linear stops (new IDs) so the author can edit
-                  // one set without affecting the other.
-                  const duped = duplicateStopsForUnstructured(tour.stops);
-                  const next = { ...tour, unstructuredMode: true, unstructuredStops: duped };
-                  setTour(next);
-                  persist(next);
-                  setExpandedStopId(null);
-                  return;
-                }
-                updateField('unstructuredMode', turningOn);
-                setExpandedStopId(null);
-              }}
-              className="rounded mt-0.5"
-            />
-            <div>
-              <span className="text-xs text-stone-700 font-medium">Enable unstructured exploration</span>
-              <p className="text-[10px] text-stone-400 mt-0.5">When active, explorers choose which stops to visit in any order. The Essential Question and Closing Framing remain as fixed bookends.</p>
-            </div>
-          </label>
+          <p className="text-[10px] text-stone-400">Explorers choose which stops to visit in any order. The Essential Question and Closing Framing remain as fixed bookends. (Switch modes from the Tour mode selector at the top.)</p>
 
           {/* Default map zoom */}
           <div className="border-t border-stone-200 pt-3">
@@ -1469,77 +1722,120 @@ export default function TourEditorPage() {
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">
-              Stops ({activeStops.length}){tour.unstructuredMode ? ' — Unstructured set' : ''}
+              Stops ({activeStops.length})
+              {mode === 'unstructured' ? ' — Unstructured set' : mode === 'context' ? ' — grouped into Acts' : ''}
             </h2>
-            <button
-              onClick={addStop}
-              className="px-3 py-1.5 rounded bg-blue-700 text-white text-sm hover:bg-blue-800"
-            >
-              + Add stop
-            </button>
+            <div className="flex gap-2">
+              {mode === 'context' && (
+                <button
+                  onClick={addAct}
+                  className="px-3 py-1.5 rounded bg-amber-600 text-white text-sm hover:bg-amber-700"
+                >
+                  + Add act
+                </button>
+              )}
+              <button
+                onClick={addStop}
+                className="px-3 py-1.5 rounded bg-blue-700 text-white text-sm hover:bg-blue-800"
+              >
+                + Add stop
+              </button>
+            </div>
           </div>
 
-          {activeStops.length === 0 ? (
+          {mode === 'context' ? (
+            /* ── Acts organizer — drag stops between acts ── */
+            <div className="space-y-4">
+              {activeStops.length === 0 ? (
+                <p className="text-stone-500 text-sm italic">No stops yet. Add one to start building the tour.</p>
+              ) : acts.map((act, ai) => {
+                const startNum = acts.slice(0, ai).reduce((n, a) => n + a.stopIds.length, 0);
+                return (
+                  <div
+                    key={act.id}
+                    className="border-2 border-amber-300 rounded bg-amber-50/30 p-3 space-y-3"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => { e.preventDefault(); if (dragStopId) assignStopToAct(dragStopId, act.id); }}
+                  >
+                    {/* Act header */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-amber-700 uppercase tracking-wide">Act {ai + 1}</span>
+                      <input
+                        value={act.title}
+                        onChange={(e) => updateAct(act.id, { title: e.target.value })}
+                        placeholder="Act title"
+                        className="flex-1 px-2 py-1 border border-amber-300 rounded text-sm font-semibold bg-white"
+                      />
+                      <button onClick={() => moveAct(act.id, -1)} disabled={ai === 0} className="px-1.5 py-0.5 text-xs rounded bg-stone-100 hover:bg-stone-200 disabled:opacity-30" title="Move act up">&uarr;</button>
+                      <button onClick={() => moveAct(act.id, 1)} disabled={ai === acts.length - 1} className="px-1.5 py-0.5 text-xs rounded bg-stone-100 hover:bg-stone-200 disabled:opacity-30" title="Move act down">&darr;</button>
+                      <button onClick={() => removeAct(act.id)} className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200" title="Remove act">&times;</button>
+                    </div>
+
+                    {/* Opening question */}
+                    <RichTextarea
+                      label="Opening question (optional — explorer answers by voice or text)"
+                      value={act.openingQuestion?.prompt || ''}
+                      onChange={(v) => setActQuestion(act.id, 'openingQuestion', v)}
+                      rows={2}
+                      placeholder="Asked before this act's first stop. Leave blank to skip."
+                    />
+
+                    {/* Stops in this act */}
+                    {act.stopIds.length === 0 ? (
+                      <p className="text-[11px] text-stone-400 italic border border-dashed border-stone-300 rounded p-3 text-center">
+                        Drag a stop here, or use the act dropdown on a stop to move it in.
+                      </p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {act.stopIds.map((sid, si) => {
+                          const stop = activeStops.find((s) => s.id === sid);
+                          if (!stop) return null;
+                          return renderStopRow(stop, startNum + si + 1, {
+                            onUp: () => moveStopInAct(act.id, sid, -1),
+                            onDown: () => moveStopInAct(act.id, sid, 1),
+                            upDisabled: si === 0,
+                            downDisabled: si === act.stopIds.length - 1,
+                            draggable: true,
+                            onDropBefore: () => { if (dragStopId && dragStopId !== sid) assignStopToAct(dragStopId, act.id, si); },
+                            actControl: (
+                              <select
+                                value={act.id}
+                                onChange={(e) => assignStopToAct(sid, e.target.value)}
+                                className="text-[10px] border border-stone-300 rounded px-1 py-0.5 bg-white max-w-[90px]"
+                                title="Move to act"
+                              >
+                                {acts.map((a, i) => (
+                                  <option key={a.id} value={a.id}>{a.title || `Act ${i + 1}`}</option>
+                                ))}
+                              </select>
+                            ),
+                          });
+                        })}
+                      </ul>
+                    )}
+
+                    {/* Closing question */}
+                    <RichTextarea
+                      label="Closing question (optional — explorer answers by voice or text)"
+                      value={act.closingQuestion?.prompt || ''}
+                      onChange={(v) => setActQuestion(act.id, 'closingQuestion', v)}
+                      rows={2}
+                      placeholder="Asked after this act's last stop. Leave blank to skip."
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ) : activeStops.length === 0 ? (
             <p className="text-stone-500 text-sm italic">No stops yet. Add one to start building the tour.</p>
           ) : (
             <ul className="space-y-2">
-              {activeStops.map((stop, idx) => (
-                <li key={stop.id} ref={(el) => { stopRefs.current[stop.id] = el; }} className="border border-stone-300 rounded bg-white">
-                  {/* Stop summary bar */}
-                  <div
-                    className="flex items-center gap-3 p-3 cursor-pointer hover:bg-stone-50"
-                    onClick={() => setExpandedStopId(expandedStopId === stop.id ? null : stop.id)}
-                  >
-                    <span className="text-xs font-mono text-stone-400 w-6 text-center">{idx + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">
-                        {stop.title || <em className="text-stone-400">Untitled stop</em>}
-                      </div>
-                      <div className="text-xs text-stone-500 mt-0.5">
-                        {stop.physicalLocationTag}
-                        {stop.location && <> &middot; <span className="text-amber-700">has map pin</span></>}
-                        {' '}&middot; {stop.wonder === null ? 'No wonder' : stop.wonder.question ? 'Wonder set' : 'Wonder empty'}
-                        {' '}&middot; {stop.reveal.text ? 'Reveal set' : 'No reveal'}
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); moveStop(stop.id, -1); }}
-                        disabled={idx === 0}
-                        className="px-1.5 py-0.5 text-xs rounded bg-stone-100 hover:bg-stone-200 disabled:opacity-30"
-                        title="Move up"
-                      >&uarr;</button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); moveStop(stop.id, 1); }}
-                        disabled={idx === activeStops.length - 1}
-                        className="px-1.5 py-0.5 text-xs rounded bg-stone-100 hover:bg-stone-200 disabled:opacity-30"
-                        title="Move down"
-                      >&darr;</button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setPreviewStopId(stop.id); setPreviewPhase(0); }}
-                        className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-800 hover:bg-amber-200"
-                        title="Preview"
-                      >Preview</button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); removeStop(stop.id); }}
-                        className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200"
-                        title="Delete"
-                      >&times;</button>
-                    </div>
-                  </div>
-
-                  {/* Expanded stop editor */}
-                  {expandedStopId === stop.id && (
-                    <StopEditor
-                      stop={stop}
-                      tourId={tourId}
-                      tourCategories={tour.categories || []}
-                      onChange={(patch) => updateStop(stop.id, patch)}
-                      onUploadPhoto={uploadPhoto}
-                    />
-                  )}
-                </li>
-              ))}
+              {activeStops.map((stop, idx) => renderStopRow(stop, idx + 1, {
+                onUp: () => moveStop(stop.id, -1),
+                onDown: () => moveStop(stop.id, 1),
+                upDisabled: idx === 0,
+                downDisabled: idx === activeStops.length - 1,
+              }))}
             </ul>
           )}
         </section>
@@ -1559,6 +1855,80 @@ export default function TourEditorPage() {
   );
 }
 
+// ─── Opening Frame Editor (Context-Prototype) ───────────────────────
+
+function OpeningFrameEditor({
+  frame,
+  tourId,
+  onChange,
+  onUploadPhoto,
+}: {
+  frame: import('@/lib/types').OpeningFrame;
+  tourId: string;
+  onChange: (frame: import('@/lib/types').OpeningFrame) => void;
+  onUploadPhoto: (file: File, path: string) => Promise<string>;
+}) {
+  return (
+    <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-4">
+      <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Opening Frame</h2>
+      <p className="text-[10px] text-stone-400">The &ldquo;Setting the Scene&rdquo; screen shown at the start of the tour (no essential question in this mode).</p>
+
+      <label className="block">
+        <span className="text-xs text-stone-500">Scene photo (where to find the starting point)</span>
+        <div className="flex gap-2 mt-1">
+          <input
+            value={frame.scenePhotoUrl || ''}
+            onChange={(e) => onChange({ ...frame, scenePhotoUrl: e.target.value || null })}
+            className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs"
+            placeholder="Upload or paste URL..."
+          />
+          <label className="px-2 py-1 rounded bg-stone-200 text-stone-700 text-xs cursor-pointer hover:bg-stone-300">
+            Upload
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const url = await onUploadPhoto(file, `memorial-church/photos/tours/${tourId}/opening_frame_${file.name}`);
+                onChange({ ...frame, scenePhotoUrl: url });
+              }}
+            />
+          </label>
+        </div>
+      </label>
+
+      <RichTextarea
+        label="Scene description (directions to find it)"
+        value={frame.sceneDescription || ''}
+        onChange={(v) => onChange({ ...frame, sceneDescription: v })}
+        rows={2}
+        placeholder="Find the stone plaque on the north wall..."
+      />
+
+      <AudioUpload
+        audioUrl={frame.sceneAudioUrl ?? null}
+        audioTitle={frame.sceneAudioTitle ?? null}
+        onChange={(url) => onChange({ ...frame, sceneAudioUrl: url })}
+        onTitleChange={(title) => onChange({ ...frame, sceneAudioTitle: title })}
+        uploadPath={`memorial-church/audio/tours/${tourId}/opening_frame`}
+        onUploadFile={onUploadPhoto}
+        autoplayDisabled={frame.sceneAudioAutoplayDisabled}
+        onAutoplayDisabledChange={(v) => onChange({ ...frame, sceneAudioAutoplayDisabled: v })}
+      />
+
+      <RichTextarea
+        label="Opening framing (toggle text on scene screen)"
+        value={frame.openingFraming || ''}
+        onChange={(v) => onChange({ ...frame, openingFraming: v })}
+        rows={3}
+        placeholder="Before we begin, take a moment..."
+      />
+    </section>
+  );
+}
+
 // ─── Stop Editor ────────────────────────────────────────────────────
 
 interface StopEditorProps {
@@ -1567,9 +1937,12 @@ interface StopEditorProps {
   tourCategories?: string[];
   onChange: (patch: Partial<Stop>) => void;
   onUploadPhoto: (file: File, path: string) => Promise<string>;
+  /** Context-Prototype mode hides the discussion question, extra rounds, and
+   *  bridge fieldsets — those phases are stripped from that experience. */
+  hideDiscussionAndBridge?: boolean;
 }
 
-function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadPhoto }: StopEditorProps) {
+function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadPhoto, hideDiscussionAndBridge = false }: StopEditorProps) {
   // Defensive defaults for older stop data that may be missing newer fields
   const stop: Stop = {
     ...rawStop,
@@ -1813,7 +2186,7 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
       </fieldset>
 
       {/* ── Wonder ── */}
-      <fieldset className="space-y-2">
+      <fieldset className="space-y-2" hidden={hideDiscussionAndBridge}>
         <legend className="text-xs font-semibold text-stone-700 uppercase tracking-wide flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#C4923A] inline-block" />
           Discussion Question
@@ -1970,7 +2343,7 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
       </fieldset>
 
       {/* ── Extra Wonder + Context Rounds ── */}
-      <fieldset className="space-y-2">
+      <fieldset className="space-y-2" hidden={hideDiscussionAndBridge}>
         <legend className="text-xs font-semibold text-stone-700 uppercase tracking-wide flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#C4923A] inline-block" />
           Additional Discussion Questions + Context
@@ -2236,7 +2609,7 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
       </fieldset>
 
       {/* ── Bridge (optional) ── */}
-      <fieldset className="space-y-2">
+      <fieldset className="space-y-2" hidden={hideDiscussionAndBridge}>
         <legend className="text-xs font-semibold text-stone-700 uppercase tracking-wide flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#6B5D4F] inline-block" />
           Bridge
