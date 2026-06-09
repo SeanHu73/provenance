@@ -47,7 +47,13 @@ export default function AudioUpload({ audioUrl, audioTitle, onChange, onTitleCha
         </label>
         {audioUrl && (
           <button
-            onClick={() => { onChange(null); onTitleChange?.(null); }}
+            type="button"
+            // Clear the URL only, in a single parent update. Calling
+            // onTitleChange(null) here too would batch a second state update
+            // that re-reads the same stale parent snapshot and clobbers this
+            // one — restoring the old URL (the "Remove does nothing" bug).
+            // With no URL the title input is hidden, so the stale title is inert.
+            onClick={() => onChange(null)}
             className="text-xs text-red-600 hover:underline shrink-0"
           >
             Remove
