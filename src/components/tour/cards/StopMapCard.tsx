@@ -4,16 +4,25 @@
  * Context-Prototype — the "walk to your next stop" map shown before each
  * stop. All stops appear as numbered pins: the one they're walking to is
  * highlighted and enlarged, completed stops turn blue, the rest are smaller
- * but present. A flashing label cues them to walk over.
+ * but present. The first time a given stop's map appears, a 2.5s spotlight
+ * darkens the screen, cuts a hole around the target pin, and shows the
+ * walking instruction; then it fades to the interactive map.
  */
 
+import { useState, useEffect } from 'react';
 import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { Tour, TourSession } from '@/lib/types';
 import { getActiveStops } from '@/lib/tours-store';
 import { getContextOrderedStops } from '@/lib/tour-session';
+import SpotlightOverlay from './SpotlightOverlay';
 
 const FALLBACK_LOCATION = { lat: 37.42700, lng: -122.17015 };
 const MAP_ID = 'b8f339c02d8c7d5bd3f12d1b';
+const INTRO_MS = 2500;
+
+// Stops whose map intro spotlight has already played (per page load), so
+// back-navigation doesn't replay it.
+const seenStopMaps = new Set<string>();
 
 type PinState = 'completed' | 'target' | 'upcoming';
 
@@ -29,6 +38,16 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
   const ordered = getContextOrderedStops(tour);
   const targetId = getActiveStops(tour)[session.currentStopIndex]?.id;
   const completed = new Set(session.completedStops);
+
+  // First time this stop's map appears → play the spotlight intro for 2.5s.
+  const [showIntro, setShowIntro] = useState(false);
+  useEffect(() => {
+    if (!targetId || seenStopMaps.has(targetId)) return;
+    seenStopMaps.add(targetId);
+    setShowIntro(true);
+    const t = setTimeout(() => setShowIntro(false), INTRO_MS);
+    return () => clearTimeout(t);
+  }, [targetId]);
 
   // Build pin data. Stops without their own coordinates fan out in a small
   // ring around the tour pin so numbered pins don't perfectly overlap.
@@ -82,19 +101,16 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
         </div>
       )}
 
-      {/* Flashing "walk to your next stop" cue — bottom, bordered to stand out */}
-      <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none px-4 w-full flex justify-center" style={{ bottom: 22 }}>
-        <span
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[16px] font-semibold uppercase tracking-wide shadow-lg animate-pulse border-2 border-white text-center"
-          style={{ backgroundColor: 'var(--th-primary)', color: 'var(--cream, #FFF8EE)' }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-            <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-          Walk to your next stop. Tap pin to begin.
-        </span>
-      </div>
+      {/* First-appearance spotlight: darken the screen for 2.5s with a hole
+          cut around the target pin and the walking instruction above it. */}
+      {showIntro && (
+        <SpotlightOverlay
+          targetSelector="[data-stop-map-target]"
+          message="Walk to your next stop. Tap pin when you are there."
+          dimOpacity={0.62}
+          padding={18}
+        />
+      )}
 
     </div>
   );
@@ -115,7 +131,11 @@ function NumberedPin({ number, state }: { number: number; state: PinState }) {
     // AdvancedMarker anchors the element's bottom-centre at the coordinate;
     // shift down by half the height so the disc is centred on the point.
     <div style={{ transform: 'translateY(50%)' }}>
-      <div className={`relative ${state === 'target' ? 'cursor-pointer' : ''}`} style={{ width: size, height: size }}>
+      <div
+        className={`relative ${state === 'target' ? 'cursor-pointer' : ''}`}
+        style={{ width: size, height: size }}
+        data-stop-map-target={state === 'target' ? true : undefined}
+      >
         {state === 'target' && (
           <div className="absolute" style={{ width: size * 1.5, height: size * 1.5, left: '50%', top: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none' }}>
             <span className="absolute inset-0 rounded-full animate-ping" style={{ background: '#F59E0B', opacity: 0.4 }} />
