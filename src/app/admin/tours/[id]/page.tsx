@@ -26,6 +26,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import RichTextarea from '@/components/admin/RichTextarea';
 import AudioUpload from '@/components/admin/AudioUpload';
 import PhotoOverlayEditor from '@/components/admin/PhotoOverlayEditor';
+import PhotoCueEditor from '@/components/admin/PhotoCueEditor';
 import { registerPhotoInLibrary } from '@/lib/photo-sync-tour';
 
 const CHURCH_LOCATION = { lat: 37.42700, lng: -122.17015 };
@@ -2122,6 +2123,15 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
           autoplayDisabled={stop.seed.audioAutoplayDisabled}
           onAutoplayDisabledChange={(v) => onChange({ seed: { ...stop.seed, audioAutoplayDisabled: v } })}
         />
+        {stop.seed.audioUrl && (
+          <PhotoCueEditor
+            cues={stop.seed.photoCues}
+            photos={stop.seed.photos || []}
+            onChange={(photoCues) => onChange({ seed: { ...stop.seed, photoCues } })}
+            holdLast={stop.seed.photoCuesHoldLast}
+            onHoldLastChange={(v) => onChange({ seed: { ...stop.seed, photoCuesHoldLast: v } })}
+          />
+        )}
       </fieldset>
 
       {/* ── Notice ── */}
@@ -2175,6 +2185,15 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
           autoplayDisabled={stop.notice.audioAutoplayDisabled}
           onAutoplayDisabledChange={(v) => onChange({ notice: { ...stop.notice, audioAutoplayDisabled: v } })}
         />
+        {stop.notice.audioUrl && (
+          <PhotoCueEditor
+            cues={stop.notice.photoCues}
+            photos={stop.notice.photos || []}
+            onChange={(photoCues) => onChange({ notice: { ...stop.notice, photoCues } })}
+            holdLast={stop.notice.photoCuesHoldLast}
+            onHoldLastChange={(v) => onChange({ notice: { ...stop.notice, photoCuesHoldLast: v } })}
+          />
+        )}
 
         {/* ── Indoor "where to go" map ── */}
         <NoticeMapEditor
@@ -2342,58 +2361,14 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
         />
 
         {/* Audio-synced photo highlights */}
-        {stop.reveal.audioUrl && (stop.reveal.photos || []).length > 0 && (
-          <div className="border-t border-stone-200 pt-2 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-stone-600 font-medium">Photo highlights during audio</span>
-              <button
-                onClick={() => onChange({ reveal: { ...stop.reveal, photoCues: [...(stop.reveal.photoCues || []), { time: 0, photoIndex: 0 }] } })}
-                className="text-[10px] text-blue-700 hover:underline"
-              >+ Add cue</button>
-            </div>
-            <p className="text-[10px] text-stone-400">At each timestamp (seconds into the audio) the chosen photo gently glows until the next cue.</p>
-            {(stop.reveal.photoCues || []).length === 0 ? (
-              <p className="text-[10px] text-stone-400 italic">No cues yet.</p>
-            ) : (
-              <ul className="space-y-1.5">
-                {(stop.reveal.photoCues || []).map((cue, ci) => (
-                  <li key={ci} className="flex items-center gap-2">
-                    <span className="text-[10px] text-stone-500">at</span>
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.5}
-                      value={cue.time}
-                      onChange={(e) => {
-                        const next = [...(stop.reveal.photoCues || [])];
-                        next[ci] = { ...next[ci], time: Math.max(0, Number(e.target.value) || 0) };
-                        onChange({ reveal: { ...stop.reveal, photoCues: next } });
-                      }}
-                      className="w-16 px-2 py-1 border border-stone-300 rounded text-xs"
-                    />
-                    <span className="text-[10px] text-stone-500">sec &rarr;</span>
-                    <select
-                      value={cue.photoIndex}
-                      onChange={(e) => {
-                        const next = [...(stop.reveal.photoCues || [])];
-                        next[ci] = { ...next[ci], photoIndex: Number(e.target.value) };
-                        onChange({ reveal: { ...stop.reveal, photoCues: next } });
-                      }}
-                      className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs"
-                    >
-                      {(stop.reveal.photos || []).map((p, pi) => (
-                        <option key={pi} value={pi}>Photo {pi + 1}{p.caption ? ` — ${p.caption.slice(0, 24)}` : ''}</option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => onChange({ reveal: { ...stop.reveal, photoCues: (stop.reveal.photoCues || []).filter((_, j) => j !== ci) } })}
-                      className="text-[10px] text-red-600 hover:underline"
-                    >Remove</button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+        {stop.reveal.audioUrl && (
+          <PhotoCueEditor
+            cues={stop.reveal.photoCues}
+            photos={stop.reveal.photos || []}
+            onChange={(photoCues) => onChange({ reveal: { ...stop.reveal, photoCues } })}
+            holdLast={stop.reveal.photoCuesHoldLast}
+            onHoldLastChange={(v) => onChange({ reveal: { ...stop.reveal, photoCuesHoldLast: v } })}
+          />
         )}
       </fieldset>
 

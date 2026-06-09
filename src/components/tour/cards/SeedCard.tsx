@@ -21,6 +21,7 @@ import NoticeMapDisplay from './NoticeMapDisplay';
 import SnapScrollHint from './SnapScrollHint';
 import ActionTitle, { SectionSubtitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { usePhotoCues } from '../usePhotoCues';
 
 interface Props {
   stop: Stop;
@@ -39,6 +40,11 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   // When both seed and notice audio are present on this combined screen,
   // suppress notice autoplay so the two streams don't play in parallel.
   const noticeAutoplay = autoplayPref && !stop.notice.audioAutoplayDisabled && !stop.seed.audioUrl;
+
+  // Audio-synced photo highlights for the Background (seed) and Look Around
+  // (notice) narrations.
+  const seedCues = usePhotoCues(stop.seed.photoCues, stop.seed.photos || [], stop.seed.photoCuesHoldLast);
+  const noticeCues = usePhotoCues(stop.notice.photoCues, stop.notice.photos || [], stop.notice.photoCuesHoldLast);
 
   const hasNoticeSection = !!(
     stop.notice.prompt
@@ -106,7 +112,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   const backgroundBlock = (
     <>
       <ActionTitle action="LEARN" />
-      {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedAutoplay} />}
+      {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedAutoplay} onTimeUpdate={seedCues.onTimeUpdate} onEnded={seedCues.onEnded} />}
       {stop.seed.text ? (
         <div>
           <SectionSubtitle className="mb-2">Background</SectionSubtitle>
@@ -115,6 +121,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
             photos={stop.seed.photos || []}
             legacyPhotoUrl={stop.seed.photoUrl}
             legacyPhotoCaption={stop.seed.photoCaption}
+            highlightedUrl={seedCues.highlightedUrl}
           />
         </div>
       ) : !stop.seed.audioUrl && (
@@ -148,7 +155,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
           </button>
         </div>
       )}
-      {stop.notice.audioUrl && <AudioButton audioUrl={stop.notice.audioUrl} title={stop.notice.audioTitle} autoplay={noticeAutoplay} />}
+      {stop.notice.audioUrl && <AudioButton audioUrl={stop.notice.audioUrl} title={stop.notice.audioTitle} autoplay={noticeAutoplay} onTimeUpdate={noticeCues.onTimeUpdate} onEnded={noticeCues.onEnded} />}
       {stop.notice.noticeMap && stop.notice.noticeMap.url && (
         <NoticeMapDisplay map={stop.notice.noticeMap} />
       )}
@@ -159,6 +166,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
           legacyPhotoUrl={stop.notice.photoUrl}
           legacyPhotoCaption={stop.notice.photoCaption}
           textClass="text-[23px] leading-relaxed font-serif text-text-primary"
+          highlightedUrl={noticeCues.highlightedUrl}
         />
       )}
     </>

@@ -16,13 +16,18 @@ interface Props {
    *  autoplay preference mid-screen does not retroactively start audio. */
   autoplay?: boolean;
   /** Reports playback position (seconds) — used to drive audio-synced photo
-   *  highlights. Fires on timeupdate and resets to 0 on end. */
+   *  highlights. Fires on timeupdate. */
   onTimeUpdate?: (t: number) => void;
+  /** Fires when playback reaches the end (lets cue logic decide whether to
+   *  hold the last highlight or clear it). */
+  onEnded?: () => void;
 }
 
-export default function AudioButton({ audioUrl, title, autoplay = false, onTimeUpdate }: Props) {
+export default function AudioButton({ audioUrl, title, autoplay = false, onTimeUpdate, onEnded }: Props) {
   const onTimeUpdateRef = useRef(onTimeUpdate);
   onTimeUpdateRef.current = onTimeUpdate;
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -39,7 +44,7 @@ export default function AudioButton({ audioUrl, title, autoplay = false, onTimeU
       setProgress(audio.duration ? audio.currentTime / audio.duration : 0);
       onTimeUpdateRef.current?.(audio.currentTime);
     });
-    audio.addEventListener('ended', () => { setPlaying(false); setProgress(0); setCurrentTime(0); onTimeUpdateRef.current?.(0); });
+    audio.addEventListener('ended', () => { setPlaying(false); setProgress(0); setCurrentTime(0); onEndedRef.current?.(); });
     audio.addEventListener('pause', () => setPlaying(false));
     audio.addEventListener('play', () => setPlaying(true));
 

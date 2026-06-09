@@ -7,6 +7,7 @@ import AudioButton from './AudioButton';
 import NoticeMapDisplay from './NoticeMapDisplay';
 import ActionTitle from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { usePhotoCues } from '../usePhotoCues';
 
 interface Props {
   stop: Stop;
@@ -16,6 +17,7 @@ interface Props {
 export default function NoticeCard({ stop, onContinue }: Props) {
   const [autoplayPref] = useAudioAutoplay();
   const shouldAutoplay = autoplayPref && !stop.notice.audioAutoplayDisabled;
+  const { onTimeUpdate, onEnded, highlightedUrl } = usePhotoCues(stop.notice.photoCues, stop.notice.photos || [], stop.notice.photoCuesHoldLast);
   const [secondsLeft, setSecondsLeft] = useState(stop.notice.timerSeconds);
   const timerDone = secondsLeft <= 0;
 
@@ -38,7 +40,7 @@ export default function NoticeCard({ stop, onContinue }: Props) {
       <ActionTitle action="FIND" />
 
       {/* Audio player */}
-      {stop.notice.audioUrl && <AudioButton audioUrl={stop.notice.audioUrl} title={stop.notice.audioTitle} autoplay={shouldAutoplay} />}
+      {stop.notice.audioUrl && <AudioButton audioUrl={stop.notice.audioUrl} title={stop.notice.audioTitle} autoplay={shouldAutoplay} onTimeUpdate={onTimeUpdate} onEnded={onEnded} />}
 
       {/* Indoor "where to go" map — only when the admin uploaded one */}
       {stop.notice.noticeMap && stop.notice.noticeMap.url && (
@@ -52,6 +54,7 @@ export default function NoticeCard({ stop, onContinue }: Props) {
         legacyPhotoUrl={stop.notice.photoUrl}
         legacyPhotoCaption={stop.notice.photoCaption}
         textClass="text-[23px] leading-relaxed font-serif text-text-primary"
+        highlightedUrl={highlightedUrl}
       />
 
       {/* Timer ring */}

@@ -448,6 +448,8 @@ export interface Stop {
     audioUrl: string | null;         // Optional audio narration
     audioTitle: string | null;       // Display title for audio
     audioAutoplayDisabled?: boolean;
+    photoCues?: PhotoCue[];          // Audio-synced photo highlights
+    photoCuesHoldLast?: boolean;     // Keep the last cued photo highlighted after audio ends
   };
 
   // Notice phase
@@ -460,6 +462,8 @@ export interface Stop {
     audioUrl: string | null;
     audioTitle: string | null;
     audioAutoplayDisabled?: boolean;
+    photoCues?: PhotoCue[];          // Audio-synced photo highlights
+    photoCuesHoldLast?: boolean;     // Keep the last cued photo highlighted after audio ends
     /** Optional indoor "where to go" map shown above the prompt. Used
      *  for stops inside buildings where the outdoor GPS pin isn't
      *  enough — the admin uploads a floorplan / room photo and drops
@@ -517,6 +521,7 @@ export interface Stop {
      *  glow + a one-shot haptic, replacing any previously highlighted photo.
      *  Only active while the reveal audio is present/playing. */
     photoCues?: PhotoCue[];
+    photoCuesHoldLast?: boolean;     // Keep the last cued photo highlighted after audio ends
   };
 
   // Extra wonder + context rounds (optional, after the initial reveal, before the bridge)
