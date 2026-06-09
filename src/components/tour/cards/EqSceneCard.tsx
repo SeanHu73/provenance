@@ -84,10 +84,6 @@ export default function EqSceneCard({
         </button>
       )}
 
-      {/* "Setting the Scene" label — opening-frame variant places it here,
-          below the photo and above the description. */}
-      {openingVariant && <SectionSubtitle>{subtitle}</SectionSubtitle>}
-
       {/* Scene description */}
       {eq.sceneDescription && (
         <p className="text-[21px] leading-relaxed font-serif text-text-primary">

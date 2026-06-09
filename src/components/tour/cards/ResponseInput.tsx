@@ -67,7 +67,7 @@ export default function ResponseInput({ value, onChange, placeholder = 'Type you
           </button>
           <button
             onClick={() => { rec.reset(); rec.start(); }}
-            className="flex-1 py-4 rounded-xl text-lg font-semibold text-white bg-red-500 shadow-sm hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+            className="flex-1 py-4 rounded-xl text-lg font-semibold text-white bg-red-400 shadow-sm hover:bg-red-500 transition-colors flex items-center justify-center gap-2"
           >
             <MicGlyph size={22} />
             Record

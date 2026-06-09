@@ -2,143 +2,211 @@
 
 /**
  * Context-Prototype — the Community Forum, shown after each act's "Any
- * Remaining Questions" screen. Lists approved community questions as tabs;
- * tapping one shows others' approved responses and lets the explorer record
- * or type their own (submitted for moderation).
+ * Remaining Questions" screen (skipped entirely when no questions are
+ * approved). One scrollable page: each approved question with its approved
+ * responses inline, an "Add a response" composer per question, and an "Add
+ * question" composer at the bottom. Name + "anything we should know" are
+ * collected once and reused on later stops.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTour } from '@/context/TourContext';
-import { ForumQuestion, ForumResponse } from '@/lib/types';
-import { getApprovedQuestions, getApprovedResponses, submitForumResponse } from '@/lib/community-store';
+import { ForumQuestion, ForumResponse, ForumIdentity } from '@/lib/types';
+import {
+  getApprovedQuestions,
+  getApprovedResponses,
+  submitForumQuestion,
+  submitForumResponse,
+  getForumIdentity,
+  saveForumIdentity,
+} from '@/lib/community-store';
 import BackButton from './BackButton';
 import ResponseInput from './ResponseInput';
-import ActionTitle from './ActionTitle';
 
 interface Props {
   onComplete: () => void;
 }
 
 export default function CommunityForumCard({ onComplete }: Props) {
-  const { tour, session } = useTour();
+  const { tour } = useTour();
   const [questions, setQuestions] = useState<ForumQuestion[]>([]);
+  const [responsesByQ, setResponsesByQ] = useState<Record<string, ForumResponse[]>>({});
   const [loading, setLoading] = useState(true);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [responses, setResponses] = useState<ForumResponse[]>([]);
-  const [respLoading, setRespLoading] = useState(false);
-  const [draft, setDraft] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [addingQ, setAddingQ] = useState(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     if (!tour) return;
-    getApprovedQuestions(tour.id).then((qs) => { setQuestions(qs); setLoading(false); });
+    let cancelled = false;
+    (async () => {
+      const qs = await getApprovedQuestions(tour.id);
+      if (cancelled) return;
+      if (qs.length === 0) { onCompleteRef.current(); return; } // skip empty forum
+      setQuestions(qs);
+      const entries = await Promise.all(qs.map(async (q) => [q.id, await getApprovedResponses(q.id)] as const));
+      if (cancelled) return;
+      setResponsesByQ(Object.fromEntries(entries));
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, [tour]);
 
-  const openQuestion = async (q: ForumQuestion) => {
-    setActiveId(q.id);
-    setDraft('');
-    setSubmitted(false);
-    setRespLoading(true);
-    const rs = await getApprovedResponses(q.id);
-    setResponses(rs);
-    setRespLoading(false);
-  };
-
-  const submitResponse = async () => {
-    const t = draft.trim();
-    if (t && tour && session && activeId) {
-      await submitForumResponse(activeId, tour.id, t, session.id);
-      setSubmitted(true);
-      setDraft('');
-    }
-  };
-
-  const heading = (
-    <div>
-      <ActionTitle action="DISCUSS" />
-      <p className="mt-2 uppercase tracking-[0.12em] font-display font-semibold leading-tight" style={{ fontSize: 28, color: 'var(--th-primary)' }}>
-        Community Forum
-      </p>
-    </div>
-  );
-
-  // ── Detail view ──
-  if (activeId) {
-    const q = questions.find((x) => x.id === activeId);
+  if (loading) {
     return (
-      <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center px-1 py-2">
-        <button onClick={() => setActiveId(null)} className="self-start text-sm font-semibold text-text-secondary hover:text-text-primary">
-          ← All questions
-        </button>
-        <p className="font-display font-bold leading-tight text-text-primary" style={{ fontSize: 'clamp(22px, 5.5vw, 30px)' }}>
-          {q?.text}
-        </p>
-
-        <div className="space-y-2">
-          <p className="text-[13px] uppercase tracking-wide font-semibold text-text-secondary">Responses</p>
-          {respLoading ? (
-            <p className="text-sm text-text-secondary italic">Loading…</p>
-          ) : responses.length === 0 ? (
-            <p className="text-sm text-text-secondary italic">No responses yet — be the first.</p>
-          ) : (
-            responses.map((r) => (
-              <div key={r.id} className="p-3 rounded-lg bg-white border border-sandstone-light">
-                <p className="text-[16px] font-serif text-text-primary leading-relaxed">{r.text}</p>
-              </div>
-            ))
-          )}
-        </div>
-
-        {submitted ? (
-          <p className="text-sm text-olive font-semibold">&#10003; Thanks! Your response will appear once it&apos;s reviewed.</p>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-[15px] text-text-secondary">Add your own response — it&apos;ll appear after review.</p>
-            <ResponseInput value={draft} onChange={setDraft} placeholder="Share your thoughts…" />
-            {draft.trim() && (
-              <button onClick={submitResponse} className="w-full py-3 rounded-lg text-base font-semibold bg-aged-gold text-white">
-                Submit response
-              </button>
-            )}
-          </div>
-        )}
+      <div className="min-h-full flex items-center justify-center">
+        <div className="w-7 h-7 border-2 border-aged-gold border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  // ── List view ──
   return (
-    <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center px-1 py-2">
-      {heading}
-      <p className="text-[17px] leading-relaxed text-text-secondary">
-        Tap a question to see what others have shared and add your own.
+    <div className="animate-fade-in min-h-full py-2 space-y-6">
+      <p className="uppercase tracking-[0.12em] font-display font-semibold leading-tight" style={{ fontSize: 30, color: 'var(--th-primary)' }}>
+        Community Forum
       </p>
 
-      {loading ? (
-        <p className="text-sm text-text-secondary italic">Loading…</p>
-      ) : questions.length === 0 ? (
-        <p className="text-sm text-text-secondary italic">No community questions have been approved yet — check back later.</p>
-      ) : (
-        <div className="space-y-2">
-          {questions.map((q) => (
-            <button
-              key={q.id}
-              onClick={() => openQuestion(q)}
-              className="w-full text-left p-4 rounded-xl bg-white border-2 border-sandstone-light shadow-sm hover:border-aged-gold transition-colors flex items-center justify-between gap-3"
-            >
-              <span className="text-[16px] font-serif text-text-primary">{q.text}</span>
-              <span className="text-aged-gold text-lg shrink-0">›</span>
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="space-y-5">
+        {questions.map((q) => (
+          <div key={q.id} className="rounded-xl bg-white border border-sandstone-light p-4 space-y-3">
+            <div>
+              <p className="font-display font-bold leading-tight text-text-primary" style={{ fontSize: 'clamp(20px, 5vw, 26px)' }}>
+                {q.text}
+              </p>
+              {q.name && <p className="text-xs text-text-secondary mt-1">— {q.name}</p>}
+            </div>
 
-      <div className="flex gap-2 pt-2">
+            {(responsesByQ[q.id] || []).map((r) => (
+              <div key={r.id} className="pl-3 border-l-2 border-sandstone-light">
+                <p className="text-[16px] font-serif text-text-primary leading-relaxed">{r.text}</p>
+                {r.name && <p className="text-[11px] text-text-secondary mt-0.5">— {r.name}</p>}
+              </div>
+            ))}
+
+            <ResponseComposer
+              submitLabel="Submit response"
+              placeholder="Add your response…"
+              onSubmit={async (text, identity) => {
+                if (!tour) return;
+                await submitForumResponse(q.id, tour.id, text, sessionIdOf(), identity);
+              }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Add question */}
+      <div className="rounded-xl bg-sandstone/40 border border-sandstone-light p-4">
+        {addingQ ? (
+          <ResponseComposer
+            submitLabel="Submit question"
+            placeholder="What are you curious about?"
+            onSubmit={async (text, identity) => {
+              if (!tour) return;
+              await submitForumQuestion(tour.id, text, sessionIdOf(), identity);
+            }}
+          />
+        ) : (
+          <button
+            onClick={() => setAddingQ(true)}
+            className="w-full py-3 rounded-lg text-base font-semibold text-white bg-aged-gold hover:bg-aged-gold-light transition-colors"
+          >
+            + Add question
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-2">
         <BackButton />
         <button onClick={onComplete} className="flex-1 py-3 rounded-lg text-base font-semibold bg-olive text-white">
           Continue
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Reads the active session id from sessionStorage so composers don't each
+ *  need it threaded; falls back to a placeholder. */
+function sessionIdOf(): string {
+  try {
+    const raw = sessionStorage.getItem('mc_tour_session_v1');
+    if (raw) return (JSON.parse(raw).id as string) || 'unknown';
+  } catch { /* ignore */ }
+  return 'unknown';
+}
+
+/**
+ * Composer for a question or response. Collects Name + (on name focus)
+ * "anything we should know about you" the first time, then saves that
+ * identity and skips the prompt afterwards.
+ */
+function ResponseComposer({
+  submitLabel,
+  placeholder,
+  onSubmit,
+}: {
+  submitLabel: string;
+  placeholder: string;
+  onSubmit: (text: string, identity?: { name?: string; about?: string }) => Promise<void>;
+}) {
+  const [identity] = useState<ForumIdentity | null>(() => getForumIdentity());
+  const [name, setName] = useState('');
+  const [about, setAbout] = useState('');
+  const [aboutShown, setAboutShown] = useState(false);
+  const [text, setText] = useState('');
+  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const needIdentity = !identity;
+  const canSubmit = !!text.trim() && (!needIdentity || !!name.trim());
+
+  const submit = async () => {
+    if (!canSubmit || busy) return;
+    setBusy(true);
+    let id = identity ?? undefined;
+    if (needIdentity) {
+      id = { name: name.trim(), about: about.trim() };
+      saveForumIdentity(id);
+    }
+    await onSubmit(text.trim(), id);
+    setText('');
+    setDone(true);
+    setBusy(false);
+  };
+
+  if (done) return <p className="text-sm text-olive font-semibold">&#10003; Submitted for review.</p>;
+
+  return (
+    <div className="space-y-3">
+      {needIdentity && (
+        <div className="space-y-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onFocus={() => setAboutShown(true)}
+            placeholder="Your name"
+            className="w-full px-4 py-2.5 rounded-lg text-[18px] font-serif text-text-primary placeholder:text-text-secondary/40 border-2 border-sandstone-light bg-white focus:outline-none"
+          />
+          {aboutShown && (
+            <textarea
+              value={about}
+              onChange={(e) => setAbout(e.target.value)}
+              placeholder="Anything we should know about you…"
+              rows={2}
+              className="w-full px-4 py-2.5 rounded-lg text-[17px] font-serif text-text-primary placeholder:text-text-secondary/40 border-2 border-sandstone-light bg-white focus:outline-none animate-fade-in"
+            />
+          )}
+        </div>
+      )}
+      <ResponseInput value={text} onChange={setText} placeholder={placeholder} />
+      <button
+        onClick={submit}
+        disabled={!canSubmit || busy}
+        className="w-full py-3 rounded-lg text-base font-semibold bg-aged-gold text-white disabled:opacity-40"
+      >
+        {submitLabel}
+      </button>
     </div>
   );
 }

@@ -577,7 +577,7 @@ export interface WebNode {
   y: number;
 }
 
-export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'act_intro' | 'act_opening' | 'act_closing' | 'act_questions' | 'stop_map' | 'community_forum';
+export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'act_intro' | 'act_opening' | 'act_closing' | 'act_questions' | 'stop_map' | 'community_forum' | 'resources';
 
 export interface TourSession {
   id: string;
@@ -652,6 +652,8 @@ export interface ForumQuestion {
   tourId: string;
   text: string;
   sessionId: string;
+  name?: string;             // Author's name (from the saved forum identity)
+  about?: string;            // "Anything we should know about you" (saved once)
   status: ModerationStatus;
   createdAt: string;
 }
@@ -662,7 +664,36 @@ export interface ForumResponse {
   tourId: string;
   text: string;
   sessionId: string;
+  name?: string;
+  about?: string;
   status: ModerationStatus;
+  createdAt: string;
+}
+
+/** Saved per-device forum identity, reused so we don't re-ask on later stops. */
+export interface ForumIdentity {
+  name: string;
+  about: string;
+}
+
+export interface ResourceLink {
+  label: string;
+  url: string;
+}
+
+/** A suggested resource shown at the end of a context tour. `admin` resources
+ *  are curated; `user` resources are explorer-submitted and moderated. */
+export interface ForumResource {
+  id: string;
+  tourId: string;
+  title: string;
+  description: string;
+  photos: string[];
+  links: ResourceLink[];
+  source: 'admin' | 'user';
+  status: ModerationStatus;
+  sessionId?: string;
+  name?: string;
   createdAt: string;
 }
 

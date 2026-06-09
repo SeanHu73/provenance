@@ -41,6 +41,7 @@ import EndCard from './cards/EndCard';
 import ActQuestionCard from './cards/ActQuestionCard';
 import ActQuestionsCard from './cards/ActQuestionsCard';
 import CommunityForumCard from './cards/CommunityForumCard';
+import ResourcesCard from './cards/ResourcesCard';
 import ActIntroCard from './cards/ActIntroCard';
 import StopMapCard from './cards/StopMapCard';
 
@@ -77,6 +78,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeActClosing,
     completeActQuestions,
     completeCommunityForum,
+    completeResources,
     completeStopMap,
   } = useTour();
 
@@ -118,7 +120,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const stopNum = session.currentStopIndex + 1;
 
   // Progress bar visibility — show during stops, hide on pre-tour/end screens
-  const showProgress = !['intro', 'meet_guide', 'guide_outro', 'end', 'act_intro'].includes(phase);
+  const showProgress = !['intro', 'meet_guide', 'guide_outro', 'end', 'act_intro', 'resources'].includes(phase);
 
   // Determine transition type from the phase history.
   // Look at the previous entry — if it was in the same stop, slide. Otherwise fade.
@@ -472,6 +474,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
         {phase === 'guide_outro' && (
           <GuideOutroCard tour={tour} onContinue={completeGuideOutro} />
+        )}
+
+        {phase === 'resources' && (
+          <ResourcesCard onComplete={completeResources} />
         )}
 
         {phase === 'end' && (

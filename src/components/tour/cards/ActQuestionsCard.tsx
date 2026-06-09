@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTour } from '@/context/TourContext';
-import { submitForumQuestion } from '@/lib/community-store';
+import { submitForumQuestion, getForumIdentity } from '@/lib/community-store';
 import BackButton from './BackButton';
 import ResponseInput from './ResponseInput';
 import SnapScrollHint from './SnapScrollHint';
@@ -61,8 +61,8 @@ export default function ActQuestionsCard({ onComplete }: Props) {
         aiResponse: 'banked',
         timestamp: new Date().toISOString(),
       });
-      // Also submit to the moderated community queue.
-      void submitForumQuestion(tour.id, q, session.id);
+      // Also submit to the moderated community queue (with saved identity).
+      void submitForumQuestion(tour.id, q, session.id, getForumIdentity() ?? undefined);
     }
     onComplete();
   };

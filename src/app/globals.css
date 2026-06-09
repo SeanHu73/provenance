@@ -238,6 +238,16 @@ body {
   animation: gentleFade 2.4s ease-in-out infinite;
 }
 
+/* Ping-pong marquee for labels that overflow their container (e.g. a long
+   audio title). The shift distance is provided per-element via the
+   --marquee-shift custom property; the text slides to reveal its end, holds,
+   then slides back. */
+@keyframes marqueePingPong {
+  0%, 12%   { transform: translateX(0); }
+  50%, 62%  { transform: translateX(var(--marquee-shift, 0)); }
+  100%      { transform: translateX(0); }
+}
+
 /* One-shot fade-in-then-out used by the inquiry reminder that pops up
    on every third stop's context screen. Total 5.5s: ~0.4s fade in,
    ~4.7s hold, ~0.4s fade out. animation-fill-mode `forwards` so the

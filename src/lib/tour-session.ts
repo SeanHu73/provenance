@@ -310,14 +310,24 @@ function advanceToNextActOrClosing(session: TourSession, tour: Tour, currentAct:
   return finishContextTour({ ...session, phaseHistory: pushHistory(session) }, tour);
 }
 
-/** Final phase of a context tour: the guide's closing message if present,
- *  else the end card. */
+/** Final stretch of a context tour: the guide's closing message if present,
+ *  then the Suggested Resources screen (guide_outro routes there in context),
+ *  then the end card. */
 function finishContextTour(session: TourSession, tour: Tour): TourSession {
   return {
     ...session,
-    currentPhase: (tour.guide?.thankYouMessage || tour.guide?.thankYouAudioUrl) ? 'guide_outro' : 'end',
+    currentPhase: (tour.guide?.thankYouMessage || tour.guide?.thankYouAudioUrl) ? 'guide_outro' : 'resources',
     currentRound: 0,
     completedAt: new Date().toISOString(),
+  };
+}
+
+/** Context mode: explorer leaves the Suggested Resources screen → end card. */
+export function completeResources(session: TourSession): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'end',
   };
 }
 
@@ -851,11 +861,13 @@ export function finishTour(session: TourSession, tour: Tour): TourSession {
   };
 }
 
-export function completeGuideOutro(session: TourSession): TourSession {
+export function completeGuideOutro(session: TourSession, tour?: Tour): TourSession {
+  // Context tours end with the Suggested Resources screen before the end card.
+  const next: TourPhase = tour && getTourMode(tour) === 'context' ? 'resources' : 'end';
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: 'end',
+    currentPhase: next,
   };
 }
 

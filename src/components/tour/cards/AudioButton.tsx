@@ -95,9 +95,7 @@ export default function AudioButton({ audioUrl, title, autoplay = false }: Props
           )}
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-[18px] font-semibold text-text-primary truncate">
-            {title || 'Audio narration'}
-          </p>
+          <ScrollingTitle text={title || 'Audio narration'} />
           <p className="text-xs text-text-secondary">
             {formatTime(currentTime)} / {duration ? formatTime(duration) : '--:--'}
           </p>
@@ -118,6 +116,42 @@ export default function AudioButton({ audioUrl, title, autoplay = false }: Props
           style={{ left: `${progress * 100}%`, transform: `translateX(-50%) translateY(-50%)` }}
         />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Audio title that stays fully visible: if it overflows its row it slides
+ * (ping-pong) to reveal the end, then slides back, instead of truncating.
+ */
+function ScrollingTitle({ text }: { text: string }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [shift, setShift] = useState(0);
+
+  useEffect(() => {
+    const measure = () => {
+      const w = wrapRef.current, t = textRef.current;
+      if (!w || !t) return;
+      const overflow = t.scrollWidth - w.clientWidth;
+      setShift(overflow > 4 ? overflow : 0);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [text]);
+
+  return (
+    <div ref={wrapRef} className="overflow-hidden">
+      <span
+        ref={textRef}
+        className="text-[18px] font-semibold text-text-primary inline-block whitespace-nowrap will-change-transform"
+        style={shift > 0
+          ? ({ '--marquee-shift': `-${shift}px`, animation: `marqueePingPong ${Math.max(6, Math.round(shift / 25) + 5)}s ease-in-out infinite` } as React.CSSProperties)
+          : undefined}
+      >
+        {text}
+      </span>
     </div>
   );
 }

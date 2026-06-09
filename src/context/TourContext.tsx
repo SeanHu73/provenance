@@ -35,6 +35,7 @@ import {
   completeEqFinalReflect as completeEqFinalReflectImpl,
   finishTour as finishTourImpl,
   completeGuideOutro as completeGuideOutroImpl,
+  completeResources as completeResourcesImpl,
   bankQuestion as bankQuestionImpl,
   selectUnstructuredStop as selectUnstructuredStopImpl,
   completeMidwayCheckin as completeMidwayCheckinImpl,
@@ -88,6 +89,7 @@ interface TourContextValue {
   completeActClosing: (response: string) => void;
   completeActQuestions: () => void;
   completeCommunityForum: () => void;
+  completeResources: () => void;
   completeStopMap: () => void;
   // Unstructured exploration mode
   enterUnstructuredStop: (stopIndex: number) => void;
@@ -563,7 +565,12 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const completeGuideOutroFn = useCallback(() => {
     if (!session) return;
-    persist(completeGuideOutroImpl(session));
+    persist(completeGuideOutroImpl(session, tour ?? undefined));
+  }, [session, tour, persist]);
+
+  const completeResourcesFn = useCallback(() => {
+    if (!session) return;
+    persist(completeResourcesImpl(session));
   }, [session, persist]);
 
   // ── Context-Prototype actions ──
@@ -663,6 +670,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeActClosing: completeActClosingFn,
       completeActQuestions: completeActQuestionsFn,
       completeCommunityForum: completeCommunityForumFn,
+      completeResources: completeResourcesFn,
       completeStopMap: completeStopMapFn,
       enterUnstructuredStop: enterUnstructuredStopFn,
       completeMidwayCheckin: completeMidwayCheckinFn,
