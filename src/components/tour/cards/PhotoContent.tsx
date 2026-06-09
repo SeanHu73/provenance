@@ -34,6 +34,8 @@ interface Props {
   textClass?: string;
   /** Optional left border on text blocks */
   borderColor?: string;
+  /** When set, the photo with this URL gets the audio-cue glow. */
+  highlightedUrl?: string | null;
 }
 
 export default function PhotoContent({
@@ -43,6 +45,7 @@ export default function PhotoContent({
   legacyPhotoCaption,
   textClass = 'text-[21px] leading-relaxed font-serif text-text-primary',
   borderColor,
+  highlightedUrl,
 }: Props) {
   const [fullscreen, setFullscreen] = useState<Photo | null>(null);
 
@@ -63,7 +66,7 @@ export default function PhotoContent({
             </div>
           )}
           {allPhotos.map((photo, i) => (
-            <PhotoBlock key={i} photo={photo} onTap={() => setFullscreen(photo)} />
+            <PhotoBlock key={i} photo={photo} onTap={() => setFullscreen(photo)} highlighted={!!highlightedUrl && photo.url === highlightedUrl} />
           ))}
         </div>
         {fullscreen && (
@@ -85,7 +88,7 @@ export default function PhotoContent({
             const idx = parseInt(part, 10) - 1;
             if (idx >= 0 && idx < allPhotos.length) {
               usedIndices.add(idx);
-              return <PhotoBlock key={`p-${i}`} photo={allPhotos[idx]} onTap={() => setFullscreen(allPhotos[idx])} />;
+              return <PhotoBlock key={`p-${i}`} photo={allPhotos[idx]} onTap={() => setFullscreen(allPhotos[idx])} highlighted={!!highlightedUrl && allPhotos[idx].url === highlightedUrl} />;
             }
             return null;
           }
@@ -105,7 +108,7 @@ export default function PhotoContent({
         {/* Remaining photos not placed by markers */}
         {allPhotos.map((photo, i) => {
           if (usedIndices.has(i)) return null;
-          return <PhotoBlock key={`r-${i}`} photo={photo} onTap={() => setFullscreen(photo)} />;
+          return <PhotoBlock key={`r-${i}`} photo={photo} onTap={() => setFullscreen(photo)} highlighted={!!highlightedUrl && photo.url === highlightedUrl} />;
         })}
       </div>
       {fullscreen && (
@@ -115,7 +118,7 @@ export default function PhotoContent({
   );
 }
 
-function PhotoBlock({ photo, onTap }: { photo: Photo; onTap: () => void }) {
+function PhotoBlock({ photo, onTap, highlighted = false }: { photo: Photo; onTap: () => void; highlighted?: boolean }) {
   const isCover = photo.displayMode === 'cover';
   const isLetterbox = photo.displayMode === 'contain';
   const objectPosition = isCover && photo.focalPoint
@@ -129,7 +132,7 @@ function PhotoBlock({ photo, onTap }: { photo: Photo; onTap: () => void }) {
   return (
     <button
       onClick={onTap}
-      className={`w-full rounded-lg shadow-md border border-sandstone-light my-3 text-left cursor-pointer ${isLetterbox ? 'bg-black' : 'bg-sandstone'}`}
+      className={`w-full rounded-lg shadow-md border border-sandstone-light my-3 text-left cursor-pointer ${isLetterbox ? 'bg-black' : 'bg-sandstone'} ${highlighted ? 'photo-glow' : ''}`}
       style={{ overflow: 'clip' }}
     >
       {isCover ? (

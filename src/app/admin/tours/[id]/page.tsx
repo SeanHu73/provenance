@@ -2340,6 +2340,61 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
           autoplayDisabled={stop.reveal.audioAutoplayDisabled}
           onAutoplayDisabledChange={(v) => onChange({ reveal: { ...stop.reveal, audioAutoplayDisabled: v } })}
         />
+
+        {/* Audio-synced photo highlights */}
+        {stop.reveal.audioUrl && (stop.reveal.photos || []).length > 0 && (
+          <div className="border-t border-stone-200 pt-2 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-stone-600 font-medium">Photo highlights during audio</span>
+              <button
+                onClick={() => onChange({ reveal: { ...stop.reveal, photoCues: [...(stop.reveal.photoCues || []), { time: 0, photoIndex: 0 }] } })}
+                className="text-[10px] text-blue-700 hover:underline"
+              >+ Add cue</button>
+            </div>
+            <p className="text-[10px] text-stone-400">At each timestamp (seconds into the audio) the chosen photo gently glows until the next cue.</p>
+            {(stop.reveal.photoCues || []).length === 0 ? (
+              <p className="text-[10px] text-stone-400 italic">No cues yet.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {(stop.reveal.photoCues || []).map((cue, ci) => (
+                  <li key={ci} className="flex items-center gap-2">
+                    <span className="text-[10px] text-stone-500">at</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.5}
+                      value={cue.time}
+                      onChange={(e) => {
+                        const next = [...(stop.reveal.photoCues || [])];
+                        next[ci] = { ...next[ci], time: Math.max(0, Number(e.target.value) || 0) };
+                        onChange({ reveal: { ...stop.reveal, photoCues: next } });
+                      }}
+                      className="w-16 px-2 py-1 border border-stone-300 rounded text-xs"
+                    />
+                    <span className="text-[10px] text-stone-500">sec &rarr;</span>
+                    <select
+                      value={cue.photoIndex}
+                      onChange={(e) => {
+                        const next = [...(stop.reveal.photoCues || [])];
+                        next[ci] = { ...next[ci], photoIndex: Number(e.target.value) };
+                        onChange({ reveal: { ...stop.reveal, photoCues: next } });
+                      }}
+                      className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs"
+                    >
+                      {(stop.reveal.photos || []).map((p, pi) => (
+                        <option key={pi} value={pi}>Photo {pi + 1}{p.caption ? ` — ${p.caption.slice(0, 24)}` : ''}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => onChange({ reveal: { ...stop.reveal, photoCues: (stop.reveal.photoCues || []).filter((_, j) => j !== ci) } })}
+                      className="text-[10px] text-red-600 hover:underline"
+                    >Remove</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </fieldset>
 
       {/* ── Extra Wonder + Context Rounds ── */}

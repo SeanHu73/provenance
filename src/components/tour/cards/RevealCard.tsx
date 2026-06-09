@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Stop } from '@/lib/types';
 import PhotoContent from './PhotoContent';
 import FullscreenPhoto from './FullscreenPhoto';
@@ -43,6 +43,21 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
   const shouldAutoplay = autoplayPref && !stop.reveal.audioAutoplayDisabled;
   const [textExpanded, setTextExpanded] = useState(!hasAudio);
   const [fullscreen, setFullscreen] = useState<{ url: string; caption: string | null } | null>(null);
+
+  // Audio-synced photo highlight: the active cue is the last one whose time
+  // has passed. Its photo glows (with a one-shot haptic on change) until the
+  // next cue. Only meaningful while the reveal audio is present.
+  const [audioTime, setAudioTime] = useState(0);
+  const cues = (stop.reveal.photoCues || []).slice().sort((a, b) => a.time - b.time);
+  const activeCue = hasAudio ? [...cues].reverse().find((c) => audioTime >= c.time) : undefined;
+  const highlightedUrl = activeCue ? (stop.reveal.photos[activeCue.photoIndex]?.url ?? null) : null;
+  const prevHighlightRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (highlightedUrl && highlightedUrl !== prevHighlightRef.current) {
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(15);
+    }
+    prevHighlightRef.current = highlightedUrl;
+  }, [highlightedUrl]);
   // Every third stop (3, 6, 9, …) flash a one-shot reminder over the
   // Context screen that the "? Inquiries" footer button is there for
   // questions. Counts by completedStops length + the stop we're
@@ -64,7 +79,7 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
       <ActionTitle action="LEARN" />
 
       {/* Audio player */}
-      {hasAudio && <AudioButton audioUrl={stop.reveal.audioUrl!} title={stop.reveal.audioTitle} autoplay={shouldAutoplay} />}
+      {hasAudio && <AudioButton audioUrl={stop.reveal.audioUrl!} title={stop.reveal.audioTitle} autoplay={shouldAutoplay} onTimeUpdate={setAudioTime} />}
 
       {/* When text is hidden: "tap to read along" then photos */}
       {hasAudio && !textExpanded && (
@@ -85,7 +100,7 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
                 <button
                   key={i}
                   onClick={() => setFullscreen(photo)}
-                  className="w-full rounded-lg overflow-hidden shadow-md border border-sandstone-light text-left cursor-pointer bg-sandstone"
+                  className={`w-full rounded-lg overflow-hidden shadow-md border border-sandstone-light text-left cursor-pointer bg-sandstone ${highlightedUrl && photo.url === highlightedUrl ? 'photo-glow' : ''}`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={photo.url} alt={photo.caption || ''} className="w-full max-h-72 object-contain" />
@@ -116,6 +131,7 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
             legacyPhotoUrl={stop.reveal.photoUrl}
             legacyPhotoCaption={stop.reveal.photoCaption}
             borderColor="var(--th-primary)"
+            highlightedUrl={highlightedUrl}
           />
         </div>
       )}

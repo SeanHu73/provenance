@@ -238,6 +238,17 @@ body {
   animation: gentleFade 2.4s ease-in-out infinite;
 }
 
+/* Gentle flashing glow for a photo highlighted at an audio cue. Pulses an
+   amber ring/shadow so the active photo draws the eye without being harsh. */
+@keyframes photoGlow {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.55), 0 0 10px 2px rgba(245, 158, 11, 0.35); }
+  50%      { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.95), 0 0 22px 6px rgba(245, 158, 11, 0.75); }
+}
+.photo-glow {
+  animation: photoGlow 1.6s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+
 /* Ping-pong marquee for labels that overflow their container (e.g. a long
    audio title). The shift distance is provided per-element via the
    --marquee-shift custom property; the text slides to reveal its end, holds,

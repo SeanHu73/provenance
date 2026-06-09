@@ -15,9 +15,14 @@ interface Props {
    *  to its idle state. Only consulted on mount; toggling the user's
    *  autoplay preference mid-screen does not retroactively start audio. */
   autoplay?: boolean;
+  /** Reports playback position (seconds) — used to drive audio-synced photo
+   *  highlights. Fires on timeupdate and resets to 0 on end. */
+  onTimeUpdate?: (t: number) => void;
 }
 
-export default function AudioButton({ audioUrl, title, autoplay = false }: Props) {
+export default function AudioButton({ audioUrl, title, autoplay = false, onTimeUpdate }: Props) {
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+  onTimeUpdateRef.current = onTimeUpdate;
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -32,8 +37,9 @@ export default function AudioButton({ audioUrl, title, autoplay = false }: Props
     audio.addEventListener('timeupdate', () => {
       setCurrentTime(audio.currentTime);
       setProgress(audio.duration ? audio.currentTime / audio.duration : 0);
+      onTimeUpdateRef.current?.(audio.currentTime);
     });
-    audio.addEventListener('ended', () => { setPlaying(false); setProgress(0); setCurrentTime(0); });
+    audio.addEventListener('ended', () => { setPlaying(false); setProgress(0); setCurrentTime(0); onTimeUpdateRef.current?.(0); });
     audio.addEventListener('pause', () => setPlaying(false));
     audio.addEventListener('play', () => setPlaying(true));
 

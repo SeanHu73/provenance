@@ -381,6 +381,13 @@ export type PhotoOverlay =
   | { id: string; kind: 'circle'; x: number; y: number; w: number; h: number; color: string }
   | { id: string; kind: 'rect'; x: number; y: number; w: number; h: number; color: string };
 
+/** Audio-synced photo highlight cue: at `time` seconds into the audio, the
+ *  photo at `photoIndex` (into that phase's `photos` array) is highlighted. */
+export interface PhotoCue {
+  time: number;
+  photoIndex: number;
+}
+
 export interface StopPhoto {
   url: string;
   caption: string | null;
@@ -505,6 +512,11 @@ export interface Stop {
     audioUrl: string | null;
     audioTitle: string | null;
     audioAutoplayDisabled?: boolean;
+    /** Audio-synced photo highlights: at each cue's `time` (seconds into the
+     *  reveal audio) the photo at `photoIndex` in `photos` gets a gentle
+     *  glow + a one-shot haptic, replacing any previously highlighted photo.
+     *  Only active while the reveal audio is present/playing. */
+    photoCues?: PhotoCue[];
   };
 
   // Extra wonder + context rounds (optional, after the initial reveal, before the bridge)
