@@ -35,8 +35,11 @@ function advanceFromReveal(
   stop: Stop,
   skipWonder = false
 ): { phase: TourPhase; round: number } {
+  // Context mode strips per-stop discussion AND its extra "discussion +
+  // context" rounds (they're hidden in the admin there), so a stop shows only
+  // its main context. Skip straight to reflect / end-of-stop.
   const nextRoundIndex = currentRound; // extraRounds[0] = round 1
-  if (nextRoundIndex < extras.length) {
+  if (!skipWonder && nextRoundIndex < extras.length) {
     const nextExtra = extras[nextRoundIndex];
     if (!skipWonder && nextExtra.wonder !== null) {
       return { phase: 'wonder', round: currentRound + 1 };

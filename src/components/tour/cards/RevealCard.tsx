@@ -12,6 +12,24 @@ import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useTour } from '@/context/TourContext';
 import { getTourMode } from '@/lib/tours-store';
 
+/** Order photos by where their [photo:N] markers first appear in `text`
+ *  (1-based). Photos not referenced in the text are appended in array order. */
+function orderPhotosByText<T>(text: string, photos: T[]): T[] {
+  const ordered: T[] = [];
+  const seen = new Set<number>();
+  const re = /\[photo:(\d+)\]/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const idx = parseInt(m[1], 10) - 1;
+    if (idx >= 0 && idx < photos.length && !seen.has(idx)) {
+      seen.add(idx);
+      ordered.push(photos[idx]);
+    }
+  }
+  photos.forEach((p, i) => { if (!seen.has(i)) ordered.push(p); });
+  return ordered;
+}
+
 interface Props {
   stop: Stop;
   onContinue: () => void;
@@ -59,10 +77,11 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
             Tap to read along
           </button>
 
-          {/* Photos always visible below */}
+          {/* Photos always visible below — ordered to match where their
+              [photo:N] markers appear in the (collapsed) context text. */}
           {allPhotos.length > 0 && (
             <div className="space-y-3">
-              {allPhotos.map((photo, i) => (
+              {orderPhotosByText(stop.reveal.text, allPhotos).map((photo, i) => (
                 <button
                   key={i}
                   onClick={() => setFullscreen(photo)}

@@ -82,17 +82,17 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
         </div>
       )}
 
-      {/* Flashing "walk to your next stop" cue */}
-      <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none" style={{ top: 14 }}>
+      {/* Flashing "walk to your next stop" cue — bottom, bordered to stand out */}
+      <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none px-4 w-full flex justify-center" style={{ bottom: 22 }}>
         <span
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] font-semibold uppercase tracking-wide shadow-lg animate-pulse"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[16px] font-semibold uppercase tracking-wide shadow-lg animate-pulse border-2 border-white text-center"
           style={{ backgroundColor: 'var(--th-primary)', color: 'var(--cream, #FFF8EE)' }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
             <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
             <circle cx="12" cy="10" r="3" />
           </svg>
-          Walk to your next stop
+          Walk to your next stop. Tap pin to begin.
         </span>
       </div>
 
@@ -103,12 +103,13 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
 /* ─── Numbered map pin ──────────────────────────────────────────── */
 
 function NumberedPin({ number, state }: { number: number; state: PinState }) {
-  const size = state === 'target' ? 46 : state === 'completed' ? 32 : 28;
+  const size = state === 'target' ? 58 : state === 'completed' ? 32 : 28;
   const bg = state === 'completed' ? '#2563EB' : 'var(--th-primary)';
   // Target reads at full strength; completed + upcoming are faded back.
   const opacity = state === 'target' ? 1 : 0.78;
-  // The stop they're walking to gets an amber ring; the rest are white.
-  const borderColor = state === 'target' ? '#F59E0B' : '#fff';
+  // Highlighted (and completed) pins have a white border; upcoming pins are
+  // bronze so the target stands out.
+  const borderColor = state === 'upcoming' ? 'var(--th-accent-dark)' : '#fff';
 
   return (
     // AdvancedMarker anchors the element's bottom-centre at the coordinate;
