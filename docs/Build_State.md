@@ -1,8 +1,9 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-05-29
-(see §8 final entry: action titles, opinion-dial / user-choice gamification,
-onboarding overhaul, and a Sheets logging expansion). Read this instead of
+*Handoff document for the next Claude Code session. Last updated 2026-06-09
+(see §8 final entry + §13: the **Context-Prototype** third tour mode — Acts,
+act intro splash, per-stop "walk to" map, Community Forum, Suggested
+Resources, and audio-synced photo highlights). Read this instead of
 re-discovering the codebase.*
 
 ---
@@ -13,6 +14,13 @@ Next.js 16.2.3 App Router + TypeScript + Tailwind CSS 4 + Framer Motion.
 Firebase Firestore + Firebase Storage. Google Maps. Deepgram (voice input).
 Deployed on Vercel, auto-deploys from GitHub master.
 Two switchable visual themes (Red / Teal) — see §9.
+
+**Three tour modes** (admin picks per tour, top of the editor): **Linear**,
+**Unstructured** (§10), and **Context-Prototype** (§13) — a sequential mode
+with no essential question (Opening Frame only), no per-stop discussion/bridge,
+stops grouped into **Acts**, a per-stop "walk to your next stop" map, a
+moderated **Community Forum**, and end-of-tour **Suggested Resources**. Mode is
+resolved by `getTourMode(tour)` in `tours-store.ts`.
 
 **Repo:** `github.com/SeanHu73/provenance`
 
@@ -150,6 +158,12 @@ Plus two unstructured-mode phases: `unstructured_map` (the stop-picker
 overlay) and `midway_checkin` (the optional halfway prompt). Both are
 rendered by `page.tsx` outside the `Journal` overlay — see §10.
 
+Plus eight **Context-Prototype** phases (all rendered inside `Journal`, since
+context mode keeps `unstructuredMode === false`): `opening_frame`,
+`act_intro` (the "Act N: Title" splash), `act_opening`, `act_closing`,
+`act_questions` (per-act "any remaining questions"), `stop_map` (the per-stop
+"walk to" map), `community_forum`, and `resources` (end-of-tour). See §13.
+
 ### Transitions
 
 - **Within a stop** (same stopIndex): slide right-to-left, 120ms
@@ -254,6 +268,9 @@ Explorer photos are tappable for fullscreen (portal, pinch-zoom, close button at
 | `memorial-church-questions` | Legacy question log |
 | `memorial-church-migrations` | Migration receipts |
 | `memorial-church-rooms` | Multi-device group rooms (§12) — code, members, transition + barrier state. Now also carries `opinionDials` (per-question position + revealedBy maps) and `userChoiceSelections` (per-question `{ chosenBy, question, isCustom }`) for the 2026-05-28 gamification. |
+| `memorial-church-community-questions` | Context-Prototype Community Forum (§13) — explorer-submitted questions `{ tourId, text, sessionId, name?, about?, status, createdAt }`, moderated in `/admin/community`. |
+| `memorial-church-community-responses` | Forum responses `{ questionId, tourId, text, sessionId, name?, status, createdAt }`, moderated. |
+| `memorial-church-community-resources` | Suggested Resources (§13) — `{ tourId, title, description, photos[], links[], source: 'admin'\|'user', status, ... }`, admin-curated or explorer-submitted + moderated. |
 
 ### Security Rules
 
@@ -264,7 +281,9 @@ Storage: `memorial-church/{allPaths=**}` allow read, write.
 per-collection, not a catch-all. `memorial-church-rooms` needed its
 own block added in the Firebase console for the rooms feature to
 work (one-line `match /memorial-church-rooms/{doc} { allow read,
-write: if true; }`).
+write: if true; }`). The three `memorial-church-community-*`
+collections (§13) likewise each need their own `match` block in the
+console, or forum/resource reads & writes fail silently.
 
 ---
 
@@ -1676,6 +1695,73 @@ existing Web app as new version; `SHEETS_WEBHOOK_URL` unchanged).
 
 ---
 
+### Context-Prototype mode + forum + resources + audio cues (2026-06-08 → 2026-06-09)
+
+A long multi-day session. Everything live on `master`. Full reference for the
+mode in §13; this is the session log.
+
+**Three-way mode selector + Context-Prototype.** Replaced the buried
+"unstructured" checkbox with a 3-way selector at the **top** of the tour
+editor: Linear / Unstructured / **Context-Prototype**. New `tourMode` field
+(`getTourMode(tour)` derives from legacy `unstructuredMode` for old tours).
+Context mode is **sequential** (`unstructuredMode` stays false, so it runs the
+linear Journal path), with its own parallel `contextStops` array (cloned on
+first switch) and an `acts` array. It drops the essential question (keeps only
+an **Opening Frame** = the "Setting the Scene" screen), drops per-stop
+discussion (`wonder`) and bridge (`whats_next`), and **skips extra rounds**
+entirely (they're hidden in the admin there — fixed "two contexts" bug).
+
+**Acts.** Stops are dragged (native HTML5 DnD) into ordered Acts in the editor;
+every stop belongs to exactly one act (self-healing `ensureActsCoverStops`).
+Each act has an optional opening + closing question (voice/typed answer). Per-act
+flow: `act_intro` splash (3s) → `act_opening` → `stop_map` → seed → context →
+[reflect] → … → `act_closing` → `act_questions` → `community_forum` → next act;
+after the last act → guide outro → `resources` → end.
+
+**Per-stop map (`StopMapCard`).** Satellite `@vis.gl/react-google-maps`,
+full-bleed. Numbered pins: target enlarged with white border + amber pulse,
+completed faded blue, upcoming bronze. Flashing "Walk to your next stop. Tap pin
+to begin." cue at the bottom; **tap the highlighted pin** to enter the stop.
+
+**Act question UI (`ActQuestionCard`, `ResponseInput`).** Header "Share what you
+think" + talking-person icon; act title shows on the footer bar (stacked "Act N"
++ italic title). New `ResponseInput`: choose **Type** (pencil) or **Record**
+(softened red, circular morph while recording) → textbox + small mic. Recording
+lifecycle extracted to `useVoiceRecorder` (MicButton uses it too). Closing
+question opens with a "Thank you for completing Act N" snap-scroll.
+
+**Community Forum (§13).** `act_questions` files questions to a moderated queue;
+`/admin/community` approves/removes questions **and** responses. The
+`community_forum` screen (skipped when empty) lists approved questions with
+responses inline + per-question + bottom "Add question" composers. A per-device
+**identity** (Name + "anything we should know", revealed on name focus) is saved
+once and reused.
+
+**Suggested Resources (§13).** End-of-tour `resources` screen: approved
+resources (photos + hyperlinks) + a "Submit Resources" form (photo upload +
+links). `/admin/community` Resources tab authors curated resources (tour picker,
+photos, links) and moderates/edits submissions.
+
+**Audio-synced photo highlights (§13).** Admin authors `photoCues`
+(timestamp → photo) under any narration audio (Background/seed, Look
+Around/notice, Context/reveal) via the reusable `PhotoCueEditor`; at runtime
+`usePhotoCues` glows the cued photo (+ gentle haptic) until the next cue. A
+"keep the last photo highlighted after the audio ends" toggle (`photoCuesHoldLast`)
+holds the final photo past the end (default clears on end).
+
+**Smaller fixes / lessons.**
+- **Admin audio Remove was a no-op** — the Remove handler fired two batched
+  parent updates (clear URL + clear title) and the second re-read the **stale**
+  tour/stop snapshot, restoring the old URL. Fix: clear the URL only in one
+  update. (Lesson: two `setState`-via-spread calls in one handler clobber — the
+  second reads the same render's snapshot.)
+- Audio title now ping-pong **marquees** when it overflows (`AudioButton`).
+- Collapsed context photos order by `[photo:N]` position in the text, not upload
+  order.
+- New Firestore collections need their own console rule blocks (see §3).
+
+---
+
 ## 11. Splash Screen
 
 Added 2026-05-25. First-load brand intro that plays once per browser
@@ -1867,12 +1953,98 @@ independently.
 
 ---
 
-*End of handoff. The room system (§12), splash screen (§11),
-unstructured exploration mode (§10), theme system (§9), and the
-parallel `unstructuredStops` authoring path are all live on
-`master`. The 2026-05-27 → 2026-05-29 session (latest entry in §8)
-shipped the action-title system, opinion-dial gamification,
-user-choice questions, the onboarding overhaul, and the Sheets
-logging update — adoption requires running `addHeaders()` once in
-the Apps Script editor and redeploying the existing Web app as a
-new version (see §4 and `docs/sheets-apps-script.gs`).*
+## 13. Context-Prototype Mode
+
+Added 2026-06-08 → 2026-06-09. A third tour mode (`tourMode: 'context'`),
+chosen from the **3-way selector at the top** of the tour editor. Sequential
+like Linear but stripped down and Act-structured. Resolve the mode anywhere via
+`getTourMode(tour)` (`tours-store.ts`); it derives from the legacy
+`unstructuredMode` boolean for tours predating `tourMode`.
+
+### Data model
+
+- `Tour.tourMode?: 'linear' | 'unstructured' | 'context'` — source of truth.
+  Context keeps `unstructuredMode === false`, so it plays through the **linear
+  Journal path** (no `page.tsx` map/closing views).
+- `Tour.contextStops?: Stop[]` — parallel stops array (mirrors
+  `unstructuredStops`), cloned from the unstructured/linear set on first switch.
+  `getActiveStops` / `setActiveStops` are mode-aware.
+- `Tour.acts?: Act[]` — `{ id, title, stopIds[], openingQuestion, closingQuestion }`.
+- `Tour.openingFrame?: OpeningFrame | null` — the "Setting the Scene" fields
+  (scene photo/description/audio + framing), independent of `essentialQuestion`.
+- `TourSession.actResponses?: Record<actId, { opening?, closing? }>`.
+
+### Flow (per stop / act)
+
+`opening_frame` → for each act: `act_intro` (dark "Act N: Title" splash, ~3s,
+tap to skip) → [`act_opening`] → `stop_map` → `seed` → `reveal` → [`reflect`] →
+(next stop's `stop_map`, or at act end) [`act_closing`] → `act_questions` →
+`community_forum` (skipped if no approved questions) → next act. After the last
+act → guide outro → `resources` → `end`.
+
+State machine helpers in `tour-session.ts`: `getActs`, `getContextOrderedStops`,
+`findActOfStop`, `hasOpeningFrameContent`, `positionAtAct`, `enterFirstContextAct`,
+`advanceToNextStopContext`, `advanceToNextActOrClosing`, `finishContextTour`, and
+`complete{OpeningFrame,ActIntro,ActOpening,ActClosing,ActQuestions,CommunityForum,Resources}`.
+`advanceFromReveal`/`nextPhaseAndRound` take a `skipWonder` flag (true in context)
+that skips both the wonder phase **and** all extra rounds.
+
+### Key components
+
+| Component | File | Purpose |
+|---|---|---|
+| ActIntroCard | `cards/ActIntroCard.tsx` | Portal full-screen "Act N: Title" splash (amber number + white title), ~3s hold |
+| ActQuestionCard | `cards/ActQuestionCard.tsx` | Act opening/closing question — "Share what you think" + talking-person icon; closing is a thank-you snap-scroll |
+| ActQuestionsCard | `cards/ActQuestionsCard.tsx` | Per-act "any remaining questions" → submits to the forum queue |
+| StopMapCard | `cards/StopMapCard.tsx` | Per-stop satellite map; numbered pins (target white+amber, completed faded blue, upcoming bronze); tap the pin to begin |
+| CommunityForumCard | `cards/CommunityForumCard.tsx` | Scrollable approved Q+responses, inline composers, identity capture |
+| ResourcesCard | `cards/ResourcesCard.tsx` | End-of-tour suggested resources + submit form |
+| ResponseInput | `cards/ResponseInput.tsx` | Type/Record chooser → textbox + small mic |
+| EqSceneCard | `cards/EqSceneCard.tsx` | Reused for `opening_frame` via its `scene`/`openingVariant` props |
+| usePhotoCues | `tour/usePhotoCues.ts` | Audio-synced photo highlight hook (see Audio cues below) |
+| PhotoCueEditor | `admin/PhotoCueEditor.tsx` | Admin cue editor (timestamp → photo + hold-last toggle) |
+
+Admin authoring lives in the tour editor: a 3-way mode selector, an Opening
+Frame section, and an **Acts organizer** (native HTML5 drag-and-drop to move
+stops between acts; `ensureActsCoverStops` keeps every stop in exactly one act).
+`StopEditor` hides the discussion/extra-rounds/bridge fieldsets in context mode.
+
+### Community Forum & Suggested Resources
+
+Three Firestore collections (`memorial-church-community-{questions,responses,resources}`
+— each needs its own console rule block, see §3). Data layer + helpers in
+`src/lib/community-store.ts` (submit/list/approve/remove/edit, photo upload via
+Firebase Storage, and the localStorage `provenance-forum-identity`). Moderation
+UI at **`/admin/community`** (Questions tab + Resources tab; approve/unapprove/
+remove, and edit resources incl. adding photos). Forum + resource responses are
+all `pending` until approved.
+
+### Audio-synced photo highlights
+
+Any narration audio with photos (Background/seed, Look Around/notice, Context/
+reveal) can carry `photoCues: { time, photoIndex }[]` (+ `photoCuesHoldLast`).
+Admin authors them with `PhotoCueEditor` under the AudioUpload. At runtime
+`usePhotoCues(cues, photos, holdLast)` returns `{ onTimeUpdate, onEnded,
+highlightedUrl }`; the card feeds `onTimeUpdate`/`onEnded` to `AudioButton` and
+`highlightedUrl` to `PhotoContent` (matched by URL). The cued photo gets the
+`.photo-glow` amber pulse + a one-shot `navigator.vibrate(15)` on change. By
+default the highlight clears when audio ends (`AudioButton` fires `onEnded`);
+with `photoCuesHoldLast` the last photo stays lit.
+
+### Out of scope / notes
+
+- Cues are wired for the three narration screens; question-background / EQ-scene
+  audios could be added via the same `usePhotoCues` + `PhotoCueEditor` drop-in.
+- Community Forum appears after **every** act (skipped when empty); could be
+  made once-at-end if desired.
+- iOS Safari doesn't fire `navigator.vibrate`, so haptics are Android/Chrome.
+
+---
+
+*End of handoff. The Context-Prototype mode (§13) — Acts, act intro splash,
+per-stop "walk to" map, Community Forum, Suggested Resources, and audio-synced
+photo highlights — is the latest work, all live on `master`. The room system
+(§12), splash screen (§11), unstructured exploration mode (§10), and theme
+system (§9) remain in place. Two adoption steps require manual console work:
+the Sheets logging columns (run `addHeaders()` once — see §4) and the three
+`memorial-church-community-*` Firestore rule blocks (see §3 / §13).*
