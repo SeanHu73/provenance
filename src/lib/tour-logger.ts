@@ -239,9 +239,10 @@ export function logUserChoice(opts: {
 }
 
 /** Context-Prototype Act question response — fired per device when an
- *  explorer submits an act's opening or closing question. Reuses existing
- *  Sheet columns (Stop Title ← act title, Question ← prompt, Answer ←
- *  response) so no Apps Script schema change is required. */
+ *  explorer submits an act's opening or closing question. Lands in the
+ *  dedicated Act Title / Act Question Kind / Act Question / Act Response
+ *  columns (added 2026-06-09 — re-run addHeaders() + redeploy the Apps
+ *  Script; see §4 / docs/sheets-apps-script.gs). */
 export function logActQuestion(opts: {
   tourId: string;
   sessionId: string;
@@ -256,10 +257,10 @@ export function logActQuestion(opts: {
     tourId: opts.tourId,
     sessionId: opts.sessionId,
     tourTitle: opts.tourTitle,
-    stopTitle: opts.actTitle,
+    actTitle: opts.actTitle,
     actQuestionKind: opts.kind,
-    questionText: opts.question,
-    answer: opts.response,
+    actQuestion: opts.question,
+    actResponse: opts.response,
     timestamp: new Date().toISOString(),
   });
 }

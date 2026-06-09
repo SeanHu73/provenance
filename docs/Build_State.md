@@ -294,12 +294,15 @@ Uses `navigator.sendBeacon` for mobile reliability.
 
 Events: reflection, question_banked, question_routed, eq_opening, eq_closing,
 eq_final_reflect, stop_entered, tour_complete, **opinion_dial**,
-**user_choice_picked**. Each row includes `sessionId` for grouping and (as of
-2026-05-29) `roomCode` / `isHost` / `memberCount` for joining rows by group
-session — `tour-logger.ts` keeps a module-level log context that
-`RoomContext` updates whenever the room state changes.
+**user_choice_picked**, and (Context-Prototype) **act_question**. Each row
+includes `sessionId` for grouping and (as of 2026-05-29) `roomCode` / `isHost`
+/ `memberCount` for joining rows by group session — `tour-logger.ts` keeps a
+module-level log context that `RoomContext` updates whenever the room state
+changes. (Community Forum questions/responses and Suggested Resources are
+**not** Sheet events — they live in Firestore and are moderated in
+`/admin/community`; see §13.)
 
-Apps Script columns (36 — original 24 plus 12 added 2026-05-29):
+Apps Script columns (40 — original 24, 12 added 2026-05-29, 4 added 2026-06-09):
 - **Original (1–24)**: Logged At, Timestamp, Session ID, Source, Event/Type,
   Tour Title, Stop Title, Stop #, Reflection Score, Follow-Up Response,
   Question, Question Routing, Stops Completed, Duration (min),
@@ -310,6 +313,10 @@ Apps Script columns (36 — original 24 plus 12 added 2026-05-29):
   Question Key, Opinion Left Label, Opinion Right Label, Opinion My
   Position, Opinion Other Positions, Opinion Similarity, Opinion Avg
   Distance, User Choice Question, User Choice Is Custom.
+- **Added 2026-06-09 (37–40)**: Act Title, Act Question Kind
+  (`opening`/`closing`), Act Question, Act Response — populated by the
+  Context-Prototype `act_question` event. Re-run `addHeaders()` once and
+  redeploy the Apps Script as a new version to pick these up.
 
 Two adoption docs accompany the 2026-05-29 logging update:
 `docs/Sheets_Logging_Update.md` (per-field reference + cross-referencing

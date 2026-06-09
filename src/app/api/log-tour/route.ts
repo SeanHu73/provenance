@@ -51,6 +51,11 @@ interface TourLogEntry {
   // User-choice question
   userChoiceQuestion?: string;
   userChoiceIsCustom?: boolean;
+  // Context-Prototype act questions
+  actTitle?: string;
+  actQuestionKind?: 'opening' | 'closing';
+  actQuestion?: string;
+  actResponse?: string;
   timestamp: string;
 }
 

@@ -58,6 +58,11 @@ const HEADERS = [
   'Opinion Avg Distance',
   'User Choice Question',
   'User Choice Is Custom',
+  // ── 4 new columns (June 2026 — Context-Prototype Acts) ──
+  'Act Title',
+  'Act Question Kind',
+  'Act Question',
+  'Act Response',
 ];
 
 /**
@@ -177,6 +182,11 @@ function buildFieldMap(data) {
     'Opinion Avg Distance': numberOrEmpty(data.opinionAvgDistance),
     'User Choice Question': data.userChoiceQuestion || '',
     'User Choice Is Custom': boolOrEmpty(data.userChoiceIsCustom),
+    // ── Context-Prototype Acts ──
+    'Act Title': data.actTitle || '',
+    'Act Question Kind': data.actQuestionKind || '',
+    'Act Question': data.actQuestion || '',
+    'Act Response': data.actResponse || '',
   };
 }
 
