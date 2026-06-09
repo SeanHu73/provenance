@@ -1,17 +1,19 @@
 'use client';
 
 /**
- * Context-Prototype — the per-stop Community Forum, shown after each stop.
- * Scoped to the current stop: lists that stop's approved questions with their
- * approved responses inline (each with an "Add a response" composer), plus an
- * "Add question" composer at the bottom. Always shown (it's where explorers
- * ask), even when the stop has no approved questions yet. Name + "anything we
- * should know" are collected once and reused on later stops.
+ * Context-Prototype — the per-act Community Forum, shown at the end of each act
+ * (after the act's closing question). Scoped to the current act: lists that
+ * act's approved questions with their approved responses inline (each with an
+ * "Add a response" composer), plus an "Add question" composer at the bottom.
+ * This screen also serves as the act's "any remaining questions" prompt — the
+ * additional-questions step is merged into it. Always shown. Name + "anything
+ * we should know" are collected once and reused on later acts.
  */
 
 import { useEffect, useState } from 'react';
 import { useTour } from '@/context/TourContext';
 import { ForumQuestion, ForumResponse, ForumIdentity } from '@/lib/types';
+import { findActOfStop } from '@/lib/tour-session';
 import {
   getApprovedQuestions,
   getApprovedResponses,
@@ -29,7 +31,7 @@ interface Props {
 
 export default function CommunityForumCard({ onComplete }: Props) {
   const { tour, currentStop } = useTour();
-  const stopId = currentStop?.id ?? '';
+  const actId = (tour && currentStop ? findActOfStop(tour, currentStop.id)?.id : '') ?? '';
   const [questions, setQuestions] = useState<ForumQuestion[]>([]);
   const [responsesByQ, setResponsesByQ] = useState<Record<string, ForumResponse[]>>({});
   const [loading, setLoading] = useState(true);
@@ -41,8 +43,8 @@ export default function CommunityForumCard({ onComplete }: Props) {
     (async () => {
       const all = await getApprovedQuestions(tour.id);
       if (cancelled) return;
-      // This stop's questions only — the forum is per stop.
-      const qs = all.filter((q) => q.stopId === stopId);
+      // This act's questions only — the forum is per act.
+      const qs = all.filter((q) => q.actId === actId);
       setQuestions(qs);
       const entries = await Promise.all(qs.map(async (q) => [q.id, await getApprovedResponses(q.id)] as const));
       if (cancelled) return;
@@ -50,7 +52,7 @@ export default function CommunityForumCard({ onComplete }: Props) {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [tour, stopId]);
+  }, [tour, actId]);
 
   return (
     <div className="animate-fade-in min-h-full py-2 space-y-4">
@@ -58,7 +60,7 @@ export default function CommunityForumCard({ onComplete }: Props) {
         <p className="uppercase tracking-[0.12em] font-display font-semibold leading-tight" style={{ fontSize: 22, color: 'var(--th-primary)' }}>
           Community Forum
         </p>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Questions about this stop — see what others asked, or add your own.</p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">Before we wrap up this act — anything else you&apos;re curious about? See what others asked, or add your own.</p>
       </div>
 
       {loading ? (
@@ -96,7 +98,7 @@ export default function CommunityForumCard({ onComplete }: Props) {
         </div>
       )}
 
-      {/* Add question (about this stop) */}
+      {/* Add question (about this act) */}
       <div className="rounded-xl bg-sandstone/40 border border-sandstone-light p-3.5">
         {addingQ ? (
           <ResponseComposer
@@ -104,7 +106,7 @@ export default function CommunityForumCard({ onComplete }: Props) {
             placeholder="What are you curious about?"
             onSubmit={async (text, identity) => {
               if (!tour) return;
-              await submitForumQuestion(tour.id, stopId, text, sessionIdOf(), identity);
+              await submitForumQuestion(tour.id, actId, text, sessionIdOf(), identity);
             }}
           />
         ) : (

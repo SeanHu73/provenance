@@ -43,7 +43,6 @@ import {
   completeActIntro as completeActIntroImpl,
   completeActOpening as completeActOpeningImpl,
   completeActClosing as completeActClosingImpl,
-  enterCommunityForum as enterCommunityForumImpl,
   completeCommunityForum as completeCommunityForumImpl,
   completeStopMap as completeStopMapImpl,
   loadTourSession,
@@ -388,15 +387,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
     // Context mode skips per-stop discussion questions entirely.
     const isContext = getTourMode(tour) === 'context';
     const next = advancePhaseImpl(session, currentStop, { skipWonder: isContext });
-    // Context mode: every stop ends at its own Community Forum (ask / see
-    // others' questions for this stop) before advancing.
-    if (next.currentPhase === 'whats_next' && isContext) {
-      persist(enterCommunityForumImpl(session));
-      return;
-    }
-    // Bridge unselected → no whats_next screen; advance straight to the next
-    // stop. The cards on the final in-stop screen relabel their "continue".
-    if (next.currentPhase === 'whats_next' && !hasBridgeContent(currentStop)) {
+    // Bridge unselected (or context mode, which has no bridge) → no whats_next
+    // screen; advance straight to the next stop. In context, the per-act
+    // Community Forum is reached at the act's last stop via advanceStop.
+    if (next.currentPhase === 'whats_next' && (isContext || !hasBridgeContent(currentStop))) {
       advanceStop();
       return;
     }

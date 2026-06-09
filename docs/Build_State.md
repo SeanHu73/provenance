@@ -161,11 +161,11 @@ rendered by `page.tsx` outside the `Journal` overlay — see §10.
 Plus eight **Context-Prototype** phases (all rendered inside `Journal`, since
 context mode keeps `unstructuredMode === false`): `opening_frame`,
 `act_intro` (the "Act N: Title" splash), `act_opening`, `act_closing`,
-`stop_map` (the per-stop "walk to" map), `community_forum` (a per-stop forum
-shown after every stop), and `resources` (end-of-tour). (`act_questions` is a
-deprecated phase — the per-act "any remaining questions" screen was folded into
-the per-stop Community Forum; the phase id is retained for in-flight sessions.)
-See §13.
+`stop_map` (the per-stop "walk to" map), `community_forum` (per-act forum at the
+end of each act, which also serves as the act's "additional questions" step),
+and `resources` (end-of-tour). (`act_questions` is a deprecated phase — that
+screen was merged into the Community Forum; the phase id is retained for
+in-flight sessions.) See §13.
 
 ### Transitions
 
@@ -1725,10 +1725,10 @@ entirely (they're hidden in the admin there — fixed "two contexts" bug).
 every stop belongs to exactly one act (self-healing `ensureActsCoverStops`).
 Each act has an optional opening + closing question (voice/typed answer). Flow:
 `act_intro` splash (2.5s) → `act_opening` → per stop: `stop_map` → seed →
-context → [reflect] → `community_forum` (per-stop) → next stop; at act end →
-[`act_closing`] → next act; after the last act → guide outro → `resources` →
-end. (The per-stop forum replaced the old per-act `act_questions` screen —
-asking is folded into the forum.)
+context → [reflect] → next stop; at act end → [`act_closing`] →
+`community_forum` (the act's forum + "additional questions", merged) → next act;
+after the last act → guide outro → `resources` → end. (`act_questions` was
+merged into the per-act Community Forum.)
 
 **Per-stop map (`StopMapCard`).** Satellite `@vis.gl/react-google-maps`,
 full-bleed. Numbered pins: target enlarged with white border + amber pulse,
@@ -1744,10 +1744,11 @@ think" + talking-person icon; act title shows on the footer bar (stacked "Act N"
 lifecycle extracted to `useVoiceRecorder` (MicButton uses it too). Closing
 question opens with a "Thank you for completing Act N" snap-scroll.
 
-**Community Forum (§13).** A **per-stop** `community_forum` screen shows after
-**every** stop, scoped to that stop (questions carry a `stopId`). It always
-appears (it's where explorers ask) and lists that stop's approved questions
-with responses inline + per-question + bottom "Add question" composers; all
+**Community Forum (§13).** A **per-act** `community_forum` screen shows at the
+end of each act (after the closing question), scoped to that act (questions
+carry an `actId`). It also serves as the act's "additional questions" step
+(merged), so it always appears; it lists that act's approved questions with
+responses inline + per-question + bottom "Add question" composers; all
 submissions go to a moderated queue reviewed in `/admin/community`. A per-device
 **identity** (Name + "anything we should know", revealed on name focus) is saved
 once and reused.
@@ -1993,18 +1994,18 @@ like Linear but stripped down and Act-structured. Resolve the mode anywhere via
 
 `opening_frame` → for each act: `act_intro` (dark "Act N: Title" splash, ~2.5s,
 tap to skip) → [`act_opening`] → for each stop: `stop_map` → `seed` → `reveal` →
-[`reflect`] → `community_forum` (per-stop) → next stop; at act end →
-[`act_closing`] → next act. After the last act → guide outro → `resources` →
-`end`. (`act_questions` is deprecated — asking is folded into the per-stop
-forum.)
+[`reflect`] → next stop; at act end → [`act_closing`] → `community_forum`
+(per-act, merged with the "additional questions" step) → next act. After the
+last act → guide outro → `resources` → `end`. (`act_questions` is deprecated —
+merged into the per-act forum.)
 
 State machine helpers in `tour-session.ts`: `getActs`, `getContextOrderedStops`,
 `findActOfStop`, `hasOpeningFrameContent`, `positionAtAct`, `enterFirstContextAct`,
-`advanceToNextStopContext`, `advanceToNextActOrClosing`, `finishContextTour`,
-`enterCommunityForum`, and
+`advanceToNextStopContext`, `advanceToNextActOrClosing`, `finishContextTour`, and
 `complete{OpeningFrame,ActIntro,ActOpening,ActClosing,CommunityForum,Resources}`.
-The per-stop forum is reached when `advancePhase` would hit the end-of-stop
-sentinel (`whats_next`) in context. `advanceFromReveal`/`nextPhaseAndRound` take
+At an act's last stop, `advanceToNextStopContext` (and `completeActClosing`)
+route to `community_forum`; `completeCommunityForum` → next act.
+`advanceFromReveal`/`nextPhaseAndRound` take
 a `skipWonder` flag (true in context) that skips the wonder phase **and** all
 extra rounds.
 
@@ -2015,7 +2016,7 @@ extra rounds.
 | ActIntroCard | `cards/ActIntroCard.tsx` | Portal full-screen "Act N: Title" splash (amber number + white title), ~3s hold |
 | ActQuestionCard | `cards/ActQuestionCard.tsx` | Act opening/closing question — "Share what you think" + talking-person icon; closing is a thank-you snap-scroll |
 | StopMapCard | `cards/StopMapCard.tsx` | Per-stop satellite map; numbered pins (target white+amber, completed faded blue, upcoming bronze); tap the pin to begin; first stop gets a one-time spotlight |
-| CommunityForumCard | `cards/CommunityForumCard.tsx` | Per-stop forum (scoped by `stopId`): approved Q+responses inline, inline composers, identity capture; always shown |
+| CommunityForumCard | `cards/CommunityForumCard.tsx` | Per-act forum (scoped by `actId`) at act end, merged with the "additional questions" step: approved Q+responses inline, inline composers, identity capture; always shown |
 | ResourcesCard | `cards/ResourcesCard.tsx` | End-of-tour suggested resources + submit form |
 | ResponseInput | `cards/ResponseInput.tsx` | Type/Record chooser → textbox + small mic |
 | EqSceneCard | `cards/EqSceneCard.tsx` | Reused for `opening_frame` via its `scene`/`openingVariant` props |
@@ -2053,8 +2054,9 @@ with `photoCuesHoldLast` the last photo stays lit.
 
 - Cues are wired for the three narration screens; question-background / EQ-scene
   audios could be added via the same `usePhotoCues` + `PhotoCueEditor` drop-in.
-- Community Forum appears after **every stop**, scoped to that stop, and always
-  shows (it's the per-stop ask point). Questions carry a `stopId`.
+- Community Forum appears at the **end of each act**, scoped to that act
+  (questions carry an `actId`), and always shows (it's the act's ask point,
+  merging the old "additional questions" step).
 - iOS Safari doesn't fire `navigator.vibrate`, so haptics are Android/Chrome.
 
 ---

@@ -461,8 +461,9 @@ function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession
     };
   }
 
-  // Last stop in the act — show the act's closing question if authored,
-  // otherwise move on to the next act (or the tour close).
+  // Last stop in the act — show the act's closing question if authored, then
+  // the act's Community Forum (end-of-act). currentStopIndex stays on the
+  // last stop so the forum can resolve the act.
   if (act.closingQuestion?.prompt?.trim()) {
     return {
       ...session,
@@ -471,7 +472,12 @@ function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession
       completedStops,
     };
   }
-  return advanceToNextActOrClosing({ ...session, completedStops }, tour, act);
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'community_forum',
+    completedStops,
+  };
 }
 
 /** Called after a stop completes in unstructured mode. */
@@ -702,32 +708,25 @@ export function completeStopMap(session: TourSession): TourSession {
   };
 }
 
-/** Context mode: explorer answers an act's closing question → next act / end. */
+/** Context mode: explorer answers an act's closing question → the act's
+ *  Community Forum. */
 export function completeActClosing(session: TourSession, tour: Tour, response: string): TourSession {
   const stop = getActiveStops(tour)[session.currentStopIndex];
   const act = stop ? findActOfStop(tour, stop.id) : null;
-  const withResponse: TourSession = {
-    ...session,
-    actResponses: act ? setActResponse(session.actResponses, act.id, 'closing', response) : session.actResponses,
-  };
-  return advanceToNextActOrClosing(withResponse, tour, act);
-}
-
-/** Context mode: each stop ends with its own Community Forum (the per-stop
- *  "ask / see what others asked" screen). Keeps currentStopIndex. */
-export function enterCommunityForum(session: TourSession): TourSession {
   return {
     ...session,
     phaseHistory: pushHistory(session),
     currentPhase: 'community_forum',
     currentRound: 0,
+    actResponses: act ? setActResponse(session.actResponses, act.id, 'closing', response) : session.actResponses,
   };
 }
 
-/** Context mode: explorer leaves a stop's Community Forum → advance to the
- *  next stop (or act closing / next act / end). */
+/** Context mode: explorer leaves an act's Community Forum → next act / end. */
 export function completeCommunityForum(session: TourSession, tour: Tour): TourSession {
-  return advanceToNextStopContext(session, tour);
+  const stop = getActiveStops(tour)[session.currentStopIndex];
+  const act = stop ? findActOfStop(tour, stop.id) : null;
+  return advanceToNextActOrClosing(session, tour, act);
 }
 
 export function completeEqScene(session: TourSession): TourSession {
