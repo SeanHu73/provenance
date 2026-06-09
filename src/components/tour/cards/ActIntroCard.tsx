@@ -13,7 +13,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-const HOLD_MS = 3000;
+const HOLD_MS = 2500;
 
 interface Props {
   actNumber: number;
