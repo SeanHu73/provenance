@@ -65,7 +65,12 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
             style={{ width: '100%', height: '100%' }}
           >
             {pins.map((pin) => (
-              <AdvancedMarker key={pin.id} position={pin.pos} zIndex={pin.state === 'target' ? 30 : pin.state === 'completed' ? 20 : 10}>
+              <AdvancedMarker
+                key={pin.id}
+                position={pin.pos}
+                zIndex={pin.state === 'target' ? 30 : pin.state === 'completed' ? 20 : 10}
+                onClick={pin.state === 'target' ? onContinue : undefined}
+              >
                 <NumberedPin number={pin.number} state={pin.state} />
               </AdvancedMarker>
             ))}
@@ -91,15 +96,6 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
         </span>
       </div>
 
-      {/* Floating continue control over the map */}
-      <div className="absolute bottom-0 inset-x-0 p-4" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.35), transparent)' }}>
-        <button
-          onClick={onContinue}
-          className="w-full py-3 rounded-lg text-base font-semibold bg-olive text-white shadow-lg"
-        >
-          I&apos;m here — continue
-        </button>
-      </div>
     </div>
   );
 }
@@ -109,16 +105,19 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
 function NumberedPin({ number, state }: { number: number; state: PinState }) {
   const size = state === 'target' ? 46 : state === 'completed' ? 32 : 28;
   const bg = state === 'completed' ? '#2563EB' : 'var(--th-primary)';
-  const opacity = state === 'upcoming' ? 0.78 : 1;
+  // Target reads at full strength; completed + upcoming are faded back.
+  const opacity = state === 'target' ? 1 : 0.78;
+  // The stop they're walking to gets an amber ring; the rest are white.
+  const borderColor = state === 'target' ? '#F59E0B' : '#fff';
 
   return (
     // AdvancedMarker anchors the element's bottom-centre at the coordinate;
     // shift down by half the height so the disc is centred on the point.
     <div style={{ transform: 'translateY(50%)' }}>
-      <div className="relative" style={{ width: size, height: size }}>
+      <div className={`relative ${state === 'target' ? 'cursor-pointer' : ''}`} style={{ width: size, height: size }}>
         {state === 'target' && (
           <div className="absolute" style={{ width: size * 1.5, height: size * 1.5, left: '50%', top: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none' }}>
-            <span className="absolute inset-0 rounded-full animate-ping" style={{ background: 'var(--th-primary)', opacity: 0.4 }} />
+            <span className="absolute inset-0 rounded-full animate-ping" style={{ background: '#F59E0B', opacity: 0.4 }} />
           </div>
         )}
         <div
@@ -126,7 +125,7 @@ function NumberedPin({ number, state }: { number: number; state: PinState }) {
           style={{
             background: bg,
             opacity,
-            border: `${Math.max(2, Math.round(size * 0.08))}px solid #fff`,
+            border: `${Math.max(2, Math.round(size * 0.08))}px solid ${borderColor}`,
             boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
             fontSize: Math.round(size * 0.45),
           }}
