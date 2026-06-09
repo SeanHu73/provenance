@@ -4,9 +4,9 @@
  * Context-Prototype — the "walk to your next stop" map shown before each
  * stop. All stops appear as numbered pins: the one they're walking to is
  * highlighted and enlarged, completed stops turn blue, the rest are smaller
- * but present. The first time a given stop's map appears, a 2.5s spotlight
- * darkens the screen, cuts a hole around the target pin, and shows the
- * walking instruction; then it fades to the interactive map.
+ * but present. The very first stop's map plays a one-time 2.5s spotlight that
+ * darkens the screen, cuts a hole around the target pin, and shows the walking
+ * instruction; every later stop goes straight to the interactive map.
  */
 
 import { useState, useEffect } from 'react';
@@ -20,9 +20,8 @@ const FALLBACK_LOCATION = { lat: 37.42700, lng: -122.17015 };
 const MAP_ID = 'b8f339c02d8c7d5bd3f12d1b';
 const INTRO_MS = 2500;
 
-// Stops whose map intro spotlight has already played (per page load), so
-// back-navigation doesn't replay it.
-const seenStopMaps = new Set<string>();
+// The first-stop map intro spotlight plays once per page load only.
+let firstStopIntroShown = false;
 
 type PinState = 'completed' | 'target' | 'upcoming';
 
@@ -39,15 +38,16 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
   const targetId = getActiveStops(tour)[session.currentStopIndex]?.id;
   const completed = new Set(session.completedStops);
 
-  // First time this stop's map appears → play the spotlight intro for 2.5s.
+  // Only the very first stop's map plays the spotlight intro, and only once.
+  const isFirstStop = !!targetId && targetId === ordered[0]?.id;
   const [showIntro, setShowIntro] = useState(false);
   useEffect(() => {
-    if (!targetId || seenStopMaps.has(targetId)) return;
-    seenStopMaps.add(targetId);
+    if (!isFirstStop || firstStopIntroShown) return;
+    firstStopIntroShown = true;
     setShowIntro(true);
     const t = setTimeout(() => setShowIntro(false), INTRO_MS);
     return () => clearTimeout(t);
-  }, [targetId]);
+  }, [isFirstStop]);
 
   // Build pin data. Stops without their own coordinates fan out in a small
   // ring around the tour pin so numbered pins don't perfectly overlap.
