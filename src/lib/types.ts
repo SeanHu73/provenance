@@ -667,6 +667,7 @@ export type ModerationStatus = 'pending' | 'approved';
 export interface ForumQuestion {
   id: string;
   tourId: string;
+  stopId?: string;           // The stop this question belongs to (per-stop forum)
   text: string;
   sessionId: string;
   name?: string;             // Author's name (from the saved forum identity)

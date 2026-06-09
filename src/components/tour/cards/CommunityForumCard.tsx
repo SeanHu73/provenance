@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * Context-Prototype — the Community Forum, shown after each act's "Any
- * Remaining Questions" screen (skipped entirely when no questions are
- * approved). One scrollable page: each approved question with its approved
- * responses inline, an "Add a response" composer per question, and an "Add
- * question" composer at the bottom. Name + "anything we should know" are
- * collected once and reused on later stops.
+ * Context-Prototype — the per-stop Community Forum, shown after each stop.
+ * Scoped to the current stop: lists that stop's approved questions with their
+ * approved responses inline (each with an "Add a response" composer), plus an
+ * "Add question" composer at the bottom. Always shown (it's where explorers
+ * ask), even when the stop has no approved questions yet. Name + "anything we
+ * should know" are collected once and reused on later stops.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTour } from '@/context/TourContext';
 import { ForumQuestion, ForumResponse, ForumIdentity } from '@/lib/types';
 import {
@@ -28,21 +28,21 @@ interface Props {
 }
 
 export default function CommunityForumCard({ onComplete }: Props) {
-  const { tour } = useTour();
+  const { tour, currentStop } = useTour();
+  const stopId = currentStop?.id ?? '';
   const [questions, setQuestions] = useState<ForumQuestion[]>([]);
   const [responsesByQ, setResponsesByQ] = useState<Record<string, ForumResponse[]>>({});
   const [loading, setLoading] = useState(true);
   const [addingQ, setAddingQ] = useState(false);
-  const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     if (!tour) return;
     let cancelled = false;
     (async () => {
-      const qs = await getApprovedQuestions(tour.id);
+      const all = await getApprovedQuestions(tour.id);
       if (cancelled) return;
-      if (qs.length === 0) { onCompleteRef.current(); return; } // skip empty forum
+      // This stop's questions only — the forum is per stop.
+      const qs = all.filter((q) => q.stopId === stopId);
       setQuestions(qs);
       const entries = await Promise.all(qs.map(async (q) => [q.id, await getApprovedResponses(q.id)] as const));
       if (cancelled) return;
@@ -50,66 +50,67 @@ export default function CommunityForumCard({ onComplete }: Props) {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [tour]);
-
-  if (loading) {
-    return (
-      <div className="min-h-full flex items-center justify-center">
-        <div className="w-7 h-7 border-2 border-aged-gold border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  }, [tour, stopId]);
 
   return (
-    <div className="animate-fade-in min-h-full py-2 space-y-6">
-      <p className="uppercase tracking-[0.12em] font-display font-semibold leading-tight" style={{ fontSize: 30, color: 'var(--th-primary)' }}>
-        Community Forum
-      </p>
-
-      <div className="space-y-5">
-        {questions.map((q) => (
-          <div key={q.id} className="rounded-xl bg-white border border-sandstone-light p-4 space-y-3">
-            <div>
-              <p className="font-display font-bold leading-tight text-text-primary" style={{ fontSize: 'clamp(20px, 5vw, 26px)' }}>
-                {q.text}
-              </p>
-              {q.name && <p className="text-xs text-text-secondary mt-1">— {q.name}</p>}
-            </div>
-
-            {(responsesByQ[q.id] || []).map((r) => (
-              <div key={r.id} className="pl-3 border-l-2 border-sandstone-light">
-                <p className="text-[16px] font-serif text-text-primary leading-relaxed">{r.text}</p>
-                {r.name && <p className="text-[11px] text-text-secondary mt-0.5">— {r.name}</p>}
-              </div>
-            ))}
-
-            <ResponseComposer
-              submitLabel="Submit response"
-              placeholder="Add your response…"
-              onSubmit={async (text, identity) => {
-                if (!tour) return;
-                await submitForumResponse(q.id, tour.id, text, sessionIdOf(), identity);
-              }}
-            />
-          </div>
-        ))}
+    <div className="animate-fade-in min-h-full py-2 space-y-4">
+      <div>
+        <p className="uppercase tracking-[0.12em] font-display font-semibold leading-tight" style={{ fontSize: 22, color: 'var(--th-primary)' }}>
+          Community Forum
+        </p>
+        <p className="mt-0.5 text-[13px] text-text-secondary">Questions about this stop — see what others asked, or add your own.</p>
       </div>
 
-      {/* Add question */}
-      <div className="rounded-xl bg-sandstone/40 border border-sandstone-light p-4">
+      {loading ? (
+        <div className="flex items-center justify-center py-6">
+          <div className="w-6 h-6 border-2 border-aged-gold border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {questions.map((q) => (
+            <div key={q.id} className="rounded-xl bg-white border border-sandstone-light p-3.5 space-y-2.5">
+              <div>
+                <p className="font-display font-bold leading-snug text-text-primary" style={{ fontSize: 'clamp(15px, 4vw, 18px)' }}>
+                  {q.text}
+                </p>
+                {q.name && <p className="text-[11px] text-text-secondary mt-0.5">— {q.name}</p>}
+              </div>
+
+              {(responsesByQ[q.id] || []).map((r) => (
+                <div key={r.id} className="pl-3 border-l-2 border-sandstone-light">
+                  <p className="text-[14px] font-serif text-text-primary leading-relaxed">{r.text}</p>
+                  {r.name && <p className="text-[10px] text-text-secondary mt-0.5">— {r.name}</p>}
+                </div>
+              ))}
+
+              <ResponseComposer
+                submitLabel="Submit response"
+                placeholder="Add your response…"
+                onSubmit={async (text, identity) => {
+                  if (!tour) return;
+                  await submitForumResponse(q.id, tour.id, text, sessionIdOf(), identity);
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add question (about this stop) */}
+      <div className="rounded-xl bg-sandstone/40 border border-sandstone-light p-3.5">
         {addingQ ? (
           <ResponseComposer
             submitLabel="Submit question"
             placeholder="What are you curious about?"
             onSubmit={async (text, identity) => {
               if (!tour) return;
-              await submitForumQuestion(tour.id, text, sessionIdOf(), identity);
+              await submitForumQuestion(tour.id, stopId, text, sessionIdOf(), identity);
             }}
           />
         ) : (
           <button
             onClick={() => setAddingQ(true)}
-            className="w-full py-3 rounded-lg text-base font-semibold text-white bg-aged-gold hover:bg-aged-gold-light transition-colors"
+            className="w-full py-2.5 rounded-lg text-[15px] font-semibold text-white bg-aged-gold hover:bg-aged-gold-light transition-colors"
           >
             + Add question
           </button>
@@ -118,7 +119,7 @@ export default function CommunityForumCard({ onComplete }: Props) {
 
       <div className="flex gap-2">
         <BackButton />
-        <button onClick={onComplete} className="flex-1 py-3 rounded-lg text-base font-semibold bg-olive text-white">
+        <button onClick={onComplete} className="flex-1 py-3 rounded-lg text-[15px] font-semibold bg-olive text-white">
           Continue
         </button>
       </div>

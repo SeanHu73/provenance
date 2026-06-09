@@ -43,7 +43,7 @@ import {
   completeActIntro as completeActIntroImpl,
   completeActOpening as completeActOpeningImpl,
   completeActClosing as completeActClosingImpl,
-  completeActQuestions as completeActQuestionsImpl,
+  enterCommunityForum as enterCommunityForumImpl,
   completeCommunityForum as completeCommunityForumImpl,
   completeStopMap as completeStopMapImpl,
   loadTourSession,
@@ -87,7 +87,6 @@ interface TourContextValue {
   completeActIntro: () => void;
   completeActOpening: (response: string) => void;
   completeActClosing: (response: string) => void;
-  completeActQuestions: () => void;
   completeCommunityForum: () => void;
   completeResources: () => void;
   completeStopMap: () => void;
@@ -389,10 +388,15 @@ export function TourProvider({ children }: { children: ReactNode }) {
     // Context mode skips per-stop discussion questions entirely.
     const isContext = getTourMode(tour) === 'context';
     const next = advancePhaseImpl(session, currentStop, { skipWonder: isContext });
-    // Bridge unselected (or context mode, which has no bridge) → no whats_next
-    // screen; advance straight to the next stop (or closing). The cards on the
-    // final in-stop screen relabel their "continue" button to reflect this.
-    if (next.currentPhase === 'whats_next' && (isContext || !hasBridgeContent(currentStop))) {
+    // Context mode: every stop ends at its own Community Forum (ask / see
+    // others' questions for this stop) before advancing.
+    if (next.currentPhase === 'whats_next' && isContext) {
+      persist(enterCommunityForumImpl(session));
+      return;
+    }
+    // Bridge unselected → no whats_next screen; advance straight to the next
+    // stop. The cards on the final in-stop screen relabel their "continue".
+    if (next.currentPhase === 'whats_next' && !hasBridgeContent(currentStop)) {
       advanceStop();
       return;
     }
@@ -597,11 +601,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(completeActIntroImpl(session, tour));
   }, [session, tour, persist]);
 
-  const completeActQuestionsFn = useCallback(() => {
-    if (!session) return;
-    persist(completeActQuestionsImpl(session));
-  }, [session, persist]);
-
   const completeCommunityForumFn = useCallback(() => {
     if (!session || !tour) return;
     persist(completeCommunityForumImpl(session, tour));
@@ -668,7 +667,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeActIntro: completeActIntroFn,
       completeActOpening: completeActOpeningFn,
       completeActClosing: completeActClosingFn,
-      completeActQuestions: completeActQuestionsFn,
       completeCommunityForum: completeCommunityForumFn,
       completeResources: completeResourcesFn,
       completeStopMap: completeStopMapFn,

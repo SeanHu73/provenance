@@ -39,7 +39,6 @@ import WhatsNext from './cards/WhatsNext';
 import BranchCard from './cards/BranchCard';
 import EndCard from './cards/EndCard';
 import ActQuestionCard from './cards/ActQuestionCard';
-import ActQuestionsCard from './cards/ActQuestionsCard';
 import CommunityForumCard from './cards/CommunityForumCard';
 import ResourcesCard from './cards/ResourcesCard';
 import ActIntroCard from './cards/ActIntroCard';
@@ -76,7 +75,6 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeActIntro,
     completeActOpening,
     completeActClosing,
-    completeActQuestions,
     completeCommunityForum,
     completeResources,
     completeStopMap,
@@ -329,10 +327,6 @@ export default function Journal({ onMapPeek }: JournalProps) {
           const actNumber = getActs(tour).findIndex((a) => a.id === act.id) + 1;
           return <ActQuestionCard key={`${act.id}-closing`} act={act} actNumber={actNumber} kind="closing" onComplete={completeActClosing} />;
         })()}
-
-        {phase === 'act_questions' && currentStop && (
-          <ActQuestionsCard onComplete={completeActQuestions} />
-        )}
 
         {phase === 'community_forum' && currentStop && (
           <CommunityForumCard onComplete={completeCommunityForum} />

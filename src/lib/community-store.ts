@@ -71,13 +71,14 @@ export async function uploadCommunityPhoto(file: File): Promise<string> {
 
 export async function submitForumQuestion(
   tourId: string,
+  stopId: string,
   text: string,
   sessionId: string,
   identity?: { name?: string; about?: string },
 ): Promise<void> {
   const id = newId('cq');
   const data = cleanUndefined({
-    tourId, text, sessionId,
+    tourId, stopId, text, sessionId,
     name: identity?.name,
     about: identity?.about,
     status: 'pending' as ModerationStatus,
