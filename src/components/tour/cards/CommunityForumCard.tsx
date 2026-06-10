@@ -3,9 +3,12 @@
 /**
  * Context-Prototype — the per-act Community Forum, shown at the end of each act
  * (after the act's closing question). Scoped to the current act: lists that
- * act's approved questions with their approved responses inline (each with an
- * "Add a response" composer), plus an "Add question" composer at the bottom.
- * This screen also serves as the act's "any remaining questions" prompt — the
+ * act's approved questions as individual post blocks. Each block shows the
+ * question with a like button + response count in its footer; tapping a block
+ * opens it to reveal the responses and a composer (you have to click INTO a
+ * question before you can respond, which keeps the screen calm). An "Add
+ * question" composer sits near the bottom, above Continue. This screen also
+ * serves as the act's "any remaining questions" prompt — the
  * additional-questions step is merged into it. Always shown. Name + "anything
  * we should know" are collected once and reused on later acts.
  */
@@ -21,6 +24,9 @@ import {
   submitForumResponse,
   getForumIdentity,
   saveForumIdentity,
+  getLikedQuestionIds,
+  saveLikedQuestionIds,
+  setQuestionLike,
 } from '@/lib/community-store';
 import BackButton from './BackButton';
 import ResponseInput from './ResponseInput';
@@ -36,6 +42,9 @@ export default function CommunityForumCard({ onComplete }: Props) {
   const [responsesByQ, setResponsesByQ] = useState<Record<string, ForumResponse[]>>({});
   const [loading, setLoading] = useState(true);
   const [addingQ, setAddingQ] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!tour) return;
@@ -46,6 +55,8 @@ export default function CommunityForumCard({ onComplete }: Props) {
       // This act's questions only — the forum is per act.
       const qs = all.filter((q) => q.actId === actId);
       setQuestions(qs);
+      setLikeCounts(Object.fromEntries(qs.map((q) => [q.id, q.likes || 0])));
+      setLikedIds(getLikedQuestionIds());
       const entries = await Promise.all(qs.map(async (q) => [q.id, await getApprovedResponses(q.id)] as const));
       if (cancelled) return;
       setResponsesByQ(Object.fromEntries(entries));
@@ -54,13 +65,38 @@ export default function CommunityForumCard({ onComplete }: Props) {
     return () => { cancelled = true; };
   }, [tour, actId]);
 
+  const toggleExpand = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleLike = async (id: string) => {
+    const wasLiked = likedIds.has(id);
+    // Optimistic — update local state + persisted set immediately.
+    const nextLiked = new Set(likedIds);
+    if (wasLiked) nextLiked.delete(id); else nextLiked.add(id);
+    setLikedIds(nextLiked);
+    saveLikedQuestionIds(nextLiked);
+    setLikeCounts((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) + (wasLiked ? -1 : 1)) }));
+    try {
+      await setQuestionLike(id, !wasLiked);
+    } catch (err) {
+      console.error('[CommunityForum] like failed:', err);
+    }
+  };
+
   return (
     <div className="animate-fade-in min-h-full py-2 space-y-4">
       <div>
-        <p className="uppercase tracking-[0.12em] font-display font-semibold leading-tight" style={{ fontSize: 22, color: 'var(--th-primary)' }}>
+        <p className="uppercase tracking-[0.12em] font-display font-semibold leading-tight" style={{ fontSize: 26, color: 'var(--th-primary)' }}>
           Community Forum
         </p>
-        <p className="mt-0.5 text-[13px] text-text-secondary">Before we wrap up this act — anything else you&apos;re curious about? See what others asked, or add your own.</p>
+        <p className="mt-1 text-[15px] text-text-secondary leading-snug">
+          Here are what others have been asking. You can respond or add to the inquiries!
+        </p>
       </div>
 
       {loading ? (
@@ -69,32 +105,73 @@ export default function CommunityForumCard({ onComplete }: Props) {
         </div>
       ) : (
         <div className="space-y-3">
-          {questions.map((q) => (
-            <div key={q.id} className="rounded-xl bg-white border border-sandstone-light p-3.5 space-y-2.5">
-              <div>
-                <p className="font-display font-bold leading-snug text-text-primary" style={{ fontSize: 'clamp(15px, 4vw, 18px)' }}>
-                  {q.text}
-                </p>
-                {q.name && <p className="text-[11px] text-text-secondary mt-0.5">— {q.name}</p>}
-              </div>
+          {questions.length === 0 && (
+            <p className="text-[14px] text-text-secondary/80 italic py-2">
+              No questions for this act yet — be the first to add one below.
+            </p>
+          )}
 
-              {(responsesByQ[q.id] || []).map((r) => (
-                <div key={r.id} className="pl-3 border-l-2 border-sandstone-light">
-                  <p className="text-[14px] font-serif text-text-primary leading-relaxed">{r.text}</p>
-                  {r.name && <p className="text-[10px] text-text-secondary mt-0.5">— {r.name}</p>}
+          {questions.map((q) => {
+            const isOpen = expanded.has(q.id);
+            const responses = responsesByQ[q.id] || [];
+            const liked = likedIds.has(q.id);
+            const likeCount = likeCounts[q.id] || 0;
+            return (
+              <div key={q.id} className="rounded-xl bg-white border border-sandstone-light overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggleExpand(q.id)}
+                  className="w-full text-left p-3.5"
+                >
+                  <p className="font-display font-bold leading-snug text-text-primary" style={{ fontSize: 'clamp(15px, 4vw, 18px)' }}>
+                    {q.text}
+                  </p>
+                  {q.name && <p className="text-[11px] text-text-secondary mt-0.5">— {q.name}</p>}
+                </button>
+
+                {isOpen && (
+                  <div className="px-3.5 pb-3.5 space-y-2.5">
+                    {responses.map((r) => (
+                      <div key={r.id} className="pl-3 border-l-2 border-sandstone-light">
+                        <p className="text-[14px] font-serif text-text-primary leading-relaxed">{r.text}</p>
+                        {r.name && <p className="text-[10px] text-text-secondary mt-0.5">— {r.name}</p>}
+                      </div>
+                    ))}
+                    <ResponseComposer
+                      submitLabel="Submit response"
+                      placeholder="Add your response…"
+                      onSubmit={async (text, identity) => {
+                        if (!tour) return;
+                        await submitForumResponse(q.id, tour.id, text, sessionIdOf(), identity);
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Footer: like + response count (the count also toggles the block open). */}
+                <div className="flex items-center justify-between px-3.5 py-2 border-t border-sandstone-light/70 bg-sandstone/20">
+                  <button
+                    type="button"
+                    onClick={() => toggleLike(q.id)}
+                    aria-pressed={liked}
+                    className="flex items-center gap-1.5 text-[13px] font-semibold transition-colors"
+                    style={{ color: liked ? 'var(--th-primary)' : 'var(--text-secondary)' }}
+                  >
+                    <Heart filled={liked} />
+                    <span>{likeCount > 0 ? likeCount : 'Like'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleExpand(q.id)}
+                    className="flex items-center gap-1 text-[12px] text-text-secondary"
+                  >
+                    {responses.length} {responses.length === 1 ? 'response' : 'responses'}
+                    <span className="text-[10px]">{isOpen ? '▲' : '▾'}</span>
+                  </button>
                 </div>
-              ))}
-
-              <ResponseComposer
-                submitLabel="Submit response"
-                placeholder="Add your response…"
-                onSubmit={async (text, identity) => {
-                  if (!tour) return;
-                  await submitForumResponse(q.id, tour.id, text, sessionIdOf(), identity);
-                }}
-              />
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -126,6 +203,25 @@ export default function CommunityForumCard({ onComplete }: Props) {
         </button>
       </div>
     </div>
+  );
+}
+
+/** Heart glyph — outline when not liked, filled when liked. */
+function Heart({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
   );
 }
 

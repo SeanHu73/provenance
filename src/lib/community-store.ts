@@ -18,6 +18,7 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  increment,
   query,
   where,
 } from 'firebase/firestore';
@@ -29,6 +30,7 @@ const QUESTIONS = 'memorial-church-community-questions';
 const RESPONSES = 'memorial-church-community-responses';
 const RESOURCES = 'memorial-church-community-resources';
 const IDENTITY_KEY = 'provenance-forum-identity';
+const LIKED_KEY = 'provenance-forum-liked';
 
 function newId(prefix: string): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
@@ -56,6 +58,31 @@ export function getForumIdentity(): ForumIdentity | null {
 
 export function saveForumIdentity(identity: ForumIdentity): void {
   try { localStorage.setItem(IDENTITY_KEY, JSON.stringify(identity)); } catch { /* ignore */ }
+}
+
+// ── Question likes (per-device, localStorage tracks which were liked) ──
+
+/** The set of question IDs this device has liked. Drives the filled-heart
+ *  state and prevents the like count from double-counting one device. */
+export function getLikedQuestionIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(LIKED_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+export function saveLikedQuestionIds(ids: Set<string>): void {
+  try { localStorage.setItem(LIKED_KEY, JSON.stringify([...ids])); } catch { /* ignore */ }
+}
+
+/** Bump a question's like count atomically. `liked` true = +1, false = -1.
+ *  The caller owns the per-device liked-set (localStorage); this only writes
+ *  the shared count. */
+export async function setQuestionLike(id: string, liked: boolean): Promise<void> {
+  await updateDoc(doc(db, QUESTIONS, id), { likes: increment(liked ? 1 : -1) });
 }
 
 // ── Photo upload (resources) ──

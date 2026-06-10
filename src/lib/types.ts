@@ -672,6 +672,7 @@ export interface ForumQuestion {
   sessionId: string;
   name?: string;             // Author's name (from the saved forum identity)
   about?: string;            // "Anything we should know about you" (saved once)
+  likes?: number;            // Community "like" count (per-device toggle in the explorer forum)
   status: ModerationStatus;
   createdAt: string;
 }

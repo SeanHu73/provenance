@@ -60,7 +60,7 @@ export default function CommunityModerationPage() {
           <div className="flex-1 min-w-0">
             <p className="text-sm text-stone-900">{q.text}</p>
             <p className="text-[10px] text-stone-400 mt-1 font-mono">
-              {q.status} · {new Date(q.createdAt).toLocaleString()} · tour {q.tourId.slice(0, 8)}
+              {q.status} · ♥ {q.likes || 0} · {new Date(q.createdAt).toLocaleString()} · tour {q.tourId.slice(0, 8)}
             </p>
           </div>
           <div className="flex gap-1.5 shrink-0">
