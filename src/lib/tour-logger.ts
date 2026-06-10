@@ -275,18 +275,30 @@ function fire(entry: Record<string, unknown>): void {
   };
   const payload = JSON.stringify(enriched);
 
-  // Try sendBeacon first — designed to survive page transitions on mobile
+  // Try sendBeacon first — designed to survive page transitions on mobile.
   if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
     const blob = new Blob([payload], { type: 'application/json' });
     const sent = navigator.sendBeacon('/api/log-tour', blob);
     if (sent) return;
   }
 
-  // Fallback to fetch with keepalive
+  // Fallback to fetch with keepalive, retrying a couple of times on a flaky
+  // connection. (The durable backstop is the Firestore session backup, which
+  // persists the full session server-side regardless of these beacons.)
+  postWithRetry(payload, 3);
+}
+
+function postWithRetry(payload: string, attempts: number): void {
   fetch('/api/log-tour', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: payload,
     keepalive: true,
-  }).catch(() => {});
+  })
+    .then((res) => {
+      if (!res.ok && attempts > 1) setTimeout(() => postWithRetry(payload, attempts - 1), 1000);
+    })
+    .catch(() => {
+      if (attempts > 1) setTimeout(() => postWithRetry(payload, attempts - 1), 1000);
+    });
 }
