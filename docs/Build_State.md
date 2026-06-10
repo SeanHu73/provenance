@@ -3,8 +3,10 @@
 *Handoff document for the next Claude Code session. Last updated 2026-06-09
 (see §8 final entry + §13: the **Context-Prototype** third tour mode — Acts,
 act intro splash, per-stop "walk to" map, Community Forum, Suggested
-Resources, and audio-synced photo highlights). Read this instead of
-re-discovering the codebase.*
+Resources, and audio-synced photo highlights; plus the durable
+`memorial-church-tour-sessions` backup + `/admin/sessions` viewer/CSV export in
+§4 — **whose `buildRows()` must be updated whenever a new response type is
+collected**). Read this instead of re-discovering the codebase.*
 
 ---
 
@@ -214,6 +216,8 @@ Each wonder (main, extra rounds, additional EQ) has a `questionType`:
 | `/admin/photos` | Photo library |
 | `/admin/photos/new` | Upload new photo |
 | `/admin/photos/[id]` | Edit photo metadata |
+| `/admin/community` | Community Forum + Suggested Resources moderation (§13) |
+| `/admin/sessions` | Session-backup viewer + CSV export of collected responses (§4) |
 
 ### Tour Editor Structure
 
@@ -264,7 +268,7 @@ Explorer photos are tappable for fullscreen (portal, pinch-zoom, close button at
 | Collection | Purpose |
 |---|---|
 | `memorial-church-tours` | Tour documents with stops array |
-| `memorial-church-tour-sessions` | Session persistence (backup) — `TourSession` now also carries `completionOrder`, `midwayShownAt`, `midwayResponseText` for unstructured tours |
+| `memorial-church-tour-sessions` | **Full session backup** — `persistTourSession` writes the entire `TourSession` (incl. `actResponses`, `reflections`, `essentialQuestionResponses`, `bankedQuestions`, `completionOrder`, …) on every change. The durable record of collected responses (independent of the Google Sheet), read + exported by `/admin/sessions`. **Needs its own rule block** (`match /memorial-church-tour-sessions/{doc} { allow read, write: if true; }`) — if missing, the backup silently fails and the collection never appears. |
 | `memorial-church-pins` | Legacy pins (still used by admin) |
 | `memorial-church-photos` | Photo library |
 | `memorial-church-contributions` | Learner contributions |
@@ -326,6 +330,31 @@ Two adoption docs accompany the 2026-05-29 logging update:
 guidance) and `docs/sheets-apps-script.gs` (the full Apps Script — paste
 in, run `addHeaders()` once, redeploy as new version of the existing
 Web App; `SHEETS_WEBHOOK_URL` does not change).
+
+### Two collection layers (and where data can be lost)
+
+Responses are captured in **two independent places**:
+
+1. **Google Sheets** (this section) — fire-and-forget event rows via
+   `tour-logger.ts` → `/api/log-tour` → webhook. Delivery uses
+   `navigator.sendBeacon` (fetch-with-retry fallback). Best-effort: if a device
+   powers off / drops network the instant after an answer is submitted, that
+   beacon can be lost (this is how end-of-tour Act answers went missing once).
+2. **Firestore `memorial-church-tour-sessions`** (§3) — the **durable backup**.
+   `persistTourSession` writes the whole `TourSession` server-side on every
+   change, so it survives lost beacons. Viewed + CSV-exported at
+   **`/admin/sessions`** (`src/app/admin/sessions/page.tsx`). Requires its rule
+   block (§3) or it silently records nothing.
+
+> ⚠️ **MAINTENANCE — keep `/admin/sessions` in sync with what we collect.**
+> Whenever you add or change a **type of response** stored on `TourSession`
+> (e.g. a new `actResponses` shape, a new reflection field, a new
+> question/answer kind), you MUST update the `buildRows()` flattener in
+> `src/app/admin/sessions/page.tsx` (and the `HEADER`/CSV columns) so the new
+> data shows up in the viewer and the export. Otherwise the backup will hold
+> the data but the admin page won't surface it. (Likewise add a matching
+> column + `act_question`-style event in `tour-logger.ts` + the Apps Script if
+> it should also reach the Google Sheet.)
 
 ---
 
