@@ -1,12 +1,15 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-06-09
-(see §8 final entry + §13: the **Context-Prototype** third tour mode — Acts,
+*Handoff document for the next Claude Code session. Last updated 2026-06-13
+(latest: the **Community Forum redesign** — calm post blocks, per-question
+likes, and click-into-a-question-to-respond — see the 2026-06-13 entry in §8).
+Prior context preserved — see §8 entries + §13: the **Context-Prototype**
+third tour mode — Acts,
 act intro splash, per-stop "walk to" map, Community Forum, Suggested
 Resources, and audio-synced photo highlights; plus the durable
 `memorial-church-tour-sessions` backup + `/admin/sessions` viewer/CSV export in
 §4 — **whose `buildRows()` must be updated whenever a new response type is
-collected**). Read this instead of re-discovering the codebase.*
+collected**. Read this instead of re-discovering the codebase.*
 
 ---
 
@@ -275,7 +278,7 @@ Explorer photos are tappable for fullscreen (portal, pinch-zoom, close button at
 | `memorial-church-questions` | Legacy question log |
 | `memorial-church-migrations` | Migration receipts |
 | `memorial-church-rooms` | Multi-device group rooms (§12) — code, members, transition + barrier state. Now also carries `opinionDials` (per-question position + revealedBy maps) and `userChoiceSelections` (per-question `{ chosenBy, question, isCustom }`) for the 2026-05-28 gamification. |
-| `memorial-church-community-questions` | Context-Prototype Community Forum (§13) — explorer-submitted questions `{ tourId, text, sessionId, name?, about?, status, createdAt }`, moderated in `/admin/community`. |
+| `memorial-church-community-questions` | Context-Prototype Community Forum (§13) — explorer-submitted questions `{ tourId, text, sessionId, name?, about?, likes?, status, createdAt }`, moderated in `/admin/community`. `likes` is an atomic-increment counter (per-device liked-set tracked in localStorage). |
 | `memorial-church-community-responses` | Forum responses `{ questionId, tourId, text, sessionId, name?, status, createdAt }`, moderated. |
 | `memorial-church-community-resources` | Suggested Resources (§13) — `{ tourId, title, description, photos[], links[], source: 'admin'\|'user', status, ... }`, admin-curated or explorer-submitted + moderated. |
 
@@ -1807,6 +1810,42 @@ holds the final photo past the end (default clears on end).
 
 ---
 
+### Community Forum redesign — post blocks, likes, click-to-respond (2026-06-13)
+
+A focused pass on the per-act **Community Forum** card
+(`CommunityForumCard.tsx`) so it reads as a calm board of posts instead of a
+form demanding a response. Live on `master`.
+
+- **Question = a self-contained post block.** The always-visible "Add a
+  response" composer under every question was removed. Default state is just
+  the question text + author + a footer.
+- **Click INTO a question to respond.** Tapping a block toggles it open
+  (`expanded` is a `Set<string>`), revealing the approved responses and the
+  response composer. Collapsed by default keeps the screen clean.
+- **Per-block footer** = a **like** control (left) + **response count** (right,
+  e.g. "2 responses ▾"; the count also toggles the block open).
+- **Question likes.** New optional `ForumQuestion.likes?: number`.
+  `setQuestionLike(id, liked)` in `community-store.ts` writes an atomic
+  Firestore `increment(±1)`; per-device liked-state lives in localStorage
+  (`provenance-forum-liked`, via `getLikedQuestionIds` /
+  `saveLikedQuestionIds`) so one device can't double-count and can un-like.
+  Like updates are **optimistic** (local count + persisted set update first,
+  Firestore write is best-effort). Heart glyph fills + turns `--th-primary`
+  when liked. Moderators see **♥ N** in each question's metadata line in
+  `/admin/community`.
+- **Heading + subtitle.** "Community Forum" bumped 22→26px; subtitle replaced
+  with "Here are what others have been asking. You can respond or add to the
+  inquiries!" (slightly larger at 15px). Continue + Add question stay at the
+  bottom; a small empty-state line shows when an act has no questions yet.
+
+No new Firestore collection (the count is a field on the existing
+`memorial-church-community-questions`), so no new rule block. This is forum
+data, not `TourSession` data, so the `/admin/sessions` `buildRows()` rule
+(§4) doesn't apply. Likes write with no auth (consistent with the project's
+test-mode rules + no admin auth, §7) — fine for the prototype.
+
+---
+
 ## 11. Splash Screen
 
 Added 2026-05-25. First-load brand intro that plays once per browser
@@ -2064,8 +2103,15 @@ Three Firestore collections (`memorial-church-community-{questions,responses,res
 `src/lib/community-store.ts` (submit/list/approve/remove/edit, photo upload via
 Firebase Storage, and the localStorage `provenance-forum-identity`). Moderation
 UI at **`/admin/community`** (Questions tab + Resources tab; approve/unapprove/
-remove, and edit resources incl. adding photos). Forum + resource responses are
-all `pending` until approved.
+remove, and edit resources incl. adding photos; the Questions tab shows each
+question's **♥ like count**). Forum + resource responses are all `pending`
+until approved.
+
+The explorer forum card (`CommunityForumCard.tsx`) renders approved questions
+as **collapsed post blocks**: tap a block to expand it (responses + composer),
+each block footer carries a **like** button (`ForumQuestion.likes`, atomic
+Firestore increment + per-device localStorage liked-set) and a **response
+count**. See the 2026-06-13 entry in §8.
 
 ### Audio-synced photo highlights
 
@@ -2090,9 +2136,11 @@ with `photoCuesHoldLast` the last photo stays lit.
 
 ---
 
-*End of handoff. The Context-Prototype mode (§13) — Acts, act intro splash,
-per-stop "walk to" map, Community Forum, Suggested Resources, and audio-synced
-photo highlights — is the latest work, all live on `master`. The room system
+*End of handoff. The latest work is the **Community Forum redesign**
+(2026-06-13, §8 + §13) — post blocks, per-question likes, click-to-respond.
+The Context-Prototype mode (§13) — Acts, act intro splash, per-stop "walk to"
+map, Community Forum, Suggested Resources, and audio-synced photo highlights —
+remains the surrounding feature set, all live on `master`. The room system
 (§12), splash screen (§11), unstructured exploration mode (§10), and theme
 system (§9) remain in place. Two adoption steps require manual console work:
 the Sheets logging columns (run `addHeaders()` once — see §4) and the three
