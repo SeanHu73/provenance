@@ -13,7 +13,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
-import { canUseBlur } from '@/lib/device-capability';
 import { getActiveStops, getTourMode } from '@/lib/tours-store';
 import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs } from '@/lib/tour-session';
 import IntroScreens from './cards/IntroScreens';
@@ -142,9 +141,6 @@ export default function Journal({ onMapPeek }: JournalProps) {
     prevHistoryLenRef.current = history.length;
   }, [history.length]);
 
-  // Device capability for blur
-  const blurSupported = useMemo(() => canUseBlur(), []);
-
   // Compute effective background photo — tour default, overridden per stop.
   // Temporarily disabled: the photo behind every card read as too visually
   // busy, so the explorer renders solid cards for now. Authoring is untouched
@@ -174,9 +170,6 @@ export default function Journal({ onMapPeek }: JournalProps) {
     img.onload = () => setBgLoaded(true);
     img.src = bgPhoto;
   }, [bgPhoto]);
-
-  // Background photo shows on ALL screens when available
-  const showBgPhoto = !!bgPhoto && bgLoaded;
 
   // Phase key for AnimatePresence
   const phaseKey = `${phase}-${session.currentRound}-${session.currentStopIndex}`;
@@ -254,23 +247,16 @@ export default function Journal({ onMapPeek }: JournalProps) {
               : { x: isBack ? '100%' : '-100%' }
             }
             transition={{ duration: isFade ? 0.4 : 0.12, ease: isFade ? 'easeInOut' : 'easeOut' }}
-            className={`absolute inset-0 overflow-y-auto tour-scroll ${isFullBleed ? '' : 'p-4'}`}
+            className="absolute inset-0 overflow-y-auto tour-scroll"
             ref={(el) => { scrollContainerRef.current = el; checkScroll(); }}
             onScroll={checkScroll}
           >
+            {/* Content sits directly on the page (no card). The framed,
+                frosted-glass card was only needed to lift content off the
+                background photo, which is now disabled. */}
             <div className={isFullBleed
               ? 'relative min-h-full'
-              : `relative min-h-full rounded-2xl shadow-lg px-5 py-6 flex flex-col justify-center ${
-              showBgPhoto
-                ? phase === 'reveal'
-                  ? blurSupported
-                    ? 'bg-warm-white/90 backdrop-blur-[10px]'
-                    : 'bg-warm-white/[0.95]'
-                  : blurSupported
-                    ? 'bg-warm-white/80 backdrop-blur-[12px]'
-                    : 'bg-warm-white/[0.85]'
-                : 'bg-warm-white'
-            }`}
+              : 'relative min-h-full px-5 py-6 flex flex-col justify-center'}
             >
 
         {phase === 'intro' && (
