@@ -40,6 +40,21 @@ function buildRows(sessions: StoredTourSession[], toursById: Record<string, Tour
       const actTitle = act?.title || actId;
       if (resp?.opening) rows.push([...base, 'Act opening', actTitle, act?.openingQuestion?.prompt || '', resp.opening]);
       if (resp?.closing) rows.push([...base, 'Act closing', actTitle, act?.closingQuestion?.prompt || '', resp.closing]);
+      // Context questions the explorer asked.
+      for (const cq of resp?.contextQuestions || []) {
+        rows.push([...base, 'Context question', actTitle, cq.question, cq.answer || `(${cq.status})`]);
+      }
+      // "Share What You Think" reflection (text + photo/pin/share markers).
+      const refl = resp?.reflection;
+      if (refl) {
+        const prompt = act?.reflectionQuestion?.prompt ?? act?.closingQuestion?.prompt ?? '';
+        const extras: string[] = [];
+        if (refl.photos && refl.photos.length) extras.push(`${refl.photos.length} photo(s)`);
+        if (refl.pin) extras.push(`pin: ${refl.pin.title || 'spot'}${refl.pin.note ? ` — ${refl.pin.note}` : ''}`);
+        if (refl.sharedToCommunity) extras.push('shared');
+        const response = refl.text + (extras.length ? `  [${extras.join('; ')}]` : '');
+        rows.push([...base, 'Act reflection', actTitle, prompt, response]);
+      }
     }
 
     for (const r of s.reflections || []) {

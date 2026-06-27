@@ -9,6 +9,20 @@
 
 import { NextResponse } from 'next/server';
 
+/**
+ * Post-transcription cleaner hook. STUB — currently returns the Deepgram
+ * transcript unchanged.
+ *
+ * TODO (AI SKILL — scaffold later): pass the raw transcript through Claude to
+ * fix obvious mis-hearings (homophones, proper nouns, punctuation) WITHOUT
+ * changing the speaker's meaning or voice. It should sound like the person,
+ * not like an AI rewrite — light-touch corrections only. This is the single
+ * place to wire that in: every dictation in the app flows through here.
+ */
+async function cleanTranscript(transcript: string): Promise<string> {
+  return transcript;
+}
+
 export async function POST(req: Request) {
   const apiKey = process.env.DEEPGRAM_API_KEY;
   if (!apiKey) {
@@ -77,7 +91,8 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ transcript: transcript.trim() });
+    const cleaned = await cleanTranscript(transcript.trim());
+    return NextResponse.json({ transcript: cleaned });
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
       return NextResponse.json(

@@ -42,6 +42,10 @@ import CommunityForumCard from './cards/CommunityForumCard';
 import ResourcesCard from './cards/ResourcesCard';
 import ActIntroCard from './cards/ActIntroCard';
 import StopMapCard from './cards/StopMapCard';
+import ActContextCard from './cards/ActContextCard';
+import ContextQuestionsCard from './cards/ContextQuestionsCard';
+import ActReflectionCard from './cards/ActReflectionCard';
+import HearFromCommunityCard from './cards/HearFromCommunityCard';
 
 interface JournalProps {
   /** If provided, renders a "View on map" button (for stops at a different location). */
@@ -82,6 +86,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeActOpening,
     completeActClosing,
     completeCommunityForum,
+    completeActContext,
+    completeActContextQuestions,
+    completeActReflection,
+    completeCommunityShare,
     completeResources,
     completeStopMap,
   } = useTour();
@@ -328,6 +336,23 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
         {phase === 'community_forum' && currentStop && (
           <CommunityForumCard onComplete={completeCommunityForum} />
+        )}
+
+        {/* End-of-act chain: Context → Context questions → Reflection → Community */}
+        {phase === 'act_context' && currentStop && (
+          <ActContextCard onComplete={completeActContext} />
+        )}
+
+        {phase === 'act_context_questions' && currentStop && (
+          <ContextQuestionsCard onComplete={completeActContextQuestions} />
+        )}
+
+        {phase === 'act_reflection' && currentStop && (
+          <ActReflectionCard onComplete={completeActReflection} />
+        )}
+
+        {phase === 'community_share' && currentStop && (
+          <HearFromCommunityCard onComplete={completeCommunityShare} />
         )}
 
         {phase === 'notice' && currentStop && (

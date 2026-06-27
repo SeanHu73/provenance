@@ -265,6 +265,46 @@ export function logActQuestion(opts: {
   });
 }
 
+/** End-of-act context question the explorer asked (+ the AI answer/status).
+ *  Reuses the existing Act Question columns (kind = 'context') so no Apps
+ *  Script change is needed. */
+export function logContextQuestion(opts: {
+  tourId: string; sessionId: string; tourTitle: string; actTitle: string;
+  question: string; answer: string;
+}): void {
+  fire({
+    event: 'act_question',
+    tourId: opts.tourId,
+    sessionId: opts.sessionId,
+    tourTitle: opts.tourTitle,
+    actTitle: opts.actTitle,
+    actQuestionKind: 'context',
+    actQuestion: opts.question,
+    actResponse: opts.answer,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+/** End-of-act "Share What You Think" reflection. Reuses the Act Question
+ *  columns (kind = 'reflection'); `shared` notes whether it was posted to the
+ *  community. */
+export function logActReflection(opts: {
+  tourId: string; sessionId: string; tourTitle: string; actTitle: string;
+  prompt: string; response: string; shared: boolean;
+}): void {
+  fire({
+    event: 'act_question',
+    tourId: opts.tourId,
+    sessionId: opts.sessionId,
+    tourTitle: opts.tourTitle,
+    actTitle: opts.actTitle,
+    actQuestionKind: opts.shared ? 'reflection (shared)' : 'reflection',
+    actQuestion: opts.prompt,
+    actResponse: opts.response,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 function fire(entry: Record<string, unknown>): void {
   // Merge the current room context onto every event row.
   const enriched = {
