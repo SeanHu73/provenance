@@ -49,6 +49,13 @@ interface JournalProps {
   onMapPeek?: () => void;
 }
 
+/**
+ * Master switch for the tour-level photo shown behind every card. Turned off
+ * for now (cards render solid) — see the bgPhoto useMemo below. Set to true to
+ * bring the background photo (and the cards' frosted-glass opacity) back.
+ */
+const SHOW_TOUR_BACKGROUND_PHOTO = false;
+
 export default function Journal({ onMapPeek }: JournalProps) {
   const {
     tour,
@@ -138,8 +145,13 @@ export default function Journal({ onMapPeek }: JournalProps) {
   // Device capability for blur
   const blurSupported = useMemo(() => canUseBlur(), []);
 
-  // Compute effective background photo — tour default, overridden per stop
+  // Compute effective background photo — tour default, overridden per stop.
+  // Temporarily disabled: the photo behind every card read as too visually
+  // busy, so the explorer renders solid cards for now. Authoring is untouched
+  // (admin still sets it); flip SHOW_TOUR_BACKGROUND_PHOTO back to true to
+  // restore it everywhere downstream (bg layer + per-card opacity/blur).
   const bgPhoto = useMemo(() => {
+    if (!SHOW_TOUR_BACKGROUND_PHOTO) return null;
     if (!tour) return null;
     let photo = tour.backgroundPhotoUrl || null;
     const stops = getActiveStops(tour);
