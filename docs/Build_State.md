@@ -1,8 +1,17 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-06-13
-(latest: the **Community Forum redesign** — calm post blocks, per-question
-likes, and click-into-a-question-to-respond — see the 2026-06-13 entry in §8).
+*Handoff document for the next Claude Code session. Last updated 2026-06-27
+(latest: a multi-part **explorer simplification + end-of-act redesign** for
+Context-Prototype mode — see the 2026-06-27 entries in §8. In short: the tour
+background photo + the floating "card" chrome were removed (content sits
+directly on the page); the pin-tap peek became a full **NPS-style Tour Overview**
+with a live pin map; the per-stop **Background+Find merged into one "FIND" page**;
+the opening "Share what you think" was dropped so context tours **start on the
+stop map**, and tapping a pin shows a **thumbnail confirm**; and the **end of each
+Act** became a guided chain — **Context → Context questions (AI, stubbed) →
+"Share What You Think" reflection (text + photos + a map pin) → "Hear from the
+Community" (upvote + comment) → re-share prompt**, replacing the old
+`act_closing → community_forum`).
 Prior context preserved — see §8 entries + §13: the **Context-Prototype**
 third tour mode — Acts,
 act intro splash, per-stop "walk to" map, Community Forum, Suggested
@@ -82,8 +91,8 @@ Map (tour pin) → Journal Peek → Intro screens → [Meet Your Guide] →
 | SpotlightOverlay | `cards/SpotlightOverlay.tsx` | Generic darken-and-spotlight overlay for the onboarding flow. Queries a target by data-attribute selector, four pointer-events-auto dim panels surrounding the rect so the target stays clickable, optional `dim={false}` ring-only mode (keeps underlying UI visible), message + arrow stacked above the target. See 2026-05-29 entry in §8 |
 | IntroMapMockup | `cards/IntroMapMockup.tsx` | Onboarding map embed — real `@vis.gl/react-google-maps` stack with `gestureHandling="none"` + `disableDefaultUI` so it reads like a satellite screenshot but is the live Google Map. `fill` prop drops the aspect-ratio constraint for the take-over How-It-Works layout. Pin replicates the live `TourParentPin` (CSS-mask `LogoGlyph` on a disc with animate-ping ring). See 2026-05-29 entry in §8 |
 | JournalOverlay | `src/components/tour/JournalOverlay.tsx` | Stops/Questions/Theory tabs |
-| JournalPeek | `src/components/tour/JournalPeek.tsx` | Bottom sheet on map pin tap |
-| SeedCard | `cards/SeedCard.tsx` | Merged Background + Look Around screen |
+| TourOverview | `src/components/tour/TourOverview.tsx` | Full-screen NPS-style "table of contents" on map pin tap — live pin-map banner + stop list + Begin tour (replaced the `JournalPeek` bottom sheet; `JournalPeek.tsx` kept but unused). See 2026-06-27 in §8 |
+| SeedCard | `cards/SeedCard.tsx` | The merged **"FIND"** page (find instructions + photo on top, Background below; single scroll, no snap). See 2026-06-27 in §8 |
 | WonderCard | `cards/WonderCard.tsx` | "Chance to discuss..." / "What's your opinion?" |
 | RevealCard | `cards/RevealCard.tsx` | Context with collapsible text when audio present |
 | ReflectCard | `cards/ReflectCard.tsx` | Slider + follow-up chips + What's Next |
@@ -163,14 +172,16 @@ Plus two unstructured-mode phases: `unstructured_map` (the stop-picker
 overlay) and `midway_checkin` (the optional halfway prompt). Both are
 rendered by `page.tsx` outside the `Journal` overlay — see §10.
 
-Plus eight **Context-Prototype** phases (all rendered inside `Journal`, since
+Plus the **Context-Prototype** phases (all rendered inside `Journal`, since
 context mode keeps `unstructuredMode === false`): `opening_frame`,
-`act_intro` (the "Act N: Title" splash), `act_opening`, `act_closing`,
-`stop_map` (the per-stop "walk to" map), `community_forum` (per-act forum at the
-end of each act, which also serves as the act's "additional questions" step),
-and `resources` (end-of-tour). (`act_questions` is a deprecated phase — that
-screen was merged into the Community Forum; the phase id is retained for
-in-flight sessions.) See §13.
+`act_intro` (the "Act N: Title" splash), `stop_map` (the per-stop "walk to"
+map), `resources` (end-of-tour), and — added 2026-06-27, the **end-of-act
+chain** — `act_context` (read-only Context section), `act_context_questions`
+(ask + AI lookup, currently stubbed), `act_reflection` ("Share What You Think"
+reflection), and `community_share` ("Hear from the Community"). The old
+end-of-act phases `act_opening`, `act_closing`, `community_forum` (and
+`act_questions`) are **deprecated** — new sessions never route to them, but they
+still render for in-flight sessions parked on them. See §13.
 
 ### Transitions
 
@@ -279,8 +290,10 @@ Explorer photos are tappable for fullscreen (portal, pinch-zoom, close button at
 | `memorial-church-migrations` | Migration receipts |
 | `memorial-church-rooms` | Multi-device group rooms (§12) — code, members, transition + barrier state. Now also carries `opinionDials` (per-question position + revealedBy maps) and `userChoiceSelections` (per-question `{ chosenBy, question, isCustom }`) for the 2026-05-28 gamification. |
 | `memorial-church-community-questions` | Context-Prototype Community Forum (§13) — explorer-submitted questions `{ tourId, text, sessionId, name?, about?, likes?, status, createdAt }`, moderated in `/admin/community`. `likes` is an atomic-increment counter (per-device liked-set tracked in localStorage). |
-| `memorial-church-community-responses` | Forum responses `{ questionId, tourId, text, sessionId, name?, status, createdAt }`, moderated. |
+| `memorial-church-community-responses` | Forum responses `{ questionId, tourId, text, sessionId, name?, status, createdAt }`, moderated. (Legacy: the per-act question forum was retired by the 2026-06-27 redesign in favour of shares below; old data is still read-only in `/admin/community`.) |
 | `memorial-church-community-resources` | Suggested Resources (§13) — `{ tourId, title, description, photos[], links[], source: 'admin'\|'user', status, ... }`, admin-curated or explorer-submitted + moderated. |
+| `memorial-church-community-shares` | **"Hear from the Community"** (§13, added 2026-06-27) — explorer-shared "Share What You Think" reflections `{ tourId, actId, text, photos[], pin?:{lat,lng,title?,note?}, sessionId, name?, about?, upvotes?, status, createdAt }`. Created `status: 'approved'` (appear immediately); `upvotes` is an atomic-increment counter (per-device upvoted-set in localStorage `provenance-share-upvoted`). Admin can hide/remove in `/admin/community` (Shares tab). |
+| `memorial-church-community-comments` | Comments on shares (§13, added 2026-06-27) — `{ shareId, tourId, text, sessionId, name?, status, createdAt }`, created `approved`. |
 
 ### Security Rules
 
@@ -293,7 +306,12 @@ own block added in the Firebase console for the rooms feature to
 work (one-line `match /memorial-church-rooms/{doc} { allow read,
 write: if true; }`). The three `memorial-church-community-*`
 collections (§13) likewise each need their own `match` block in the
-console, or forum/resource reads & writes fail silently.
+console, or forum/resource reads & writes fail silently. The two
+2026-06-27 collections (`memorial-church-community-shares` and
+`memorial-church-community-comments`) each need their own block too —
+they were added to the console on 2026-06-27 (verified live: without
+them, sharing throws `Missing or insufficient permissions`, handled
+gracefully as an empty state).
 
 ---
 
@@ -1846,6 +1864,111 @@ test-mode rules + no admin auth, §7) — fine for the prototype.
 
 ---
 
+### Explorer simplification — no card, NPS overview, merged FIND, map-first start (2026-06-27)
+
+A multi-part pass simplifying the Context-Prototype explorer. All live on
+`master`, verified in the running app.
+
+**Background photo + card chrome removed.** The tour-level background photo
+behind every card read as too visually busy, so it's gated off behind
+`SHOW_TOUR_BACKGROUND_PHOTO = false` in `Journal.tsx` (admin authoring
+untouched; flip the flag to restore the photo + frosted-glass card opacity).
+With the photo gone the floating **card frame is also gone** — `Journal.tsx`
+dropped the inner `rounded-2xl shadow-lg bg-warm-white` panel + outer `p-4`
+gutter + the `canUseBlur` infrastructure, so phase content now sits **directly
+on the page** (`--th-bg`). "If I want the card back I'll let you know."
+
+**NPS-style Tour Overview.** Tapping a map pin now opens a full-screen
+`TourOverview.tsx` (replacing the bottom-sheet `JournalPeek`, which is kept but
+unused). Modeled on the National Park Service self-guided-tour layout
+(`docs/NPS_Sample.png`): a **live satellite map banner with every stop as a
+numbered pin** (fit-to-all-pins via `LatLngBounds`/`fitBounds`, zoom-capped),
+title, guide, "N stops · ~X min", description with Read more, and a numbered
+**stop list with thumbnails** that expand a teaser; sticky "Begin tour" → into
+onboarding the first time.
+
+**Map-first start + pin confirm.** `completeActIntro` routes straight to
+`stop_map` — the opening "Share what you think" (`act_opening`) was retired so
+context tours drop learners onto the tappable pins immediately. In
+`StopMapCard.tsx`, tapping the target pin now opens a **small thumbnail confirm
+card** ("Stop N · title" + "I'm here — explore this stop" / "Not yet") before
+the stop opens.
+
+**Merged "FIND" page (no snap).** `SeedCard.tsx` is now one continuous-scroll
+page labelled **FIND**: the find instructions (notice prompt + photo) sit on
+top, with the **Background reading below**. The two-section snap-scroll +
+IntersectionObserver reveal are gone; the Journal's "Keep scrolling" indicator
+cues there's more below.
+
+### End-of-act redesign — Context → Reflect → Community (2026-06-27)
+
+Replaced the end of each Act in Context-Prototype mode (`last stop →
+act_closing → community_forum`) with a guided chain. Full reference folded into
+§13; details:
+
+**New flow.** `last stop in act → [act_context] → act_context_questions →
+[act_reflection] → community_share → next act`, each step skipped when its
+content isn't authored. State machine + completers in `tour-session.ts`
+(`completeActContext` / `completeActContextQuestions(asked)` /
+`completeActReflection(resp)` / `completeCommunityShare`, plus
+`reflectionPromptOf` / `actHasContext` / `setActReflection` /
+`addContextQuestion`); wrappers in `TourContext.tsx`; rendered in `Journal.tsx`.
+
+**The four screens** (`src/components/tour/cards/`):
+- `ActContextCard` — **read-only Context** (no pin): an admin-framed question +
+  the context/answer the admin provides (+ optional photos/audio).
+- `ContextQuestionsCard` — "Have a question?": type or record→edit a question →
+  `POST /api/context-answer` → answer or banked "Saved — I'll help you find
+  this"; ask-another loop. Each ask appends a `ContextQuestionEntry`.
+- `ActReflectionCard` — **"Share What You Think"**: the reflection prompt
+  (`reflectionQuestion`, falling back to the legacy `closingQuestion`) +
+  `ResponseInput` (type/record) + photo upload + a **labelled map pin** ("design
+  their own stop", a `@vis.gl` satellite map, tap to place) + a "Share to
+  community" checkbox.
+- `HearFromCommunityCard` — **"Hear from the Community"**: others' shared
+  reflections (text + photos + pin) with **upvote** + expandable **comments**;
+  on Continue, if the learner wrote a reflection but didn't share, a
+  **re-share prompt** appears before advancing.
+
+**Community model repurposed.** The old per-act question forum is **replaced**
+by reflection-sharing. New `community-store.ts` helpers + collections
+`memorial-church-community-shares` / `-comments` (§3) — created `approved` so
+they **appear immediately** (no moderation gate; admin can still remove). New
+**Shares** tab in `/admin/community`. Upvotes mirror the forum-like pattern
+(atomic increment + localStorage `provenance-share-upvoted`). The legacy
+Questions tab + collections remain read-only for old data.
+
+**Data + logging.** `Act` gained `context` (`ActContext`) + `reflectionQuestion`
+(keeping legacy `openingQuestion`/`closingQuestion` for fallback);
+`TourSession.actResponses` widened with `reflection` (`ActReflectionResponse`:
+text + photos + pin + sharedToCommunity + shareId) and `contextQuestions`
+(`ContextQuestionEntry[]`). Admin tour editor authors per-act **Context** +
+**Reflection** (opening-question field removed). Per the §4 rule,
+`/admin/sessions` `buildRows()` now flattens reflections + context questions;
+`tour-logger.ts` logs them as `act_question` events reusing the existing Act
+columns (`actQuestionKind` = `context` / `reflection` / `reflection (shared)`)
+— **no Apps Script column change needed**.
+
+**AI is stubbed (deferred).** `/api/context-answer` banks the question and
+returns `{ answer: null, status: 'banked' }`; a top-of-file TODO documents the
+intended SKILL — search `knowledge-db.ts` first (reuse the `/api/ask` Claude
+pattern + `hint-matcher`), then the web prioritising **academic → official/gov,
+strictly no discussion forums (Reddit etc.)**, in a warm tour-guide voice. A
+pass-through `cleanTranscript()` hook sits in `/api/transcribe` for the future
+voice-dictation cleaner (one-spot change later). Both are the only deferred
+pieces; everything else ships.
+
+**Lessons / gotchas.**
+- The new `memorial-church-community-shares` / `-comments` collections each need
+  their own Firebase console rule block (§3) — verified live: without them,
+  `submitShare`/`getShares` throw `Missing or insufficient permissions`, handled
+  gracefully as an empty state.
+- `react-hooks/set-state-in-effect` flags the `useEffect(() => { reload(); })`
+  data-load pattern, but it's the established pattern in `/admin/community` (3
+  instances) and doesn't block `next build` (lint isn't a build gate here).
+
+---
+
 ## 11. Splash Screen
 
 Added 2026-05-25. First-load brand intro that plays once per browser
@@ -2053,38 +2176,55 @@ like Linear but stripped down and Act-structured. Resolve the mode anywhere via
 - `Tour.contextStops?: Stop[]` — parallel stops array (mirrors
   `unstructuredStops`), cloned from the unstructured/linear set on first switch.
   `getActiveStops` / `setActiveStops` are mode-aware.
-- `Tour.acts?: Act[]` — `{ id, title, stopIds[], openingQuestion, closingQuestion }`.
+- `Tour.acts?: Act[]` — `{ id, title, stopIds[], openingQuestion, closingQuestion,
+  context?: ActContext, reflectionQuestion? }`. `context` = the end-of-act
+  read-only Context section (`{ question, context, photos?, audio* }`);
+  `reflectionQuestion` = the "Share What You Think" prompt (falls back to legacy
+  `closingQuestion` via `reflectionPromptOf`). `openingQuestion`/`closingQuestion`
+  are legacy (act_opening/act_closing retired). 2026-06-27.
 - `Tour.openingFrame?: OpeningFrame | null` — the "Setting the Scene" fields
   (scene photo/description/audio + framing), independent of `essentialQuestion`.
-- `TourSession.actResponses?: Record<actId, { opening?, closing? }>`.
+- `TourSession.actResponses?: Record<actId, { opening?, closing?, reflection?:
+  ActReflectionResponse, contextQuestions?: ContextQuestionEntry[] }>` —
+  `reflection` = `{ text, photos?, pin?, sharedToCommunity?, shareId? }`;
+  `contextQuestions` = the questions the explorer asked (+ AI answer/status).
+  2026-06-27.
 
 ### Flow (per stop / act)
 
 `opening_frame` → for each act: `act_intro` (dark "Act N: Title" splash, ~2.5s,
-tap to skip) → [`act_opening`] → for each stop: `stop_map` → `seed` → `reveal` →
-[`reflect`] → next stop; at act end → [`act_closing`] → `community_forum`
-(per-act, merged with the "additional questions" step) → next act. After the
-last act → guide outro → `resources` → `end`. (`act_questions` is deprecated —
-merged into the per-act forum.)
+tap to skip) → `stop_map` → for each stop: `seed` (the merged "FIND" page) →
+`reveal` → [`reflect`] → next stop; at act end the **end-of-act chain** runs
+(2026-06-27): `[act_context]` → `act_context_questions` → `[act_reflection]` →
+`community_share` → next act (bracketed steps skipped when unauthored/empty).
+After the last act → guide outro → `resources` → `end`. The old `act_opening`
+(the start-of-act "Share what you think") was dropped — `completeActIntro` goes
+straight to `stop_map`. `act_opening`, `act_closing`, `community_forum`,
+`act_questions` are all **deprecated** (kept for in-flight sessions only).
 
 State machine helpers in `tour-session.ts`: `getActs`, `getContextOrderedStops`,
 `findActOfStop`, `hasOpeningFrameContent`, `positionAtAct`, `enterFirstContextAct`,
-`advanceToNextStopContext`, `advanceToNextActOrClosing`, `finishContextTour`, and
-`complete{OpeningFrame,ActIntro,ActOpening,ActClosing,CommunityForum,Resources}`.
-At an act's last stop, `advanceToNextStopContext` (and `completeActClosing`)
-route to `community_forum`; `completeCommunityForum` → next act.
-`advanceFromReveal`/`nextPhaseAndRound` take
-a `skipWonder` flag (true in context) that skips the wonder phase **and** all
-extra rounds.
+`advanceToNextStopContext`, `advanceToNextActOrClosing`, `finishContextTour`,
+`reflectionPromptOf`, `actHasContext`, and
+`complete{OpeningFrame,ActIntro,StopMap,ActContext,ActContextQuestions,ActReflection,CommunityShare,Resources}`
+(legacy `completeActOpening`/`completeActClosing`/`completeCommunityForum` kept).
+At an act's last stop, `advanceToNextStopContext` routes to `act_context` (if
+the act has a Context authored) else `act_context_questions`; each completer
+then walks the chain. `advanceFromReveal`/`nextPhaseAndRound` take a `skipWonder`
+flag (true in context) that skips the wonder phase **and** all extra rounds.
 
 ### Key components
 
 | Component | File | Purpose |
 |---|---|---|
 | ActIntroCard | `cards/ActIntroCard.tsx` | Portal full-screen "Act N: Title" splash (amber number + white title), ~3s hold |
-| ActQuestionCard | `cards/ActQuestionCard.tsx` | Act opening/closing question — "Share what you think" + talking-person icon; closing is a thank-you snap-scroll |
-| StopMapCard | `cards/StopMapCard.tsx` | Per-stop satellite map; numbered pins (target white+amber, completed faded blue, upcoming bronze); tap the pin to begin; first stop gets a one-time spotlight |
-| CommunityForumCard | `cards/CommunityForumCard.tsx` | Per-act forum (scoped by `actId`) at act end, merged with the "additional questions" step: approved Q+responses inline, inline composers, identity capture; always shown |
+| ActContextCard | `cards/ActContextCard.tsx` | End-of-act **Context** (no pin): read-only framed question + admin-provided context (+ optional photos/audio). 2026-06-27 |
+| ContextQuestionsCard | `cards/ContextQuestionsCard.tsx` | "Have a question?" — ask (type/record) → `/api/context-answer` (AI stub: banked) → answer/"Saved" + ask-another loop. 2026-06-27 |
+| ActReflectionCard | `cards/ActReflectionCard.tsx` | **"Share What You Think"** reflection: prompt + ResponseInput + photo upload + a labelled `@vis.gl` map pin ("design their own stop") + share-to-community. 2026-06-27 |
+| HearFromCommunityCard | `cards/HearFromCommunityCard.tsx` | **"Hear from the Community"**: others' shared reflections (text/photos/pin) + upvote + comments; re-share prompt on Continue if not shared. 2026-06-27 |
+| StopMapCard | `cards/StopMapCard.tsx` | Per-stop satellite map; numbered pins (target white+amber, completed faded blue, upcoming bronze); tap the pin → **thumbnail confirm card** before the stop opens (2026-06-27); first stop gets a one-time spotlight |
+| ActQuestionCard | `cards/ActQuestionCard.tsx` | **Legacy** — old act opening/closing "Share what you think" question; replaced by ActReflectionCard, kept for in-flight sessions |
+| CommunityForumCard | `cards/CommunityForumCard.tsx` | **Legacy** — old per-act question forum; replaced by HearFromCommunityCard, kept for in-flight sessions |
 | ResourcesCard | `cards/ResourcesCard.tsx` | End-of-tour suggested resources + submit form |
 | ResponseInput | `cards/ResponseInput.tsx` | Type/Record chooser → textbox + small mic |
 | EqSceneCard | `cards/EqSceneCard.tsx` | Reused for `opening_frame` via its `scene`/`openingVariant` props |
@@ -2096,22 +2236,28 @@ Frame section, and an **Acts organizer** (native HTML5 drag-and-drop to move
 stops between acts; `ensureActsCoverStops` keeps every stop in exactly one act).
 `StopEditor` hides the discussion/extra-rounds/bridge fieldsets in context mode.
 
-### Community Forum & Suggested Resources
+### "Hear from the Community", Suggested Resources, & legacy forum
 
-Three Firestore collections (`memorial-church-community-{questions,responses,resources}`
-— each needs its own console rule block, see §3). Data layer + helpers in
-`src/lib/community-store.ts` (submit/list/approve/remove/edit, photo upload via
-Firebase Storage, and the localStorage `provenance-forum-identity`). Moderation
-UI at **`/admin/community`** (Questions tab + Resources tab; approve/unapprove/
-remove, and edit resources incl. adding photos; the Questions tab shows each
-question's **♥ like count**). Forum + resource responses are all `pending`
-until approved.
+Data layer in `src/lib/community-store.ts` (submit/list/approve/remove/edit,
+photo upload via Firebase Storage, localStorage identity `provenance-forum-identity`).
+Moderation UI at **`/admin/community`**, now three tabs: **Shares** (default),
+**Questions** (legacy), **Resources**.
 
-The explorer forum card (`CommunityForumCard.tsx`) renders approved questions
-as **collapsed post blocks**: tap a block to expand it (responses + composer),
-each block footer carries a **like** button (`ForumQuestion.likes`, atomic
-Firestore increment + per-device localStorage liked-set) and a **response
-count**. See the 2026-06-13 entry in §8.
+**Shares ("Hear from the Community", 2026-06-27)** — replaces the per-act
+question forum. Collections `memorial-church-community-shares` / `-comments`
+(§3), each needs its own console rule block. Shares are created `approved` so
+they **appear immediately** (no moderation gate; admin can hide/remove). The
+explorer flow: `ActReflectionCard` posts a share (`submitShare`) when the
+learner ticks "share"; `HearFromCommunityCard` lists `getShares(tourId, actId)`
+with **upvotes** (`upvoteShare` atomic increment + localStorage
+`provenance-share-upvoted`) and **comments** (`submitComment`/`getComments`).
+
+**Resources** — unchanged (`memorial-church-community-resources`, admin-curated
+or explorer-submitted + moderated; `pending` until approved).
+
+**Legacy forum** — `memorial-church-community-{questions,responses}` +
+`CommunityForumCard.tsx` are retired (new sessions never write forum questions);
+old data stays read-only in the admin Questions tab. See the 2026-06-27 entry in §8.
 
 ### Audio-synced photo highlights
 
