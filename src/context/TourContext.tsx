@@ -9,7 +9,7 @@
  */
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { Tour, Stop, TourSession, TourPhase, BankedQuestion } from '@/lib/types';
+import { Tour, Stop, TourSession, TourPhase, BankedQuestion, ContextQuestionEntry, ActReflectionResponse } from '@/lib/types';
 import { getTour, getActiveStops, getTourMode } from '@/lib/tours-store';
 import { persistTourSession } from '@/lib/tour-sessions-store';
 import { useRoom } from './RoomContext';
@@ -44,6 +44,10 @@ import {
   completeActOpening as completeActOpeningImpl,
   completeActClosing as completeActClosingImpl,
   completeCommunityForum as completeCommunityForumImpl,
+  completeActContext as completeActContextImpl,
+  completeActContextQuestions as completeActContextQuestionsImpl,
+  completeActReflection as completeActReflectionImpl,
+  completeCommunityShare as completeCommunityShareImpl,
   completeStopMap as completeStopMapImpl,
   loadTourSession,
   saveTourSession,
@@ -87,6 +91,10 @@ interface TourContextValue {
   completeActOpening: (response: string) => void;
   completeActClosing: (response: string) => void;
   completeCommunityForum: () => void;
+  completeActContext: () => void;
+  completeActContextQuestions: (asked?: ContextQuestionEntry[]) => void;
+  completeActReflection: (response: ActReflectionResponse) => void;
+  completeCommunityShare: () => void;
   completeResources: () => void;
   completeStopMap: () => void;
   // Unstructured exploration mode
@@ -621,6 +629,27 @@ export function TourProvider({ children }: { children: ReactNode }) {
     logSeedIfEntered(next, tour);
   }, [session, tour, persist, logSeedIfEntered]);
 
+  // End-of-act chain: Context → Context questions → Reflection → Community.
+  const completeActContextFn = useCallback(() => {
+    if (!session || !tour) return;
+    persist(completeActContextImpl(session));
+  }, [session, tour, persist]);
+
+  const completeActContextQuestionsFn = useCallback((asked: ContextQuestionEntry[] = []) => {
+    if (!session || !tour) return;
+    persist(completeActContextQuestionsImpl(session, tour, asked));
+  }, [session, tour, persist]);
+
+  const completeActReflectionFn = useCallback((response: ActReflectionResponse) => {
+    if (!session || !tour) return;
+    persist(completeActReflectionImpl(session, tour, response));
+  }, [session, tour, persist]);
+
+  const completeCommunityShareFn = useCallback(() => {
+    if (!session || !tour) return;
+    persist(completeCommunityShareImpl(session, tour));
+  }, [session, tour, persist]);
+
   const endTour = useCallback(() => {
     setTour(null);
     setSession(null);
@@ -662,6 +691,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeActOpening: completeActOpeningFn,
       completeActClosing: completeActClosingFn,
       completeCommunityForum: completeCommunityForumFn,
+      completeActContext: completeActContextFn,
+      completeActContextQuestions: completeActContextQuestionsFn,
+      completeActReflection: completeActReflectionFn,
+      completeCommunityShare: completeCommunityShareFn,
       completeResources: completeResourcesFn,
       completeStopMap: completeStopMapFn,
       enterUnstructuredStop: enterUnstructuredStopFn,

@@ -24,13 +24,16 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
-import { ForumQuestion, ForumResponse, ForumResource, ForumIdentity, ResourceLink, ModerationStatus } from './types';
+import { ForumQuestion, ForumResponse, ForumResource, ForumIdentity, ResourceLink, ModerationStatus, CommunityShare, CommunityComment } from './types';
 
 const QUESTIONS = 'memorial-church-community-questions';
 const RESPONSES = 'memorial-church-community-responses';
 const RESOURCES = 'memorial-church-community-resources';
+const SHARES = 'memorial-church-community-shares';
+const COMMENTS = 'memorial-church-community-comments';
 const IDENTITY_KEY = 'provenance-forum-identity';
 const LIKED_KEY = 'provenance-forum-liked';
+const UPVOTED_KEY = 'provenance-share-upvoted';
 
 function newId(prefix: string): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
@@ -292,4 +295,159 @@ export async function deleteResource(id: string): Promise<void> {
 /** Admin edit of a resource's content (incl. adding photos / links). */
 export async function updateResource(id: string, patch: Partial<Pick<ForumResource, 'title' | 'description' | 'photos' | 'links'>>): Promise<void> {
   await updateDoc(doc(db, RESOURCES, id), patch);
+}
+
+// ─── Community shares + comments ("Hear from the Community") ──────────
+// The per-act reflection-sharing surface that replaces the old question forum.
+// Shares + comments are created `approved` (they appear immediately); admins
+// can still hide/remove them in /admin/community. Collections:
+//   memorial-church-community-shares, memorial-church-community-comments
+// Both need their own Firestore console rule blocks (allow read, write: if true)
+// or reads/writes fail silently.
+
+/** A share photo. Reuses the resources upload path — harmless, same bucket. */
+export async function uploadSharePhoto(file: File): Promise<string> {
+  const path = `memorial-church/community/shares/${newId('img')}_${file.name}`;
+  const storageRef = ref(storage, path);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+}
+
+// ── Upvotes (per-device, localStorage tracks which were upvoted) ──
+
+export function getUpvotedShareIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(UPVOTED_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+export function saveUpvotedShareIds(ids: Set<string>): void {
+  try { localStorage.setItem(UPVOTED_KEY, JSON.stringify([...ids])); } catch { /* ignore */ }
+}
+
+/** Bump a share's upvote count atomically. `up` true = +1, false = -1. */
+export async function upvoteShare(id: string, up: boolean): Promise<void> {
+  await updateDoc(doc(db, SHARES, id), { upvotes: increment(up ? 1 : -1) });
+}
+
+// ── Submit (explorer) — created `approved` so they appear immediately ──
+
+/** Share an act reflection. Returns the new share id (stored on the session
+ *  so we know not to re-prompt the explorer to share). */
+export async function submitShare(input: {
+  tourId: string;
+  actId: string;
+  text: string;
+  photos: string[];
+  pin?: { lat: number; lng: number; title?: string; note?: string } | null;
+  sessionId: string;
+  name?: string;
+  about?: string;
+}): Promise<string> {
+  const id = newId('cs');
+  const data = cleanUndefined({
+    tourId: input.tourId,
+    actId: input.actId,
+    text: input.text,
+    photos: input.photos,
+    pin: input.pin ? cleanUndefined(input.pin) : null,
+    sessionId: input.sessionId,
+    name: input.name,
+    about: input.about,
+    upvotes: 0,
+    status: 'approved' as ModerationStatus,
+    createdAt: new Date().toISOString(),
+  });
+  await setDoc(doc(db, SHARES, id), data);
+  return id;
+}
+
+export async function submitComment(
+  shareId: string,
+  tourId: string,
+  text: string,
+  sessionId: string,
+  identity?: { name?: string },
+): Promise<void> {
+  const id = newId('cc');
+  const data = cleanUndefined({
+    shareId, tourId, text, sessionId,
+    name: identity?.name,
+    status: 'approved' as ModerationStatus,
+    createdAt: new Date().toISOString(),
+  });
+  await setDoc(doc(db, COMMENTS, id), data);
+}
+
+// ── Read (explorer — approved only) ──
+
+export async function getShares(tourId: string, actId: string): Promise<CommunityShare[]> {
+  try {
+    const snap = await getDocs(query(collection(db, SHARES), where('tourId', '==', tourId), where('actId', '==', actId), where('status', '==', 'approved')));
+    const out: CommunityShare[] = [];
+    snap.forEach((d) => out.push({ id: d.id, ...d.data() } as CommunityShare));
+    // Most upvoted first, then most recent.
+    out.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0) || (b.createdAt || '').localeCompare(a.createdAt || ''));
+    return out;
+  } catch (err) {
+    console.error('[community-store] getShares failed:', err);
+    return [];
+  }
+}
+
+export async function getComments(shareId: string): Promise<CommunityComment[]> {
+  try {
+    const snap = await getDocs(query(collection(db, COMMENTS), where('shareId', '==', shareId), where('status', '==', 'approved')));
+    const out: CommunityComment[] = [];
+    snap.forEach((d) => out.push({ id: d.id, ...d.data() } as CommunityComment));
+    out.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+    return out;
+  } catch (err) {
+    console.error('[community-store] getComments failed:', err);
+    return [];
+  }
+}
+
+// ── Moderation (admin — all statuses) ──
+
+export async function getAllShares(): Promise<CommunityShare[]> {
+  try {
+    const snap = await getDocs(collection(db, SHARES));
+    const out: CommunityShare[] = [];
+    snap.forEach((d) => out.push({ id: d.id, ...d.data() } as CommunityShare));
+    out.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    return out;
+  } catch (err) {
+    console.error('[community-store] getAllShares failed:', err);
+    return [];
+  }
+}
+
+export async function getAllComments(): Promise<CommunityComment[]> {
+  try {
+    const snap = await getDocs(collection(db, COMMENTS));
+    const out: CommunityComment[] = [];
+    snap.forEach((d) => out.push({ id: d.id, ...d.data() } as CommunityComment));
+    out.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+    return out;
+  } catch (err) {
+    console.error('[community-store] getAllComments failed:', err);
+    return [];
+  }
+}
+
+export async function setShareStatus(id: string, status: ModerationStatus): Promise<void> {
+  await updateDoc(doc(db, SHARES, id), { status });
+}
+
+export async function deleteShare(id: string): Promise<void> {
+  await deleteDoc(doc(db, SHARES, id));
+}
+
+export async function deleteComment(id: string): Promise<void> {
+  await deleteDoc(doc(db, COMMENTS, id));
 }

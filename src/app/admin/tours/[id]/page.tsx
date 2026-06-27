@@ -19,7 +19,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-google-maps';
-import { Tour, Stop, Detour, StopPhoto, Act, TourMode } from '@/lib/types';
+import { Tour, Stop, Detour, StopPhoto, Act, ActContext, TourMode } from '@/lib/types';
 import { getTour, saveTour, deleteTour, blankStop, blankDetour, getActiveStops, setActiveStops, duplicateStops, getTourMode, blankAct, blankOpeningFrame } from '@/lib/tours-store';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -318,8 +318,14 @@ export default function TourEditorPage() {
     updateActs(acts.map((a) => (a.id === actId ? { ...a, ...patch } : a)));
   };
 
-  const setActQuestion = (actId: string, kind: 'openingQuestion' | 'closingQuestion', prompt: string) => {
-    updateAct(actId, { [kind]: prompt.trim() ? { prompt } : null } as Partial<Act>);
+  const setActReflection = (actId: string, prompt: string) => {
+    updateAct(actId, { reflectionQuestion: prompt.trim() ? { prompt } : null });
+  };
+
+  const setActContext = (actId: string, patch: Partial<ActContext>) => {
+    const act = (tour?.acts || []).find((a) => a.id === actId);
+    const prev: ActContext = act?.context ?? { question: '', context: '' };
+    updateAct(actId, { context: { ...prev, ...patch } });
   };
 
   const moveAct = (actId: string, direction: -1 | 1) => {
@@ -1772,15 +1778,6 @@ export default function TourEditorPage() {
                       <button onClick={() => removeAct(act.id)} className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200" title="Remove act">&times;</button>
                     </div>
 
-                    {/* Opening question */}
-                    <RichTextarea
-                      label="Opening question (optional — explorer answers by voice or text)"
-                      value={act.openingQuestion?.prompt || ''}
-                      onChange={(v) => setActQuestion(act.id, 'openingQuestion', v)}
-                      rows={2}
-                      placeholder="Asked before this act's first stop. Leave blank to skip."
-                    />
-
                     {/* Stops in this act */}
                     {act.stopIds.length === 0 ? (
                       <p className="text-[11px] text-stone-400 italic border border-dashed border-stone-300 rounded p-3 text-center">
@@ -1815,13 +1812,48 @@ export default function TourEditorPage() {
                       </ul>
                     )}
 
-                    {/* Closing question */}
+                    {/* End-of-act: Context section (read-only framed Q + context) */}
+                    <div className="rounded border border-stone-300 bg-white p-3 space-y-3">
+                      <p className="text-xs font-semibold text-stone-600 uppercase tracking-wide">End of act · Context</p>
+                      <RichTextarea
+                        label="Context question (framed for the explorer — read-only)"
+                        value={act.context?.question || ''}
+                        onChange={(v) => setActContext(act.id, { question: v })}
+                        rows={2}
+                        placeholder="A question to frame the context. Leave the whole Context section blank to skip it."
+                      />
+                      <RichTextarea
+                        label="The context (what you want them to know)"
+                        value={act.context?.context || ''}
+                        onChange={(v) => setActContext(act.id, { context: v })}
+                        rows={4}
+                        placeholder="The background / answer you provide. Supports [photo:N] markers."
+                      />
+                      <AudioUpload
+                        audioUrl={act.context?.audioUrl ?? null}
+                        audioTitle={act.context?.audioTitle ?? null}
+                        onChange={(url) => setActContext(act.id, { audioUrl: url })}
+                        onTitleChange={(title) => setActContext(act.id, { audioTitle: title })}
+                        uploadPath={`memorial-church/audio/tours/${tourId}/act_${act.id}_context`}
+                        onUploadFile={uploadPhoto}
+                        autoplayDisabled={act.context?.audioAutoplayDisabled}
+                        onAutoplayDisabledChange={(v) => setActContext(act.id, { audioAutoplayDisabled: v })}
+                      />
+                      <PhotoListEditor
+                        photos={act.context?.photos || []}
+                        onChange={(photos) => setActContext(act.id, { photos })}
+                        uploadPath={`memorial-church/photos/tours/${tourId}/act_${act.id}_context`}
+                        onUploadPhoto={uploadPhoto}
+                      />
+                    </div>
+
+                    {/* End-of-act: Reflection question ("Share What You Think") */}
                     <RichTextarea
-                      label="Closing question (optional — explorer answers by voice or text)"
-                      value={act.closingQuestion?.prompt || ''}
-                      onChange={(v) => setActQuestion(act.id, 'closingQuestion', v)}
+                      label={'Reflection question — "Share What You Think" (optional)'}
+                      value={act.reflectionQuestion?.prompt ?? act.closingQuestion?.prompt ?? ''}
+                      onChange={(v) => setActReflection(act.id, v)}
                       rows={2}
-                      placeholder="Asked after this act's last stop. Leave blank to skip."
+                      placeholder="Asked after the Context step. The explorer responds (with photos + a map pin) and can share to the community. Leave blank to skip."
                     />
                   </div>
                 );

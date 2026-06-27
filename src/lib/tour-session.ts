@@ -7,7 +7,7 @@
  * a single group visit.
  */
 
-import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act } from './types';
+import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry } from './types';
 import { getActiveStops, getTourMode } from './tours-store';
 
 export type { TourPhase };
@@ -345,6 +345,39 @@ function setActResponse(
   return { ...prev, [actId]: { ...(prev[actId] || {}), [kind]: value } };
 }
 
+/** Merge the "Share What You Think" reflection response into the session map. */
+function setActReflection(
+  map: TourSession['actResponses'],
+  actId: string,
+  value: ActReflectionResponse
+): TourSession['actResponses'] {
+  const prev = map || {};
+  return { ...prev, [actId]: { ...(prev[actId] || {}), reflection: value } };
+}
+
+/** Append a context question (+ answer/status) to the session map. */
+function addContextQuestion(
+  map: TourSession['actResponses'],
+  actId: string,
+  entry: ContextQuestionEntry
+): TourSession['actResponses'] {
+  const prev = map || {};
+  const existing = prev[actId]?.contextQuestions || [];
+  return { ...prev, [actId]: { ...(prev[actId] || {}), contextQuestions: [...existing, entry] } };
+}
+
+/** The reflection prompt for an act — new `reflectionQuestion`, else the legacy
+ *  `closingQuestion` for tours authored before the redesign. */
+export function reflectionPromptOf(act: Act | null): string {
+  return (act?.reflectionQuestion?.prompt ?? act?.closingQuestion?.prompt ?? '').trim();
+}
+
+/** Whether an act has an authored Context section worth showing. */
+export function actHasContext(act: Act | null): boolean {
+  const c = act?.context;
+  return !!(c && (c.question?.trim() || c.context?.trim() || c.audioUrl || (c.photos && c.photos.length > 0)));
+}
+
 /** Generate a fresh TourSession id. Exposed so room flows can mint
  *  an id before creating the session (we hand the same id to the
  *  room doc as the member's sessionId). */
@@ -461,21 +494,14 @@ function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession
     };
   }
 
-  // Last stop in the act — show the act's closing question if authored, then
-  // the act's Community Forum (end-of-act). currentStopIndex stays on the
-  // last stop so the forum can resolve the act.
-  if (act.closingQuestion?.prompt?.trim()) {
-    return {
-      ...session,
-      phaseHistory: pushHistory(session),
-      currentPhase: 'act_closing',
-      completedStops,
-    };
-  }
+  // Last stop in the act — begin the end-of-act chain:
+  //   [act_context] → act_context_questions → [act_reflection] → community_share
+  // currentStopIndex stays on the act's last stop so each step resolves the act.
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: 'community_forum',
+    currentPhase: actHasContext(act) ? 'act_context' : 'act_context_questions',
+    currentRound: 0,
     completedStops,
   };
 }
@@ -709,8 +735,9 @@ export function completeStopMap(session: TourSession): TourSession {
   };
 }
 
-/** Context mode: explorer answers an act's closing question → the act's
- *  Community Forum. */
+/** Context mode (legacy): explorer answers an act's closing question → the
+ *  act's Community Forum. Retained only for in-flight sessions parked on the
+ *  old `act_closing` phase; new sessions use the end-of-act chain below. */
 export function completeActClosing(session: TourSession, tour: Tour, response: string): TourSession {
   const stop = getActiveStops(tour)[session.currentStopIndex];
   const act = stop ? findActOfStop(tour, stop.id) : null;
@@ -723,8 +750,71 @@ export function completeActClosing(session: TourSession, tour: Tour, response: s
   };
 }
 
-/** Context mode: explorer leaves an act's Community Forum → next act / end. */
+/** Context mode (legacy): explorer leaves an act's old Community Forum → next
+ *  act / end. Retained for in-flight sessions on the old `community_forum`. */
 export function completeCommunityForum(session: TourSession, tour: Tour): TourSession {
+  const stop = getActiveStops(tour)[session.currentStopIndex];
+  const act = stop ? findActOfStop(tour, stop.id) : null;
+  return advanceToNextActOrClosing(session, tour, act);
+}
+
+// ── End-of-act chain (new): act_context → act_context_questions →
+//    act_reflection → community_share → next act. Each step's completer routes
+//    to the next applicable phase, skipping unauthored ones. ──────────────
+
+/** Context mode: explorer read the act's Context section → context questions. */
+export function completeActContext(session: TourSession): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'act_context_questions',
+    currentRound: 0,
+  };
+}
+
+/** Context mode: explorer is done asking context questions → reflection (if
+ *  the act has a reflection prompt) else straight to the community. `asked` is
+ *  the list of questions raised this step (merged into actResponses for the
+ *  backup + logging). */
+export function completeActContextQuestions(
+  session: TourSession,
+  tour: Tour,
+  asked: ContextQuestionEntry[] = []
+): TourSession {
+  const stop = getActiveStops(tour)[session.currentStopIndex];
+  const act = stop ? findActOfStop(tour, stop.id) : null;
+  let actResponses = session.actResponses;
+  if (act) for (const entry of asked) actResponses = addContextQuestion(actResponses, act.id, entry);
+  const hasReflection = reflectionPromptOf(act).length > 0;
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: hasReflection ? 'act_reflection' : 'community_share',
+    currentRound: 0,
+    actResponses,
+  };
+}
+
+/** Context mode: explorer submitted their "Share What You Think" reflection →
+ *  the community ("Hear from the Community"). */
+export function completeActReflection(
+  session: TourSession,
+  tour: Tour,
+  response: ActReflectionResponse
+): TourSession {
+  const stop = getActiveStops(tour)[session.currentStopIndex];
+  const act = stop ? findActOfStop(tour, stop.id) : null;
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'community_share',
+    currentRound: 0,
+    actResponses: act ? setActReflection(session.actResponses, act.id, response) : session.actResponses,
+  };
+}
+
+/** Context mode: explorer leaves "Hear from the Community" → next act / end. */
+export function completeCommunityShare(session: TourSession, tour: Tour): TourSession {
   const stop = getActiveStops(tour)[session.currentStopIndex];
   const act = stop ? findActOfStop(tour, stop.id) : null;
   return advanceToNextActOrClosing(session, tour, act);

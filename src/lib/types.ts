@@ -208,14 +208,49 @@ export interface ActQuestion {
   prompt: string;
 }
 
+/** A read-only "Context" section shown at the end of an Act (no map pin):
+ *  an admin-framed question plus the context/answer the admin provides. The
+ *  explorer reads it, then is prompted for their own context questions. */
+export interface ActContext {
+  question: string;                  // The framed question (read-only)
+  context: string;                   // The context / answer the admin provides
+  photos?: StopPhoto[];              // Optional supporting photos ([photo:N] inline)
+  audioUrl?: string | null;
+  audioTitle?: string | null;
+  audioAutoplayDisabled?: boolean;
+}
+
 /** A group of stops in Context-Prototype mode. Stops play sequentially in
  *  `stopIds` order; acts play in array order. */
 export interface Act {
   id: string;
   title: string;
   stopIds: string[];                 // Ordered stop IDs into `Tour.contextStops`
-  openingQuestion: ActQuestion | null;
-  closingQuestion: ActQuestion | null;
+  openingQuestion: ActQuestion | null;  // Legacy — act_opening was retired
+  closingQuestion: ActQuestion | null;  // Legacy — reflectionQuestion falls back to this
+  /** End-of-act read-only Context section (framed question + provided context). */
+  context?: ActContext | null;
+  /** "Share What You Think" reflection prompt shown after the Context step.
+   *  Falls back to `closingQuestion.prompt` for legacy tours. */
+  reflectionQuestion?: ActQuestion | null;
+}
+
+/** The explorer's reflection ("Share What You Think") response for an act —
+ *  text plus optional photos and a single labelled map pin ("their own stop"),
+ *  and whether they shared it to the community. */
+export interface ActReflectionResponse {
+  text: string;
+  photos?: string[];                 // Uploaded photo URLs
+  pin?: { lat: number; lng: number; title?: string; note?: string } | null;
+  sharedToCommunity?: boolean;
+  shareId?: string;                  // CommunityShare doc id if shared
+}
+
+/** One context question the explorer asked (and the AI's answer, once wired). */
+export interface ContextQuestionEntry {
+  question: string;
+  answer?: string | null;            // null while AI is stubbed / not found
+  status: 'answered' | 'banked';
 }
 
 export interface Tour {
@@ -594,7 +629,7 @@ export interface WebNode {
   y: number;
 }
 
-export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'act_intro' | 'act_opening' | 'act_closing' | 'act_questions' | 'stop_map' | 'community_forum' | 'resources';
+export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'act_intro' | 'act_opening' | 'act_closing' | 'act_questions' | 'stop_map' | 'community_forum' | 'resources' | 'act_context' | 'act_context_questions' | 'act_reflection' | 'community_share';
 
 export interface TourSession {
   id: string;
@@ -627,8 +662,15 @@ export interface TourSession {
      *  parallel to that array. */
     additionalClosingResponses?: string[];
   } | null;
-  /** Context-Prototype Act question responses, keyed by act id. */
-  actResponses?: Record<string, { opening?: string; closing?: string }>;
+  /** Context-Prototype per-act responses, keyed by act id. `opening`/`closing`
+   *  are legacy act-question answers; `reflection` is the "Share What You Think"
+   *  response; `contextQuestions` are the questions the explorer asked. */
+  actResponses?: Record<string, {
+    opening?: string;
+    closing?: string;
+    reflection?: ActReflectionResponse;
+    contextQuestions?: ContextQuestionEntry[];
+  }>;
   startedAt: string;
   completedAt: string | null;
 }
@@ -693,6 +735,40 @@ export interface ForumResponse {
 export interface ForumIdentity {
   name: string;
   about: string;
+}
+
+// ─── Community shares (Context-Prototype "Hear from the Community") ───
+// Replaces the per-act question forum. At the end of each act, explorers can
+// share their "Share What You Think" reflection (text + photos + a labelled map
+// pin) and others upvote / comment. Shares + comments appear immediately
+// (created `approved`); admins can still remove them in /admin/community.
+
+/** An explorer's shared reflection for an act. */
+export interface CommunityShare {
+  id: string;
+  tourId: string;
+  actId: string;
+  text: string;
+  photos: string[];
+  pin?: { lat: number; lng: number; title?: string; note?: string } | null;
+  sessionId: string;
+  name?: string;
+  about?: string;
+  upvotes?: number;          // per-device toggle in the explorer view
+  status: ModerationStatus;  // created `approved` (immediate); admin can hide
+  createdAt: string;
+}
+
+/** A comment on a shared reflection. */
+export interface CommunityComment {
+  id: string;
+  shareId: string;
+  tourId: string;
+  text: string;
+  sessionId: string;
+  name?: string;
+  status: ModerationStatus;  // created `approved` (immediate)
+  createdAt: string;
 }
 
 export interface ResourceLink {

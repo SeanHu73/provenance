@@ -10,7 +10,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ForumQuestion, ForumResponse, ForumResource, ResourceLink, Tour } from '@/lib/types';
+import { ForumQuestion, ForumResponse, ForumResource, ResourceLink, Tour, CommunityShare, CommunityComment } from '@/lib/types';
 import {
   getAllQuestions,
   getAllResponses,
@@ -24,11 +24,16 @@ import {
   deleteResource,
   updateResource,
   uploadCommunityPhoto,
+  getAllShares,
+  getAllComments,
+  setShareStatus,
+  deleteShare,
+  deleteComment,
 } from '@/lib/community-store';
 import { getTours } from '@/lib/tours-store';
 
 export default function CommunityModerationPage() {
-  const [tab, setTab] = useState<'questions' | 'resources'>('questions');
+  const [tab, setTab] = useState<'shares' | 'questions' | 'resources'>('shares');
   const [questions, setQuestions] = useState<ForumQuestion[]>([]);
   const [responses, setResponses] = useState<ForumResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,8 +108,8 @@ export default function CommunityModerationPage() {
       <div className="max-w-3xl mx-auto">
         <header className="mb-6 border-b border-stone-300 pb-3 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Community Forum</h1>
-            <p className="text-xs text-stone-500 mt-0.5">Moderate explorer questions &amp; responses.</p>
+            <h1 className="text-2xl font-bold">Community</h1>
+            <p className="text-xs text-stone-500 mt-0.5">Shared reflections, suggested resources, and legacy forum questions.</p>
           </div>
           <div className="flex gap-3 text-sm items-center">
             <button onClick={reload} className="text-blue-700 hover:underline">Refresh</button>
@@ -113,7 +118,7 @@ export default function CommunityModerationPage() {
         </header>
 
         <div className="flex gap-2 mb-5">
-          {(['questions', 'resources'] as const).map((t) => (
+          {(['shares', 'questions', 'resources'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -124,7 +129,9 @@ export default function CommunityModerationPage() {
           ))}
         </div>
 
-        {tab === 'resources' ? (
+        {tab === 'shares' ? (
+          <SharesSection />
+        ) : tab === 'resources' ? (
           <ResourcesSection />
         ) : loading ? (
           <p className="text-stone-600 text-sm">Loading…</p>
@@ -156,6 +163,79 @@ export default function CommunityModerationPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Shares ("Hear from the Community") ─────────────────────────────
+
+function SharesSection() {
+  const [shares, setShares] = useState<CommunityShare[]>([]);
+  const [comments, setComments] = useState<CommunityComment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(async () => {
+    const [ss, cs] = await Promise.all([getAllShares(), getAllComments()]);
+    setShares(ss);
+    setComments(cs);
+    setLoading(false);
+  }, []);
+  useEffect(() => { reload(); }, [reload]);
+
+  const removeShare = async (id: string) => { if (confirm('Remove this shared reflection and its comments?')) { await deleteShare(id); reload(); } };
+  const hideShare = async (id: string, hidden: boolean) => { await setShareStatus(id, hidden ? 'pending' : 'approved'); reload(); };
+  const removeComment = async (id: string) => { if (confirm('Remove this comment?')) { await deleteComment(id); reload(); } };
+
+  if (loading) return <p className="text-stone-600 text-sm">Loading…</p>;
+  if (shares.length === 0) return <p className="text-stone-500 text-sm italic">No reflections shared yet.</p>;
+
+  return (
+    <div className="space-y-3">
+      {shares.map((s) => {
+        const sComments = comments.filter((c) => c.shareId === s.id);
+        const hidden = s.status !== 'approved';
+        return (
+          <div key={s.id} className={`border rounded bg-white p-4 space-y-2 ${hidden ? 'border-amber-300 opacity-70' : 'border-stone-300'}`}>
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                {s.name && <p className="text-xs font-semibold text-stone-700">{s.name}</p>}
+                <p className="text-sm text-stone-900">{s.text}</p>
+                <p className="text-[10px] text-stone-400 mt-1 font-mono">
+                  {s.status} · ▲ {s.upvotes || 0} · {s.photos?.length || 0} photo(s){s.pin ? ' · 📍 pin' : ''} · {new Date(s.createdAt).toLocaleString()} · tour {s.tourId.slice(0, 8)}
+                </p>
+              </div>
+              <div className="flex gap-1.5 shrink-0">
+                <button onClick={() => hideShare(s.id, !hidden)} className="px-2 py-1 text-xs rounded bg-stone-200 text-stone-700 hover:bg-stone-300">{hidden ? 'Unhide' : 'Hide'}</button>
+                <button onClick={() => removeShare(s.id)} className="px-2 py-1 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200">Remove</button>
+              </div>
+            </div>
+
+            {s.photos && s.photos.length > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                {s.photos.map((url, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={url} alt="" className="w-16 h-16 object-cover rounded border border-stone-200" />
+                ))}
+              </div>
+            )}
+
+            {s.pin && (
+              <p className="text-xs text-stone-600">📍 <span className="font-semibold">{s.pin.title || 'Their spot'}</span>{s.pin.note ? ` — ${s.pin.note}` : ''}</p>
+            )}
+
+            {sComments.length > 0 && (
+              <div className="pl-3 border-l-2 border-stone-200 space-y-1.5">
+                {sComments.map((c) => (
+                  <div key={c.id} className="flex items-start gap-3">
+                    <p className="flex-1 text-xs text-stone-700">{c.name ? <span className="font-semibold">{c.name}: </span> : null}{c.text}</p>
+                    <button onClick={() => removeComment(c.id)} className="px-2 py-0.5 text-[11px] rounded bg-red-100 text-red-700 hover:bg-red-200 shrink-0">Remove</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
