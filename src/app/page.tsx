@@ -7,7 +7,7 @@ import { Tour, Stop } from '@/lib/types';
 import { TourProvider, useTour } from '@/context/TourContext';
 import { getActiveGroupId, getNextStopInGroup, getStopsInGroup } from '@/lib/tour-session';
 import type { TourPinData, TourStopMarkerData } from '@/components/Map';
-import JournalPeek from '@/components/tour/JournalPeek';
+import TourOverview from '@/components/tour/TourOverview';
 import Journal from '@/components/tour/Journal';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import ProgressBar from '@/components/tour/ProgressBar';
@@ -369,9 +369,11 @@ function HomeInner() {
         </div>
       )}
 
-      {/* Tour journal peek — before tour starts */}
+      {/* Tour overview — full-screen "table of contents" landing page shown
+          when a pin is tapped, before the tour starts. Replaces the old
+          bottom-sheet JournalPeek. */}
       {peekTour && !isActive && (
-        <JournalPeek
+        <TourOverview
           tour={peekTour}
           onBegin={handleBeginTour}
           onDismiss={() => setPeekTour(null)}
