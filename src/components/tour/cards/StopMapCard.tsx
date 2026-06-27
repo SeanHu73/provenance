@@ -11,10 +11,21 @@
 
 import { useState, useEffect } from 'react';
 import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-google-maps';
-import { Tour, TourSession } from '@/lib/types';
+import { Tour, TourSession, Stop } from '@/lib/types';
 import { getActiveStops } from '@/lib/tours-store';
 import { getContextOrderedStops } from '@/lib/tour-session';
 import SpotlightOverlay from './SpotlightOverlay';
+
+/** Establishing photo for the confirm card — seed first, then notice. */
+function pickStopThumb(stop: Stop): { url: string; focal?: { x: number; y: number } } | null {
+  const seed = (stop.seed.photos || []).find((p) => p.url);
+  if (seed) return { url: seed.url, focal: seed.thumbnailFocalPoint ?? seed.focalPoint };
+  const notice = (stop.notice.photos || []).find((p) => p.url);
+  if (notice) return { url: notice.url, focal: notice.thumbnailFocalPoint ?? notice.focalPoint };
+  if (stop.seed.photoUrl) return { url: stop.seed.photoUrl };
+  if (stop.notice.photoUrl) return { url: stop.notice.photoUrl };
+  return null;
+}
 
 const FALLBACK_LOCATION = { lat: 37.42700, lng: -122.17015 };
 const MAP_ID = 'b8f339c02d8c7d5bd3f12d1b';
@@ -35,8 +46,15 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const base = tour.location ?? FALLBACK_LOCATION;
   const ordered = getContextOrderedStops(tour);
-  const targetId = getActiveStops(tour)[session.currentStopIndex]?.id;
+  const targetStop = getActiveStops(tour)[session.currentStopIndex] ?? null;
+  const targetId = targetStop?.id;
   const completed = new Set(session.completedStops);
+
+  // Tapping the target pin opens a small confirm card (thumbnail + title)
+  // so the group can be sure they're at the right spot before the stop opens.
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const targetThumb = targetStop ? pickStopThumb(targetStop) : null;
+  const targetNumber = ordered.findIndex((s) => s.id === targetId) + 1;
 
   // Only the very first stop's map plays the spotlight intro, and only once.
   const isFirstStop = !!targetId && targetId === ordered[0]?.id;
@@ -88,7 +106,7 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
                 key={pin.id}
                 position={pin.pos}
                 zIndex={pin.state === 'target' ? 30 : pin.state === 'completed' ? 20 : 10}
-                onClick={pin.state === 'target' ? onContinue : undefined}
+                onClick={pin.state === 'target' ? () => setConfirmOpen(true) : undefined}
               >
                 <NumberedPin number={pin.number} state={pin.state} />
               </AdvancedMarker>
@@ -103,13 +121,71 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
 
       {/* First-appearance spotlight: darken the screen for 2.5s with a hole
           cut around the target pin and the walking instruction above it. */}
-      {showIntro && (
+      {showIntro && !confirmOpen && (
         <SpotlightOverlay
           targetSelector="[data-stop-map-target]"
           message="Walk to your next stop. Tap pin when you are there."
           dimOpacity={0.62}
           padding={18}
         />
+      )}
+
+      {/* Confirm card — a small thumbnail + title shown after the target pin
+          is tapped, so the group confirms they're at the right spot before
+          the stop opens. */}
+      {confirmOpen && targetStop && (
+        <div className="absolute inset-0 z-30 flex flex-col justify-end animate-fade-in">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmOpen(false)} />
+          <div
+            className="relative m-4 rounded-2xl shadow-xl overflow-hidden animate-slide-up"
+            style={{ backgroundColor: 'var(--th-surface)' }}
+          >
+            <div className="flex items-center gap-3 p-4">
+              {/* Small thumbnail */}
+              <div
+                className="shrink-0 w-20 h-20 rounded-xl overflow-hidden"
+                style={{ backgroundColor: 'var(--th-bg)' }}
+              >
+                {targetThumb && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={targetThumb.url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    style={targetThumb.focal ? { objectPosition: `${targetThumb.focal.x}% ${targetThumb.focal.y}%` } : undefined}
+                  />
+                )}
+              </div>
+              <div className="min-w-0">
+                {targetNumber > 0 && (
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--th-primary)' }}>
+                    Stop {targetNumber}
+                  </p>
+                )}
+                <h3 className="text-xl leading-tight font-display font-bold" style={{ color: 'var(--text-primary)' }}>
+                  {targetStop.title || `Stop ${targetNumber}`}
+                </h3>
+              </div>
+            </div>
+
+            <div className="px-4 pb-4 space-y-2">
+              <button
+                onClick={onContinue}
+                className="w-full py-3 rounded-full text-[15px] font-semibold"
+                style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}
+              >
+                I&apos;m here — explore this stop
+              </button>
+              <button
+                onClick={() => setConfirmOpen(false)}
+                className="w-full text-center text-sm py-1"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Not yet
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
