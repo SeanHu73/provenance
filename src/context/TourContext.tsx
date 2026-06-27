@@ -592,7 +592,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const completeActIntroFn = useCallback(() => {
     if (!session || !tour) return;
-    persist(completeActIntroImpl(session, tour));
+    persist(completeActIntroImpl(session));
   }, [session, tour, persist]);
 
   const completeCommunityForumFn = useCallback(() => {

@@ -671,16 +671,17 @@ export function completeOpeningFrame(session: TourSession, tour: Tour): TourSess
 }
 
 /** Context mode: the "Act N: Title" splash finished (auto after a hold, or
- *  tapped). Route to the act's opening question if authored, else the first
- *  stop's map. currentStopIndex is already on the act's first stop. */
-export function completeActIntro(session: TourSession, tour: Tour): TourSession {
-  const stop = getActiveStops(tour)[session.currentStopIndex];
-  const act = stop ? findActOfStop(tour, stop.id) : null;
-  const hasOpening = !!act?.openingQuestion?.prompt?.trim();
+ *  tapped). Routes straight to the first stop's map — the act opening
+ *  question ("Share what you think") was removed to keep the start of the
+ *  tour simple, dropping learners directly onto the map with tappable pins.
+ *  (The `act_opening` phase + completeActOpening are retained for in-flight
+ *  sessions; new sessions never route there.) currentStopIndex is already on
+ *  the act's first stop. */
+export function completeActIntro(session: TourSession): TourSession {
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: hasOpening ? 'act_opening' : 'stop_map',
+    currentPhase: 'stop_map',
     currentRound: 0,
   };
 }
