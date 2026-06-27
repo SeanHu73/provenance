@@ -1,24 +1,21 @@
 'use client';
 
 /**
- * Combined Background + Look Around card.
+ * Combined FIND page (formerly "Background + Look Around").
  *
- * When the stop has notice content (prompt / audio / indoor map / photos),
- * Background and Look Around are split into two `scroll-snap` sections —
- * each `min-h-screen`, the second one starting hidden and revealing with
- * a short haptic + fade after the IntersectionObserver detects it
- * entering the viewport. When the stop has no notice content the card
- * falls back to a single non-snap layout with the Continue button at the
- * bottom (no point forcing a snap with only one section).
+ * One scrolling page labelled FIND: the find instructions (notice prompt +
+ * photo) sit at the top, with the Background reading below. No snap-scroll —
+ * it's a single continuous scroll; the Journal's "Keep scrolling" indicator
+ * cues that there's more below. When the stop has no notice content the page
+ * falls back to a Background-only ("LEARN") layout.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Stop } from '@/lib/types';
 import PhotoContent from './PhotoContent';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import NoticeMapDisplay from './NoticeMapDisplay';
-import SnapScrollHint from './SnapScrollHint';
 import ActionTitle, { SectionSubtitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { usePhotoCues } from '../usePhotoCues';
@@ -26,13 +23,10 @@ import { usePhotoCues } from '../usePhotoCues';
 interface Props {
   stop: Stop;
   onContinue: () => void;
-  /** Optional handler for the "find me on the map" button on the
-   *  Look Around section. Visible only when the stop has a location. */
+  /** Optional handler for the "find me on the map" button. Visible only
+   *  when the stop has a location. */
   onPeekMap?: () => void;
 }
-
-const REVEAL_DELAY_MS = 400;
-const REVEAL_TRANSITION_MS = 400;
 
 export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   const [autoplayPref] = useAudioAutoplay();
@@ -41,7 +35,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   // suppress notice autoplay so the two streams don't play in parallel.
   const noticeAutoplay = autoplayPref && !stop.notice.audioAutoplayDisabled && !stop.seed.audioUrl;
 
-  // Audio-synced photo highlights for the Background (seed) and Look Around
+  // Audio-synced photo highlights for the Background (seed) and Find
   // (notice) narrations.
   const seedCues = usePhotoCues(stop.seed.photoCues, stop.seed.photos || [], stop.seed.photoCuesHoldLast);
   const noticeCues = usePhotoCues(stop.notice.photoCues, stop.notice.photos || [], stop.notice.photoCuesHoldLast);
@@ -76,64 +70,9 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   const circumference = 2 * Math.PI * radius;
   const progress = timerDone || !totalTimer ? 0 : ((secondsLeft ?? 0) / totalTimer) * circumference;
 
-  // Reveal state for the Look Around section — fires haptic + fade in
-  // when the section first scrolls into view.
-  const noticeRef = useRef<HTMLElement | null>(null);
-  const [noticeRevealed, setNoticeRevealed] = useState(false);
-
-  useEffect(() => {
-    if (!hasNoticeSection || noticeRevealed) return;
-    const el = noticeRef.current;
-    if (!el) return;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-              navigator.vibrate(10);
-            }
-            timeoutId = setTimeout(() => setNoticeRevealed(true), REVEAL_DELAY_MS);
-            obs.disconnect();
-            return;
-          }
-        }
-      },
-      { threshold: 0.1 },
-    );
-    obs.observe(el);
-    return () => {
-      obs.disconnect();
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [hasNoticeSection, noticeRevealed]);
-
-  // Background block (shared across snap and non-snap layouts)
-  const backgroundBlock = (
+  // Find instructions (notice prompt + photo) — sits at the TOP of the page.
+  const findInstructions = (
     <>
-      <ActionTitle action="LEARN" />
-      {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedAutoplay} onTimeUpdate={seedCues.onTimeUpdate} onEnded={seedCues.onEnded} />}
-      {stop.seed.text ? (
-        <div>
-          <SectionSubtitle className="mb-2">Background</SectionSubtitle>
-          <PhotoContent
-            text={stop.seed.text}
-            photos={stop.seed.photos || []}
-            legacyPhotoUrl={stop.seed.photoUrl}
-            legacyPhotoCaption={stop.seed.photoCaption}
-            highlightedUrl={seedCues.highlightedUrl}
-          />
-        </div>
-      ) : !stop.seed.audioUrl && (
-        <p className="text-base text-text-secondary italic">Take a moment to look around this spot.</p>
-      )}
-    </>
-  );
-
-  // Look Around block (only when hasNoticeSection)
-  const lookAroundBlock = (
-    <>
-      <ActionTitle action="FIND" />
       {onPeekMap && stop.location && (
         <div>
           <button
@@ -172,7 +111,28 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
     </>
   );
 
-  // Timer + continue/back row (always present)
+  // Background reading — sits BELOW the find instructions.
+  const backgroundContent = (
+    <>
+      {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedAutoplay} onTimeUpdate={seedCues.onTimeUpdate} onEnded={seedCues.onEnded} />}
+      {stop.seed.text ? (
+        <div>
+          <SectionSubtitle className="mb-2">Background</SectionSubtitle>
+          <PhotoContent
+            text={stop.seed.text}
+            photos={stop.seed.photos || []}
+            legacyPhotoUrl={stop.seed.photoUrl}
+            legacyPhotoCaption={stop.seed.photoCaption}
+            highlightedUrl={seedCues.highlightedUrl}
+          />
+        </div>
+      ) : !stop.seed.audioUrl && (
+        <p className="text-base text-text-secondary italic">Take a moment to look around this spot.</p>
+      )}
+    </>
+  );
+
+  // Timer + continue/back row (always at the bottom)
   const footerBlock = (
     <>
       {timerActive && (
@@ -211,59 +171,32 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
     </>
   );
 
-  // Single-section fallback when there's no notice content — keeps the
-  // original centred layout, no snap.
+  // Background-only fallback when there's nothing to "find" — no FIND label.
   if (!hasNoticeSection) {
     return (
       <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
-        {backgroundBlock}
+        <ActionTitle action="LEARN" />
+        {backgroundContent}
         {footerBlock}
       </div>
     );
   }
 
-  // Two-section snap layout. SeedCard's outer is the actual scroll
-  // container, sized exactly to the parent card frame via absolute
-  // positioning — so each `h-full` section is exactly the height of the
-  // visible card area (no overshoot like min-h-screen produced) and a
-  // snap lands the next section's top at the viewport top with content
-  // centred in it.
+  // Merged FIND page: find instructions + photo on top, Background below.
+  // Single continuous scroll (no snap) — the Journal's "Keep scrolling"
+  // indicator cues that there's more below.
   return (
-    <div
-      className="animate-fade-in absolute inset-0 overflow-y-auto"
-      style={{ scrollSnapType: 'y mandatory' }}
-    >
-      {/* `min-h-full` (not `h-full`) lets each section grow when content
-          overflows the visible area; otherwise centred content would be
-          pushed above the viewport top and snap would yank the user
-          back. With min-h-full, short content sits centred in the
-          visible area, and long content fills + grows the section so
-          the top edge of the text lands at the top of the viewport
-          after the snap. Side padding restores the visual margin we
-          lost when SeedCard's outer started overlapping the card
-          frame's padding box. */}
-      <section
-        className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
-        style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
-      >
-        {backgroundBlock}
-        <SnapScrollHint />
-      </section>
+    <div className="animate-fade-in space-y-6">
+      <div className="space-y-5">
+        <ActionTitle action="FIND" />
+        {findInstructions}
+      </div>
 
-      <section
-        ref={noticeRef}
-        className="min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
-        style={{
-          scrollSnapAlign: 'start',
-          scrollSnapStop: 'always',
-          opacity: noticeRevealed ? 1 : 0,
-          transform: noticeRevealed ? 'translateY(0)' : 'translateY(20px)',
-          transition: `opacity ${REVEAL_TRANSITION_MS}ms ease-out, transform ${REVEAL_TRANSITION_MS}ms ease-out`,
-        }}
-      >
-        {lookAroundBlock}
-        {footerBlock}
-      </section>
+      <div className="space-y-5 pt-2">
+        {backgroundContent}
+      </div>
+
+      {footerBlock}
     </div>
   );
 }
