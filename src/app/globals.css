@@ -198,12 +198,17 @@ body {
   scroll-snap-type: y mandatory;            /* an ACTUAL snap, not proximity */
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  background-color: var(--th-bg);
-  /* very subtle dot-grid wash — texture without the comic heaviness */
-  background-image: radial-gradient(rgba(126, 83, 32, 0.08) 1px, transparent 1.4px);
-  background-size: 11px 11px;
   color: var(--th-text);
   transition: opacity 0.5s ease;
+  /* Warm canvas: a soft light from above + a fine paper grain (SVG noise),
+     both fixed so the texture sits still like a sheet behind the type. */
+  background-color: var(--th-bg);
+  background-image:
+    radial-gradient(150% 115% at 50% -8%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 58%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, repeat;
+  background-size: 100% 100%, 200px 200px;
+  background-attachment: fixed, fixed;
 }
 .onb-screen::-webkit-scrollbar { display: none; }
 .onb-screen.onb-leaving { opacity: 0; }
@@ -219,39 +224,51 @@ body {
   scroll-snap-align: start;
   scroll-snap-stop: always;
   display: flex; flex-direction: column; justify-content: center;
-  padding: 54px 26px;
+  padding: 64px 30px;
   position: relative;
 }
+/* Layout variation so the flow doesn't read flat: shift where the text sits. */
+.onb-panel.onb-bottom { justify-content: flex-end; padding-bottom: 13vh; }
+.onb-panel.onb-top    { justify-content: flex-start; padding-top: 15vh; }
+.onb-panel.onb-cx     { align-items: center; text-align: center; }
+.onb-panel.onb-rt     { align-items: flex-end; text-align: right; }
+.onb-panel.onb-rt .onb-lead { margin-left: auto; }
+.onb-measure { max-width: 20ch; }   /* keep big lines from running edge-to-edge */
+
 .onb-num {
-  position: absolute; top: 22px; left: 26px;
+  position: absolute; top: 24px; left: 30px;
   font-family: var(--font-montserrat, 'Montserrat'), sans-serif;
-  font-weight: 700; font-size: 11px; letter-spacing: 2px;
-  color: var(--th-text); opacity: 0.28;
+  font-weight: 700; font-size: 12px; letter-spacing: 2px;
+  color: var(--th-primary); opacity: 0.32;
 }
+/* a short editorial accent rule */
+.onb-rule { width: 64px; height: 3px; background: var(--th-secondary); border: 0; }
+.onb-panel.onb-rt .onb-rule { margin-left: auto; }
+.onb-panel.onb-cx .onb-rule { margin-left: auto; margin-right: auto; }
 
 /* reveal-on-scroll: children with .onb-r animate in when the panel is .onb-in */
 .onb-r {
-  opacity: 0; transform: translateY(22px);
+  opacity: 0; transform: translateY(24px);
   transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
   transition-delay: var(--d, 0s);
 }
 .onb-panel.onb-in .onb-r { opacity: 1; transform: translateY(0); }
 
-/* typography */
+/* typography — bigger, more editorial */
 .onb-title {
   font-family: var(--th-font-display, 'DM Serif Display'), serif;
-  font-weight: 700; line-height: 1.02; letter-spacing: -0.5px;
-  font-size: clamp(40px, 12vw, 60px); color: var(--th-primary);
+  font-weight: 700; line-height: 1.0; letter-spacing: -0.5px;
+  font-size: clamp(52px, 16vw, 82px); color: var(--th-primary);
 }
 .onb-lead {
   font-family: var(--th-font-body, 'Newsreader'), serif;
-  font-size: clamp(20px, 5.6vw, 24px); line-height: 1.5; color: var(--th-text);
+  font-size: clamp(25px, 7vw, 33px); line-height: 1.42; color: var(--th-text);
 }
-.onb-lead + .onb-lead { margin-top: 16px; }
+.onb-lead + .onb-lead { margin-top: 18px; }
 .onb-q {
   font-family: var(--th-font-display, 'DM Serif Display'), serif;
-  font-weight: 700; line-height: 1.1;
-  font-size: clamp(30px, 8vw, 44px); color: var(--th-text);
+  font-weight: 700; line-height: 1.08;
+  font-size: clamp(38px, 11vw, 58px); color: var(--th-text);
 }
 
 /* the CONTEXT chip — its first introduction should pop */
@@ -259,9 +276,9 @@ body {
   display: inline-block;
   font-family: var(--th-font-display, 'DM Serif Display'), serif; font-weight: 700;
   color: var(--th-surface); background: var(--th-primary);
-  padding: 4px 18px; border-radius: 8px;
-  transform: rotate(-1.5deg);
-  box-shadow: 3px 3px 0 var(--th-accent-dark);
+  padding: 6px 22px; border-radius: 10px;
+  transform: rotate(-1.8deg);
+  box-shadow: 4px 4px 0 var(--th-accent-dark);
 }
 
 /* colour-coded emphasis */
@@ -279,7 +296,7 @@ body {
 .onb-scrollhint {
   position: absolute; bottom: 28px; left: 0; right: 0; text-align: center;
   font-family: var(--th-font-body, 'Newsreader'), serif; font-style: italic;
-  font-size: 15px; color: var(--th-text); opacity: 0.5;
+  font-size: 16px; color: var(--th-text); opacity: 0.5;
   animation: onbBob 1.7s ease-in-out infinite; pointer-events: none;
 }
 @keyframes onbBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
@@ -302,63 +319,69 @@ body {
 /* Default visible (robust); the pop plays once the panel scrolls into view. */
 .onb-panel.onb-in .onb-logo-pop { animation: onbPop 0.7s cubic-bezier(0.22, 1.6, 0.36, 1) 0.2s both; }
 
-/* P.A.S.T. drag-to-reveal framework */
-.onb-pf { position: relative; margin-top: 8px; }
+/* ── P.A.S.T. swipe-to-reveal framework ──
+   Each lens shows its word (with an enlarged first letter) + descriptor; the
+   coloured "cover" is dragged LEFT from the right-edge handle to slide it away
+   and reveal the example question underneath. */
+.onb-pf { display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
 .onb-pf-lens {
-  border-radius: 12px; background: var(--th-surface);
-  border: 2px solid rgba(62, 22, 32, 0.16); box-shadow: 3px 3px 0 rgba(62, 22, 32, 0.12);
-  padding: 12px 14px; margin-bottom: 10px; overflow: hidden;
+  --c: var(--th-primary);
+  border-radius: 14px; background: var(--th-surface);
+  border: 2px solid rgba(62, 22, 32, 0.14); box-shadow: 4px 4px 0 rgba(62, 22, 32, 0.10);
+  padding: 14px 16px;
 }
-.onb-pf-lens .onb-pf-head { display: flex; align-items: baseline; gap: 10px; }
-.onb-pf-lens .onb-pf-letter {
-  font-family: var(--font-montserrat, 'Montserrat'), sans-serif; font-weight: 800;
-  font-size: 30px; line-height: 1;
-}
-.onb-pf-lens .onb-pf-word {
-  font-family: var(--th-font-display, 'DM Serif Display'), serif; font-weight: 700;
-  font-size: 24px; line-height: 1;
-}
-.onb-pf-lens .onb-pf-sub {
-  font-family: var(--th-font-body, 'Newsreader'), serif; font-size: 14px;
-  color: var(--th-text); opacity: 0.75; margin-top: 4px;
-}
-/* the revealed example questions slide open */
-.onb-pf-lens .onb-pf-q {
-  font-family: var(--th-font-body, 'Newsreader'), serif; font-style: italic;
-  font-size: 16px; line-height: 1.35; color: var(--th-text);
-  max-height: 0; opacity: 0; margin-top: 0; overflow: hidden;
-  transition: max-height 0.4s ease, opacity 0.35s ease, margin-top 0.3s ease;
-}
-.onb-pf-lens.onb-open .onb-pf-q { max-height: 120px; opacity: 1; margin-top: 8px; }
-/* lens accent colours */
 .onb-pf-place    { --c: var(--onb-place); }
 .onb-pf-attitude { --c: var(--th-secondary); }
 .onb-pf-society  { --c: var(--th-primary); }
 .onb-pf-tech     { --c: var(--onb-time); }
-.onb-pf-lens .onb-pf-letter, .onb-pf-lens .onb-pf-word { color: var(--c); }
-.onb-pf-lens.onb-open { border-color: var(--c); box-shadow: 3px 3px 0 var(--c); }
-/* drag handle */
-.onb-pf-track {
-  position: relative; height: 46px; margin: 6px 0 2px; user-select: none; touch-action: none;
+.onb-pf-word {
+  font-family: var(--th-font-display, 'DM Serif Display'), serif; font-weight: 700;
+  font-size: 24px; line-height: 1; color: var(--c);
 }
-.onb-pf-knob {
-  position: absolute; left: 50%; top: 6px; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 8px;
-  background: var(--th-surface); border: 2px solid var(--th-primary); border-radius: 999px;
-  padding: 7px 18px; cursor: grab; box-shadow: 0 3px 9px rgba(62, 22, 32, 0.28);
+.onb-pf-initial { font-size: 1.55em; }   /* just the first letter, enlarged */
+.onb-pf-sub {
+  font-family: var(--th-font-body, 'Newsreader'), serif; font-size: 15px;
+  color: var(--th-text); opacity: 0.72; margin-top: 5px;
+}
+
+/* the reveal track: the question sits in normal flow (sets the height); the
+   cover sits absolutely over it and is dragged left to uncover the question. */
+.onb-pf-reveal { position: relative; margin-top: 11px; border-radius: 10px; overflow: hidden; }
+.onb-pf-q {
+  font-family: var(--th-font-body, 'Newsreader'), serif; font-style: italic;
+  font-size: 16.5px; line-height: 1.32; color: var(--th-text);
+  padding: 12px 14px; min-height: 30px;
+}
+.onb-pf-cover {
+  position: absolute; inset: 0; z-index: 2;
+  background: color-mix(in srgb, var(--c) 14%, var(--th-surface));
+  border: 1.5px solid var(--c); border-radius: 10px;
+  display: flex; align-items: center; justify-content: flex-end; padding-right: 12px;
+  cursor: grab; touch-action: pan-y; user-select: none; will-change: transform;
+}
+.onb-pf-cover:active { cursor: grabbing; }
+.onb-pf-lens.onb-open .onb-pf-cover {
+  transform: translateX(-103%) !important; opacity: 0; pointer-events: none;
+  transition: transform 0.42s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+/* right-edge handle: grip + a left-pointing, nudging arrow */
+.onb-pf-grab {
+  display: flex; align-items: center; gap: 8px; color: var(--c);
   font-family: var(--font-montserrat, 'Montserrat'), sans-serif;
-  font-weight: 800; font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase;
-  color: var(--th-primary); white-space: nowrap;
+  font-weight: 800; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
 }
-.onb-pf-knob:active { cursor: grabbing; }
+.onb-pf-grip { width: 4px; height: 20px; border-radius: 2px;
+  background: repeating-linear-gradient(0deg, var(--c) 0 2px, transparent 2px 5px); opacity: 0.6; }
+.onb-pf-arrow { font-size: 18px; line-height: 1; animation: onbNudge 1.4s ease-in-out infinite; }
+@keyframes onbNudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
 .onb-pf-hint {
   font-family: var(--th-font-body, 'Newsreader'), serif; font-style: italic;
-  font-size: 14px; color: var(--th-text); opacity: 0.6; text-align: center; margin-top: 4px;
+  font-size: 15px; color: var(--th-text); opacity: 0.6; text-align: center; margin-top: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .onb-r { transition: opacity 0.3s; transform: none !important; }
-  .onb-scrollhint { animation: none; }
+  .onb-scrollhint, .onb-pf-arrow { animation: none; }
   .onb-panel.onb-in .onb-logo-pop { animation: none; opacity: 1; }
   .splash-pin { animation: none; }
 }

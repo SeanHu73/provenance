@@ -68,82 +68,84 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
             <div className="onb-scrollhint">scroll ↓</div>
           </section>
 
-          {/* 1 — the question */}
-          <section className="onb-panel">
+          {/* 1 — the question (sits low-left, oversized) */}
+          <section className="onb-panel onb-bottom">
             <span className="onb-num">01</span>
-            <h1 className="onb-title onb-r">How do we<br />understand<br />the&nbsp;past?</h1>
+            <hr className="onb-rule onb-r mb-7" />
+            <h1 className="onb-title onb-r" style={{ '--d': '0.1s' } as React.CSSProperties}>How do we<br />understand<br />the&nbsp;past?</h1>
             <div className="onb-scrollhint">scroll ↓</div>
           </section>
 
-          {/* 2 — how we usually learn it */}
-          <section className="onb-panel">
+          {/* 2 — how we usually learn it (right-aligned) */}
+          <section className="onb-panel onb-rt">
             <span className="onb-num">02</span>
-            <p className="onb-lead onb-r">Most of us learn the past as <strong>lists of people, dates, and events.</strong></p>
-            <p className="onb-lead onb-r" style={{ '--d': '0.25s' } as React.CSSProperties}>Often we hear them in the form of a <span className="onb-em">story…</span></p>
+            <p className="onb-lead onb-measure onb-r">Most of us learn the past as <strong>lists of people, dates, and&nbsp;events.</strong></p>
+            <p className="onb-lead onb-measure onb-r" style={{ '--d': '0.3s', marginTop: '22px' } as React.CSSProperties}>Often we just hear them as a <span className="onb-em">story…</span></p>
           </section>
 
           {/* 3 — reconstruct (anagram) */}
           <section className="onb-panel">
             <span className="onb-num">03</span>
-            <p className="onb-lead onb-r">But the past exists in a <span className="onb-em-red">world we no longer live in.</span></p>
-            <p className="onb-lead onb-r" style={{ '--d': '0.2s' } as React.CSSProperties}>So to understand it, we have to first <Reconstruct text="reconstruct" /> that world.</p>
-            <p className="onb-lead onb-r" style={{ '--d': '0.9s', marginTop: '20px', fontWeight: 700 } as React.CSSProperties}>That&rsquo;s the challenge of history.</p>
+            <p className="onb-lead onb-measure onb-r">But the past exists in a <span className="onb-em-red">world we no longer live&nbsp;in.</span></p>
+            <p className="onb-lead onb-measure onb-r" style={{ '--d': '0.2s', marginTop: '16px' } as React.CSSProperties}>So to understand it, we first have to <Reconstruct text="reconstruct" /> that&nbsp;world.</p>
+            <p className="onb-q onb-r" style={{ '--d': '1s', marginTop: '26px', fontSize: 'clamp(28px, 8vw, 44px)', color: 'var(--th-primary)' } as React.CSSProperties}>That&rsquo;s the challenge of history.</p>
           </section>
 
-          {/* 4 — CONTEXT, introduced */}
-          <section className="onb-panel">
+          {/* 4 — CONTEXT, introduced (centred, the chip is the moment) */}
+          <section className="onb-panel onb-cx">
             <span className="onb-num">04</span>
-            <p className="onb-lead onb-r">That world is what historians call:</p>
-            <p className="onb-r" style={{ marginTop: '22px', '--d': '0.25s' } as React.CSSProperties}>
-              <span className="onb-ctx" style={{ fontSize: 'clamp(34px, 11vw, 56px)' }}>Context</span>
+            <p className="onb-lead onb-r">That world is what<br />historians&nbsp;call&hellip;</p>
+            <p className="onb-r" style={{ marginTop: '30px', '--d': '0.35s' } as React.CSSProperties}>
+              <span className="onb-ctx" style={{ fontSize: 'clamp(42px, 14vw, 70px)' }}>Context</span>
             </p>
           </section>
 
-          {/* 5 — contextualisation */}
-          <section className="onb-panel">
+          {/* 5 — contextualisation (sits high) */}
+          <section className="onb-panel onb-top">
             <span className="onb-num">05</span>
-            <p className="onb-lead onb-r">To reconstruct context, we put people and events from the past within the conditions of their <strong>own <span className="onb-time">time</span> and <span className="onb-place">place</span>.</strong></p>
-            <p className="onb-lead onb-r" style={{ '--d': '0.25s' } as React.CSSProperties}>We then use this context to shape our interpretation of the past. This is called <span className="onb-em">contextualisation.</span></p>
+            <p className="onb-lead onb-measure onb-r">To reconstruct context, we place people and events within the conditions of their <strong>own <span className="onb-time">time</span> and <span className="onb-place">place</span>.</strong></p>
+            <p className="onb-lead onb-measure onb-r" style={{ '--d': '0.3s', marginTop: '20px' } as React.CSSProperties}>We let that shape how we read the past. This is <span className="onb-em">contextualisation.</span></p>
           </section>
 
-          {/* 6 — like empathy */}
-          <section className="onb-panel">
+          {/* 6 — like empathy (centred) */}
+          <section className="onb-panel onb-cx">
             <span className="onb-num">06</span>
-            <p className="onb-lead onb-r">It seems easy — <span className="onb-em">contextualisation</span> is a lot like empathy and imagination, but for the past.</p>
-            <p className="onb-lead onb-r" style={{ '--d': '0.25s' } as React.CSSProperties}>We are entering someone else&rsquo;s world to understand them better.</p>
+            <p className="onb-q onb-r" style={{ fontSize: 'clamp(30px, 8.5vw, 46px)' }}>It seems easy.</p>
+            <p className="onb-lead onb-measure onb-r" style={{ '--d': '0.3s', marginTop: '20px' } as React.CSSProperties}>It&rsquo;s a lot like <span className="onb-em">empathy and imagination</span> — but for the past. We enter someone else&rsquo;s world to understand them better.</p>
           </section>
 
-          {/* 7 — intentional & practiced */}
-          <section className="onb-panel">
+          {/* 7 — intentional & practiced (right-aligned, the claim oversized) */}
+          <section className="onb-panel onb-rt">
             <span className="onb-num">07</span>
-            <p className="onb-lead onb-r">And yet, when we learn history, we often don&rsquo;t ask for more — we don&rsquo;t ask for context. We take the explanations given to us.</p>
-            <p className="onb-lead onb-r" style={{ '--d': '0.3s', marginTop: '18px', fontWeight: 700 } as React.CSSProperties}>Contextualisation needs to be <span className="onb-em-red">intentional and practiced.</span></p>
+            <p className="onb-lead onb-measure onb-r">And yet, we often don&rsquo;t ask for context. We take the explanations we&rsquo;re&nbsp;given.</p>
+            <hr className="onb-rule onb-r" style={{ '--d': '0.25s', marginTop: '24px', marginBottom: '20px' } as React.CSSProperties} />
+            <p className="onb-q onb-r" style={{ '--d': '0.4s', fontSize: 'clamp(30px, 8vw, 46px)' } as React.CSSProperties}>Context must be <span style={{ color: 'var(--th-primary)' }}>intentional<br />and practiced.</span></p>
           </section>
 
-          {/* 8 — the P.A.S.T. framework (drag to reveal) */}
-          <section className="onb-panel">
+          {/* 8 — the P.A.S.T. framework (sits high; swipe to reveal) */}
+          <section className="onb-panel onb-top">
             <span className="onb-num">08</span>
-            <p className="onb-q onb-r" style={{ fontSize: 'clamp(26px, 7vw, 36px)' }}>So how do we do it?</p>
-            <p className="onb-lead onb-r" style={{ '--d': '0.2s', marginTop: '10px' } as React.CSSProperties}>Provenance gives you a framework to rebuild the world of the past. Use the <strong>P.A.S.T.</strong> lenses to frame your questions.</p>
-            <div className="onb-r" style={{ '--d': '0.35s', marginTop: '16px' } as React.CSSProperties}>
+            <p className="onb-q onb-r" style={{ fontSize: 'clamp(32px, 8.5vw, 46px)', color: 'var(--th-primary)' }}>So how do we do&nbsp;it?</p>
+            <p className="onb-lead onb-r" style={{ '--d': '0.2s', marginTop: '12px', fontSize: 'clamp(19px, 5vw, 22px)' } as React.CSSProperties}>Use the <strong>P.A.S.T.</strong> lenses to rebuild the world of the past.</p>
+            <div className="onb-r" style={{ '--d': '0.35s', marginTop: '18px' } as React.CSSProperties}>
               <PastFramework />
             </div>
           </section>
 
-          {/* 9 — enter */}
-          <section className="onb-panel">
+          {/* 9 — enter (centred) */}
+          <section className="onb-panel onb-cx">
             <span className="onb-num">09</span>
-            <div className="flex items-center justify-center gap-3">
-              <h2 className="onb-title onb-r" style={{ fontSize: 'clamp(34px, 9vw, 50px)' }}>Enter Provenance</h2>
+            <div className="flex items-center justify-center gap-3 onb-r">
+              <h2 className="onb-title" style={{ fontSize: 'clamp(38px, 11vw, 58px)' }}>Enter Provenance</h2>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo_transparent.png" alt="" width={64} height={64} className="onb-logo-pop w-12 h-auto select-none" draggable={false} />
+              <img src="/logo_transparent.png" alt="" width={64} height={64} className="onb-logo-pop w-14 h-auto select-none" draggable={false} />
             </div>
-            <p className="onb-lead onb-r" style={{ '--d': '0.3s', marginTop: '18px' } as React.CSSProperties}>
-              Explore the past that exists all around us — but practice <span className="onb-em">asking the questions</span> to reconstruct the world it belongs to.
+            <p className="onb-lead onb-measure onb-r" style={{ '--d': '0.3s', marginTop: '22px' } as React.CSSProperties}>
+              Explore the past all around us — and practice <span className="onb-em">asking the questions</span> that reconstruct the world it belongs to.
             </p>
             <button
               onClick={dismiss}
-              className="onb-r mt-8 self-start px-8 py-3.5 rounded-full text-[15px] font-semibold"
+              className="onb-r mt-9 px-9 py-4 rounded-full text-[16px] font-semibold"
               style={{ '--d': '0.5s', backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' } as React.CSSProperties}
             >
               Begin →

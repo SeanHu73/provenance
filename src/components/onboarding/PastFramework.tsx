@@ -1,111 +1,120 @@
 'use client';
 
 /**
- * The P.A.S.T. framework slide's drag-to-reveal block.
+ * The P.A.S.T. framework slide.
  *
- * Four colour-coded lenses (Place / Attitudes / Society / Technology). A handle
- * is dragged down a track; as it passes each threshold the corresponding lens
- * opens to reveal its example questions, in order. An italic indicator tells
- * the explorer to drag. Pointer-based so it works for touch + mouse.
+ * Four colour-coded lenses (Place / Attitudes / Society / Technology) — the
+ * first letter of each word is enlarged. Each lens carries a coloured "cover"
+ * with a right-edge handle (grip + a nudging ← arrow); dragging the cover LEFT
+ * slides it away to reveal the example question underneath. Latches open once
+ * dragged past a threshold. An italic instruction sits below; no separate
+ * drag button.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
-interface Lens {
+interface LensDef {
   key: string;
-  letter: string;
   word: string;
   sub: string;
   q: string;
   cls: string;
 }
 
-const LENSES: Lens[] = [
-  {
-    key: 'place', letter: 'P', word: 'Place', cls: 'onb-pf-place',
+const LENSES: LensDef[] = [
+  { key: 'place', word: 'Place', cls: 'onb-pf-place',
     sub: 'Geography, resources, natural disasters',
-    q: 'Why did people move here? What resources did they want?',
-  },
-  {
-    key: 'attitude', letter: 'A', word: 'Attitudes', cls: 'onb-pf-attitude',
+    q: 'Why did people move here? What resources did they want?' },
+  { key: 'attitude', word: 'Attitudes', cls: 'onb-pf-attitude',
     sub: 'Cultural values, important ideas',
-    q: 'What did people believe? Were there changing ideas during the time?',
-  },
-  {
-    key: 'society', letter: 'S', word: 'Society', cls: 'onb-pf-society',
+    q: 'What did people believe? Were there changing ideas during the time?' },
+  { key: 'society', word: 'Society', cls: 'onb-pf-society',
     sub: 'Social class, politics, economy',
-    q: 'Who held power? How were the economic conditions?',
-  },
-  {
-    key: 'tech', letter: 'T', word: 'Technology', cls: 'onb-pf-tech',
+    q: 'Who held power? How were the economic conditions?' },
+  { key: 'tech', word: 'Technology', cls: 'onb-pf-tech',
     sub: 'Important tools, infrastructure, big inventions',
-    q: 'What was new? How did it change daily life or business?',
-  },
+    q: 'What was new? How did it change daily life or business?' },
 ];
 
 export default function PastFramework() {
-  // 0..1 progress of the handle down the track → number of lenses opened.
-  const [opened, setOpened] = useState(0);
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const draggingRef = useRef(false);
-
-  const applyFromClientY = useCallback((clientY: number) => {
-    const track = trackRef.current;
-    if (!track) return;
-    const r = track.getBoundingClientRect();
-    const t = Math.max(0, Math.min(1, (clientY - r.top) / Math.max(1, r.height)));
-    // Reveal one lens per quarter dragged; never un-reveal (latches open).
-    const count = Math.min(LENSES.length, Math.round(t * LENSES.length));
-    setOpened((prev) => (count > prev ? count : prev));
-  }, []);
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    draggingRef.current = true;
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-    applyFromClientY(e.clientY);
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!draggingRef.current) return;
-    applyFromClientY(e.clientY);
-  };
-  const onPointerUp = () => { draggingRef.current = false; };
-
-  const allOpen = opened >= LENSES.length;
+  const [openCount, setOpenCount] = useState(0);
+  const allOpen = openCount >= LENSES.length;
 
   return (
     <div className="onb-pf">
-      {LENSES.map((lens, i) => (
-        <div key={lens.key} className={`onb-pf-lens ${lens.cls} ${i < opened ? 'onb-open' : ''}`}>
-          <div className="onb-pf-head">
-            <span className="onb-pf-letter">{lens.letter}</span>
-            <span className="onb-pf-word">{lens.word}</span>
-          </div>
-          <div className="onb-pf-sub">{lens.sub}</div>
-          <div className="onb-pf-q">→ {lens.q}</div>
-        </div>
+      {LENSES.map((lens) => (
+        <Lens key={lens.key} lens={lens} onOpen={() => setOpenCount((c) => c + 1)} />
       ))}
+      {!allOpen && <p className="onb-pf-hint">drag each box aside to reveal the questions</p>}
+    </div>
+  );
+}
 
-      {!allOpen && (
-        <>
-          <div
-            ref={trackRef}
-            className="onb-pf-track"
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-          >
-            <button
-              type="button"
-              className="onb-pf-knob"
-              aria-label="Drag to reveal the questions"
-            >
-              ▾ drag ▾
-            </button>
-          </div>
-          <p className="onb-pf-hint">drag down to reveal the questions</p>
-        </>
-      )}
+function Lens({ lens, onOpen }: { lens: LensDef; onOpen: () => void }) {
+  const [open, setOpen] = useState(false);
+  const coverRef = useRef<HTMLDivElement | null>(null);
+  const draggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const dxRef = useRef(0);
+  const widthRef = useRef(1);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (open) return;
+    const cover = coverRef.current;
+    if (!cover) return;
+    draggingRef.current = true;
+    startXRef.current = e.clientX;
+    widthRef.current = cover.offsetWidth || 1;
+    dxRef.current = 0;
+    cover.style.transition = 'none';
+    cover.setPointerCapture?.(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!draggingRef.current) return;
+    const cover = coverRef.current;
+    if (!cover) return;
+    dxRef.current = Math.max(-widthRef.current, Math.min(0, e.clientX - startXRef.current));
+    cover.style.transform = `translateX(${dxRef.current}px)`;
+  };
+  const onPointerUp = () => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    const cover = coverRef.current;
+    if (!cover) return;
+    cover.style.transition = '';
+    if (dxRef.current <= -widthRef.current * 0.38) {
+      cover.style.transform = '';   // CSS open rule parks it off (with !important)
+      setOpen(true);
+      onOpen();
+    } else {
+      cover.style.transform = 'translateX(0)';   // snap back
+    }
+  };
+
+  return (
+    <div className={`onb-pf-lens ${lens.cls} ${open ? 'onb-open' : ''}`}>
+      <div className="onb-pf-word">
+        <span className="onb-pf-initial">{lens.word.charAt(0)}</span>{lens.word.slice(1)}
+      </div>
+      <div className="onb-pf-sub">{lens.sub}</div>
+
+      <div className="onb-pf-reveal">
+        <div className="onb-pf-q">{lens.q}</div>
+        <div
+          ref={coverRef}
+          className="onb-pf-cover"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          aria-label={`Drag aside to reveal the ${lens.word} question`}
+        >
+          <span className="onb-pf-grab">
+            <span className="onb-pf-arrow">&larr;</span>
+            <span className="onb-pf-grip" />
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
