@@ -215,8 +215,9 @@ body {
 
 /* P.A.S.T. lens colours (educational colour-coding for the framework) */
 .onb-screen {
-  --onb-place: #347C4A;   /* green  */
-  --onb-time:  #2C6488;   /* blue   */
+  --onb-place:   #347C4A;   /* green  */
+  --onb-time:    #2C6488;   /* blue   */
+  --onb-society: #7B4EA3;   /* plum — distinct from the cranberry CONTEXT chip */
 }
 
 .onb-panel {
@@ -336,7 +337,7 @@ body {
 }
 .onb-pf-place    { --c: var(--onb-place); }
 .onb-pf-attitude { --c: var(--th-secondary); }
-.onb-pf-society  { --c: var(--th-primary); }
+.onb-pf-society  { --c: var(--onb-society); }
 .onb-pf-tech     { --c: var(--onb-time); }
 .onb-pf-word {
   flex: 0 0 auto; align-self: center; white-space: nowrap; padding-right: 16px;

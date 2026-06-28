@@ -164,7 +164,7 @@ function PastWord() {
     <strong className="onb-past">
       <span style={{ color: 'var(--onb-place)' }}>P</span>.
       <span style={{ color: 'var(--th-secondary)' }}>A</span>.
-      <span style={{ color: 'var(--th-primary)' }}>S</span>.
+      <span style={{ color: 'var(--onb-society)' }}>S</span>.
       <span style={{ color: 'var(--onb-time)' }}>T</span>.
     </strong>
   );

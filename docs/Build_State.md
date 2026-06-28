@@ -1985,17 +1985,28 @@ intro shown on **every page load** (in-memory only, no persistence — a refresh
 re-shows it; in-session navigation does not). Replaces the splash mount in
 `layout.tsx` (`<ContextOnboarding>` wraps children; `SplashScreen.tsx` kept,
 unused, for a future account-based "skip → brief fade"). ~10 Provenance-styled
-slides (DM Serif Display / Newsreader / Montserrat, cream + dot-grid wash, the
-**CONTEXT** chip, colour-coded emphasis) teaching what context / contextualisation
-is and the **P.A.S.T.** framework (Place/Attitudes/Society/Technology, colour-
-coded, **drag-to-reveal** example questions). Logo bounces in on the Welcome slide
-(reuses the `.splash-*` keyframes); **Skip** top-right; "Begin →" / Skip dismiss
-to the map. Content from `docs/contextualization-onboarding-instructions.docx`;
-style/techniques adapted (toned calmer) from `docs/contextualization-intro.html`.
-Files: `src/components/onboarding/ContextOnboarding.tsx` (slides + snap +
-IntersectionObserver reveal + "reconstruct" anagram + skip/enter),
-`PastFramework.tsx` (the drag-reveal lens block), `.onb-*` styles in `globals.css`
-(snap `mandatory`, reveal classes, CONTEXT chip, P.A.S.T. colours, drag handle).
+slides (DM Serif Display / Newsreader / Montserrat) on a **warm canvas** (soft
+top light + a fine SVG paper grain, both `background-attachment: fixed`), with
+big editorial type and varied placement (low/high/right/centre columns, an amber
+accent rule), the **CONTEXT** chip, colour-coded emphasis, and a "reconstruct"
+anagram — teaching what context / contextualisation is and the **P.A.S.T.**
+framework. Logo bounces in on the Welcome slide (reuses the `.splash-*`
+keyframes); **Skip** top-right; "Begin →" / Skip dismiss to the map. Content from
+`docs/contextualization-onboarding-instructions.docx`; style/techniques adapted
+(toned calmer) from `docs/contextualization-intro.html`.
+
+**P.A.S.T. slide** (`PastFramework.tsx`): four lenses, each a row with the WORD
+pinned left (enlarged first letter) and its descriptor to the right as a tinted
+**cover over the example question**. Dragging the row **left reveals** the
+question, **right re-covers** it (reversible; pointer handlers on the whole
+reveal row, transform managed inline, snap past a 45% threshold). A persistent
+**double-sided arrow** at the row's right edge cues that it slides both ways
+(it lives on the row, not the cover, so it stays visible in both states).
+Colour-coded per lens — Place `#347C4A` green, Attitudes `--th-secondary` amber,
+**Society `#7B4EA3` plum** (deliberately NOT the cranberry `--th-primary`, which
+the CONTEXT chip uses), Technology `#2C6488` blue; the same letters are
+colour-coded in the "P.A.S.T." caption. Lens colours live as `--onb-place /
+-time / -society` on `.onb-screen`. `.onb-*` styles are all in `globals.css`.
 Verified live end-to-end. Future: account-based remembered-skip.
 
 ---
