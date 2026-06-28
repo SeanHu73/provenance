@@ -4,23 +4,16 @@
  * The P.A.S.T. framework slide.
  *
  * Four colour-coded lenses (Place / Attitudes / Society / Technology). Each row
- * pins the WORD (enlarged first letter) on the left; to its right the
- * descriptor sits as a coloured "cover" over the example question. Dragging the
- * cover LEFT from its right-edge handle (grip + nudging ← arrow) tucks it behind
- * the word and clears it, revealing the question — the word stays visible.
- * Latches open past a threshold. An italic instruction sits below; no separate
- * drag button.
+ * pins the WORD (enlarged first letter) on the left; to its right the descriptor
+ * sits as a coloured "cover" over the example question. Dragging the row LEFT
+ * slides the cover behind the word to reveal the question; dragging RIGHT slides
+ * it back to show the definition again (reversible). The word stays visible
+ * throughout. An italic instruction sits below.
  */
 
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 
-interface LensDef {
-  key: string;
-  word: string;
-  sub: string;
-  q: string;
-  cls: string;
-}
+interface LensDef { key: string; word: string; sub: string; q: string; cls: string; }
 
 const LENSES: LensDef[] = [
   { key: 'place', word: 'Place', cls: 'onb-pf-place',
@@ -38,77 +31,66 @@ const LENSES: LensDef[] = [
 ];
 
 export default function PastFramework() {
-  const [openCount, setOpenCount] = useState(0);
-  const allOpen = openCount >= LENSES.length;
-
   return (
     <div className="onb-pf">
-      {LENSES.map((lens) => (
-        <Lens key={lens.key} lens={lens} onOpen={() => setOpenCount((c) => c + 1)} />
-      ))}
-      {!allOpen && <p className="onb-pf-hint">slide each box aside to reveal the question</p>}
+      {LENSES.map((lens) => <Lens key={lens.key} lens={lens} />)}
+      <p className="onb-pf-hint">Slide the box to reveal example questions.</p>
     </div>
   );
 }
 
-function Lens({ lens, onOpen }: { lens: LensDef; onOpen: () => void }) {
-  const [open, setOpen] = useState(false);
+function Lens({ lens }: { lens: LensDef }) {
   const coverRef = useRef<HTMLDivElement | null>(null);
-  const draggingRef = useRef(false);
-  const startXRef = useRef(0);
-  const dxRef = useRef(0);
-  const widthRef = useRef(1);
+  const dragging = useRef(false);
+  const startX = useRef(0);
+  const offset = useRef(0);        // current translateX (px); 0 = closed, -width = open
+  const width = useRef(1);
+  const openRef = useRef(false);
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (open) return;
     const cover = coverRef.current;
     if (!cover) return;
-    draggingRef.current = true;
-    startXRef.current = e.clientX;
-    widthRef.current = cover.offsetWidth || 1;
-    dxRef.current = 0;
+    dragging.current = true;
+    startX.current = e.clientX;
+    width.current = cover.offsetWidth || 1;
     cover.style.transition = 'none';
-    cover.setPointerCapture?.(e.pointerId);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!draggingRef.current) return;
+    if (!dragging.current) return;
     const cover = coverRef.current;
     if (!cover) return;
-    dxRef.current = Math.max(-widthRef.current, Math.min(0, e.clientX - startXRef.current));
-    cover.style.transform = `translateX(${dxRef.current}px)`;
+    const base = openRef.current ? -width.current : 0;
+    offset.current = Math.max(-width.current, Math.min(0, base + (e.clientX - startX.current)));
+    cover.style.transform = `translateX(${offset.current}px)`;
   };
   const onPointerUp = () => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
+    if (!dragging.current) return;
+    dragging.current = false;
     const cover = coverRef.current;
     if (!cover) return;
-    cover.style.transition = '';
-    if (dxRef.current <= -widthRef.current * 0.38) {
-      cover.style.transform = '';   // CSS open rule parks it off (with !important)
-      setOpen(true);
-      onOpen();
-    } else {
-      cover.style.transform = 'translateX(0)';   // snap back
-    }
+    cover.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+    const willOpen = offset.current <= -width.current * 0.45;
+    openRef.current = willOpen;
+    cover.style.transform = willOpen ? 'translateX(-101%)' : 'translateX(0)';
   };
 
   return (
-    <div className={`onb-pf-lens ${lens.cls} ${open ? 'onb-open' : ''}`}>
+    <div className={`onb-pf-lens ${lens.cls}`}>
       <div className="onb-pf-word">
         <span className="onb-pf-initial">{lens.word.charAt(0)}</span>{lens.word.slice(1)}
       </div>
 
-      <div className="onb-pf-reveal">
+      <div
+        className="onb-pf-reveal"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        aria-label={`Slide to reveal or hide the ${lens.word} question`}
+      >
         <div className="onb-pf-q">{lens.q}</div>
-        <div
-          ref={coverRef}
-          className="onb-pf-cover"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          aria-label={`Slide aside to reveal the ${lens.word} question`}
-        >
+        <div ref={coverRef} className="onb-pf-cover">
           <span className="onb-pf-desc">{lens.sub}</span>
           <span className="onb-pf-grab">
             <span className="onb-pf-arrow">&larr;</span>

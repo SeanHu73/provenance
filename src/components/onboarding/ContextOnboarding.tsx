@@ -125,9 +125,10 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
           {/* 8 — the P.A.S.T. framework (sits high; swipe to reveal) */}
           <section className="onb-panel onb-top">
             <span className="onb-num">08</span>
-            <p className="onb-q onb-r" style={{ fontSize: 'clamp(32px, 8.5vw, 46px)', color: 'var(--th-primary)' }}>So how do we do&nbsp;it?</p>
-            <p className="onb-lead onb-r" style={{ '--d': '0.2s', marginTop: '12px', fontSize: 'clamp(19px, 5vw, 22px)' } as React.CSSProperties}>Use the <strong>P.A.S.T.</strong> lenses to rebuild the world of the past.</p>
-            <div className="onb-r" style={{ '--d': '0.35s', marginTop: '18px' } as React.CSSProperties}>
+            <p className="onb-q onb-r" style={{ fontSize: 'clamp(30px, 8vw, 44px)', color: 'var(--th-primary)' }}>So how do we contextualise?</p>
+            <p className="onb-lead onb-r" style={{ '--d': '0.18s', marginTop: '12px', fontSize: 'clamp(18px, 4.6vw, 21px)' } as React.CSSProperties}>Here&rsquo;s a nifty framework to help you reconstruct the world of the past!</p>
+            <p className="onb-lead onb-r" style={{ '--d': '0.28s', marginTop: '8px', fontSize: 'clamp(18px, 4.6vw, 21px)' } as React.CSSProperties}>Use the <PastWord /> lenses to help frame context questions you could ask.</p>
+            <div className="onb-r" style={{ '--d': '0.4s', marginTop: '18px' } as React.CSSProperties}>
               <PastFramework />
             </div>
           </section>
@@ -154,6 +155,18 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
         </div>
       )}
     </>
+  );
+}
+
+/* "P.A.S.T." with each letter coloured to match its lens. */
+function PastWord() {
+  return (
+    <strong className="onb-past">
+      <span style={{ color: 'var(--onb-place)' }}>P</span>.
+      <span style={{ color: 'var(--th-secondary)' }}>A</span>.
+      <span style={{ color: 'var(--th-primary)' }}>S</span>.
+      <span style={{ color: 'var(--onb-time)' }}>T</span>.
+    </strong>
   );
 }
 
