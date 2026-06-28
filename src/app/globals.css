@@ -187,6 +187,182 @@ body {
   transition: opacity 0.8s ease-out;
 }
 
+/* ── First-open contextualization onboarding (.onb-*) ─────────────────────
+   Snap-scroll teaching flow shown on every page load. Calm Provenance palette
+   + fonts, with a little character (the CONTEXT chip, colour-coded P.A.S.T.,
+   reveal-on-scroll). Reuses the .splash-* keyframes above for the logo bounce. */
+
+.onb-screen {
+  position: fixed; inset: 0; z-index: 1100;
+  overflow-y: auto; overflow-x: hidden;
+  scroll-snap-type: y mandatory;            /* an ACTUAL snap, not proximity */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  background-color: var(--th-bg);
+  /* very subtle dot-grid wash — texture without the comic heaviness */
+  background-image: radial-gradient(rgba(126, 83, 32, 0.08) 1px, transparent 1.4px);
+  background-size: 11px 11px;
+  color: var(--th-text);
+  transition: opacity 0.5s ease;
+}
+.onb-screen::-webkit-scrollbar { display: none; }
+.onb-screen.onb-leaving { opacity: 0; }
+
+/* P.A.S.T. lens colours (educational colour-coding for the framework) */
+.onb-screen {
+  --onb-place: #347C4A;   /* green  */
+  --onb-time:  #2C6488;   /* blue   */
+}
+
+.onb-panel {
+  min-height: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 54px 26px;
+  position: relative;
+}
+.onb-num {
+  position: absolute; top: 22px; left: 26px;
+  font-family: var(--font-montserrat, 'Montserrat'), sans-serif;
+  font-weight: 700; font-size: 11px; letter-spacing: 2px;
+  color: var(--th-text); opacity: 0.28;
+}
+
+/* reveal-on-scroll: children with .onb-r animate in when the panel is .onb-in */
+.onb-r {
+  opacity: 0; transform: translateY(22px);
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: var(--d, 0s);
+}
+.onb-panel.onb-in .onb-r { opacity: 1; transform: translateY(0); }
+
+/* typography */
+.onb-title {
+  font-family: var(--th-font-display, 'DM Serif Display'), serif;
+  font-weight: 700; line-height: 1.02; letter-spacing: -0.5px;
+  font-size: clamp(40px, 12vw, 60px); color: var(--th-primary);
+}
+.onb-lead {
+  font-family: var(--th-font-body, 'Newsreader'), serif;
+  font-size: clamp(20px, 5.6vw, 24px); line-height: 1.5; color: var(--th-text);
+}
+.onb-lead + .onb-lead { margin-top: 16px; }
+.onb-q {
+  font-family: var(--th-font-display, 'DM Serif Display'), serif;
+  font-weight: 700; line-height: 1.1;
+  font-size: clamp(30px, 8vw, 44px); color: var(--th-text);
+}
+
+/* the CONTEXT chip — its first introduction should pop */
+.onb-ctx {
+  display: inline-block;
+  font-family: var(--th-font-display, 'DM Serif Display'), serif; font-weight: 700;
+  color: var(--th-surface); background: var(--th-primary);
+  padding: 4px 18px; border-radius: 8px;
+  transform: rotate(-1.5deg);
+  box-shadow: 3px 3px 0 var(--th-accent-dark);
+}
+
+/* colour-coded emphasis */
+.onb-em      { color: var(--th-primary); font-weight: 600; font-style: italic; }
+.onb-em-red  { color: var(--th-primary); font-weight: 600; }
+.onb-em-amber{ color: var(--th-secondary); font-weight: 600; }
+.onb-place   { color: var(--onb-place); font-weight: 600; }
+.onb-time    { color: var(--onb-time); font-weight: 600; }
+
+/* reconstruct anagram */
+.onb-anagram { display: inline-block; }
+.onb-anagram span { display: inline-block; will-change: transform; }
+
+/* scroll hint + skip */
+.onb-scrollhint {
+  position: absolute; bottom: 28px; left: 0; right: 0; text-align: center;
+  font-family: var(--th-font-body, 'Newsreader'), serif; font-style: italic;
+  font-size: 15px; color: var(--th-text); opacity: 0.5;
+  animation: onbBob 1.7s ease-in-out infinite; pointer-events: none;
+}
+@keyframes onbBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+.onb-skip {
+  position: fixed; top: 16px; right: 16px; z-index: 1110;
+  font-family: var(--font-montserrat, 'Montserrat'), sans-serif;
+  font-weight: 700; font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--th-text); background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(62, 22, 32, 0.18); border-radius: 999px;
+  padding: 7px 16px; cursor: pointer; backdrop-filter: blur(4px);
+}
+.onb-skip:hover { color: var(--th-primary); }
+
+/* small "Enter Provenance" logo pop */
+@keyframes onbPop {
+  0% { opacity: 0; transform: scale(0.4) translateY(10px); }
+  60% { opacity: 1; transform: scale(1.12) translateY(0); }
+  100% { transform: scale(1); }
+}
+/* Default visible (robust); the pop plays once the panel scrolls into view. */
+.onb-panel.onb-in .onb-logo-pop { animation: onbPop 0.7s cubic-bezier(0.22, 1.6, 0.36, 1) 0.2s both; }
+
+/* P.A.S.T. drag-to-reveal framework */
+.onb-pf { position: relative; margin-top: 8px; }
+.onb-pf-lens {
+  border-radius: 12px; background: var(--th-surface);
+  border: 2px solid rgba(62, 22, 32, 0.16); box-shadow: 3px 3px 0 rgba(62, 22, 32, 0.12);
+  padding: 12px 14px; margin-bottom: 10px; overflow: hidden;
+}
+.onb-pf-lens .onb-pf-head { display: flex; align-items: baseline; gap: 10px; }
+.onb-pf-lens .onb-pf-letter {
+  font-family: var(--font-montserrat, 'Montserrat'), sans-serif; font-weight: 800;
+  font-size: 30px; line-height: 1;
+}
+.onb-pf-lens .onb-pf-word {
+  font-family: var(--th-font-display, 'DM Serif Display'), serif; font-weight: 700;
+  font-size: 24px; line-height: 1;
+}
+.onb-pf-lens .onb-pf-sub {
+  font-family: var(--th-font-body, 'Newsreader'), serif; font-size: 14px;
+  color: var(--th-text); opacity: 0.75; margin-top: 4px;
+}
+/* the revealed example questions slide open */
+.onb-pf-lens .onb-pf-q {
+  font-family: var(--th-font-body, 'Newsreader'), serif; font-style: italic;
+  font-size: 16px; line-height: 1.35; color: var(--th-text);
+  max-height: 0; opacity: 0; margin-top: 0; overflow: hidden;
+  transition: max-height 0.4s ease, opacity 0.35s ease, margin-top 0.3s ease;
+}
+.onb-pf-lens.onb-open .onb-pf-q { max-height: 120px; opacity: 1; margin-top: 8px; }
+/* lens accent colours */
+.onb-pf-place    { --c: var(--onb-place); }
+.onb-pf-attitude { --c: var(--th-secondary); }
+.onb-pf-society  { --c: var(--th-primary); }
+.onb-pf-tech     { --c: var(--onb-time); }
+.onb-pf-lens .onb-pf-letter, .onb-pf-lens .onb-pf-word { color: var(--c); }
+.onb-pf-lens.onb-open { border-color: var(--c); box-shadow: 3px 3px 0 var(--c); }
+/* drag handle */
+.onb-pf-track {
+  position: relative; height: 46px; margin: 6px 0 2px; user-select: none; touch-action: none;
+}
+.onb-pf-knob {
+  position: absolute; left: 50%; top: 6px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px;
+  background: var(--th-surface); border: 2px solid var(--th-primary); border-radius: 999px;
+  padding: 7px 18px; cursor: grab; box-shadow: 0 3px 9px rgba(62, 22, 32, 0.28);
+  font-family: var(--font-montserrat, 'Montserrat'), sans-serif;
+  font-weight: 800; font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--th-primary); white-space: nowrap;
+}
+.onb-pf-knob:active { cursor: grabbing; }
+.onb-pf-hint {
+  font-family: var(--th-font-body, 'Newsreader'), serif; font-style: italic;
+  font-size: 14px; color: var(--th-text); opacity: 0.6; text-align: center; margin-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onb-r { transition: opacity 0.3s; transform: none !important; }
+  .onb-scrollhint { animation: none; }
+  .onb-panel.onb-in .onb-logo-pop { animation: none; opacity: 1; }
+  .splash-pin { animation: none; }
+}
+
 @keyframes slideUp {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }

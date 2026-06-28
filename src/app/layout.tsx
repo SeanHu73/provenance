@@ -4,7 +4,7 @@ import localFont from 'next/font/local';
 import './globals.css';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import ThemeColorMeta from '@/components/ThemeColorMeta';
-import SplashScreen from '@/components/SplashScreen';
+import ContextOnboarding from '@/components/onboarding/ContextOnboarding';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { RoomProvider } from '@/context/RoomContext';
 
@@ -94,7 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <ThemeColorMeta />
           <RoomProvider>
-            <SplashScreen>{children}</SplashScreen>
+            <ContextOnboarding>{children}</ContextOnboarding>
           </RoomProvider>
           <ServiceWorkerRegistrar />
         </ThemeProvider>

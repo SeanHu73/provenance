@@ -1969,6 +1969,37 @@ pieces; everything else ships.
 
 ---
 
+### Context intro splash + first-open onboarding (2026-06-27 → 2026-06-28)
+
+**End-of-act "Context" intro splash (2026-06-27).** A new `act_context_intro`
+phase runs before the Context page each act (when Context is authored):
+`ContextIntroCard.tsx` — a portal splash that fades in (~2s, inverted dark
+`--th-journal` surface) presenting "So what context do we need?" (snap-scroll-
+ready for a future onboarding-authored framework). `ActContextCard.tsx` was
+restructured so the admin-framed question is SEEN first (full snap section) and
+scrolling snaps to the full context description. State machine:
+`completeContextIntro` → `act_context`; last-stop routes to `act_context_intro`.
+
+**First-open contextualization onboarding (2026-06-28).** A snap-scroll teaching
+intro shown on **every page load** (in-memory only, no persistence — a refresh
+re-shows it; in-session navigation does not). Replaces the splash mount in
+`layout.tsx` (`<ContextOnboarding>` wraps children; `SplashScreen.tsx` kept,
+unused, for a future account-based "skip → brief fade"). ~10 Provenance-styled
+slides (DM Serif Display / Newsreader / Montserrat, cream + dot-grid wash, the
+**CONTEXT** chip, colour-coded emphasis) teaching what context / contextualisation
+is and the **P.A.S.T.** framework (Place/Attitudes/Society/Technology, colour-
+coded, **drag-to-reveal** example questions). Logo bounces in on the Welcome slide
+(reuses the `.splash-*` keyframes); **Skip** top-right; "Begin →" / Skip dismiss
+to the map. Content from `docs/contextualization-onboarding-instructions.docx`;
+style/techniques adapted (toned calmer) from `docs/contextualization-intro.html`.
+Files: `src/components/onboarding/ContextOnboarding.tsx` (slides + snap +
+IntersectionObserver reveal + "reconstruct" anagram + skip/enter),
+`PastFramework.tsx` (the drag-reveal lens block), `.onb-*` styles in `globals.css`
+(snap `mandatory`, reveal classes, CONTEXT chip, P.A.S.T. colours, drag handle).
+Verified live end-to-end. Future: account-based remembered-skip.
+
+---
+
 ## 11. Splash Screen
 
 Added 2026-05-25. First-load brand intro that plays once per browser
