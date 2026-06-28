@@ -1999,9 +1999,13 @@ keyframes); **Skip** top-right; "Begin →" / Skip dismiss to the map. Content f
 pinned left (enlarged first letter) and its descriptor to the right as a tinted
 **cover over the example question**. Dragging the row **left reveals** the
 question, **right re-covers** it (reversible; pointer handlers on the whole
-reveal row, transform managed inline, snap past a 45% threshold). A persistent
-**double-sided arrow** at the row's right edge cues that it slides both ways
-(it lives on the row, not the cover, so it stays visible in both states).
+reveal row, transform managed inline, snap past a 45% threshold). A
+**double-sided arrow grab tab** is pinned to the cover's right edge (a child of
+the cover), so it travels with the box as it slides — its opaque lens-coloured
+fill blocks the text underneath instead of floating over it, and it tucks fully
+off-screen when the box is open so no stray arrow hovers over the revealed,
+left-aligned question. The descriptor reserves right padding so its text never
+runs under the tab (matters most for the wide "Technology" word).
 Colour-coded per lens — Place `#347C4A` green, Attitudes `--th-secondary` amber,
 **Society `#7B4EA3` plum** (deliberately NOT the cranberry `--th-primary`, which
 the CONTEXT chip uses), Technology `#2C6488` blue; the same letters are

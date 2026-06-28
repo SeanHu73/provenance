@@ -24,7 +24,7 @@ const LENSES: LensDef[] = [
     q: 'What did people believe? Were there changing ideas during the time?' },
   { key: 'society', word: 'Society', cls: 'onb-pf-society',
     sub: 'Social class, politics, economy',
-    q: 'Who held power? How were the economic conditions?' },
+    q: 'Who held power? What did the economic conditions look like?' },
   { key: 'tech', word: 'Technology', cls: 'onb-pf-tech',
     sub: 'Important tools, infrastructure, big inventions',
     q: 'What was new? How did it change daily life or business?' },
@@ -92,14 +92,17 @@ function Lens({ lens }: { lens: LensDef }) {
         <div className="onb-pf-q">{lens.q}</div>
         <div ref={coverRef} className="onb-pf-cover">
           <span className="onb-pf-desc">{lens.sub}</span>
+          {/* double-sided arrow grab tab — pinned to the cover's right edge so it
+             travels with the box as it slides (and tucks off-screen when open) */}
+          <span className="onb-pf-cue" aria-hidden="true">
+            <svg width="26" height="12" viewBox="0 0 26 12" fill="none"
+              stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 6h18" />
+              <path d="M7 3 4 6l3 3" />
+              <path d="M19 3l3 3-3 3" />
+            </svg>
+          </span>
         </div>
-        {/* persistent double-sided arrow — the box slides both ways */}
-        <svg className="onb-pf-cue" width="26" height="12" viewBox="0 0 26 12" fill="none"
-          stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M4 6h18" />
-          <path d="M7 3 4 6l3 3" />
-          <path d="M19 3l3 3-3 3" />
-        </svg>
       </div>
     </div>
   );
