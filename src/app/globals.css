@@ -370,12 +370,18 @@ body {
   font-family: var(--th-font-body, 'Newsreader'), serif;
   font-size: 18px; line-height: 1.3; color: var(--th-text); opacity: 0.88;
 }
-/* right-edge handle: a left-pointing, nudging arrow + grip */
-.onb-pf-grab { flex: 0 0 auto; align-self: center; display: flex; align-items: center; gap: 6px; color: var(--c); pointer-events: none; }
-.onb-pf-arrow { font-size: 19px; line-height: 1; animation: onbNudge 1.4s ease-in-out infinite; }
-@keyframes onbNudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
-.onb-pf-grip { width: 4px; height: 24px; border-radius: 2px;
-  background: repeating-linear-gradient(0deg, var(--c) 0 2px, transparent 2px 5px); opacity: 0.6; }
+/* persistent double-sided arrow cue at the right edge — signals the box slides
+   both ways (left to reveal, right to re-cover). Stays put in either state. */
+.onb-pf-cue {
+  position: absolute; right: 10px; top: 50%; z-index: 3; color: var(--c);
+  pointer-events: none; opacity: 0.85; transform: translateY(-50%);
+  animation: onbWiggle 1.9s ease-in-out infinite;
+}
+@keyframes onbWiggle {
+  0%, 100% { transform: translateY(-50%) translateX(0); }
+  30%      { transform: translateY(-50%) translateX(-3px); }
+  70%      { transform: translateY(-50%) translateX(3px); }
+}
 .onb-pf-hint {
   font-family: var(--th-font-body, 'Newsreader'), serif; font-style: italic;
   font-size: 18px; color: var(--th-text); opacity: 0.62; text-align: center; margin-top: 8px;

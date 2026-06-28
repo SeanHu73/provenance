@@ -92,11 +92,14 @@ function Lens({ lens }: { lens: LensDef }) {
         <div className="onb-pf-q">{lens.q}</div>
         <div ref={coverRef} className="onb-pf-cover">
           <span className="onb-pf-desc">{lens.sub}</span>
-          <span className="onb-pf-grab">
-            <span className="onb-pf-arrow">&larr;</span>
-            <span className="onb-pf-grip" />
-          </span>
         </div>
+        {/* persistent double-sided arrow — the box slides both ways */}
+        <svg className="onb-pf-cue" width="26" height="12" viewBox="0 0 26 12" fill="none"
+          stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M4 6h18" />
+          <path d="M7 3 4 6l3 3" />
+          <path d="M19 3l3 3-3 3" />
+        </svg>
       </div>
     </div>
   );
