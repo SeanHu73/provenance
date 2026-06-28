@@ -42,6 +42,7 @@ import CommunityForumCard from './cards/CommunityForumCard';
 import ResourcesCard from './cards/ResourcesCard';
 import ActIntroCard from './cards/ActIntroCard';
 import StopMapCard from './cards/StopMapCard';
+import ContextIntroCard from './cards/ContextIntroCard';
 import ActContextCard from './cards/ActContextCard';
 import ContextQuestionsCard from './cards/ContextQuestionsCard';
 import ActReflectionCard from './cards/ActReflectionCard';
@@ -86,6 +87,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeActOpening,
     completeActClosing,
     completeCommunityForum,
+    completeContextIntro,
     completeActContext,
     completeActContextQuestions,
     completeActReflection,
@@ -132,7 +134,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const stopNum = session.currentStopIndex + 1;
 
   // Progress bar visibility — show during stops, hide on pre-tour/end screens
-  const showProgress = !['intro', 'meet_guide', 'guide_outro', 'end', 'act_intro', 'resources'].includes(phase);
+  const showProgress = !['intro', 'meet_guide', 'guide_outro', 'end', 'act_intro', 'act_context_intro', 'resources'].includes(phase);
 
   // Determine transition type from the phase history.
   // Look at the previous entry — if it was in the same stop, slide. Otherwise fade.
@@ -338,7 +340,11 @@ export default function Journal({ onMapPeek }: JournalProps) {
           <CommunityForumCard onComplete={completeCommunityForum} />
         )}
 
-        {/* End-of-act chain: Context → Context questions → Reflection → Community */}
+        {/* End-of-act chain: Context intro → Context → Context questions → Reflection → Community */}
+        {phase === 'act_context_intro' && currentStop && (
+          <ContextIntroCard onComplete={completeContextIntro} />
+        )}
+
         {phase === 'act_context' && currentStop && (
           <ActContextCard onComplete={completeActContext} />
         )}

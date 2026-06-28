@@ -44,6 +44,7 @@ import {
   completeActOpening as completeActOpeningImpl,
   completeActClosing as completeActClosingImpl,
   completeCommunityForum as completeCommunityForumImpl,
+  completeContextIntro as completeContextIntroImpl,
   completeActContext as completeActContextImpl,
   completeActContextQuestions as completeActContextQuestionsImpl,
   completeActReflection as completeActReflectionImpl,
@@ -91,6 +92,7 @@ interface TourContextValue {
   completeActOpening: (response: string) => void;
   completeActClosing: (response: string) => void;
   completeCommunityForum: () => void;
+  completeContextIntro: () => void;
   completeActContext: () => void;
   completeActContextQuestions: (asked?: ContextQuestionEntry[]) => void;
   completeActReflection: (response: ActReflectionResponse) => void;
@@ -629,7 +631,12 @@ export function TourProvider({ children }: { children: ReactNode }) {
     logSeedIfEntered(next, tour);
   }, [session, tour, persist, logSeedIfEntered]);
 
-  // End-of-act chain: Context → Context questions → Reflection → Community.
+  // End-of-act chain: Context intro → Context → Context questions → Reflection → Community.
+  const completeContextIntroFn = useCallback(() => {
+    if (!session || !tour) return;
+    persist(completeContextIntroImpl(session));
+  }, [session, tour, persist]);
+
   const completeActContextFn = useCallback(() => {
     if (!session || !tour) return;
     persist(completeActContextImpl(session));
@@ -691,6 +698,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeActOpening: completeActOpeningFn,
       completeActClosing: completeActClosingFn,
       completeCommunityForum: completeCommunityForumFn,
+      completeContextIntro: completeContextIntroFn,
       completeActContext: completeActContextFn,
       completeActContextQuestions: completeActContextQuestionsFn,
       completeActReflection: completeActReflectionFn,

@@ -495,12 +495,13 @@ function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession
   }
 
   // Last stop in the act — begin the end-of-act chain:
-  //   [act_context] → act_context_questions → [act_reflection] → community_share
+  //   [act_context_intro → act_context] → act_context_questions →
+  //   [act_reflection] → community_share
   // currentStopIndex stays on the act's last stop so each step resolves the act.
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: actHasContext(act) ? 'act_context' : 'act_context_questions',
+    currentPhase: actHasContext(act) ? 'act_context_intro' : 'act_context_questions',
     currentRound: 0,
     completedStops,
   };
@@ -761,6 +762,17 @@ export function completeCommunityForum(session: TourSession, tour: Tour): TourSe
 // ── End-of-act chain (new): act_context → act_context_questions →
 //    act_reflection → community_share → next act. Each step's completer routes
 //    to the next applicable phase, skipping unauthored ones. ──────────────
+
+/** Context mode: the "Context" intro splash ("So what context do we need?")
+ *  finished → the Context page itself. */
+export function completeContextIntro(session: TourSession): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'act_context',
+    currentRound: 0,
+  };
+}
 
 /** Context mode: explorer read the act's Context section → context questions. */
 export function completeActContext(session: TourSession): TourSession {
