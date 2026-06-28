@@ -3,11 +3,12 @@
 /**
  * The P.A.S.T. framework slide.
  *
- * Four colour-coded lenses (Place / Attitudes / Society / Technology) — the
- * first letter of each word is enlarged. Each lens carries a coloured "cover"
- * with a right-edge handle (grip + a nudging ← arrow); dragging the cover LEFT
- * slides it away to reveal the example question underneath. Latches open once
- * dragged past a threshold. An italic instruction sits below; no separate
+ * Four colour-coded lenses (Place / Attitudes / Society / Technology). Each row
+ * pins the WORD (enlarged first letter) on the left; to its right the
+ * descriptor sits as a coloured "cover" over the example question. Dragging the
+ * cover LEFT from its right-edge handle (grip + nudging ← arrow) tucks it behind
+ * the word and clears it, revealing the question — the word stays visible.
+ * Latches open past a threshold. An italic instruction sits below; no separate
  * drag button.
  */
 
@@ -45,7 +46,7 @@ export default function PastFramework() {
       {LENSES.map((lens) => (
         <Lens key={lens.key} lens={lens} onOpen={() => setOpenCount((c) => c + 1)} />
       ))}
-      {!allOpen && <p className="onb-pf-hint">drag each box aside to reveal the questions</p>}
+      {!allOpen && <p className="onb-pf-hint">slide each box aside to reveal the question</p>}
     </div>
   );
 }
@@ -96,7 +97,6 @@ function Lens({ lens, onOpen }: { lens: LensDef; onOpen: () => void }) {
       <div className="onb-pf-word">
         <span className="onb-pf-initial">{lens.word.charAt(0)}</span>{lens.word.slice(1)}
       </div>
-      <div className="onb-pf-sub">{lens.sub}</div>
 
       <div className="onb-pf-reveal">
         <div className="onb-pf-q">{lens.q}</div>
@@ -107,8 +107,9 @@ function Lens({ lens, onOpen }: { lens: LensDef; onOpen: () => void }) {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
-          aria-label={`Drag aside to reveal the ${lens.word} question`}
+          aria-label={`Slide aside to reveal the ${lens.word} question`}
         >
+          <span className="onb-pf-desc">{lens.sub}</span>
           <span className="onb-pf-grab">
             <span className="onb-pf-arrow">&larr;</span>
             <span className="onb-pf-grip" />

@@ -320,60 +320,64 @@ body {
 .onb-panel.onb-in .onb-logo-pop { animation: onbPop 0.7s cubic-bezier(0.22, 1.6, 0.36, 1) 0.2s both; }
 
 /* ── P.A.S.T. swipe-to-reveal framework ──
-   Each lens shows its word (with an enlarged first letter) + descriptor; the
-   coloured "cover" is dragged LEFT from the right-edge handle to slide it away
-   and reveal the example question underneath. */
+   Each lens: a pinned WORD (enlarged first letter) on the left, then a column
+   holding the descriptor as a sliding "cover" over the example question. The
+   explorer drags the cover LEFT from its right-edge handle; it tucks behind the
+   word (the slide stops at the word) and clears, revealing the question. The
+   word stays visible; wrapped lines align under the descriptor column, not the
+   word. */
 .onb-pf { display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
 .onb-pf-lens {
   --c: var(--th-primary);
+  display: flex; align-items: stretch; gap: 0;
   border-radius: 14px; background: var(--th-surface);
   border: 2px solid rgba(62, 22, 32, 0.14); box-shadow: 4px 4px 0 rgba(62, 22, 32, 0.10);
-  padding: 14px 16px;
+  padding: 14px 16px; overflow: hidden;
 }
 .onb-pf-place    { --c: var(--onb-place); }
 .onb-pf-attitude { --c: var(--th-secondary); }
 .onb-pf-society  { --c: var(--th-primary); }
 .onb-pf-tech     { --c: var(--onb-time); }
 .onb-pf-word {
+  flex: 0 0 auto; align-self: center; white-space: nowrap; padding-right: 14px;
   font-family: var(--th-font-display, 'DM Serif Display'), serif; font-weight: 700;
-  font-size: 24px; line-height: 1; color: var(--c);
+  font-size: 23px; line-height: 1.05; color: var(--c);
 }
-.onb-pf-initial { font-size: 1.55em; }   /* just the first letter, enlarged */
-.onb-pf-sub {
-  font-family: var(--th-font-body, 'Newsreader'), serif; font-size: 15px;
-  color: var(--th-text); opacity: 0.72; margin-top: 5px;
-}
+.onb-pf-initial { font-size: 1.5em; }   /* just the first letter, enlarged */
 
-/* the reveal track: the question sits in normal flow (sets the height); the
-   cover sits absolutely over it and is dragged left to uncover the question. */
-.onb-pf-reveal { position: relative; margin-top: 11px; border-radius: 10px; overflow: hidden; }
+/* the reveal column — question sits in flow (sets the height), cover over it */
+.onb-pf-reveal {
+  flex: 1 1 auto; position: relative; overflow: hidden; min-height: 2.8em;
+  border-left: 2px solid color-mix(in srgb, var(--c) 38%, transparent);
+  display: flex; align-items: center;
+}
 .onb-pf-q {
+  width: 100%; padding: 4px 4px 4px 14px;
   font-family: var(--th-font-body, 'Newsreader'), serif; font-style: italic;
-  font-size: 16.5px; line-height: 1.32; color: var(--th-text);
-  padding: 12px 14px; min-height: 30px;
+  font-size: 16px; line-height: 1.3; color: var(--th-text);
 }
 .onb-pf-cover {
   position: absolute; inset: 0; z-index: 2;
-  background: color-mix(in srgb, var(--c) 14%, var(--th-surface));
-  border: 1.5px solid var(--c); border-radius: 10px;
-  display: flex; align-items: center; justify-content: flex-end; padding-right: 12px;
+  background: color-mix(in srgb, var(--c) 13%, var(--th-surface));
+  display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 14px;
   cursor: grab; touch-action: pan-y; user-select: none; will-change: transform;
 }
 .onb-pf-cover:active { cursor: grabbing; }
 .onb-pf-lens.onb-open .onb-pf-cover {
-  transform: translateX(-103%) !important; opacity: 0; pointer-events: none;
+  transform: translateX(-104%) !important; opacity: 0; pointer-events: none;
   transition: transform 0.42s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
 }
-/* right-edge handle: grip + a left-pointing, nudging arrow */
-.onb-pf-grab {
-  display: flex; align-items: center; gap: 8px; color: var(--c);
-  font-family: var(--font-montserrat, 'Montserrat'), sans-serif;
-  font-weight: 800; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+.onb-pf-desc {
+  flex: 1 1 auto;
+  font-family: var(--th-font-body, 'Newsreader'), serif;
+  font-size: 15.5px; line-height: 1.28; color: var(--th-text); opacity: 0.85;
 }
-.onb-pf-grip { width: 4px; height: 20px; border-radius: 2px;
-  background: repeating-linear-gradient(0deg, var(--c) 0 2px, transparent 2px 5px); opacity: 0.6; }
+/* right-edge handle: a left-pointing, nudging arrow + grip */
+.onb-pf-grab { flex: 0 0 auto; align-self: center; display: flex; align-items: center; gap: 6px; color: var(--c); }
 .onb-pf-arrow { font-size: 18px; line-height: 1; animation: onbNudge 1.4s ease-in-out infinite; }
 @keyframes onbNudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
+.onb-pf-grip { width: 4px; height: 22px; border-radius: 2px;
+  background: repeating-linear-gradient(0deg, var(--c) 0 2px, transparent 2px 5px); opacity: 0.6; }
 .onb-pf-hint {
   font-family: var(--th-font-body, 'Newsreader'), serif; font-style: italic;
   font-size: 15px; color: var(--th-text); opacity: 0.6; text-align: center; margin-top: 4px;
