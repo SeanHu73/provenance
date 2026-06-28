@@ -26,7 +26,7 @@ const LENSES: LensDef[] = [
     sub: 'Social class, politics, economy',
     q: 'Who held power? What did the economic conditions look like?' },
   { key: 'tech', word: 'Technology', cls: 'onb-pf-tech',
-    sub: 'Important tools, infrastructure, big inventions',
+    sub: 'Useful tools, infrastructure, key inventions',
     q: 'What was new? How did it change daily life or business?' },
 ];
 
