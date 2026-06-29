@@ -1,73 +1,76 @@
 'use client';
 
 /**
- * Admin — Context Journal place configuration.
+ * Admin — Context Journal configuration, per tour.
  *
- * Per-place (one place for now) settings the viewer's Context Journal opens on:
- *   - Timeline domain (the two end years; 1000 BC … present).
- *   - Default map view: pan/zoom the map to frame the area, then "Use current
- *     view as default" — viewers open here and return here when no context is
- *     selected.
- *   - Optional "constrain" box: lock viewers to the current view's bounds.
+ * Pick a tour, then set the Context Journal settings the viewer opens on for
+ * that tour: the timeline domain (the two end years) and the default map view
+ * (frame the map → "use current view as default"). Stored at
+ * `context-journal-config/{tourId}`. (Per-stop config will slot in here later.)
  *
- * Writes to `context-journal-config/{placeId}` in Firestore (needs a console
- * rule block, like the other collections). Builder-only tool, no auth.
+ * Writes to Firestore (needs a console rule block, like the other collections).
+ * Builder-only tool, no auth.
  */
 
 import { useEffect, useState } from 'react';
-import { DEFAULT_PLACE_ID, TIMELINE_BOUNDS, DEFAULT_DOMAIN, DEFAULT_CAMERA, formatYear } from '@/features/context-journal/constants';
-import type { Bounds } from '@/features/context-journal/types';
+import { TIMELINE_BOUNDS, DEFAULT_DOMAIN, DEFAULT_CAMERA, formatYear } from '@/features/context-journal/constants';
+import type { MapType } from '@/features/context-journal/types';
 import { getPlaceConfig, savePlaceConfig } from '@/features/context-journal/store';
 import ContextMapLoader from '@/features/context-journal/components/ContextMapLoader';
-
-type Viewport = { center: [number, number]; zoom: number; bounds: Bounds };
+import { getTours } from '@/lib/tours-store';
+import type { Tour } from '@/lib/types';
 
 export default function ContextJournalAdminPage() {
-  const placeId = DEFAULT_PLACE_ID;
+  const [tours, setTours] = useState<Tour[]>([]);
+  const [tourId, setTourId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [start, setStart] = useState(DEFAULT_DOMAIN.start);
   const [end, setEnd] = useState(DEFAULT_DOMAIN.end);
-  const [view, setView] = useState<Viewport | null>(null);
+  const [view, setView] = useState<{ center: [number, number]; zoom: number } | null>(null);
   const [savedView, setSavedView] = useState<{ center: [number, number]; zoom: number } | null>(null);
-  const [lockPan, setLockPan] = useState(false);
+  const [mapType, setMapType] = useState<MapType>('default');
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Load the tour list once.
   useEffect(() => {
     (async () => {
-      const cfg = await getPlaceConfig(placeId);
-      if (cfg) {
-        setStart(cfg.timelineStart);
-        setEnd(cfg.timelineEnd);
-        setSavedView({ center: cfg.defaultCenter, zoom: cfg.defaultZoom });
-        setLockPan(!!cfg.maxBounds);
-      }
+      const ts = await getTours();
+      setTours(ts);
+      if (ts.length && !tourId) setTourId(ts[0].id);
       setLoading(false);
     })();
-  }, [placeId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Load the selected tour's config.
+  useEffect(() => {
+    if (!tourId) return;
+    let active = true;
+    (async () => {
+      const cfg = await getPlaceConfig(tourId);
+      if (!active) return;
+      setStart(cfg?.timelineStart ?? DEFAULT_DOMAIN.start);
+      setEnd(cfg?.timelineEnd ?? DEFAULT_DOMAIN.end);
+      setSavedView(cfg ? { center: cfg.defaultCenter, zoom: cfg.defaultZoom } : null);
+      setView(null);
+    })();
+    return () => { active = false; };
+  }, [tourId]);
 
   const clampYear = (n: number) => Math.min(TIMELINE_BOUNDS.end, Math.max(TIMELINE_BOUNDS.start, n));
   const rangeValid = start <= end;
 
   const save = async () => {
+    if (!tourId) return;
     setSaving(true);
     setStatus(null);
-    // Use the live view if the admin moved the map, else fall back to the saved
-    // / default camera.
     const center = view?.center ?? savedView?.center ?? DEFAULT_CAMERA.center;
     const zoom = view?.zoom ?? savedView?.zoom ?? DEFAULT_CAMERA.zoom;
-    const maxBounds: Bounds | null = lockPan ? (view?.bounds ?? null) : null;
     try {
-      await savePlaceConfig({
-        placeId,
-        timelineStart: start,
-        timelineEnd: end,
-        defaultCenter: center,
-        defaultZoom: zoom,
-        maxBounds,
-      });
+      await savePlaceConfig({ placeId: tourId, timelineStart: start, timelineEnd: end, defaultCenter: center, defaultZoom: zoom });
       setSavedView({ center, zoom });
-      setStatus('Saved. Viewers will open the Context Journal with these settings.');
+      setStatus('Saved. The Context Journal for this tour will open with these settings.');
       setTimeout(() => setStatus(null), 5000);
     } catch (err) {
       console.error(err);
@@ -76,18 +79,20 @@ export default function ContextJournalAdminPage() {
     setSaving(false);
   };
 
+  const selectedTour = tours.find((t) => t.id === tourId);
+
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 p-6 font-sans">
       <div className="max-w-3xl mx-auto">
         <header className="mb-6 border-b border-stone-300 pb-3">
           <h1 className="text-2xl font-bold">Context Journal — Configuration</h1>
           <p className="text-sm text-stone-600 mt-1">
-            Place: <code className="bg-stone-200 px-1 rounded">{placeId}</code>. Writes to{' '}
-            <code className="bg-stone-200 px-1 rounded">context-journal-config</code>.
+            Per tour. Writes to <code className="bg-stone-200 px-1 rounded">context-journal-config/&lt;tourId&gt;</code>.
+            Per-stop configuration will be added here later.
           </p>
           <nav className="mt-3 text-sm flex gap-4">
             <a href="/admin" className="text-blue-700 hover:underline">← Admin home</a>
-            <a href="/context-journal" className="text-blue-700 hover:underline font-semibold">Open Context Journal →</a>
+            {tourId && <a href={`/context-journal?tour=${encodeURIComponent(tourId)}`} className="text-blue-700 hover:underline font-semibold">Open this tour&apos;s Context Journal →</a>}
           </nav>
         </header>
 
@@ -96,14 +101,26 @@ export default function ContextJournalAdminPage() {
         )}
 
         {loading ? (
-          <p className="text-stone-600">Loading configuration…</p>
+          <p className="text-stone-600">Loading…</p>
+        ) : tours.length === 0 ? (
+          <p className="text-stone-600">No tours found. Create a tour first under the Tours admin.</p>
         ) : (
           <div className="space-y-6">
+            {/* Tour picker */}
+            <section className="p-4 border border-stone-300 rounded bg-white">
+              <label className="block">
+                <span className="block text-sm font-semibold mb-1">Tour</span>
+                <select value={tourId} onChange={(e) => setTourId(e.target.value)} className="w-full px-2 py-1.5 border border-stone-300 rounded text-sm">
+                  {tours.map((t) => <option key={t.id} value={t.id}>{t.title} ({t.id})</option>)}
+                </select>
+              </label>
+            </section>
+
             {/* Timeline domain */}
             <section className="p-4 border border-stone-300 rounded bg-white">
               <h2 className="font-semibold mb-1">Timeline domain</h2>
               <p className="text-xs text-stone-600 mb-3">
-                The two ends the timeline opens on. Negative = BC (−500 = 500 BC). Viewers can still move the ends themselves.
+                The two ends the timeline opens on for {selectedTour?.title ?? 'this tour'}. Negative = BC (−500 = 500 BC). Viewers can still move the ends themselves.
               </p>
               <div className="flex items-center gap-3">
                 <label className="text-sm">
@@ -128,15 +145,18 @@ export default function ContextJournalAdminPage() {
             <section className="p-4 border border-stone-300 rounded bg-white">
               <h2 className="font-semibold mb-1">Default map view</h2>
               <p className="text-xs text-stone-600 mb-3">
-                Pan and zoom to frame the area you want viewers to see by default. Then it&apos;s captured below — viewers
-                open here and return here whenever no context is selected.
+                Pan/zoom to frame the area viewers should see by default — they open here and return here when no context is
+                selected. (Use the Satellite toggle to find the spot; only the centre/zoom is saved.)
               </p>
               <div className="h-[420px] rounded overflow-hidden border border-stone-300">
                 <ContextMapLoader
+                  key={`${tourId}-${mapType}`}
                   mode="browse"
                   geolocate
+                  mapType={mapType}
+                  onMapTypeChange={setMapType}
                   defaultView={savedView}
-                  onViewportChange={setView}
+                  onViewportChange={(v) => setView({ center: v.center, zoom: v.zoom })}
                 />
               </div>
               <p className="mt-2 text-xs text-stone-600">
@@ -146,15 +166,6 @@ export default function ContextJournalAdminPage() {
                     ? `${savedView.center[1].toFixed(4)}, ${savedView.center[0].toFixed(4)} · zoom ${savedView.zoom.toFixed(1)} (saved)`
                     : '(move the map to set)'}
               </p>
-              <label className="mt-3 flex items-start gap-2 text-sm">
-                <input type="checkbox" checked={lockPan} onChange={(e) => setLockPan(e.target.checked)} className="mt-0.5" />
-                <span>
-                  <span className="font-medium">Constrain viewers to this view</span>
-                  <span className="block text-xs text-stone-500">
-                    Locks panning/zooming to the current map bounds. {lockPan && !view && <span className="text-amber-700">Move the map once to capture its bounds.</span>}
-                  </span>
-                </span>
-              </label>
             </section>
 
             <div className="flex items-center gap-3">

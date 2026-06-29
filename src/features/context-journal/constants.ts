@@ -6,13 +6,16 @@
  * identity is stable across the red/teal themes.
  */
 
-import type { PastCategory, TimeRange } from './types';
+import type { PastCategory, TimeRange, MapType } from './types';
 
-/** Default place this journal is scoped to (one place for now). */
+/** Default scope when the journal isn't opened in a tour context. */
 export const DEFAULT_PLACE_ID = 'memorial-church';
 
-/** Map defaults (Mapbox). Satellite imagery + street labels, opened on the place. */
-export const MAP_STYLE = 'mapbox://styles/mapbox/satellite-streets-v12';
+/** Basemap styles. `default` is the calm light map; `satellite` is imagery. */
+export const MAP_STYLES: Record<MapType, string> = {
+  default: 'mapbox://styles/mapbox/light-v11',
+  satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
+};
 export const DEFAULT_CAMERA = { center: [-122.1697, 37.4272] as [number, number], zoom: 15.5 };
 
 /** Firestore collections owned by this module. */

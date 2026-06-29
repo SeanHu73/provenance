@@ -23,8 +23,8 @@ import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import type { Geometry } from 'geojson';
-import { MAP_STYLE, DEFAULT_CAMERA } from '../constants';
-import type { Bounds, Camera, DrawResult, DrawTool, MapMode } from '../types';
+import { MAP_STYLES, DEFAULT_CAMERA } from '../constants';
+import type { Bounds, Camera, DrawResult, DrawTool, MapMode, MapType } from '../types';
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -39,14 +39,16 @@ interface Props {
   onDrawChange?: (result: DrawResult) => void;
   /** Admin-set default view the browse map opens on / returns to. */
   defaultView?: { center: [number, number]; zoom: number } | null;
-  /** Constrain panning/zooming to this box (the admin "constrain" box). */
-  maxBounds?: Bounds | null;
   /** Show the GPS "locate me" control (a dot at the viewer's position + recenter). */
   geolocate?: boolean;
   /** Fly the map to show this context's geometry; null returns to defaultView. */
   focus?: { geometry: Geometry | null; camera: Camera | null } | null;
   /** Fires on every settle (moveend) so an admin can capture the current view. */
   onViewportChange?: (v: { center: [number, number]; zoom: number; bounds: Bounds }) => void;
+  /** Basemap style. */
+  mapType?: MapType;
+  /** When provided, a Map/Satellite toggle button is shown that calls this. */
+  onMapTypeChange?: (t: MapType) => void;
 }
 
 /** Bounding box of a geometry, or null for a point / empty (caller flies instead). */
@@ -86,7 +88,7 @@ function drawStyles(colour: string) {
 
 export default function ContextMap({
   mode, lensColour = '#347C4A', initialCamera, initialGeometry, onDrawChange,
-  defaultView, maxBounds, geolocate, focus, onViewportChange,
+  defaultView, geolocate, focus, onViewportChange, mapType = 'default', onMapTypeChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -105,7 +107,7 @@ export default function ContextMap({
     mapboxgl.accessToken = TOKEN;
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: MAP_STYLE,
+      style: MAP_STYLES[mapType],
       center: initialCamera?.center ?? defaultView?.center ?? DEFAULT_CAMERA.center,
       zoom: initialCamera?.zoom ?? defaultView?.zoom ?? DEFAULT_CAMERA.zoom,
       attributionControl: false,
@@ -140,13 +142,18 @@ export default function ContextMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── pan/zoom constraint (the admin "constrain" box) ──
+  // ── basemap switching (browse) ──
+  // In ADD mode the parent remounts the map on a type change (re-seeding the
+  // drawn geometry), so setStyle here only ever runs for the browse map — where
+  // there's no draw control to clobber. A ref guards the initial mount.
+  const styleRef = useRef<MapType>(mapType);
   useEffect(() => {
-    const m = mapRef.current;
-    if (!m) return;
-    // setMaxBounds(null) clears the constraint at runtime; v3's type is strict.
-    (m.setMaxBounds as (b: Bounds | null) => void)(maxBounds ?? null);
-  }, [maxBounds]);
+    const map = mapRef.current;
+    if (!map || styleRef.current === mapType) return;
+    styleRef.current = mapType;
+    map.setStyle(MAP_STYLES[mapType]);
+    map.once('style.load', () => map.resize());
+  }, [mapType]);
 
   // ── fly to a focused context's area; null returns to the default view ──
   useEffect(() => {
@@ -304,7 +311,7 @@ export default function ContextMap({
             </button>
           </div>
 
-          <div className="absolute bottom-2 left-2 right-2 z-10 text-center pointer-events-none">
+          <div className="absolute bottom-2 left-0 right-0 z-10 text-center pointer-events-none">
             <span className="inline-block px-3 py-1.5 rounded-full text-xs font-medium bg-black/55 text-white">
               {hasGeometry
                 ? '✓ Location set — adjust or Clear to redraw'
@@ -314,6 +321,20 @@ export default function ContextMap({
             </span>
           </div>
         </>
+      )}
+
+      {/* Map / Satellite toggle */}
+      {onMapTypeChange && (
+        <button
+          onClick={() => onMapTypeChange(mapType === 'default' ? 'satellite' : 'default')}
+          className="absolute bottom-2 left-2 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-warm-white/95 shadow-lg backdrop-blur text-text-primary"
+          aria-label={`Switch to ${mapType === 'default' ? 'satellite' : 'map'} view`}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
+          </svg>
+          {mapType === 'default' ? 'Satellite' : 'Map'}
+        </button>
       )}
     </div>
   );

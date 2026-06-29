@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import PastFramework from './PastFramework';
 
 const LEAVE_MS = 500;
@@ -24,6 +25,8 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
   const [dismissed, setDismissed] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const screenRef = useRef<HTMLDivElement | null>(null);
+  // The teaching intro is for explorers, not the builder — skip it on admin.
+  const onAdmin = usePathname()?.startsWith('/admin') ?? false;
 
   // Suppress the legacy splash this session so it never double-runs.
   useEffect(() => {
@@ -51,7 +54,7 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
   return (
     <>
       {children}
-      {!dismissed && (
+      {!dismissed && !onAdmin && (
         <div className={`onb-screen ${leaving ? 'onb-leaving' : ''}`} ref={screenRef} aria-label="Introduction">
           <button className="onb-skip" onClick={dismiss}>Skip</button>
 

@@ -12,6 +12,9 @@ import type { Geometry } from 'geojson';
 /** The four P.A.S.T. lenses. A context belongs to exactly one. */
 export type PastCategory = 'place' | 'attitudes' | 'society' | 'technology';
 
+/** Basemap style: the calm default (light) or satellite imagery. */
+export type MapType = 'default' | 'satellite';
+
 /** Inclusive year span. */
 export interface TimeRange {
   start: number;
@@ -35,6 +38,8 @@ export interface ContextEntry {
   geometry: Geometry | null; // GeoJSON Point or Polygon
   camera: Camera | null;
   photoUrl: string | null;
+  /** Basemap the context was authored on; the viewer's map switches to it on focus. */
+  mapType: MapType;
   placeId: string;
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
@@ -78,7 +83,5 @@ export interface PlaceConfig {
   timelineEnd: number;
   defaultCenter: [number, number];
   defaultZoom: number;
-  /** When set, viewers can't pan/zoom outside this box (the "constrain" box). */
-  maxBounds: Bounds | null;
   updatedAt: Timestamp | null;
 }

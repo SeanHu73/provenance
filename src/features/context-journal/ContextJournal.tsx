@@ -19,7 +19,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
 import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange } from './constants';
-import type { Bounds, ContextEntry, TimeRange } from './types';
+import type { ContextEntry, MapType, TimeRange } from './types';
 import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds, getPlaceConfig } from './store';
 import ContextMapLoader from './components/ContextMapLoader';
 import ContextTimeline from './components/ContextTimeline';
@@ -28,13 +28,14 @@ import ContextFullScreen from './components/ContextFullScreen';
 import AddContextFlow from './components/AddContextFlow';
 
 interface Props {
-  placeId?: string;
-  /** Initial timeline domain (admin-set per stop; the viewer can then move the
-   *  two ends). Defaults to DEFAULT_DOMAIN. */
-  domain?: { start: number; end: number };
+  /** When opened from a tour, the journal scopes its config + contexts to it.
+   *  (Per-stop scoping drops in here later.) */
+  tourId?: string;
 }
 
-export default function ContextJournal({ placeId = DEFAULT_PLACE_ID, domain: initialDomain = DEFAULT_DOMAIN }: Props) {
+export default function ContextJournal({ tourId }: Props) {
+  const scopeId = tourId ?? DEFAULT_PLACE_ID;
+
   const [entries, setEntries] = useState<ContextEntry[]>([]);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   // viewer id lives in a ref: it's read once (client-only localStorage) and only
@@ -42,8 +43,8 @@ export default function ContextJournal({ placeId = DEFAULT_PLACE_ID, domain: ini
   const viewerIdRef = useRef<string>('');
   // The domain (the two timeline ends) is editable by the viewer; the selection
   // re-fits whenever an end moves.
-  const [domain, setDomain] = useState(initialDomain);
-  const [range, setRange] = useState<TimeRange>(() => defaultRange(initialDomain));
+  const [domain, setDomain] = useState(DEFAULT_DOMAIN);
+  const [range, setRange] = useState<TimeRange>(() => defaultRange(DEFAULT_DOMAIN));
 
   const changeDomain = (next: { start: number; end: number }) => {
     setDomain(next);
@@ -54,29 +55,37 @@ export default function ContextJournal({ placeId = DEFAULT_PLACE_ID, domain: ini
   // The context the viewer has tapped — drives the map (fly to its area); null
   // returns the map to the admin default view.
   const [focused, setFocused] = useState<ContextEntry | null>(null);
-  // Admin-set default view + optional pan constraint, loaded from PlaceConfig.
+  // Admin-set default view, loaded from the per-tour config.
   const [defaultView, setDefaultView] = useState<{ center: [number, number]; zoom: number } | null>(null);
-  const [maxBounds, setMaxBounds] = useState<Bounds | null>(null);
+  // Basemap: the calm default, switching to a context's authored map on focus;
+  // the viewer can also toggle it freely.
+  const [mapType, setMapType] = useState<MapType>('default');
+
+  // Focusing a context flies the map to its area and switches to the basemap it
+  // was authored on; collapsing clears focus (map returns to the default view).
+  const handleFocus = (entry: ContextEntry | null) => {
+    setFocused(entry);
+    if (entry) setMapType(entry.mapType ?? 'default');
+  };
 
   useEffect(() => {
-    const unsub = subscribeContextEntries(placeId, setEntries);
+    const unsub = subscribeContextEntries(scopeId, setEntries);
     return unsub;
-  }, [placeId]);
+  }, [scopeId]);
 
-  // Load the admin config: timeline domain + default map view + constrain box.
+  // Load the per-tour config: timeline domain + default map view.
   useEffect(() => {
     let active = true;
     (async () => {
-      const cfg = await getPlaceConfig(placeId);
+      const cfg = await getPlaceConfig(scopeId);
       if (!active || !cfg) return;
       const d = { start: cfg.timelineStart, end: cfg.timelineEnd };
       setDomain(d);
       setRange(defaultRange(d));
       setDefaultView({ center: cfg.defaultCenter, zoom: cfg.defaultZoom });
-      setMaxBounds(cfg.maxBounds ?? null);
     })();
     return () => { active = false; };
-  }, [placeId]);
+  }, [scopeId]);
 
   useEffect(() => {
     const id = getViewerId();
@@ -93,7 +102,7 @@ export default function ContextJournal({ placeId = DEFAULT_PLACE_ID, domain: ini
       void unsaveContext(viewerId, contextId);
     } else {
       setSavedIds((prev) => new Set(prev).add(contextId));
-      void saveContext(viewerId, contextId, placeId);
+      void saveContext(viewerId, contextId, scopeId);
     }
   };
 
@@ -127,7 +136,8 @@ export default function ContextJournal({ placeId = DEFAULT_PLACE_ID, domain: ini
           mode="browse"
           geolocate
           defaultView={defaultView}
-          maxBounds={maxBounds}
+          mapType={mapType}
+          onMapTypeChange={setMapType}
           focus={focused ? { geometry: focused.geometry, camera: focused.camera } : null}
         />
       </div>
@@ -144,7 +154,7 @@ export default function ContextJournal({ placeId = DEFAULT_PLACE_ID, domain: ini
           selectedRange={range}
           savedIds={savedIds}
           focusedId={focused?.id ?? null}
-          onFocus={setFocused}
+          onFocus={handleFocus}
           onToggleSave={toggleSave}
           onOpenFull={setFullEntry}
         />
@@ -152,7 +162,7 @@ export default function ContextJournal({ placeId = DEFAULT_PLACE_ID, domain: ini
 
       <AnimatePresence>
         {addOpen && (
-          <AddContextFlow key="add" placeId={placeId} onClose={() => setAddOpen(false)} />
+          <AddContextFlow key="add" placeId={scopeId} onClose={() => setAddOpen(false)} />
         )}
         {liveFull && (
           <ContextFullScreen

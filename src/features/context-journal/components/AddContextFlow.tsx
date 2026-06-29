@@ -13,7 +13,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { LENSES, TIMELINE_BOUNDS, LENS_BY_KEY } from '../constants';
-import type { DrawResult, PastCategory } from '../types';
+import type { DrawResult, MapType, PastCategory } from '../types';
 import { addContextEntry, uploadContextPhoto } from '../store';
 import ContextMapLoader from './ContextMapLoader';
 
@@ -32,6 +32,7 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
   const [startYear, setStartYear] = useState(1900);
   const [endYear, setEndYear] = useState(1950);
   const [draw, setDraw] = useState<DrawResult>({ geometry: null, camera: null });
+  const [mapType, setMapType] = useState<MapType>('default');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,6 +54,7 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
         timeRange: { start: startYear, end: endYear },
         geometry: draw.geometry,
         camera: draw.camera,
+        mapType,
         photoUrl,
         placeId,
       });
@@ -154,7 +156,18 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
           {/* map step */}
           <Field label="Place on the map (required)">
             <div className="h-64 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
-              <ContextMapLoader mode="add" lensColour={colour} onDrawChange={setDraw} />
+              {/* keyed by mapType: toggling the basemap remounts the map and
+                 re-seeds the drawn geometry/camera (avoids fighting draw + setStyle). */}
+              <ContextMapLoader
+                key={mapType}
+                mode="add"
+                mapType={mapType}
+                onMapTypeChange={setMapType}
+                lensColour={colour}
+                initialGeometry={draw.geometry}
+                initialCamera={draw.camera}
+                onDrawChange={setDraw}
+              />
             </div>
             <p className="mt-1.5 text-xs text-text-muted">
               {draw.geometry ? '✓ Location captured.' : 'Drop a pin or colour in a region to continue.'}

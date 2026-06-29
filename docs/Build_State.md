@@ -2372,9 +2372,11 @@ never loads mapbox at all.
 `ContextMap`, BROWSE mode) → **Timeline** (`ContextTimeline`) → **P.A.S.T.
 panel** (`PastPanel`, remaining space, scrolls).
 
-- **ContextMap** — BROWSE = **satellite** base map (`satellite-streets-v12`,
-  imagery + street labels; saved geometry deliberately NOT drawn yet — geography
-  doesn't filter the list in this phase). ADD mode enables
+- **ContextMap** — BROWSE = the calm **default** light basemap (`MAP_STYLES`:
+  `default` = light-v11, `satellite` = satellite-streets-v12). A **Map/Satellite
+  toggle** lets the viewer switch freely (live `setStyle`); focusing a context
+  also switches to the basemap it was authored on. (Saved geometry deliberately
+  NOT drawn on the browse map yet.) ADD mode enables
   a toolbar: **Pin** (`draw_point`) or **Highlight** (freehand "colour in" via
   `mapbox-gl-draw-freehand-mode`, dynamically imported with a **polygon
   fallback**), filled in the active lens colour at low opacity, plus **Clear**.
@@ -2423,20 +2425,25 @@ panel** (`PastPanel`, remaining space, scrolls).
   writes a `ContextEntry` and (live subscription) it appears in its lens the
   moment its range overlaps the selection.
 
-**Admin config + map behaviours (2026-06-29 pt.2).** A per-place config doc
-**`context-journal-config/{placeId}`** (`PlaceConfig`) holds the timeline domain
-+ default map view (`defaultCenter`/`defaultZoom`) + optional `maxBounds`
-constrain box, edited at **`/admin/context-journal`** (timeline year inputs; a
-map you frame and "save current view as default"; a "constrain viewers to this
-view" checkbox → `maxBounds`). `ContextJournal` loads it on mount. The browse
-map gained: a **GPS `GeolocateControl`** (dot at the viewer's location + recenter
-button), **`maxBounds`** enforcement, and **focus-to-context** — tapping a
-context thumbnail lifts a `focused` entry to `ContextJournal` and the map
-**flies to fit that context's geometry** (`fitBounds` for a region, `flyTo` for a
-point); deselecting (collapsing the lens) returns the map to the admin default
-view. `ContextMap` also emits `onViewportChange` (moveend) so the admin page can
-capture the current view. (`context-journal-config` needs its own Firestore rule
-block too.)
+**Admin config + map behaviours (2026-06-29 pt.2/3).** Config is **per tour**:
+**`context-journal-config/{tourId}`** (`PlaceConfig`) holds the timeline domain
++ default map view (`defaultCenter`/`defaultZoom`), edited at
+**`/admin/context-journal`** (pick a tour → timeline year inputs + a map you
+frame and "save current view as default"). The viewer route takes **`?tour=<id>`**
+(the TourFooter "Context Journal" link passes it); `ContextJournal` scopes its
+config + contexts + saves to that tour (`scopeId = tourId ?? DEFAULT_PLACE_ID`;
+per-stop scoping slots in here later). **No constrain box** — viewers can pan/zoom
+freely to look around. The browse map has a **GPS `GeolocateControl`** (locate dot
++ recenter) and **focus-to-context** — tapping a context thumbnail lifts a
+`focused` entry and the map **flies to fit its geometry** (`fitBounds` for a
+region, `flyTo` for a point) **and switches to the basemap it was authored on**
+(`ContextEntry.mapType`); deselecting (collapsing the lens) returns to the default
+view. **Basemap toggle:** default light ↔ satellite, via the on-map button (live
+`setStyle`) for viewers, and in the **Add flow** (keyed remount that re-seeds the
+drawn geometry, so satellite/default doesn't fight mapbox-gl-draw) — the chosen
+type is stored on the context. `ContextMap` emits `onViewportChange` (moveend) for
+the admin view-capture. The first-open **onboarding is suppressed on `/admin`**.
+(`context-journal-config` needs its own Firestore rule block too.)
 
 **Data — `store.ts`.** Collections **`context-entries`** (live `onSnapshot`,
 scoped by `placeId`, default `memorial-church`) and **`saved-contexts`**
