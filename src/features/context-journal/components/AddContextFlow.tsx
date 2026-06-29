@@ -106,7 +106,11 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
       onClose();
     } catch (err) {
       console.error('[context-journal] save failed:', err);
-      setError('Could not save. Please try again.');
+      // Surface the real Firebase reason (e.g. storage/unauthorized,
+      // permission-denied) so save failures are diagnosable, not generic.
+      const e = err as { code?: string; message?: string };
+      const detail = [e.code, e.message].filter(Boolean).join(' — ');
+      setError(detail ? `Could not save: ${detail}` : 'Could not save. Please try again.');
       setSaving(false);
     }
   };

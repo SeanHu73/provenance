@@ -14,7 +14,8 @@
 
 import type { Geometry, Polygon, MultiPolygon } from 'geojson';
 
-const ENDPOINT = 'https://nominatim.openstreetmap.org/search';
+const SEARCH = 'https://nominatim.openstreetmap.org/search';
+const REVERSE = 'https://nominatim.openstreetmap.org/reverse';
 
 export interface PlaceResult {
   /** Human-readable name, e.g. "California, United States". */
@@ -62,7 +63,7 @@ export async function searchPlaces(query: string, signal?: AbortSignal): Promise
   const q = query.trim();
   if (!q) return [];
   const url =
-    `${ENDPOINT}?format=jsonv2&polygon_geojson=1&polygon_threshold=0.008&limit=6&q=${encodeURIComponent(q)}`;
+    `${SEARCH}?format=jsonv2&polygon_geojson=1&polygon_threshold=0.008&limit=6&q=${encodeURIComponent(q)}`;
   const res = await fetch(url, { signal, headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error(`Place search failed (${res.status})`);
   const data = (await res.json()) as NominatimItem[];
@@ -80,4 +81,35 @@ export async function searchPlaces(query: string, signal?: AbortSignal): Promise
   // Administrative boundaries first (what "select a state/country" means).
   results.sort((a, b) => Number(b.kind === 'administrative') - Number(a.kind === 'administrative'));
   return results;
+}
+
+/** A nameable area found under a tapped point, coarse → fine collapsed into a
+ *  pickable list (city, state, country) so a tap can choose the level. */
+export interface PlaceCandidate {
+  /** Button label, e.g. "California (state)". */
+  label: string;
+  /** Query to resolve to a boundary via searchPlaces. */
+  query: string;
+}
+
+interface NominatimReverse {
+  address?: Record<string, string>;
+}
+
+/** Reverse-geocode a point to the city / state / country names sitting under it,
+ *  so tapping the map offers those levels to highlight. Throws on HTTP failure. */
+export async function placesAtPoint(lng: number, lat: number, signal?: AbortSignal): Promise<PlaceCandidate[]> {
+  const url = `${REVERSE}?format=jsonv2&addressdetails=1&zoom=10&lat=${lat}&lon=${lng}`;
+  const res = await fetch(url, { signal, headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`Reverse lookup failed (${res.status})`);
+  const data = (await res.json()) as NominatimReverse;
+  const a = data.address ?? {};
+  const country = a.country;
+  const state = a.state ?? a.region ?? a.province;
+  const city = a.city ?? a.town ?? a.village ?? a.municipality ?? a.county;
+  const out: PlaceCandidate[] = [];
+  if (city) out.push({ label: `${city} (city)`, query: [city, state, country].filter(Boolean).join(', ') });
+  if (state) out.push({ label: `${state} (state)`, query: [state, country].filter(Boolean).join(', ') });
+  if (country) out.push({ label: `${country} (country)`, query: country });
+  return out;
 }

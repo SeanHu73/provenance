@@ -2556,6 +2556,36 @@ browser.
   Nominatim boundary search were NOT exercised in a browser — needs live QA
   (drop+reshape a circle; search e.g. "California" and confirm it saves & reloads).*
 
+**Map-tool revision + save still failing (2026-06-29 pt.9).** Feedback after
+pt.8: the **circle tool was confusing** and the typed-only place search was
+limiting. Revised the Add-Context map to three tools — `DrawTool` is now
+`pin | highlight | place`:
+
+- **Circle tool removed.**
+- **Paint (`highlight`)** restyled as a **translucent highlighter brush** (wider
+  soft stroke + ~0.32 see-through fill in `drawStyles`), and the freehand path is
+  now **auto-smoothed into a clean shape** on completion — Douglas–Peucker
+  `simplify` (tolerance scales with shape size) + two passes of `chaikin`
+  corner-cutting, in `ContextMap.tsx`. (Real paper/marker *texture* isn't feasible
+  in mapbox-gl — this is an opacity/stroke approximation.)
+- **Place** now supports **tap *and* type**: tapping the map reverse-geocodes the
+  point (`placesAtPoint` → Nominatim `/reverse`) into **city / state / country**
+  chips you pick from; the typed search box remains.
+
+⚠️ *Verified with `tsc --noEmit` (clean); the full `next build` couldn't run
+locally (transient `next/font/google` fetch failure — environment, not code).
+Map interactions still need a live QA pass.*
+
+**⚠️ SAVE BUG STILL OPEN.** The user reports "Could not save" **persists** after
+the geometry-serialization fix (pt.8). That fix is correct for the nested-array
+issue, so the remaining failure is likely **elsewhere** — most probably **Firebase
+Storage rules** (media uploads to `context-journal/media/**` happen *before* the
+Firestore write in `AddContextFlow.handleSave`, and only *Firestore* rules were
+ever added), or a Firestore rules gap. The save error now **surfaces the real
+Firebase code/message** in the form (`AddContextFlow`) instead of a generic
+string — next step is to read that exact code and fix the matching rule. Rules
+are **not** in the repo (managed in the Firebase console).
+
 **Data — `store.ts`.** Collections **`context-entries`** (live `onSnapshot`,
 scoped by `placeId`, default `memorial-church`) and **`saved-contexts`**
 (bookmarks keyed by an anonymous `provenance-context-viewer-id`; structured so a

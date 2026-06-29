@@ -24,7 +24,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import type { Geometry, Polygon } from 'geojson';
 import { MAP_STYLES, DEFAULT_CAMERA } from '../constants';
-import { searchPlaces, type PlaceResult } from '../places';
+import { searchPlaces, placesAtPoint, type PlaceResult, type PlaceCandidate } from '../places';
 import type { Bounds, Camera, DrawResult, DrawTool, MapMode, MapType } from '../types';
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -70,39 +70,84 @@ function bboxOf(geom: Geometry): Bounds | null {
   return [[minX, minY], [maxX, maxY]];
 }
 
-/** A circle approximated as a polygon (equirectangular — accurate at the small
- *  radii used here). Returned closed (last point == first) and editable: once
- *  dropped, its vertices/midpoints can be dragged to reshape it freely. */
-function circlePolygon(center: [number, number], radiusKm: number, steps = 48): Polygon {
-  const [lng, lat] = center;
-  const latDeg = radiusKm / 110.574;
-  const lngDeg = radiusKm / (111.320 * Math.cos((lat * Math.PI) / 180) || 1e-6);
-  const ring: [number, number][] = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = (i / steps) * 2 * Math.PI;
-    ring.push([lng + lngDeg * Math.cos(t), lat + latDeg * Math.sin(t)]);
+type Ring = [number, number][];
+
+/** mapbox-gl-draw's draw.create payload (only the bits we read). */
+interface DrawCreateEvt {
+  features?: Array<{ id?: string | number; geometry: Geometry; properties?: Record<string, unknown> | null }>;
+}
+
+/** Perpendicular distance from p to the line a–b (planar; fine at these scales). */
+function perpDist(p: [number, number], a: [number, number], b: [number, number]): number {
+  const [px, py] = p, [ax, ay] = a, [bx, by] = b;
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return Math.hypot(px - ax, py - ay);
+  const t = ((px - ax) * dx + (py - ay) * dy) / len2;
+  const cx = ax + t * dx, cy = ay + t * dy;
+  return Math.hypot(px - cx, py - cy);
+}
+
+/** Douglas–Peucker simplification — strips the jitter out of a hand-drawn path. */
+function simplify(points: Ring, tol: number): Ring {
+  if (points.length < 3) return points;
+  let maxD = 0, idx = 0;
+  for (let i = 1; i < points.length - 1; i++) {
+    const d = perpDist(points[i], points[0], points[points.length - 1]);
+    if (d > maxD) { maxD = d; idx = i; }
   }
-  return { type: 'Polygon', coordinates: [ring] };
+  if (maxD <= tol) return [points[0], points[points.length - 1]];
+  return [...simplify(points.slice(0, idx + 1), tol).slice(0, -1), ...simplify(points.slice(idx), tol)];
 }
 
-/** A sensible starting circle radius: ~1/6 of the visible map width. */
-function viewRadiusKm(map: mapboxgl.Map): number {
-  const b = map.getBounds();
-  if (!b) return 1;
-  const lat = map.getCenter().lat;
-  const widthKm = (b.getEast() - b.getWest()) * 111.320 * Math.cos((lat * Math.PI) / 180);
-  return Math.max(0.15, Math.abs(widthKm) / 6);
+/** Chaikin corner-cutting on a closed ring — rounds the simplified outline into
+ *  a smooth, "complete" shape. */
+function chaikin(ring: Ring, iterations = 2): Ring {
+  let pts = ring.slice(0, -1); // drop the duplicate closing point
+  for (let it = 0; it < iterations; it++) {
+    const next: Ring = [];
+    for (let i = 0; i < pts.length; i++) {
+      const [x0, y0] = pts[i];
+      const [x1, y1] = pts[(i + 1) % pts.length];
+      next.push([x0 * 0.75 + x1 * 0.25, y0 * 0.75 + y1 * 0.25]);
+      next.push([x0 * 0.25 + x1 * 0.75, y0 * 0.25 + y1 * 0.75]);
+    }
+    pts = next;
+  }
+  pts.push(pts[0]); // re-close
+  return pts;
 }
 
-/** Minimal mapbox-gl-draw style set, tinted to the active lens colour. */
+/** Turn a rough freehand polygon into a clean, smoothed shape. */
+function smoothPolygon(geom: Geometry): Polygon | null {
+  if (geom.type !== 'Polygon') return null;
+  const ring = geom.coordinates[0] as Ring;
+  if (!ring || ring.length < 4) return geom as Polygon;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of ring) {
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+  }
+  // Tolerance scales with the shape's size so it works at any zoom/region.
+  const tol = Math.max(maxX - minX, maxY - minY) * 0.012;
+  const simplified = simplify(ring, tol);
+  if (simplified.length < 4) return geom as Polygon;
+  return { type: 'Polygon', coordinates: [chaikin(simplified)] };
+}
+
+/** mapbox-gl-draw style set tinted to the active lens — the region reads like a
+ *  translucent highlighter swipe (see-through fill + soft wide stroke). */
 function drawStyles(colour: string) {
   return [
-    // Polygon fill (highlight region) — low opacity wash.
     { id: 'gl-draw-polygon-fill', type: 'fill', filter: ['all', ['==', '$type', 'Polygon']],
-      paint: { 'fill-color': colour, 'fill-opacity': 0.22 } },
+      paint: { 'fill-color': colour, 'fill-opacity': 0.32 } },
+    // Soft wide band under a crisper edge — evokes a marker stroke.
+    { id: 'gl-draw-polygon-glow', type: 'line', filter: ['all', ['==', '$type', 'Polygon']],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': colour, 'line-width': 10, 'line-opacity': 0.18 } },
     { id: 'gl-draw-polygon-stroke', type: 'line', filter: ['all', ['==', '$type', 'Polygon']],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': colour, 'line-width': 2.5 } },
+      paint: { 'line-color': colour, 'line-width': 2, 'line-opacity': 0.55 } },
     // Point (pin).
     { id: 'gl-draw-point-outer', type: 'circle', filter: ['all', ['==', '$type', 'Point']],
       paint: { 'circle-radius': 9, 'circle-color': '#FFFFFF' } },
@@ -123,15 +168,14 @@ export default function ContextMap({
   const onViewportChangeRef = useRef(onViewportChange);
   onViewportChangeRef.current = onViewportChange;
   const [tool, setTool] = useState<DrawTool>('pin');
+  const toolRef = useRef<DrawTool>('pin');
+  toolRef.current = tool;
   const [hasGeometry, setHasGeometry] = useState(false);
   const [usingFreehand, setUsingFreehand] = useState(true);
-  // Circle tool: armed = waiting for a tap to drop the circle.
-  const [circleArmed, setCircleArmed] = useState(false);
-  const circleArmedRef = useRef(false);
-  const armCircle = (on: boolean) => { circleArmedRef.current = on; setCircleArmed(on); };
-  // Place tool: boundary search.
+  // Place tool: boundary search (type) + tap-to-pick candidates (tap the map).
   const [placeQuery, setPlaceQuery] = useState('');
   const [placeResults, setPlaceResults] = useState<PlaceResult[]>([]);
+  const [placeCandidates, setPlaceCandidates] = useState<PlaceCandidate[]>([]);
   const [placeBusy, setPlaceBusy] = useState(false);
   const [placeError, setPlaceError] = useState<string | null>(null);
 
@@ -258,34 +302,55 @@ export default function ContextMap({
         setHasGeometry(true);
       }
 
-      map.on('draw.create', emit);
+      map.on('draw.create', onCreate);
       map.on('draw.update', emit);
       map.on('draw.delete', emit);
-      map.on('click', onCircleClick);
+      map.on('click', onPlaceClick);
       // Start in the currently-selected tool.
       map.once('idle', () => { if (!cancelled) startTool(tool, draw); });
     };
 
-    // Circle tool: a tap drops a circle, which immediately becomes an editable
-    // polygon (direct_select) so its boundary can be dragged into any shape.
-    const onCircleClick = (e: mapboxgl.MapMouseEvent) => {
-      if (!circleArmedRef.current || !draw) return;
-      const poly = circlePolygon([e.lngLat.lng, e.lngLat.lat], viewRadiusKm(map));
-      draw.deleteAll();
-      const ids = draw.add({ type: 'Feature', properties: {}, geometry: poly });
-      armCircle(false);
-      try { draw.changeMode('direct_select', { featureId: ids[0] }); } catch { /* stays selectable */ }
+    // Smooth a freehand-painted region into a clean shape on completion. The
+    // re-added smoothed feature carries `properties.s` so it isn't smoothed again
+    // (and programmatic adds — boundary select — skip straight to emit).
+    const onCreate = (e: DrawCreateEvt) => {
+      const f = e.features?.[0];
+      if (f && toolRef.current === 'highlight' && f.geometry?.type === 'Polygon' && !f.properties?.s) {
+        const smooth = smoothPolygon(f.geometry);
+        if (smooth && f.id != null) {
+          draw.delete(String(f.id));
+          draw.add({ type: 'Feature', properties: { s: 1 }, geometry: smooth });
+          return; // the re-add fires draw.create again (s:1) → emits below
+        }
+      }
       emit();
+    };
+
+    // Place tool: tapping the map reverse-geocodes the point into city/state/
+    // country options to highlight (the typed search is the other way in).
+    const onPlaceClick = (e: mapboxgl.MapMouseEvent) => {
+      if (toolRef.current !== 'place') return;
+      setPlaceCandidates([]);
+      setPlaceResults([]);
+      setPlaceBusy(true);
+      setPlaceError(null);
+      placesAtPoint(e.lngLat.lng, e.lngLat.lat)
+        .then((cands) => {
+          setPlaceCandidates(cands);
+          if (cands.length === 0) setPlaceError('No named area found there — try the search box.');
+        })
+        .catch(() => setPlaceError('Tap lookup failed — try the search box.'))
+        .finally(() => setPlaceBusy(false));
     };
 
     void setup();
     return () => {
       cancelled = true;
       if (draw) {
-        map.off('draw.create', emit);
+        map.off('draw.create', onCreate);
         map.off('draw.update', emit);
         map.off('draw.delete', emit);
-        map.off('click', onCircleClick);
+        map.off('click', onPlaceClick);
         try { map.removeControl(draw); } catch { /* already gone */ }
       }
       drawRef.current = null;
@@ -294,8 +359,8 @@ export default function ContextMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, lensColour]);
 
-  /** Emit the current geometry with the live camera (used by tools that set
-   *  geometry outside the draw event flow — circle drop, boundary select). */
+  /** Emit the current geometry with the live camera (used when geometry is set
+   *  outside the draw event flow — boundary select). */
   const pushGeometry = (geometry: Geometry | null) => {
     const map = mapRef.current;
     setHasGeometry(!!geometry);
@@ -307,22 +372,20 @@ export default function ContextMap({
   };
 
   /** Switch the active tool. Each tool starts empty; pin/highlight draw
-   *  immediately, circle waits for a tap, place opens the boundary search. */
+   *  immediately, place selects a boundary by tap or search. */
   function startTool(next: DrawTool, draw = drawRef.current) {
     if (!draw) return;
     draw.deleteAll();
     setHasGeometry(false);
-    armCircle(false);
     onDrawChangeRef.current?.({ geometry: null, camera: null });
     if (next === 'pin') draw.changeMode('draw_point');
     else if (next === 'highlight') draw.changeMode('draw_polygon');
-    else if (next === 'circle') { draw.changeMode('simple_select'); armCircle(true); }
-    else { draw.changeMode('simple_select'); } // place: search drives it
+    else draw.changeMode('simple_select'); // place: tap/search drives it
   }
 
   const handleTool = (next: DrawTool) => {
     setTool(next);
-    if (next !== 'place') { setPlaceResults([]); setPlaceError(null); }
+    if (next !== 'place') { setPlaceResults([]); setPlaceCandidates([]); setPlaceError(null); }
     startTool(next);
   };
 
@@ -347,6 +410,7 @@ export default function ContextMap({
     if (map && bb) map.fitBounds(bb, { padding: 36, duration: 800 });
     pushGeometry(result.geometry);
     setPlaceResults([]);
+    setPlaceCandidates([]);
   };
 
   const runPlaceSearch = async () => {
@@ -354,12 +418,28 @@ export default function ContextMap({
     if (!q) return;
     setPlaceBusy(true);
     setPlaceError(null);
+    setPlaceCandidates([]);
     try {
       const results = await searchPlaces(q);
       setPlaceResults(results);
       if (results.length === 0) setPlaceError('No matching place found.');
     } catch {
       setPlaceError('Search failed — check your connection and try again.');
+    } finally {
+      setPlaceBusy(false);
+    }
+  };
+
+  /** Resolve a tapped candidate (e.g. "California (state)") to its boundary. */
+  const selectCandidate = async (c: PlaceCandidate) => {
+    setPlaceBusy(true);
+    setPlaceError(null);
+    try {
+      const results = await searchPlaces(c.query);
+      if (results[0]) applyBoundary(results[0]);
+      else setPlaceError('Could not load that boundary.');
+    } catch {
+      setPlaceError('Could not load that boundary — try again.');
     } finally {
       setPlaceBusy(false);
     }
@@ -398,11 +478,6 @@ export default function ContextMap({
                 <path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" />
               </svg>
             </ToolBtn>
-            <ToolBtn active={tool === 'circle'} onClick={() => handleTool('circle')} label="Circle" colour={lensColour}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="8" />
-              </svg>
-            </ToolBtn>
             <ToolBtn active={tool === 'place'} onClick={() => handleTool('place')} label="Place" colour={lensColour}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18" />
@@ -416,7 +491,7 @@ export default function ContextMap({
             </button>
           </div>
 
-          {/* Place (state/country) boundary search */}
+          {/* Place — tap the map or search a city / state / country boundary */}
           {tool === 'place' && (
             <div className="absolute top-14 left-2 right-2 z-20 rounded-xl bg-warm-white/97 shadow-lg backdrop-blur p-2">
               <div className="flex gap-1.5">
@@ -424,7 +499,7 @@ export default function ContextMap({
                   value={placeQuery}
                   onChange={(e) => setPlaceQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void runPlaceSearch(); } }}
-                  placeholder="Search a state or country…"
+                  placeholder="Search a city, state, or country…"
                   className="flex-1 min-w-0 px-3 py-2 rounded-lg border bg-white text-sm"
                   style={{ borderColor: 'var(--th-border)' }}
                 />
@@ -437,9 +512,26 @@ export default function ContextMap({
                   {placeBusy ? '…' : 'Search'}
                 </button>
               </div>
-              {placeError && <p className="mt-1.5 px-1 text-xs text-text-secondary">{placeError}</p>}
+              <p className="mt-1 px-1 text-[11px] text-text-muted">…or tap the map to pick the area under your finger.</p>
+              {placeError && <p className="mt-1 px-1 text-xs text-text-secondary">{placeError}</p>}
+              {/* Tapped-point candidates (city / state / country) */}
+              {placeCandidates.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {placeCandidates.map((c, i) => (
+                    <button
+                      key={i}
+                      onClick={() => void selectCandidate(c)}
+                      className="px-2.5 py-1.5 rounded-full text-xs font-semibold border-2"
+                      style={{ color: lensColour, borderColor: `${lensColour}66` }}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Typed-search results */}
               {placeResults.length > 0 && (
-                <ul className="mt-1.5 max-h-44 overflow-y-auto divide-y" style={{ borderColor: 'var(--th-border)' }}>
+                <ul className="mt-1.5 max-h-40 overflow-y-auto divide-y" style={{ borderColor: 'var(--th-border)' }}>
                   {placeResults.map((r, i) => (
                     <li key={i}>
                       <button
@@ -459,16 +551,12 @@ export default function ContextMap({
           <div className="absolute bottom-2 left-0 right-0 z-10 text-center pointer-events-none">
             <span className="inline-block px-3 py-1.5 rounded-full text-xs font-medium bg-black/55 text-white">
               {hasGeometry
-                ? (tool === 'circle'
-                    ? '✓ Drag the dots to reshape, or Clear to redo'
-                    : '✓ Location set — adjust or Clear to redraw')
+                ? '✓ Location set — adjust or Clear to redraw'
                 : tool === 'pin'
                   ? 'Tap the map to drop a pin'
-                  : tool === 'circle'
-                    ? 'Tap the map to drop a circle, then drag its edge to reshape'
-                    : tool === 'place'
-                      ? 'Search a state or country, then pick a result'
-                      : usingFreehand ? 'Drag to colour in a region' : 'Tap to outline a region, double-tap to finish'}
+                  : tool === 'place'
+                    ? 'Tap an area, or search a city / state / country'
+                    : usingFreehand ? 'Draw around an area — it smooths into a clean shape' : 'Tap to outline a region, double-tap to finish'}
             </span>
           </div>
         </>
