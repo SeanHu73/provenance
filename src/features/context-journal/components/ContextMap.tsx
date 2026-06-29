@@ -24,7 +24,6 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import type { Geometry, Polygon } from 'geojson';
 import { MAP_STYLES, DEFAULT_CAMERA } from '../constants';
-import { searchPlaces, placesAtPoint, type PlaceResult, type PlaceCandidate } from '../places';
 import type { Bounds, Camera, DrawResult, DrawTool, MapMode, MapType } from '../types';
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -50,6 +49,15 @@ interface Props {
   mapType?: MapType;
   /** When provided, a Map/Satellite toggle button is shown that calls this. */
   onMapTypeChange?: (t: MapType) => void;
+  /** Reports the active draw tool so the parent can render the matching controls
+   *  (e.g. the place search bar) OUTSIDE the map. */
+  onToolChange?: (t: DrawTool) => void;
+  /** Place tool: when the user taps a place label on the map, its name is
+   *  reported here (null = tapped somewhere with no place name). */
+  onTapName?: (name: string | null) => void;
+  /** Place tool: a boundary the parent wants shown (from its search) — bumping
+   *  `nonce` re-applies it even if the geometry is unchanged. */
+  boundary?: { geometry: Geometry; nonce: number } | null;
 }
 
 /** Bounding box of a geometry, or null for a point / empty (caller flies instead). */
@@ -159,6 +167,7 @@ function drawStyles(colour: string) {
 export default function ContextMap({
   mode, lensColour = '#347C4A', initialCamera, initialGeometry, onDrawChange,
   defaultView, geolocate, focus, onViewportChange, mapType = 'default', onMapTypeChange,
+  onToolChange, onTapName, boundary,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -167,17 +176,19 @@ export default function ContextMap({
   onDrawChangeRef.current = onDrawChange;
   const onViewportChangeRef = useRef(onViewportChange);
   onViewportChangeRef.current = onViewportChange;
+  const onTapNameRef = useRef(onTapName);
+  onTapNameRef.current = onTapName;
   const [tool, setTool] = useState<DrawTool>('pin');
   const toolRef = useRef<DrawTool>('pin');
   toolRef.current = tool;
   const [hasGeometry, setHasGeometry] = useState(false);
   const [usingFreehand, setUsingFreehand] = useState(true);
-  // Place tool: boundary search (type) + tap-to-pick candidates (tap the map).
-  const [placeQuery, setPlaceQuery] = useState('');
-  const [placeResults, setPlaceResults] = useState<PlaceResult[]>([]);
-  const [placeCandidates, setPlaceCandidates] = useState<PlaceCandidate[]>([]);
-  const [placeBusy, setPlaceBusy] = useState(false);
-  const [placeError, setPlaceError] = useState<string | null>(null);
+
+  // Report the active tool up so the parent can render the place search bar
+  // OUTSIDE the map.
+  const onToolChangeRef = useRef(onToolChange);
+  onToolChangeRef.current = onToolChange;
+  useEffect(() => { onToolChangeRef.current?.(tool); }, [tool]);
 
   // ── init map (once) ──
   useEffect(() => {
@@ -326,26 +337,21 @@ export default function ContextMap({
       emit();
     };
 
-    // Place tool: tapping the map reverse-geocodes the point into city/state/
-    // country options to highlight (the typed search is the other way in).
+    // Place tool: clicking a place NAME on the basemap reports it up so the
+    // parent can resolve its boundary. Reads the label under the tap (with a
+    // little slop so it's easy to hit); a tap with no label reports null.
     const onPlaceClick = (e: mapboxgl.MapMouseEvent) => {
       if (toolRef.current !== 'place') return;
-      console.debug('[context-journal] place tap', e.lngLat.lng.toFixed(4), e.lngLat.lat.toFixed(4));
-      setPlaceCandidates([]);
-      setPlaceResults([]);
-      setPlaceBusy(true);
-      setPlaceError(null);
-      placesAtPoint(e.lngLat.lng, e.lngLat.lat)
-        .then((cands) => {
-          console.debug('[context-journal] place tap →', cands.length, 'candidates');
-          setPlaceCandidates(cands);
-          if (cands.length === 0) setPlaceError('No named area found there — try the search box.');
-        })
-        .catch((err) => {
-          console.error('[context-journal] place tap failed:', err);
-          setPlaceError('Tap lookup failed — try the search box.');
-        })
-        .finally(() => setPlaceBusy(false));
+      const pad = 6;
+      const hits = map.queryRenderedFeatures(
+        [[e.point.x - pad, e.point.y - pad], [e.point.x + pad, e.point.y + pad]],
+      );
+      const label = hits.find((f) =>
+        /label/.test(String(f.layer?.id ?? '')) &&
+        (f.properties?.name_en || f.properties?.name));
+      const name = label ? String(label.properties?.name_en || label.properties?.name) : null;
+      console.debug('[context-journal] place tap →', name ?? '(no label)');
+      onTapNameRef.current?.(name);
     };
 
     void setup();
@@ -390,7 +396,6 @@ export default function ContextMap({
 
   const handleTool = (next: DrawTool) => {
     setTool(next);
-    if (next !== 'place') { setPlaceResults([]); setPlaceCandidates([]); setPlaceError(null); }
     startTool(next);
   };
 
@@ -403,52 +408,22 @@ export default function ContextMap({
     startTool(tool);
   };
 
-  /** Drop a selected boundary onto the map as an editable region. */
-  const applyBoundary = (result: PlaceResult) => {
+  // ── show a boundary chosen in the parent's place search ──
+  // Draw it as a movable region (simple_select keeps map-drag/pan working), fit
+  // to it, and emit so the geometry flows back through onDrawChange like any draw.
+  useEffect(() => {
+    if (!boundary) return;
     const draw = drawRef.current;
     const map = mapRef.current;
     if (!draw) return;
     draw.deleteAll();
-    draw.add({ type: 'Feature', properties: {}, geometry: result.geometry });
+    draw.add({ type: 'Feature', properties: {}, geometry: boundary.geometry });
     draw.changeMode('simple_select');
-    const bb = bboxOf(result.geometry);
+    const bb = bboxOf(boundary.geometry);
     if (map && bb) map.fitBounds(bb, { padding: 36, duration: 800 });
-    pushGeometry(result.geometry);
-    setPlaceResults([]);
-    setPlaceCandidates([]);
-  };
-
-  const runPlaceSearch = async () => {
-    const q = placeQuery.trim();
-    if (!q) return;
-    setPlaceBusy(true);
-    setPlaceError(null);
-    setPlaceCandidates([]);
-    try {
-      const results = await searchPlaces(q);
-      setPlaceResults(results);
-      if (results.length === 0) setPlaceError('No matching place found.');
-    } catch {
-      setPlaceError('Search failed — check your connection and try again.');
-    } finally {
-      setPlaceBusy(false);
-    }
-  };
-
-  /** Resolve a tapped candidate (e.g. "California (state)") to its boundary. */
-  const selectCandidate = async (c: PlaceCandidate) => {
-    setPlaceBusy(true);
-    setPlaceError(null);
-    try {
-      const results = await searchPlaces(c.query);
-      if (results[0]) applyBoundary(results[0]);
-      else setPlaceError('Could not load that boundary.');
-    } catch {
-      setPlaceError('Could not load that boundary — try again.');
-    } finally {
-      setPlaceBusy(false);
-    }
-  };
+    pushGeometry(boundary.geometry);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boundary?.nonce]);
 
   if (!TOKEN) {
     return (
@@ -496,71 +471,14 @@ export default function ContextMap({
             </button>
           </div>
 
-          {/* Place — tap the map or search a city / state / country boundary */}
-          {tool === 'place' && (
-            <div className="absolute top-14 left-2 right-2 z-20 rounded-xl bg-warm-white/97 shadow-lg backdrop-blur p-2">
-              <div className="flex gap-1.5">
-                <input
-                  value={placeQuery}
-                  onChange={(e) => setPlaceQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void runPlaceSearch(); } }}
-                  placeholder="Search a city, state, or country…"
-                  className="flex-1 min-w-0 px-3 py-2 rounded-lg border bg-white text-sm"
-                  style={{ borderColor: 'var(--th-border)' }}
-                />
-                <button
-                  onClick={() => void runPlaceSearch()}
-                  disabled={placeBusy || !placeQuery.trim()}
-                  className="px-3 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40"
-                  style={{ backgroundColor: lensColour }}
-                >
-                  {placeBusy ? '…' : 'Search'}
-                </button>
-              </div>
-              <p className="mt-1 px-1 text-[11px] text-text-muted">…or tap the map to pick the area under your finger.</p>
-              {placeError && <p className="mt-1 px-1 text-xs text-text-secondary">{placeError}</p>}
-              {/* Tapped-point candidates (city / state / country) */}
-              {placeCandidates.length > 0 && (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {placeCandidates.map((c, i) => (
-                    <button
-                      key={i}
-                      onClick={() => void selectCandidate(c)}
-                      className="px-2.5 py-1.5 rounded-full text-xs font-semibold border-2"
-                      style={{ color: lensColour, borderColor: `${lensColour}66` }}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {/* Typed-search results */}
-              {placeResults.length > 0 && (
-                <ul className="mt-1.5 max-h-40 overflow-y-auto divide-y" style={{ borderColor: 'var(--th-border)' }}>
-                  {placeResults.map((r, i) => (
-                    <li key={i}>
-                      <button
-                        onClick={() => applyBoundary(r)}
-                        className="w-full text-left px-2 py-2 hover:bg-black/5 rounded-md"
-                      >
-                        <span className="block text-sm text-text-primary leading-snug">{r.name}</span>
-                        <span className="block text-[11px] text-text-muted capitalize">{r.kind}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-
           <div className="absolute bottom-2 left-0 right-0 z-10 text-center pointer-events-none">
             <span className="inline-block px-3 py-1.5 rounded-full text-xs font-medium bg-black/55 text-white">
               {hasGeometry
-                ? '✓ Location set — adjust or Clear to redraw'
+                ? '✓ Location set — drag to move, or Clear to redo'
                 : tool === 'pin'
                   ? 'Tap the map to drop a pin'
                   : tool === 'place'
-                    ? 'Tap an area, or search a city / state / country'
+                    ? 'Tap a place name on the map, or use the search above'
                     : usingFreehand ? 'Draw around an area to highlight it' : 'Tap to outline a region, double-tap to finish'}
             </span>
           </div>

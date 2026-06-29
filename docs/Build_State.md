@@ -2597,6 +2597,24 @@ still correct and needed for region/boundary saves.)
   swallowing it → switch to a canvas/unproject listener) from "Nominatim reverse
   fails" (network/policy). **Needs a console check on the next QA pass.**
 
+**Place tool rearchitected — search lifted out of the map, click-a-name to
+select (2026-06-29 pt.11).** Per feedback (search bar covered the map; tap
+should select by *name*, not reverse-geocode a point):
+- The **place search bar now lives in `AddContextFlow` ABOVE the map**, not as an
+  overlay inside it. `ContextMap` gained props `onToolChange` (reports the active
+  tool up so the parent shows the bar only for `place`), `onTapName` (reports a
+  tapped basemap *label* name), and `boundary` (`{geometry, nonce}` the parent
+  pushes down to display). The map no longer imports `searchPlaces`/`placesAtPoint`.
+- **Tap = click a place name.** `onTapName` reads the label under the tap via
+  `map.queryRenderedFeatures` (filters layer ids matching `/label/`), reports the
+  name; `AddContextFlow` resolves it through `searchPlaces` and pushes the
+  boundary back via `boundary`. Map **pan/drag stays available** (a click ≠ a
+  drag); a selected boundary sits in `simple_select` so it can be dragged to move.
+- `placesAtPoint` (reverse-geocode) is now **unused** (kept in `places.ts` for now).
+
+⚠️ *tsc clean; full `next build` still blocked locally by the `next/font/google`
+fetch (environment). Place tap (click-a-name) + the lifted search bar need live QA.*
+
 **Data — `store.ts`.** Collections **`context-entries`** (live `onSnapshot`,
 scoped by `placeId`, default `memorial-church`) and **`saved-contexts`**
 (bookmarks keyed by an anonymous `provenance-context-viewer-id`; structured so a

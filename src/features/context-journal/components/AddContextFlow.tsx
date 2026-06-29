@@ -9,11 +9,12 @@
  * editing (existing media kept by URL, new media uploaded on save).
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { LENSES, TIMELINE_BOUNDS, LENS_BY_KEY } from '../constants';
-import type { ContextDraft, ContextMedia, MapType, PastCategory } from '../types';
+import type { ContextDraft, ContextMedia, DrawTool, MapType, PastCategory } from '../types';
 import { uploadContextMedia } from '../store';
+import { searchPlaces, type PlaceResult } from '../places';
 import ContextMapLoader from './ContextMapLoader';
 
 interface Props {
@@ -47,6 +48,47 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
   const [mapType, setMapType] = useState<MapType>(initial?.mapType ?? 'default');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Place tool: the search bar lives here (above the map, not over it). The map
+  // reports its active tool and any tapped place name; we resolve boundaries and
+  // hand them back down via `boundary`.
+  const [mapTool, setMapTool] = useState<DrawTool>('pin');
+  const [placeQuery, setPlaceQuery] = useState('');
+  const [placeResults, setPlaceResults] = useState<PlaceResult[]>([]);
+  const [placeBusy, setPlaceBusy] = useState(false);
+  const [placeError, setPlaceError] = useState<string | null>(null);
+  const [boundary, setBoundary] = useState<{ geometry: NonNullable<ContextDraft['geometry']>; nonce: number } | null>(null);
+  const nonceRef = useRef(0);
+
+  const selectBoundary = (r: PlaceResult) => {
+    nonceRef.current += 1;
+    setBoundary({ geometry: r.geometry, nonce: nonceRef.current });
+    setPlaceResults([]);
+    setPlaceError(null);
+  };
+
+  const runPlaceSearch = async (query?: string) => {
+    const q = (query ?? placeQuery).trim();
+    if (!q) return;
+    setPlaceBusy(true);
+    setPlaceError(null);
+    try {
+      const results = await searchPlaces(q);
+      if (results.length === 1) selectBoundary(results[0]);
+      else { setPlaceResults(results); if (results.length === 0) setPlaceError('No matching place found.'); }
+    } catch {
+      setPlaceError('Search failed — check your connection and try again.');
+    } finally {
+      setPlaceBusy(false);
+    }
+  };
+
+  // A place name tapped on the map → resolve it to a boundary and select it.
+  const handleTapName = (name: string | null) => {
+    if (!name) { setPlaceError('Tap directly on a place name, or use the search box.'); return; }
+    setPlaceQuery(name);
+    void runPlaceSearch(name);
+  };
 
   const colour = LENS_BY_KEY[category].colour;
   const rangeValid = startYear <= endYear;
@@ -240,6 +282,47 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
 
           {/* map step */}
           <Field label="Place on the map (required)">
+            {/* Place search lives ABOVE the map (it used to cover it). Type a
+               name, or tap a place name on the map below. */}
+            {mapTool === 'place' && (
+              <div className="mb-2 rounded-xl border p-2" style={{ borderColor: 'var(--th-border)', backgroundColor: 'var(--th-surface)' }}>
+                <div className="flex gap-1.5">
+                  <input
+                    value={placeQuery}
+                    onChange={(e) => setPlaceQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void runPlaceSearch(); } }}
+                    placeholder="Search a city, state, or country…"
+                    className="flex-1 min-w-0 px-3 py-2 rounded-lg border bg-white text-sm"
+                    style={{ borderColor: 'var(--th-border)' }}
+                  />
+                  <button
+                    onClick={() => void runPlaceSearch()}
+                    disabled={placeBusy || !placeQuery.trim()}
+                    className="px-3 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40"
+                    style={{ backgroundColor: colour }}
+                  >
+                    {placeBusy ? '…' : 'Search'}
+                  </button>
+                </div>
+                <p className="mt-1 px-0.5 text-[11px] text-text-muted">…or tap a place name on the map to select it.</p>
+                {placeError && <p className="mt-1 px-0.5 text-xs" style={{ color: 'var(--th-primary)' }}>{placeError}</p>}
+                {placeResults.length > 0 && (
+                  <ul className="mt-1.5 max-h-40 overflow-y-auto divide-y" style={{ borderColor: 'var(--th-border)' }}>
+                    {placeResults.map((r, i) => (
+                      <li key={i}>
+                        <button
+                          onClick={() => selectBoundary(r)}
+                          className="w-full text-left px-2 py-2 hover:bg-black/5 rounded-md"
+                        >
+                          <span className="block text-sm text-text-primary leading-snug">{r.name}</span>
+                          <span className="block text-[11px] text-text-muted capitalize">{r.kind}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
             <div className="h-96 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
               <ContextMapLoader
                 key={mapType}
@@ -250,10 +333,13 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
                 initialGeometry={geometry}
                 initialCamera={camera}
                 onDrawChange={(r) => { setGeometry(r.geometry); setCamera(r.camera); }}
+                onToolChange={setMapTool}
+                onTapName={handleTapName}
+                boundary={boundary}
               />
             </div>
             <p className="mt-1.5 text-xs text-text-muted">
-              {geometry ? '✓ Location captured.' : 'Drop a pin, circle, paint a region, or pick a state/country to continue.'}
+              {geometry ? '✓ Location captured.' : 'Drop a pin, highlight a region, or pick a place to continue.'}
             </p>
           </Field>
 
