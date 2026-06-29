@@ -3,23 +3,28 @@
 /**
  * ContextTimeline — the range selector that drives P.A.S.T. filtering.
  *
- * The domain (the two ends) is set per tour stop by the admin and passed in;
- * it may span anywhere within TIMELINE_BOUNDS (1000 BC … present). A dropdown
- * chooses the segment size (1 / 10 / 100 years); sizes that would push the
- * timeline past ~30 segments are disabled, so the grain auto-coarsens for long
- * domains (1 → 10 → 100). A draggable selector (one segment wide by default):
+ * The domain (the two ends) starts admin-set and is viewer-editable; it may span
+ * anywhere within TIMELINE_BOUNDS (1000 BC … present). A dropdown chooses the
+ * snap grain (1 / 10 / 100 years) — any grain is allowed at any span (snapping is
+ * just arithmetic). The visible gridlines are decoupled from the grain and capped
+ * (≤ MAX_TICKS, coarsening in ×10 steps) so even a 1-year grain over 3000 years
+ * stays smooth rather than rendering thousands of divs. A draggable selector (one
+ * segment wide by default):
  * drag its body to move, drag either handle to resize; edges snap to the segment
  * size. The track is inset from the screen edges so dragging a handle doesn't
  * collide with the phone's edge-swipe gestures. The selected {start, end} is
  * lifted to the parent as the single source of truth.
  */
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { GRANULARITIES, TIMELINE_BOUNDS, MIN_DOMAIN_SPAN, floorGranularity, formatYear, type Granularity } from '../constants';
 import type { TimeRange } from '../types';
 
 type DragMode = 'move' | 'start' | 'end';
+
+/** Never render more gridlines than this, whatever the span/grain (cosmetic). */
+const MAX_TICKS = 40;
 
 interface Props {
   value: TimeRange;
@@ -31,14 +36,14 @@ interface Props {
 
 export default function ContextTimeline({ value, onChange, domain, onDomainChange }: Props) {
   const trackRef = useRef<HTMLDivElement | null>(null);
-  const floor = floorGranularity(domain);
-  const [granularity, setGranularity] = useState<Granularity>(floor);
+  // Initial grain is a sensible default for the span; the viewer can pick any.
+  const [granularity, setGranularity] = useState<Granularity>(() => floorGranularity(domain));
   const [menuOpen, setMenuOpen] = useState(false);
 
   const D0 = domain.start;
   const D1 = domain.end;
   const SPAN = D1 - D0;
-  const g = Math.max(granularity, floor); // never finer than the floor
+  const g = granularity; // snap grain — any of 1 / 10 / 100 is allowed at any span
 
   const snap = (year: number) => {
     const snapped = Math.round((year - D0) / g) * g + D0;
@@ -85,7 +90,6 @@ export default function ContextTimeline({ value, onChange, domain, onDomainChang
 
   const pickGranularity = (next: Granularity) => {
     setMenuOpen(false);
-    if (next < floor) return; // disabled options are non-selectable
     setGranularity(next);
     // Re-snap the current selection to the new grain, keeping ≥ one segment.
     const s = Math.round((value.start - D0) / next) * next + D0;
@@ -108,9 +112,16 @@ export default function ContextTimeline({ value, onChange, domain, onDomainChang
     onDomainChange({ start: D0, end });
   };
 
-  // One gridline per segment (segment count is bounded, so this stays readable).
-  const ticks: number[] = [];
-  for (let y = D0; y <= D1 + 0.5; y += g) ticks.push(y);
+  // Gridlines are decoupled from the snap grain: snapping can be 1-year fine, but
+  // we never draw more than ~MAX_TICKS marks (coarsening the tick step in ×10
+  // steps from the grain), so a 1000 BC → present span stays smooth.
+  const ticks = useMemo(() => {
+    let tickStep = g;
+    while (SPAN / tickStep > MAX_TICKS) tickStep *= 10;
+    const out: number[] = [];
+    for (let y = D0; y <= D1 + 0.5; y += tickStep) out.push(y);
+    return out;
+  }, [D0, D1, SPAN, g]);
 
   // Inset the rail from the screen edges so an edge handle clears the phone's
   // back-swipe zone.
@@ -148,20 +159,15 @@ export default function ContextTimeline({ value, onChange, domain, onDomainChang
                   style={{ borderColor: 'var(--th-border)' }}
                 >
                   {GRANULARITIES.map((opt) => {
-                    const disabled = opt < floor;
                     const selected = opt === g;
                     return (
                       <li key={opt}>
                         <button
-                          disabled={disabled}
                           onClick={() => pickGranularity(opt)}
-                          className={`w-full text-left px-3 py-2.5 text-sm flex items-center justify-between ${
-                            disabled ? 'text-text-muted cursor-not-allowed' : 'hover:bg-sandstone-light/60 text-text-primary'
-                          } ${selected ? 'font-semibold' : ''}`}
+                          className={`w-full text-left px-3 py-2.5 text-sm flex items-center justify-between hover:bg-sandstone-light/60 text-text-primary ${selected ? 'font-semibold' : ''}`}
                         >
                           {granLabel(opt)} segments
                           {selected && <span style={{ color: 'var(--th-primary)' }}>✓</span>}
-                          {disabled && <span className="text-[10px] uppercase tracking-wide">too many</span>}
                         </button>
                       </li>
                     );
