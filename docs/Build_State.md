@@ -2449,15 +2449,16 @@ type is stored on the context. `ContextMap` emits `onViewportChange` (moveend) f
 the admin view-capture. The first-open **onboarding is suppressed on `/admin`**.
 (`context-journal-config` needs its own Firestore rule block too.)
 
-**Tour map + 3D preview (2026-06-29 pt.4).** The tour's Google Map (`Map.tsx`)
-gained a **map-type toggle** (satellite `hybrid` ⇄ default `roadmap`, bottom-right
-button; `mapTypeId` is now stateful). A throwaway **3D preview** lives at
-**`/admin/map-preview`** (`components/admin/MapPreview.tsx`, dynamic ssr:false):
-Mapbox **Standard** style (3D buildings + terrain, tilted), labelled test pins
-that fade behind buildings (`occludedOpacity`), a GPS heading cone, and a "Follow
-my compass" toggle (DeviceOrientation → smoothed `setBearing`) — to judge a
-"walk around in 3D" experience before building it. If it lands, the plan is a
-2D⇄3D toggle in the tour/journal.
+**Tour map type menu (2026-06-29 pt.5).** The tour's Google Map (`Map.tsx`) has a
+bottom-right **map-type menu** with three options: **3D** (hybrid + 45° tilt — the
+default, the "slant"), **Satellite** (hybrid, flat), **Map** (roadmap, flat).
+`mapType` is stateful; a `TiltController` child applies the tilt imperatively on
+change (so two-finger gesture-tilt within a mode isn't fought). `fitToNearestTourPin`
+now **restores the tilt** after its `fitBounds` (locating no longer flattens the
+view). Google's default UI is off (`disableDefaultUI`, no `rotateControl`) so its
+tilt widget doesn't clutter the corner. (The earlier Mapbox `/admin/map-preview`
+3D experiment was removed — compass-follow was too jittery; rotate-with-fingers is
+the model. A 2D⇄3D path for Mapbox can revisit later.)
 
 **Data — `store.ts`.** Collections **`context-entries`** (live `onSnapshot`,
 scoped by `placeId`, default `memorial-church`) and **`saved-contexts`**

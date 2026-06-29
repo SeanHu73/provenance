@@ -84,6 +84,10 @@ function formatDist(m: number): string {
  */
 function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
   if (!map) return;
+  // fitBounds (below) resets the camera tilt to 0; remember it so we can restore
+  // the slant the explorer was using.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const savedTilt: number | undefined = (map as any).getTilt?.();
   const target =
     tourLocs.length > 0
       ? tourLocs.reduce((best, loc) =>
@@ -145,6 +149,7 @@ function fitToNearestTourPin(map: MapInstance, userPos: Loc, tourLocs: Loc[]) {
   g.maps.event.addListenerOnce(anyMap, 'idle', () => {
     const z = anyMap.getZoom?.();
     if (typeof z === 'number' && z > MAX_AUTO_ZOOM) anyMap.setZoom(MAX_AUTO_ZOOM);
+    if (savedTilt != null) anyMap.setTilt?.(savedTilt);
   });
 }
 
@@ -282,6 +287,18 @@ function PoiStyler({ isTourActive }: { isTourActive: boolean }) {
         : [],
     });
   }, [map, isTourActive]);
+  return null;
+}
+
+/** Imperatively applies the map tilt for the chosen map type (45° for 3D, flat
+ *  otherwise). Only fires when the desired tilt changes, so two-finger gesture
+ *  tilting within a mode isn't fought. */
+function TiltController({ tilt }: { tilt: number }) {
+  const map = useMap();
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (map) (map as any).setTilt?.(tilt);
+  }, [map, tilt]);
   return null;
 }
 
@@ -939,7 +956,9 @@ export default function MapContainer({
 }: MapProps) {
   const [userLocation, setUserLocation] = useState<Loc | null>(null);
   const [following, setFollowing] = useState(false);
-  const [mapTypeId, setMapTypeId] = useState<'hybrid' | 'roadmap'>('hybrid');
+  // Map type: 3D (tilted satellite) is the default; flat satellite; or plain map.
+  const [mapType, setMapType] = useState<'3d' | 'satellite' | 'default'>('3d');
+  const [mapMenuOpen, setMapMenuOpen] = useState(false);
   const [navPrompt, setNavPrompt] = useState<{ tour: Tour; distanceM: number } | null>(null);
   const [mapBounds, setMapBounds] = useState<Bounds | null>(null);
   const [containerSize, setContainerSize] = useState<ContainerSize>({ W: window?.innerWidth ?? 400, H: window?.innerHeight ?? 600 });
@@ -969,6 +988,14 @@ export default function MapContainer({
       ? computeOffScreenArrows(tourStops, mapBounds, containerSize)
       : [];
 
+  const MAP_TYPES = {
+    '3d':        { id: 'hybrid'  as const, tilt: 45, label: '3D' },
+    'satellite': { id: 'hybrid'  as const, tilt: 0,  label: 'Satellite' },
+    'default':   { id: 'roadmap' as const, tilt: 0,  label: 'Map' },
+  };
+  const mapTypeId = MAP_TYPES[mapType].id;
+  const mapTilt = MAP_TYPES[mapType].tilt;
+
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (!apiKey) return <div className="w-full h-full flex items-center justify-center bg-cream-dark text-text-muted text-sm font-sans">Map requires API key</div>;
 
@@ -983,15 +1010,16 @@ export default function MapContainer({
           defaultHeading={0}
           mapTypeId={mapTypeId}
           gestureHandling="greedy"
-          disableDefaultUI={false}
+          disableDefaultUI={true}
           zoomControl={false}
           mapTypeControl={false}
           streetViewControl={false}
           fullscreenControl={false}
-          rotateControl={true}
+          rotateControl={false}
           className="w-full h-full"
         >
           <PoiStyler isTourActive={!!isTourActive} />
+          <TiltController tilt={mapTilt} />
           <MapInitializer tourPins={tourPins} onLocationUpdate={handleLocationUpdate} />
           <UserLocationTracker following={following} onLocationUpdate={handleLocationUpdate} />
           <BoundsTracker onChange={handleBoundsChange} />
@@ -1042,18 +1070,35 @@ export default function MapContainer({
           tourLocs={tourLocs}
         />
 
-        {/* Map type toggle — satellite (hybrid) ⇄ default (roadmap) */}
-        <button
-          onClick={() => setMapTypeId((t) => (t === 'hybrid' ? 'roadmap' : 'hybrid'))}
-          className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 px-3 py-2 rounded-full shadow-lg text-xs font-semibold font-sans"
-          style={{ background: '#fff', color: '#3A3A32' }}
-          title="Change map type"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
-          </svg>
-          {mapTypeId === 'hybrid' ? 'Map' : 'Satellite'}
-        </button>
+        {/* Map type menu — 3D (tilted) / Satellite (flat) / Map (roadmap) */}
+        <div className="absolute bottom-4 right-4 z-10 flex flex-col items-end gap-1.5">
+          {mapMenuOpen && (
+            <div className="rounded-xl bg-white shadow-xl overflow-hidden font-sans animate-slide-up">
+              {(['3d', 'satellite', 'default'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => { setMapType(t); setMapMenuOpen(false); }}
+                  className="w-full flex items-center justify-between gap-4 px-4 py-2.5 text-sm font-semibold hover:bg-stone-100"
+                  style={{ color: mapType === t ? 'var(--th-primary)' : '#3A3A32' }}
+                >
+                  {MAP_TYPES[t].label}
+                  {mapType === t && <span>✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={() => setMapMenuOpen((o) => !o)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full shadow-lg text-xs font-semibold font-sans"
+            style={{ background: '#fff', color: '#3A3A32' }}
+            title="Change map type"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
+            </svg>
+            {MAP_TYPES[mapType].label}
+          </button>
+        </div>
 
         {navPrompt && navPrompt.tour.location && (
           <div
