@@ -249,7 +249,7 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
               />
             </div>
             <p className="mt-1.5 text-xs text-text-muted">
-              {geometry ? '✓ Location captured.' : 'Drop a pin or colour in a region to continue.'}
+              {geometry ? '✓ Location captured.' : 'Drop a pin, circle, paint a region, or pick a state/country to continue.'}
             </p>
           </Field>
 

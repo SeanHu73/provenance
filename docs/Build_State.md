@@ -2529,6 +2529,33 @@ a positioned context in the tour editor, run the tour, confirm the after-stop
 sequence and "Add to Context Journal" cloning) — they were never exercised in the
 browser.
 
+**Geometry save fix + richer map authoring (2026-06-29 pt.8).**
+
+- **Save bug (fixed).** Drawn regions are GeoJSON Polygons whose `coordinates`
+  are nested arrays — **Firestore rejects nested arrays**, so saving a region
+  silently failed (pins, being flat Points, saved fine). Geometry is now stored
+  as a **JSON string** at the Firestore boundary and parsed back on read, via
+  `lib/geo-serialize.ts` (`geometryToStore` / `geometryFromStore`). Wired into
+  the journal store (`context-journal/store.ts` add + both read paths) and the
+  tour store (`tours-store.ts`, `Act.contexts[].geometry`, via
+  `mapTourContextGeometry`). Legacy raw-Point objects still load.
+- **Add-Context map — two new tools** (`ContextMap.tsx`, `DrawTool` now
+  `pin | highlight | circle | place`):
+  - **Circle** — tap drops a circle (radius ≈ 1/6 of the view; `circlePolygon`
+    equirectangular approximation), which immediately enters `direct_select` so
+    its vertices/midpoints can be dragged to reshape into any polygon.
+  - **Place** — search a **state/country** by name (`places.ts` → OpenStreetMap
+    **Nominatim**, `polygon_geojson=1&polygon_threshold=0.008` to keep the stored
+    boundary small); pick a result to drop its boundary as an editable region and
+    fit to it. **MultiPolygons collapse to their largest (mainland) polygon** —
+    islands/exclaves are dropped (draw can't reliably edit MultiPolygons; note for
+    later). Nominatim is free/no-key but external — low-volume authoring only,
+    © OpenStreetMap contributors.
+
+  ⚠️ *Built + compiles (tsc + `next build` pass) but the circle reshape and the
+  Nominatim boundary search were NOT exercised in a browser — needs live QA
+  (drop+reshape a circle; search e.g. "California" and confirm it saves & reloads).*
+
 **Data — `store.ts`.** Collections **`context-entries`** (live `onSnapshot`,
 scoped by `placeId`, default `memorial-church`) and **`saved-contexts`**
 (bookmarks keyed by an anonymous `provenance-context-viewer-id`; structured so a

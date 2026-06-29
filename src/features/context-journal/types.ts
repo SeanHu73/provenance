@@ -77,8 +77,10 @@ export interface SavedContext {
 /** Map interaction modes. BROWSE is read-only; ADD enables drawing tools. */
 export type MapMode = 'browse' | 'add';
 
-/** What the user is drawing in ADD mode. */
-export type DrawTool = 'pin' | 'highlight';
+/** What the user is drawing in ADD mode. `pin` drops a point, `highlight` paints
+ *  a freehand region, `circle` drops a resizable circle that becomes an editable
+ *  shape, `place` selects a state/country boundary by search. */
+export type DrawTool = 'pin' | 'highlight' | 'circle' | 'place';
 
 /** Geometry + camera captured from the map's ADD/EDIT step. */
 export interface DrawResult {
