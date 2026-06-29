@@ -2389,14 +2389,15 @@ panel** (`PastPanel`, remaining space, scrolls).
   anywhere within `TIMELINE_BOUNDS` (**1000 BC → present**, BC shown as "N BC",
   the upper bound as "Present"), keeping a `MIN_DOMAIN_SPAN`. Moving an end re-fits
   the selection via `clampRange()`. `DEFAULT_DOMAIN` is the initial placeholder
-  (1600 → present) until the admin UI exists. A **dropdown** picks the snap grain
-  (1 / 10 / 100y) — **any grain at any span** (no segment cap; `floorGranularity()`
-  now only seeds the initial default). Snapping is pure arithmetic, so it's free;
-  the **gridlines are decoupled from the grain and capped at ≤ `MAX_TICKS` (40)**,
-  coarsening the tick step in ×10 steps — so 1-year grain over 1000 BC → present
-  draws ~30 ticks, not 3000, and stays smooth. (Caveat: at a very fine grain over
-  a very wide span the one-segment selection is sub-pixel and the handles overlap
-  — a precision trade, not lag.) A **dropdown** picks the segment
+  (1600 → present) until the admin UI exists. A **dropdown** (labelled "…range")
+  picks the snap grain (1 / 10 / 100y) — **any grain at any span** (no cap on the
+  choice; `floorGranularity()` only seeds the initial default). **Gridlines follow
+  the chosen grain** (10y grain → 10y lines), coarsening the tick step ×10 only
+  past `MAX_TICKS` (500) so an extreme grain×span (1-year over 1000 BC → present)
+  can't render thousands of divs. Tick elements are **memoised** so dragging the
+  selection never re-reconciles them — smooth at any count. (Caveat: at a very fine
+  grain over a very wide span the one-segment selection is sub-pixel and the
+  handles overlap — a precision trade, not lag.) A **dropdown** picks the segment
   size (1 / 10 / 100y); sizes that would exceed **`MAX_SEGMENTS` (30)** are
   **disabled** ("too many"), so the grain auto-coarsens (1 → 10 → 100) for long
   domains — `floorGranularity()` is the floor, 100y the cap. A draggable

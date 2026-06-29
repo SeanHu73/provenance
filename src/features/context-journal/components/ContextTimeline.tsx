@@ -23,8 +23,10 @@ import type { TimeRange } from '../types';
 
 type DragMode = 'move' | 'start' | 'end';
 
-/** Never render more gridlines than this, whatever the span/grain (cosmetic). */
-const MAX_TICKS = 40;
+/** Safety ceiling on rendered gridlines. Gridlines normally follow the selected
+ *  grain; only past this do we coarsen the tick step (×10) so an extreme
+ *  grain×span (e.g. 1-year over 3000 years) can't render thousands of divs. */
+const MAX_TICKS = 500;
 
 interface Props {
   value: TimeRange;
@@ -112,15 +114,20 @@ export default function ContextTimeline({ value, onChange, domain, onDomainChang
     onDomainChange({ start: D0, end });
   };
 
-  // Gridlines are decoupled from the snap grain: snapping can be 1-year fine, but
-  // we never draw more than ~MAX_TICKS marks (coarsening the tick step in ×10
-  // steps from the grain), so a 1000 BC → present span stays smooth.
-  const ticks = useMemo(() => {
+  // Gridlines follow the selected grain (10y grain → 10y lines, etc.), coarsening
+  // the tick step ×10 only if that would exceed MAX_TICKS. Memoised as elements so
+  // dragging the selection never re-reconciles them — smooth at any count.
+  const tickEls = useMemo(() => {
     let tickStep = g;
     while (SPAN / tickStep > MAX_TICKS) tickStep *= 10;
-    const out: number[] = [];
-    for (let y = D0; y <= D1 + 0.5; y += tickStep) out.push(y);
-    return out;
+    const els: React.ReactNode[] = [];
+    for (let y = D0; y <= D1 + 0.5; y += tickStep) {
+      els.push(
+        <div key={y} className="absolute top-1/2 -translate-y-1/2 w-px h-3 bg-black/10"
+          style={{ left: `${((y - D0) / SPAN) * 100}%` }} />,
+      );
+    }
+    return els;
   }, [D0, D1, SPAN, g]);
 
   // Inset the rail from the screen edges so an edge handle clears the phone's
@@ -140,7 +147,7 @@ export default function ContextTimeline({ value, onChange, domain, onDomainChang
             aria-haspopup="listbox"
             aria-expanded={menuOpen}
           >
-            {granLabel(g)} segments
+            {granLabel(g)} range
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
               className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`}>
               <polyline points="6 9 12 15 18 9" />
@@ -166,7 +173,7 @@ export default function ContextTimeline({ value, onChange, domain, onDomainChang
                           onClick={() => pickGranularity(opt)}
                           className={`w-full text-left px-3 py-2.5 text-sm flex items-center justify-between hover:bg-sandstone-light/60 text-text-primary ${selected ? 'font-semibold' : ''}`}
                         >
-                          {granLabel(opt)} segments
+                          {granLabel(opt)} range
                           {selected && <span style={{ color: 'var(--th-primary)' }}>✓</span>}
                         </button>
                       </li>
@@ -189,9 +196,7 @@ export default function ContextTimeline({ value, onChange, domain, onDomainChang
       {/* track (inset from edges) */}
       <div ref={trackRef} className="relative h-9 mt-1" style={{ marginLeft: EDGE, marginRight: EDGE, touchAction: 'none', overscrollBehavior: 'contain' }}>
         <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-2 rounded-full bg-sandstone-light" />
-        {ticks.map((y, i) => (
-          <div key={i} className="absolute top-1/2 -translate-y-1/2 w-px h-3 bg-black/10" style={{ left: `${pct(y)}%` }} />
-        ))}
+        {tickEls}
 
         <div
           className="absolute top-1/2 -translate-y-1/2 h-2 rounded-full cursor-grab active:cursor-grabbing"
