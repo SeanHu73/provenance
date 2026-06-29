@@ -77,10 +77,10 @@ export async function savePlaceConfig(config: Omit<PlaceConfig, 'updatedAt'>): P
   }));
 }
 
-// ── Photo upload ──
+// ── Media upload (photos + audio) ──
 
-export async function uploadContextPhoto(file: File): Promise<string> {
-  const path = `context-journal/photos/${newId('img')}_${file.name}`;
+export async function uploadContextMedia(file: File): Promise<string> {
+  const path = `context-journal/media/${newId('m')}_${file.name}`;
   const storageRef = ref(storage, path);
   await uploadBytes(storageRef, file);
   return getDownloadURL(storageRef);

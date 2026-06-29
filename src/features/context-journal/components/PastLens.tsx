@@ -15,7 +15,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { type LensDef } from '../constants';
+import { thumbnailPhotoUrl, type LensDef } from '../constants';
 import type { ContextEntry } from '../types';
 import BookmarkButton from './BookmarkButton';
 
@@ -33,9 +33,6 @@ interface Props {
 export default function PastLens({ lens, entries, savedIds, focusedId, onFocus, onToggleSave, onOpenFull }: Props) {
   const [open, setOpen] = useState(false);
   const [showDef, setShowDef] = useState(false);
-
-  // Only the lens that owns the focused context shows its summary card.
-  const selected = entries.find((e) => e.id === focusedId) ?? null;
 
   // Collapsing the lens clears the focus (and returns the map to the default
   // view) if the focused context lives in this lens.
@@ -121,46 +118,20 @@ export default function PastLens({ lens, entries, savedIds, focusedId, onFocus, 
             {entries.length === 0 ? (
               <p className="px-4 pb-4 text-sm text-text-muted">No context here yet.</p>
             ) : (
-              <>
-                <div className="flex gap-3 overflow-x-auto px-4 pb-3 cj-hscroll">
-                  {entries.map((entry) => (
-                    <Thumbnail
-                      key={entry.id}
-                      entry={entry}
-                      colour={lens.colour}
-                      active={focusedId === entry.id}
-                      onTap={() => handleThumb(entry)}
-                    />
-                  ))}
-                </div>
-
-                <AnimatePresence initial={false} mode="wait">
-                  {selected && (
-                    <motion.div
-                      key={selected.id}
-                      initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
-                      transition={{ duration: 0.2 }}
-                      className="mx-4 mb-4 rounded-xl p-3.5"
-                      style={{ backgroundColor: `${lens.colour}12` }}
-                    >
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-display text-lg text-text-primary leading-tight">{selected.title}</h3>
-                          <p className="text-sm font-serif text-text-secondary mt-1 leading-relaxed">{selected.shortSummary}</p>
-                        </div>
-                        <BookmarkButton saved={savedIds.has(selected.id)} onToggle={() => onToggleSave(selected.id)} colour={lens.colour} />
-                      </div>
-                      <button
-                        onClick={() => onOpenFull(selected)}
-                        className="mt-2.5 text-sm font-semibold"
-                        style={{ color: lens.colour }}
-                      >
-                        Read more →
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </>
+              <div className="flex gap-3 overflow-x-auto px-4 pb-4 cj-hscroll">
+                {entries.map((entry) => (
+                  <ContextCard
+                    key={entry.id}
+                    entry={entry}
+                    colour={lens.colour}
+                    active={focusedId === entry.id}
+                    saved={savedIds.has(entry.id)}
+                    onTap={() => handleThumb(entry)}
+                    onOpenFull={() => onOpenFull(entry)}
+                    onToggleSave={() => onToggleSave(entry.id)}
+                  />
+                ))}
+              </div>
             )}
           </motion.div>
         )}
@@ -169,29 +140,43 @@ export default function PastLens({ lens, entries, savedIds, focusedId, onFocus, 
   );
 }
 
-function Thumbnail({ entry, colour, active, onTap }: {
-  entry: ContextEntry; colour: string; active: boolean; onTap: () => void;
+/** A context card in the lens rail: photo, title, framing question (italic),
+ *  short summary. Tap focuses the map; "Read more" opens the full page. */
+function ContextCard({ entry, colour, active, saved, onTap, onOpenFull, onToggleSave }: {
+  entry: ContextEntry; colour: string; active: boolean; saved: boolean;
+  onTap: () => void; onOpenFull: () => void; onToggleSave: () => void;
 }) {
+  const photo = thumbnailPhotoUrl(entry);
   return (
-    <button
-      onClick={onTap}
-      className="shrink-0 w-28 text-left"
-      style={{ scrollSnapAlign: 'start' }}
+    <div
+      className="shrink-0 w-60 rounded-xl overflow-hidden bg-warm-white border"
+      style={{ borderColor: active ? colour : 'var(--th-border)', boxShadow: active ? `0 0 0 1px ${colour}` : 'none', scrollSnapAlign: 'start' }}
     >
-      <div
-        className="w-28 h-20 rounded-lg overflow-hidden flex items-center justify-center"
-        style={{ backgroundColor: `${colour}26`, outline: active ? `2.5px solid ${colour}` : 'none', outlineOffset: active ? 0 : undefined }}
-      >
-        {entry.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={entry.photoUrl} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="1.7">
-            <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
-          </svg>
-        )}
+      <button onClick={onTap} className="block w-full text-left">
+        <div className="w-full h-28 flex items-center justify-center" style={{ backgroundColor: `${colour}1f` }}>
+          {photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photo} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="1.6">
+              <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
+            </svg>
+          )}
+        </div>
+        <div className="p-3">
+          <h3 className="font-display text-base text-text-primary leading-tight">{entry.title}</h3>
+          {entry.question && (
+            <p className="text-xs font-serif italic text-text-secondary mt-0.5 leading-snug line-clamp-2">{entry.question}</p>
+          )}
+          {entry.shortSummary && (
+            <p className="text-xs font-serif text-text-secondary mt-1.5 leading-snug line-clamp-3">{entry.shortSummary}</p>
+          )}
+        </div>
+      </button>
+      <div className="flex items-center justify-between px-3 pb-2.5">
+        <button onClick={onOpenFull} className="text-xs font-semibold" style={{ color: colour }}>Read more →</button>
+        <BookmarkButton saved={saved} onToggle={onToggleSave} colour={colour} />
       </div>
-      <p className="mt-1 text-xs font-semibold text-text-primary leading-tight line-clamp-2">{entry.title}</p>
-    </button>
+    </div>
   );
 }

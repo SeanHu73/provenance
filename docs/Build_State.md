@@ -2460,6 +2460,25 @@ tilt widget doesn't clutter the corner. (The earlier Mapbox `/admin/map-preview`
 3D experiment was removed — compass-follow was too jittery; rotate-with-fingers is
 the model. A 2D⇄3D path for Mapbox can revisit later.)
 
+**Context authoring overhaul — Stage 1 of 4 (2026-06-29 pt.6).** Richer contexts:
+`ContextEntry` now has a **`question`** (framing question, shown italic under the
+title on cards + the page), **`media: ContextMedia[]`** (photos *and* audio, each
+titled — replaces the single `photoUrl`), and **`thumbnailMediaId`** (which photo
+is the card thumbnail). `AddContextFlow` (shared by learner + admin) gained the
+question field (below the lens), a **multi-upload media manager** (Add photo / Add
+audio, per-item title, star-to-pick-thumbnail, remove), and stores it all.
+`PastLens` now shows **richer cards** (photo / title / question-italic / short
+summary; tap = focus map, "Read more" = open). `ContextFullScreen` shows the
+question, a **photo gallery** (swipeable when >1, captioned), audio players, and
+the long explanation via **`ReadAloud`** — free **Web Speech API** TTS with
+e-reader **word highlighting** (`boundary` events; desktop Chrome/Edge reliable,
+some mobile voices don't fire boundaries → audio plays without highlight; premium
+voice e.g. ElevenLabs can swap in behind the same component later). `uploadContextPhoto`
+→ `uploadContextMedia`. **Still to come:** Stage 2 (admin "Add Context" in the tour,
+draggable between stops, renamed from "End of Act Context"), Stage 3 (learner
+sequence: question posed → title/explanation read → "Add to Context Journal"),
+Stage 4 (premium TTS + AI-response read-along).
+
 **Data — `store.ts`.** Collections **`context-entries`** (live `onSnapshot`,
 scoped by `placeId`, default `memorial-church`) and **`saved-contexts`**
 (bookmarks keyed by an anonymous `provenance-context-viewer-id`; structured so a

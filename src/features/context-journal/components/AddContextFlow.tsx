@@ -1,20 +1,20 @@
 'use client';
 
 /**
- * AddContextFlow — the single shared "Add context" form.
+ * AddContextFlow — the shared "Add context" form (learner + admin).
  *
- * Collects title / summary / explanation / lens / optional photo / a dedicated
- * time-range (separate from the browse timeline) and a map step (pin OR
- * highlight, required). On save it writes a ContextEntry to `context-entries`;
- * because the journal subscribes live, the new context appears in its lens the
- * moment its range overlaps the current timeline selection.
+ * Collects lens / a framing question / title / summary / explanation / a
+ * dedicated time-range / multiple media (photos + audio, each titled, with a
+ * chosen thumbnail photo) / a map step (pin OR highlight, required). On save it
+ * writes a ContextEntry to `context-entries`; the live journal shows it once its
+ * range overlaps the current timeline selection.
  */
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { LENSES, TIMELINE_BOUNDS, LENS_BY_KEY } from '../constants';
-import type { DrawResult, MapType, PastCategory } from '../types';
-import { addContextEntry, uploadContextPhoto } from '../store';
+import type { ContextMedia, DrawResult, MapType, PastCategory } from '../types';
+import { addContextEntry, uploadContextMedia } from '../store';
 import ContextMapLoader from './ContextMapLoader';
 
 interface Props {
@@ -23,12 +23,21 @@ interface Props {
   onSaved?: () => void;
 }
 
+type DraftMedia = { id: string; kind: 'photo' | 'audio'; file: File; title: string; previewUrl: string };
+
+const mkId = () =>
+  (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+    ? crypto.randomUUID()
+    : `m_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+
 export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
+  const [question, setQuestion] = useState('');
   const [title, setTitle] = useState('');
   const [shortSummary, setShortSummary] = useState('');
   const [longExplanation, setLongExplanation] = useState('');
   const [category, setCategory] = useState<PastCategory>('place');
-  const [file, setFile] = useState<File | null>(null);
+  const [media, setMedia] = useState<DraftMedia[]>([]);
+  const [thumbId, setThumbId] = useState<string | null>(null);
   const [startYear, setStartYear] = useState(1900);
   const [endYear, setEndYear] = useState(1950);
   const [draw, setDraw] = useState<DrawResult>({ geometry: null, camera: null });
@@ -40,13 +49,44 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
   const rangeValid = startYear <= endYear;
   const canSave = title.trim().length > 0 && !!draw.geometry && rangeValid && !saving;
 
+  const addFiles = (kind: 'photo' | 'audio', files: FileList | null) => {
+    if (!files) return;
+    const next: DraftMedia[] = Array.from(files).map((file) => ({
+      id: mkId(), kind, file, title: '', previewUrl: kind === 'photo' ? URL.createObjectURL(file) : '',
+    }));
+    setMedia((prev) => {
+      const merged = [...prev, ...next];
+      // default the thumbnail to the first photo
+      if (!thumbId) { const firstPhoto = merged.find((m) => m.kind === 'photo'); if (firstPhoto) setThumbId(firstPhoto.id); }
+      return merged;
+    });
+  };
+
+  const removeMedia = (id: string) => {
+    setMedia((prev) => {
+      const m = prev.find((x) => x.id === id);
+      if (m?.previewUrl) URL.revokeObjectURL(m.previewUrl);
+      const next = prev.filter((x) => x.id !== id);
+      if (thumbId === id) setThumbId(next.find((x) => x.kind === 'photo')?.id ?? null);
+      return next;
+    });
+  };
+
+  const setMediaTitle = (id: string, t: string) =>
+    setMedia((prev) => prev.map((m) => (m.id === id ? { ...m, title: t } : m)));
+
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
     setError(null);
     try {
-      const photoUrl = file ? await uploadContextPhoto(file) : null;
+      const uploaded: ContextMedia[] = await Promise.all(
+        media.map(async (m) => ({ id: m.id, kind: m.kind, title: m.title.trim(), url: await uploadContextMedia(m.file) })),
+      );
+      const photoIds = uploaded.filter((m) => m.kind === 'photo').map((m) => m.id);
+      const thumbnailMediaId = thumbId && photoIds.includes(thumbId) ? thumbId : (photoIds[0] ?? null);
       await addContextEntry({
+        question: question.trim(),
         title: title.trim(),
         shortSummary: shortSummary.trim(),
         longExplanation: longExplanation.trim(),
@@ -55,7 +95,8 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
         geometry: draw.geometry,
         camera: draw.camera,
         mapType,
-        photoUrl,
+        media: uploaded,
+        thumbnailMediaId,
         placeId,
       });
       onSaved?.();
@@ -103,6 +144,16 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
             </div>
           </Field>
 
+          {/* framing question — frames the learning, shown in italics under the title */}
+          <Field label="Framing question">
+            <input
+              value={question} onChange={(e) => setQuestion(e.target.value)}
+              placeholder="The question this context helps answer"
+              className="w-full px-3 py-2.5 rounded-lg border-2 bg-white text-[16px] font-serif italic text-text-primary focus:outline-none"
+              style={{ borderColor: 'var(--th-border)' }}
+            />
+          </Field>
+
           {/* title */}
           <Field label="Title">
             <input
@@ -127,7 +178,7 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
           <Field label="Full explanation">
             <textarea
               value={longExplanation} onChange={(e) => setLongExplanation(e.target.value)} rows={5}
-              placeholder="The full context, shown in the reader"
+              placeholder="The full context, shown in the reader (and read aloud)"
               className="w-full px-3 py-2.5 rounded-lg border-2 bg-white text-[16px] font-serif text-text-primary focus:outline-none"
               style={{ borderColor: 'var(--th-border)' }}
             />
@@ -144,13 +195,40 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
             {!rangeValid && <p className="mt-1 text-xs" style={{ color: 'var(--th-primary)' }}>Start year must be on or before the end year.</p>}
           </Field>
 
-          {/* photo */}
-          <Field label="Photo (optional)">
-            <input
-              type="file" accept="image/*"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sandstone-light file:text-text-primary"
-            />
+          {/* media — photos + audio, each titled; pick the thumbnail photo */}
+          <Field label="Photos & audio (optional)">
+            <div className="flex gap-2 mb-2">
+              <UploadButton label="Add photo" accept="image/*" onFiles={(f) => addFiles('photo', f)} colour={colour} />
+              <UploadButton label="Add audio" accept="audio/*" onFiles={(f) => addFiles('audio', f)} colour={colour} />
+            </div>
+            <p className="text-[11px] text-text-muted mb-2">Add more than one — e.g. several photos, an oral account, or a song. Tap a photo&apos;s star to use it as the thumbnail.</p>
+            <div className="space-y-2">
+              {media.map((m) => (
+                <div key={m.id} className="flex items-center gap-2 p-2 rounded-lg border" style={{ borderColor: 'var(--th-border)' }}>
+                  {m.kind === 'photo' ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.previewUrl} alt="" className="w-12 h-12 rounded object-cover shrink-0" />
+                  ) : (
+                    <span className="w-12 h-12 rounded shrink-0 flex items-center justify-center bg-sandstone-light">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2"><path d="M3 10v4h4l5 5V5L7 10H3z" /><path d="M16 8a5 5 0 010 8" /></svg>
+                    </span>
+                  )}
+                  <input
+                    value={m.title} onChange={(e) => setMediaTitle(m.id, e.target.value)}
+                    placeholder={m.kind === 'photo' ? 'Photo caption' : 'Audio title'}
+                    className="flex-1 min-w-0 px-2 py-1.5 rounded border bg-white text-sm" style={{ borderColor: 'var(--th-border)' }}
+                  />
+                  {m.kind === 'photo' && (
+                    <button onClick={() => setThumbId(m.id)} aria-label="Use as thumbnail" title="Use as thumbnail" className="shrink-0">
+                      <svg width="20" height="20" viewBox="0 0 24 24" strokeWidth="1.8" stroke={colour} fill={thumbId === m.id ? colour : 'none'}>
+                        <polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9" />
+                      </svg>
+                    </button>
+                  )}
+                  <button onClick={() => removeMedia(m.id)} aria-label="Remove" className="shrink-0 text-text-muted text-xl leading-none px-1">&times;</button>
+                </div>
+              ))}
+            </div>
           </Field>
 
           {/* map step */}
@@ -192,6 +270,17 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+function UploadButton({ label, accept, onFiles, colour }: {
+  label: string; accept: string; onFiles: (files: FileList | null) => void; colour: string;
+}) {
+  return (
+    <label className="px-3 py-1.5 rounded-full text-sm font-semibold cursor-pointer border-2" style={{ color: colour, borderColor: `${colour}55` }}>
+      + {label}
+      <input type="file" accept={accept} multiple className="hidden" onChange={(e) => { onFiles(e.target.files); e.target.value = ''; }} />
+    </label>
   );
 }
 

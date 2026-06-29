@@ -6,7 +6,7 @@
  * identity is stable across the red/teal themes.
  */
 
-import type { PastCategory, TimeRange, MapType } from './types';
+import type { PastCategory, TimeRange, MapType, ContextEntry } from './types';
 
 /** Default scope when the journal isn't opened in a tour context. */
 export const DEFAULT_PLACE_ID = 'memorial-church';
@@ -110,4 +110,16 @@ export const LENS_BY_KEY: Record<PastCategory, LensDef> = LENSES.reduce(
 /** A context is in range when its span overlaps the selected span. */
 export function overlapsRange(ctx: { start: number; end: number }, sel: { start: number; end: number }): boolean {
   return ctx.start <= sel.end && ctx.end >= sel.start;
+}
+
+// ── media helpers ──
+export const contextPhotos = (e: ContextEntry) => (e.media ?? []).filter((m) => m.kind === 'photo');
+export const contextAudio = (e: ContextEntry) => (e.media ?? []).filter((m) => m.kind === 'audio');
+
+/** The photo URL used for the thumbnail (the chosen one, or the first photo). */
+export function thumbnailPhotoUrl(e: ContextEntry): string | null {
+  const photos = contextPhotos(e);
+  if (!photos.length) return null;
+  const chosen = e.thumbnailMediaId ? photos.find((p) => p.id === e.thumbnailMediaId) : null;
+  return (chosen ?? photos[0]).url;
 }

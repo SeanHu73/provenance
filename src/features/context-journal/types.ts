@@ -28,18 +28,31 @@ export interface Camera {
 }
 
 /** A single context entry, written to `context-entries`. */
+/** A piece of media attached to a context — a photo or an audio clip, each
+ *  titled. A context can hold several (e.g. an oral account + a song). */
+export interface ContextMedia {
+  id: string;
+  kind: 'photo' | 'audio';
+  url: string;
+  title: string;
+}
+
 export interface ContextEntry {
   id: string;
   title: string;
+  /** A framing question, shown in italics under the title (thumbnail + page). */
+  question: string;
   shortSummary: string;
   longExplanation: string;
   pastCategory: PastCategory;
   timeRange: TimeRange;
   geometry: Geometry | null; // GeoJSON Point or Polygon
   camera: Camera | null;
-  photoUrl: string | null;
   /** Basemap the context was authored on; the viewer's map switches to it on focus. */
   mapType: MapType;
+  /** Photos + audio. The thumbnail photo is chosen by `thumbnailMediaId`. */
+  media: ContextMedia[];
+  thumbnailMediaId: string | null;
   placeId: string;
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
