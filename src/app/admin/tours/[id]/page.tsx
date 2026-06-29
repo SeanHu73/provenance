@@ -27,6 +27,7 @@ import RichTextarea from '@/components/admin/RichTextarea';
 import AudioUpload from '@/components/admin/AudioUpload';
 import PhotoOverlayEditor from '@/components/admin/PhotoOverlayEditor';
 import PhotoCueEditor from '@/components/admin/PhotoCueEditor';
+import ContextJournalConfig from '@/features/context-journal/admin/ContextJournalConfig';
 import { registerPhotoInLibrary } from '@/lib/photo-sync-tour';
 
 const CHURCH_LOCATION = { lat: 37.42700, lng: -122.17015 };
@@ -934,6 +935,12 @@ export default function TourEditorPage() {
               </div>
             )}
           </div>
+        </section>
+
+        {/* Context Journal — per-tour settings (timeline domain + default map view) */}
+        <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-3">
+          <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Context Journal</h2>
+          <ContextJournalConfig tourId={tour.id} />
         </section>
 
         {/* Background photo */}

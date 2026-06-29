@@ -2427,9 +2427,13 @@ panel** (`PastPanel`, remaining space, scrolls).
 
 **Admin config + map behaviours (2026-06-29 pt.2/3).** Config is **per tour**:
 **`context-journal-config/{tourId}`** (`PlaceConfig`) holds the timeline domain
-+ default map view (`defaultCenter`/`defaultZoom`), edited at
-**`/admin/context-journal`** (pick a tour → timeline year inputs + a map you
-frame and "save current view as default"). The viewer route takes **`?tour=<id>`**
++ default map view (`defaultCenter`/`defaultZoom`), edited **inside the tour
+editor** (`/admin/tours/[id]` → "Context Journal" section, the reusable
+`features/context-journal/admin/ContextJournalConfig` component) so adding tours
+doesn't mean visiting a separate page. (The standalone `/admin/context-journal`
+page was removed; the viewer `/context-journal` route is reserved for a future
+**global context-entry library** — browse/import-into-a-tour.) The viewer route
+takes **`?tour=<id>`**
 (the TourFooter "Context Journal" link passes it); `ContextJournal` scopes its
 config + contexts + saves to that tour (`scopeId = tourId ?? DEFAULT_PLACE_ID`;
 per-stop scoping slots in here later). **No constrain box** — viewers can pan/zoom
@@ -2444,6 +2448,16 @@ drawn geometry, so satellite/default doesn't fight mapbox-gl-draw) — the chose
 type is stored on the context. `ContextMap` emits `onViewportChange` (moveend) for
 the admin view-capture. The first-open **onboarding is suppressed on `/admin`**.
 (`context-journal-config` needs its own Firestore rule block too.)
+
+**Tour map + 3D preview (2026-06-29 pt.4).** The tour's Google Map (`Map.tsx`)
+gained a **map-type toggle** (satellite `hybrid` ⇄ default `roadmap`, bottom-right
+button; `mapTypeId` is now stateful). A throwaway **3D preview** lives at
+**`/admin/map-preview`** (`components/admin/MapPreview.tsx`, dynamic ssr:false):
+Mapbox **Standard** style (3D buildings + terrain, tilted), labelled test pins
+that fade behind buildings (`occludedOpacity`), a GPS heading cone, and a "Follow
+my compass" toggle (DeviceOrientation → smoothed `setBearing`) — to judge a
+"walk around in 3D" experience before building it. If it lands, the plan is a
+2D⇄3D toggle in the tour/journal.
 
 **Data — `store.ts`.** Collections **`context-entries`** (live `onSnapshot`,
 scoped by `placeId`, default `memorial-church`) and **`saved-contexts`**

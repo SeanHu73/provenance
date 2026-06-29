@@ -939,6 +939,7 @@ export default function MapContainer({
 }: MapProps) {
   const [userLocation, setUserLocation] = useState<Loc | null>(null);
   const [following, setFollowing] = useState(false);
+  const [mapTypeId, setMapTypeId] = useState<'hybrid' | 'roadmap'>('hybrid');
   const [navPrompt, setNavPrompt] = useState<{ tour: Tour; distanceM: number } | null>(null);
   const [mapBounds, setMapBounds] = useState<Bounds | null>(null);
   const [containerSize, setContainerSize] = useState<ContainerSize>({ W: window?.innerWidth ?? 400, H: window?.innerHeight ?? 600 });
@@ -980,7 +981,7 @@ export default function MapContainer({
           defaultZoom={17}
           defaultTilt={45}
           defaultHeading={0}
-          mapTypeId="hybrid"
+          mapTypeId={mapTypeId}
           gestureHandling="greedy"
           disableDefaultUI={false}
           zoomControl={false}
@@ -1040,6 +1041,19 @@ export default function MapContainer({
           onToggleFollow={() => setFollowing((f) => !f)}
           tourLocs={tourLocs}
         />
+
+        {/* Map type toggle — satellite (hybrid) ⇄ default (roadmap) */}
+        <button
+          onClick={() => setMapTypeId((t) => (t === 'hybrid' ? 'roadmap' : 'hybrid'))}
+          className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 px-3 py-2 rounded-full shadow-lg text-xs font-semibold font-sans"
+          style={{ background: '#fff', color: '#3A3A32' }}
+          title="Change map type"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
+          </svg>
+          {mapTypeId === 'hybrid' ? 'Map' : 'Satellite'}
+        </button>
 
         {navPrompt && navPrompt.tour.location && (
           <div
