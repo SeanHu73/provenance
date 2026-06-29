@@ -240,7 +240,7 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
 
           {/* map step */}
           <Field label="Place on the map (required)">
-            <div className="h-64 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
+            <div className="h-96 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
               <ContextMapLoader
                 key={mapType}
                 mode="add"

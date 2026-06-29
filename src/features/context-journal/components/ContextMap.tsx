@@ -330,16 +330,21 @@ export default function ContextMap({
     // country options to highlight (the typed search is the other way in).
     const onPlaceClick = (e: mapboxgl.MapMouseEvent) => {
       if (toolRef.current !== 'place') return;
+      console.debug('[context-journal] place tap', e.lngLat.lng.toFixed(4), e.lngLat.lat.toFixed(4));
       setPlaceCandidates([]);
       setPlaceResults([]);
       setPlaceBusy(true);
       setPlaceError(null);
       placesAtPoint(e.lngLat.lng, e.lngLat.lat)
         .then((cands) => {
+          console.debug('[context-journal] place tap →', cands.length, 'candidates');
           setPlaceCandidates(cands);
           if (cands.length === 0) setPlaceError('No named area found there — try the search box.');
         })
-        .catch(() => setPlaceError('Tap lookup failed — try the search box.'))
+        .catch((err) => {
+          console.error('[context-journal] place tap failed:', err);
+          setPlaceError('Tap lookup failed — try the search box.');
+        })
         .finally(() => setPlaceBusy(false));
     };
 
@@ -473,7 +478,7 @@ export default function ContextMap({
                 <path d="M12 21s-7-6.4-7-11a7 7 0 0114 0c0 4.6-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" />
               </svg>
             </ToolBtn>
-            <ToolBtn active={tool === 'highlight'} onClick={() => handleTool('highlight')} label="Paint" colour={lensColour}>
+            <ToolBtn active={tool === 'highlight'} onClick={() => handleTool('highlight')} label="Highlight" colour={lensColour}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" />
               </svg>
@@ -556,7 +561,7 @@ export default function ContextMap({
                   ? 'Tap the map to drop a pin'
                   : tool === 'place'
                     ? 'Tap an area, or search a city / state / country'
-                    : usingFreehand ? 'Draw around an area — it smooths into a clean shape' : 'Tap to outline a region, double-tap to finish'}
+                    : usingFreehand ? 'Draw around an area to highlight it' : 'Tap to outline a region, double-tap to finish'}
             </span>
           </div>
         </>

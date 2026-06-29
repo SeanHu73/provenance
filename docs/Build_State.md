@@ -2576,15 +2576,26 @@ limiting. Revised the Add-Context map to three tools — `DrawTool` is now
 locally (transient `next/font/google` fetch failure — environment, not code).
 Map interactions still need a live QA pass.*
 
-**⚠️ SAVE BUG STILL OPEN.** The user reports "Could not save" **persists** after
-the geometry-serialization fix (pt.8). That fix is correct for the nested-array
-issue, so the remaining failure is likely **elsewhere** — most probably **Firebase
-Storage rules** (media uploads to `context-journal/media/**` happen *before* the
-Firestore write in `AddContextFlow.handleSave`, and only *Firestore* rules were
-ever added), or a Firestore rules gap. The save error now **surfaces the real
-Firebase code/message** in the form (`AddContextFlow`) instead of a generic
-string — next step is to read that exact code and fix the matching rule. Rules
-are **not** in the repo (managed in the Firebase console).
+**Save bug — root cause confirmed = Storage rules (2026-06-29 pt.10).**
+Saving **without** media succeeds; **with** a photo/audio it fails — so the cause
+is **Firebase Storage rules**: `uploadContextMedia` writes to
+`context-journal/media/**`, which existing Storage rules don't cover (other
+upload paths do, which is why tour/stop photos work). Fix is console-side — add a
+`match /context-journal/media/{file=**}` rule with read+write scoped like the
+other paths. **Not a code bug.** (The geometry-serialization fix from pt.8 is
+still correct and needed for region/boundary saves.)
+
+**Map-tool follow-ups (2026-06-29 pt.10).**
+- "Paint" relabelled **"Highlight"** (behaviour unchanged — the freehand
+  highlighter the user is happy with; smoothing retained).
+- Add-Context **map enlarged** `h-64 → h-96` so the place-search panel no longer
+  hides most of the map.
+- **Tap-to-select (place tool) reported not working** — handler logic looks
+  correct (map `click` → `placesAtPoint` reverse-geocode → city/state/country
+  chips). Added `console.debug('[context-journal] place tap', …)` + error logging
+  to tell apart "click never fires" (likely mapbox-gl-draw `simple_select`
+  swallowing it → switch to a canvas/unproject listener) from "Nominatim reverse
+  fails" (network/policy). **Needs a console check on the next QA pass.**
 
 **Data — `store.ts`.** Collections **`context-entries`** (live `onSnapshot`,
 scoped by `placeId`, default `memorial-church`) and **`saved-contexts`**
