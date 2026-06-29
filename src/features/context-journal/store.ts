@@ -26,6 +26,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
+import { geometryToStore, geometryFromStore } from '@/lib/geo-serialize';
 import { CONTEXT_ENTRIES, SAVED_CONTEXTS, PLACE_CONFIG } from './constants';
 import type { ContextEntry, NewContextEntry, SavedContext, PlaceConfig } from './types';
 
@@ -93,6 +94,8 @@ export async function addContextEntry(entry: NewContextEntry): Promise<string> {
   const id = newId('ctx');
   const data = cleanUndefined({
     ...entry,
+    // Firestore rejects nested arrays (Polygon coords) — store geometry as a string.
+    geometry: geometryToStore(entry.geometry),
     id,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -116,7 +119,10 @@ export function subscribeContextEntries(
     q,
     (snap) => {
       const out: ContextEntry[] = [];
-      snap.forEach((d) => out.push({ id: d.id, ...d.data() } as ContextEntry));
+      snap.forEach((d) => {
+        const data = d.data();
+        out.push({ ...data, id: d.id, geometry: geometryFromStore(data.geometry) } as ContextEntry);
+      });
       onChange(out);
     },
     (err) => {
@@ -131,7 +137,10 @@ export async function getContextEntries(placeId: string): Promise<ContextEntry[]
   try {
     const snap = await getDocs(query(collection(db, CONTEXT_ENTRIES), where('placeId', '==', placeId)));
     const out: ContextEntry[] = [];
-    snap.forEach((d) => out.push({ id: d.id, ...d.data() } as ContextEntry));
+    snap.forEach((d) => {
+      const data = d.data();
+      out.push({ ...data, id: d.id, geometry: geometryFromStore(data.geometry) } as ContextEntry);
+    });
     return out;
   } catch (err) {
     console.error('[context-journal] getContextEntries failed:', err);

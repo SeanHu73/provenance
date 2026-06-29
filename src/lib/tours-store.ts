@@ -18,10 +18,29 @@ import {
   setDoc,
   deleteDoc,
 } from 'firebase/firestore';
+import type { Geometry } from 'geojson';
 import { db } from './firebase';
+import { geometryToStore, geometryFromStore } from './geo-serialize';
 import { Tour, Stop, Detour, TourMode, Act, OpeningFrame } from './types';
 
 const TOURS_COLLECTION = 'memorial-church-tours';
+
+/**
+ * `Act.contexts[]` (rich Add-Context items) carry a GeoJSON `geometry`. Firestore
+ * rejects nested arrays (Polygon coords), so we serialize geometry to a string on
+ * write and parse it back on read — see `geo-serialize`. `map` applies either
+ * direction; everything else on the tour passes through untouched.
+ */
+function mapTourContextGeometry(tour: Tour, map: (g: unknown) => unknown): Tour {
+  if (!tour.acts?.length) return tour;
+  return {
+    ...tour,
+    acts: tour.acts.map((act) =>
+      act.contexts?.length
+        ? { ...act, contexts: act.contexts.map((c) => ({ ...c, geometry: map(c.geometry) as Geometry | null })) }
+        : act),
+  };
+}
 
 export function newTourId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -41,7 +60,7 @@ export async function getTours(): Promise<Tour[]> {
   try {
     const snap = await getDocs(collection(db, TOURS_COLLECTION));
     const tours: Tour[] = [];
-    snap.forEach((d) => tours.push({ id: d.id, ...d.data() } as Tour));
+    snap.forEach((d) => tours.push(mapTourContextGeometry({ id: d.id, ...d.data() } as Tour, geometryFromStore)));
     // Sort by updatedAt descending so most recent is first
     tours.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
     return tours;
@@ -55,7 +74,7 @@ export async function getTour(id: string): Promise<Tour | null> {
   try {
     const snap = await getDoc(doc(db, TOURS_COLLECTION, id));
     if (!snap.exists()) return null;
-    return { id: snap.id, ...snap.data() } as Tour;
+    return mapTourContextGeometry({ id: snap.id, ...snap.data() } as Tour, geometryFromStore);
   } catch (err) {
     console.error('[tours-store] getTour failed:', err);
     return null;
@@ -69,7 +88,10 @@ export async function saveTour(tour: Tour): Promise<Tour> {
     createdAt: tour.createdAt || now,
     updatedAt: now,
   };
-  const { id, ...data } = next;
+  // Serialize Add-Context geometry for Firestore (nested-array limitation); the
+  // returned `next` keeps the in-memory geometry objects for the caller/editor.
+  const forStore = mapTourContextGeometry(next, (g) => geometryToStore(g as Geometry | null));
+  const { id, ...data } = forStore;
   await setDoc(doc(db, TOURS_COLLECTION, id), data);
   return next;
 }
