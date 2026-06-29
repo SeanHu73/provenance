@@ -24,6 +24,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import type { Geometry, Polygon } from 'geojson';
 import { MAP_STYLES, DEFAULT_CAMERA } from '../constants';
+import { placesAtPoint } from '../places';
 import type { Bounds, Camera, DrawResult, DrawTool, MapMode, MapType } from '../types';
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -337,21 +338,29 @@ export default function ContextMap({
       emit();
     };
 
-    // Place tool: clicking a place NAME on the basemap reports it up so the
-    // parent can resolve its boundary. Reads the label under the tap (with a
-    // little slop so it's easy to hit); a tap with no label reports null.
+    // Place tool: a tap picks a place. First try the label under the tap (a
+    // generous box so a finger lands on it); if none — common on touch, where
+    // labels are tiny — fall back to reverse-geocoding the tapped point so a tap
+    // *near* a place still resolves it. The resolved name is reported up.
     const onPlaceClick = (e: mapboxgl.MapMouseEvent) => {
       if (toolRef.current !== 'place') return;
-      const pad = 6;
+      const pad = 16;
       const hits = map.queryRenderedFeatures(
         [[e.point.x - pad, e.point.y - pad], [e.point.x + pad, e.point.y + pad]],
       );
       const label = hits.find((f) =>
         /label/.test(String(f.layer?.id ?? '')) &&
         (f.properties?.name_en || f.properties?.name));
-      const name = label ? String(label.properties?.name_en || label.properties?.name) : null;
-      console.debug('[context-journal] place tap →', name ?? '(no label)');
-      onTapNameRef.current?.(name);
+      if (label) {
+        const name = String(label.properties?.name_en || label.properties?.name);
+        console.debug('[context-journal] place tap → label', name);
+        onTapNameRef.current?.(name);
+        return;
+      }
+      console.debug('[context-journal] place tap → no label, reverse-geocoding');
+      placesAtPoint(e.lngLat.lng, e.lngLat.lat)
+        .then((cands) => onTapNameRef.current?.(cands[0]?.query ?? null))
+        .catch((err) => { console.error('[context-journal] reverse lookup failed:', err); onTapNameRef.current?.(null); });
     };
 
     void setup();

@@ -8,12 +8,15 @@
  */
 
 import { useEffect, useState } from 'react';
-import { TIMELINE_BOUNDS, DEFAULT_DOMAIN, DEFAULT_CAMERA, formatYear } from '../constants';
-import type { MapType } from '../types';
-import { getPlaceConfig, savePlaceConfig } from '../store';
+import { TIMELINE_BOUNDS, DEFAULT_DOMAIN, DEFAULT_CAMERA, formatYear, LENS_BY_KEY } from '../constants';
+import type { ContextEntry, MapType } from '../types';
+import { getPlaceConfig, savePlaceConfig, subscribeContextEntries, deleteContextEntry } from '../store';
 import ContextMapLoader from '../components/ContextMapLoader';
 
 export default function ContextJournalConfig({ tourId }: { tourId: string }) {
+  const [entries, setEntries] = useState<ContextEntry[]>([]);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [start, setStart] = useState(DEFAULT_DOMAIN.start);
   const [end, setEnd] = useState(DEFAULT_DOMAIN.end);
   const [view, setView] = useState<{ center: [number, number]; zoom: number } | null>(null);
@@ -34,6 +37,21 @@ export default function ContextJournalConfig({ tourId }: { tourId: string }) {
     })();
     return () => { active = false; };
   }, [tourId]);
+
+  // Live list of contexts viewers (and admins) have added to this tour.
+  useEffect(() => subscribeContextEntries(tourId, setEntries), [tourId]);
+
+  const remove = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await deleteContextEntry(id);
+      setConfirmId(null);
+    } catch (err) {
+      console.error('[context-journal] delete failed:', err);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const clampYear = (n: number) => Math.min(TIMELINE_BOUNDS.end, Math.max(TIMELINE_BOUNDS.start, n));
   const rangeValid = start <= end;
@@ -107,6 +125,61 @@ export default function ContextJournalConfig({ tourId }: { tourId: string }) {
           {saving ? 'Saving…' : 'Save Context Journal settings'}
         </button>
         {status && <span className="text-xs text-stone-600">{status}</span>}
+      </div>
+
+      {/* Submitted contexts — view + delete */}
+      <div className="pt-3 border-t border-stone-200">
+        <div className="text-xs font-medium text-stone-600 mb-1">
+          Submitted contexts ({entries.length})
+        </div>
+        <p className="text-[10px] text-stone-400 mb-2">
+          Everything added to this tour&apos;s Context Journal (by you or viewers). Delete removes it for everyone.
+        </p>
+        {entries.length === 0 ? (
+          <p className="text-xs text-stone-400 italic">No contexts yet.</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {entries.map((e) => {
+              const lens = LENS_BY_KEY[e.pastCategory];
+              const thumb = e.media?.find((m) => m.id === e.thumbnailMediaId && m.kind === 'photo')
+                ?? e.media?.find((m) => m.kind === 'photo');
+              return (
+                <li key={e.id} className="flex items-center gap-2 p-2 rounded border border-stone-200">
+                  {thumb ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumb.url} alt="" className="w-9 h-9 rounded object-cover shrink-0" />
+                  ) : (
+                    <span className="w-9 h-9 rounded shrink-0" style={{ backgroundColor: `${lens?.colour ?? '#999'}22` }} />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm text-stone-800 truncate">{e.title || '(untitled)'}</div>
+                    <div className="text-[11px] text-stone-400 truncate">
+                      <span style={{ color: lens?.colour }}>{lens?.label ?? e.pastCategory}</span>
+                      {e.question ? ` · ${e.question}` : ''}
+                    </div>
+                  </div>
+                  {confirmId === e.id ? (
+                    <span className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => void remove(e.id)} disabled={deletingId === e.id}
+                        className="px-2 py-1 rounded bg-red-600 text-white text-[11px] hover:bg-red-700 disabled:opacity-50">
+                        {deletingId === e.id ? 'Deleting…' : 'Confirm'}
+                      </button>
+                      <button onClick={() => setConfirmId(null)}
+                        className="px-2 py-1 rounded text-[11px] text-stone-500 hover:bg-stone-100">
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <button onClick={() => setConfirmId(e.id)}
+                      className="shrink-0 px-2 py-1 rounded text-[11px] text-red-600 hover:bg-red-50">
+                      Delete
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );

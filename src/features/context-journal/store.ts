@@ -104,6 +104,12 @@ export async function addContextEntry(entry: NewContextEntry): Promise<string> {
   return id;
 }
 
+/** Permanently delete a context entry (admin moderation). It disappears
+ *  immediately for everyone via the live subscription. */
+export async function deleteContextEntry(id: string): Promise<void> {
+  await deleteDoc(doc(db, CONTEXT_ENTRIES, id));
+}
+
 /**
  * Live subscription to all contexts for a place. Range filtering happens
  * client-side (the selected timeline range is the single source of truth),

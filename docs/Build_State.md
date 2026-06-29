@@ -2615,6 +2615,19 @@ should select by *name*, not reverse-geocode a point):
 ⚠️ *tsc clean; full `next build` still blocked locally by the `next/font/google`
 fetch (environment). Place tap (click-a-name) + the lifted search bar need live QA.*
 
+**Mobile tap fix + context moderation (2026-06-29 pt.12).**
+- **Place tap on mobile:** finger taps rarely land on the tiny label, so the
+  click-a-name `queryRenderedFeatures` box was widened (6→16 px) and now **falls
+  back to reverse-geocoding** the tapped point (`placesAtPoint`) when no label is
+  hit — so a tap *near* a place still resolves it. (`placesAtPoint` is in use
+  again.)
+- **View/delete submitted contexts:** new `deleteContextEntry(id)` in the store,
+  and a **"Submitted contexts" list** added to `ContextJournalConfig` (admin tour
+  editor → "Context Journal" section): live list of every context on the tour
+  (thumbnail, title, lens, framing question) with a two-step **Delete**. Deleting
+  needs the `context-entries` Firestore rule to allow delete (covered by
+  `allow write`).
+
 **Data — `store.ts`.** Collections **`context-entries`** (live `onSnapshot`,
 scoped by `placeId`, default `memorial-church`) and **`saved-contexts`**
 (bookmarks keyed by an anonymous `provenance-context-viewer-id`; structured so a
