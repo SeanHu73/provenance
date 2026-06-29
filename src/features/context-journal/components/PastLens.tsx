@@ -23,24 +23,37 @@ interface Props {
   lens: LensDef;
   entries: ContextEntry[];
   savedIds: Set<string>;
+  /** The currently focused context id (shared across lenses; drives the map). */
+  focusedId: string | null;
+  onFocus: (entry: ContextEntry | null) => void;
   onToggleSave: (id: string) => void;
   onOpenFull: (entry: ContextEntry) => void;
 }
 
-export default function PastLens({ lens, entries, savedIds, onToggleSave, onOpenFull }: Props) {
+export default function PastLens({ lens, entries, savedIds, focusedId, onFocus, onToggleSave, onOpenFull }: Props) {
   const [open, setOpen] = useState(false);
   const [showDef, setShowDef] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const selected = entries.find((e) => e.id === selectedId) ?? null;
+  // Only the lens that owns the focused context shows its summary card.
+  const selected = entries.find((e) => e.id === focusedId) ?? null;
+
+  // Collapsing the lens clears the focus (and returns the map to the default
+  // view) if the focused context lives in this lens.
+  const toggleOpen = () => {
+    setOpen((o) => {
+      const next = !o;
+      if (!next && entries.some((e) => e.id === focusedId)) onFocus(null);
+      return next;
+    });
+  };
 
   const onRowKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((o) => !o); }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleOpen(); }
   };
 
   const handleThumb = (entry: ContextEntry) => {
-    if (selectedId === entry.id) onOpenFull(entry); // tap again → full screen
-    else setSelectedId(entry.id);                   // first tap → reveal summary
+    if (focusedId === entry.id) onOpenFull(entry); // tap the focused one again → full screen
+    else onFocus(entry);                           // first tap → focus it (map flies, summary shows)
   };
 
   return (
@@ -50,7 +63,7 @@ export default function PastLens({ lens, entries, savedIds, onToggleSave, onOpen
         role="button"
         tabIndex={0}
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggleOpen}
         onKeyDown={onRowKey}
         className="flex items-start gap-2.5 px-4 py-3.5 cursor-pointer"
       >
@@ -115,7 +128,7 @@ export default function PastLens({ lens, entries, savedIds, onToggleSave, onOpen
                       key={entry.id}
                       entry={entry}
                       colour={lens.colour}
-                      active={selectedId === entry.id}
+                      active={focusedId === entry.id}
                       onTap={() => handleThumb(entry)}
                     />
                   ))}

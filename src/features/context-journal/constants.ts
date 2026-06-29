@@ -18,6 +18,7 @@ export const DEFAULT_CAMERA = { center: [-122.1697, 37.4272] as [number, number]
 /** Firestore collections owned by this module. */
 export const CONTEXT_ENTRIES = 'context-entries';
 export const SAVED_CONTEXTS = 'saved-contexts';
+export const PLACE_CONFIG = 'context-journal-config';
 
 /** "Present day" — placeholder for the live clock; the timeline's upper bound. */
 export const PRESENT_YEAR = 2026;

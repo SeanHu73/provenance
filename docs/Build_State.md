@@ -2423,6 +2423,21 @@ panel** (`PastPanel`, remaining space, scrolls).
   writes a `ContextEntry` and (live subscription) it appears in its lens the
   moment its range overlaps the selection.
 
+**Admin config + map behaviours (2026-06-29 pt.2).** A per-place config doc
+**`context-journal-config/{placeId}`** (`PlaceConfig`) holds the timeline domain
++ default map view (`defaultCenter`/`defaultZoom`) + optional `maxBounds`
+constrain box, edited at **`/admin/context-journal`** (timeline year inputs; a
+map you frame and "save current view as default"; a "constrain viewers to this
+view" checkbox → `maxBounds`). `ContextJournal` loads it on mount. The browse
+map gained: a **GPS `GeolocateControl`** (dot at the viewer's location + recenter
+button), **`maxBounds`** enforcement, and **focus-to-context** — tapping a
+context thumbnail lifts a `focused` entry to `ContextJournal` and the map
+**flies to fit that context's geometry** (`fitBounds` for a region, `flyTo` for a
+point); deselecting (collapsing the lens) returns the map to the admin default
+view. `ContextMap` also emits `onViewportChange` (moveend) so the admin page can
+capture the current view. (`context-journal-config` needs its own Firestore rule
+block too.)
+
 **Data — `store.ts`.** Collections **`context-entries`** (live `onSnapshot`,
 scoped by `placeId`, default `memorial-church`) and **`saved-contexts`**
 (bookmarks keyed by an anonymous `provenance-context-viewer-id`; structured so a

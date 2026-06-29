@@ -63,3 +63,22 @@ export interface DrawResult {
   geometry: Geometry | null;
   camera: Camera | null;
 }
+
+/** Lng/lat bounds: [[west, south], [east, north]]. */
+export type Bounds = [[number, number], [number, number]];
+
+/**
+ * Admin-set, per-place configuration for the Context Journal: the timeline domain
+ * the journal opens on, the default map view, and an optional pan constraint.
+ * Stored at `context-journal-config/{placeId}`.
+ */
+export interface PlaceConfig {
+  placeId: string;
+  timelineStart: number;
+  timelineEnd: number;
+  defaultCenter: [number, number];
+  defaultZoom: number;
+  /** When set, viewers can't pan/zoom outside this box (the "constrain" box). */
+  maxBounds: Bounds | null;
+  updatedAt: Timestamp | null;
+}

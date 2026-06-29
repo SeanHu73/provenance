@@ -19,8 +19,8 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
 import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange } from './constants';
-import type { ContextEntry, TimeRange } from './types';
-import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds } from './store';
+import type { Bounds, ContextEntry, TimeRange } from './types';
+import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds, getPlaceConfig } from './store';
 import ContextMapLoader from './components/ContextMapLoader';
 import ContextTimeline from './components/ContextTimeline';
 import PastPanel from './components/PastPanel';
@@ -51,10 +51,31 @@ export default function ContextJournal({ placeId = DEFAULT_PLACE_ID, domain: ini
   };
   const [addOpen, setAddOpen] = useState(false);
   const [fullEntry, setFullEntry] = useState<ContextEntry | null>(null);
+  // The context the viewer has tapped — drives the map (fly to its area); null
+  // returns the map to the admin default view.
+  const [focused, setFocused] = useState<ContextEntry | null>(null);
+  // Admin-set default view + optional pan constraint, loaded from PlaceConfig.
+  const [defaultView, setDefaultView] = useState<{ center: [number, number]; zoom: number } | null>(null);
+  const [maxBounds, setMaxBounds] = useState<Bounds | null>(null);
 
   useEffect(() => {
     const unsub = subscribeContextEntries(placeId, setEntries);
     return unsub;
+  }, [placeId]);
+
+  // Load the admin config: timeline domain + default map view + constrain box.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const cfg = await getPlaceConfig(placeId);
+      if (!active || !cfg) return;
+      const d = { start: cfg.timelineStart, end: cfg.timelineEnd };
+      setDomain(d);
+      setRange(defaultRange(d));
+      setDefaultView({ center: cfg.defaultCenter, zoom: cfg.defaultZoom });
+      setMaxBounds(cfg.maxBounds ?? null);
+    })();
+    return () => { active = false; };
   }, [placeId]);
 
   useEffect(() => {
@@ -102,7 +123,13 @@ export default function ContextJournal({ placeId = DEFAULT_PLACE_ID, domain: ini
 
       {/* 1 — map (top) */}
       <div className="shrink-0" style={{ height: '42vh' }}>
-        <ContextMapLoader mode="browse" />
+        <ContextMapLoader
+          mode="browse"
+          geolocate
+          defaultView={defaultView}
+          maxBounds={maxBounds}
+          focus={focused ? { geometry: focused.geometry, camera: focused.camera } : null}
+        />
       </div>
 
       {/* 2 — timeline */}
@@ -116,6 +143,8 @@ export default function ContextJournal({ placeId = DEFAULT_PLACE_ID, domain: ini
           entries={entries}
           selectedRange={range}
           savedIds={savedIds}
+          focusedId={focused?.id ?? null}
+          onFocus={setFocused}
           onToggleSave={toggleSave}
           onOpenFull={setFullEntry}
         />

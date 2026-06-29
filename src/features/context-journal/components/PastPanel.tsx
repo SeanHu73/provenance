@@ -18,11 +18,14 @@ interface Props {
   entries: ContextEntry[];
   selectedRange: TimeRange;
   savedIds: Set<string>;
+  /** The currently focused context (drives the map); null = none. */
+  focusedId: string | null;
+  onFocus: (entry: ContextEntry | null) => void;
   onToggleSave: (id: string) => void;
   onOpenFull: (entry: ContextEntry) => void;
 }
 
-export default function PastPanel({ entries, selectedRange, savedIds, onToggleSave, onOpenFull }: Props) {
+export default function PastPanel({ entries, selectedRange, savedIds, focusedId, onFocus, onToggleSave, onOpenFull }: Props) {
   const byLens = useMemo(() => {
     const inRange = entries.filter((e) =>
       overlapsRange({ start: e.timeRange.start, end: e.timeRange.end }, selectedRange),
@@ -41,6 +44,8 @@ export default function PastPanel({ entries, selectedRange, savedIds, onToggleSa
           lens={lens}
           entries={items}
           savedIds={savedIds}
+          focusedId={focusedId}
+          onFocus={onFocus}
           onToggleSave={onToggleSave}
           onOpenFull={onOpenFull}
         />

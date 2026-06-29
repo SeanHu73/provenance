@@ -24,7 +24,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import type { Geometry } from 'geojson';
 import { MAP_STYLE, DEFAULT_CAMERA } from '../constants';
-import type { DrawResult, DrawTool, MapMode } from '../types';
+import type { Bounds, Camera, DrawResult, DrawTool, MapMode } from '../types';
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -37,6 +37,34 @@ interface Props {
   initialGeometry?: Geometry | null;
   /** Fired as the user draws/clears in add mode. */
   onDrawChange?: (result: DrawResult) => void;
+  /** Admin-set default view the browse map opens on / returns to. */
+  defaultView?: { center: [number, number]; zoom: number } | null;
+  /** Constrain panning/zooming to this box (the admin "constrain" box). */
+  maxBounds?: Bounds | null;
+  /** Show the GPS "locate me" control (a dot at the viewer's position + recenter). */
+  geolocate?: boolean;
+  /** Fly the map to show this context's geometry; null returns to defaultView. */
+  focus?: { geometry: Geometry | null; camera: Camera | null } | null;
+  /** Fires on every settle (moveend) so an admin can capture the current view. */
+  onViewportChange?: (v: { center: [number, number]; zoom: number; bounds: Bounds }) => void;
+}
+
+/** Bounding box of a geometry, or null for a point / empty (caller flies instead). */
+function bboxOf(geom: Geometry): Bounds | null {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, found = false;
+  const visit = (c: unknown): void => {
+    if (Array.isArray(c) && typeof c[0] === 'number') {
+      const x = c[0] as number, y = c[1] as number;
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+      found = true;
+    } else if (Array.isArray(c)) {
+      c.forEach(visit);
+    }
+  };
+  visit((geom as { coordinates?: unknown }).coordinates);
+  if (!found || (minX === maxX && minY === maxY)) return null;
+  return [[minX, minY], [maxX, maxY]];
 }
 
 /** Minimal mapbox-gl-draw style set, tinted to the active lens colour. */
@@ -56,12 +84,17 @@ function drawStyles(colour: string) {
   ];
 }
 
-export default function ContextMap({ mode, lensColour = '#347C4A', initialCamera, initialGeometry, onDrawChange }: Props) {
+export default function ContextMap({
+  mode, lensColour = '#347C4A', initialCamera, initialGeometry, onDrawChange,
+  defaultView, maxBounds, geolocate, focus, onViewportChange,
+}: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const drawRef = useRef<MapboxDraw | null>(null);
   const onDrawChangeRef = useRef(onDrawChange);
   onDrawChangeRef.current = onDrawChange;
+  const onViewportChangeRef = useRef(onViewportChange);
+  onViewportChangeRef.current = onViewportChange;
   const [tool, setTool] = useState<DrawTool>('pin');
   const [hasGeometry, setHasGeometry] = useState(false);
   const [usingFreehand, setUsingFreehand] = useState(true);
@@ -73,12 +106,27 @@ export default function ContextMap({ mode, lensColour = '#347C4A', initialCamera
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: MAP_STYLE,
-      center: initialCamera?.center ?? DEFAULT_CAMERA.center,
-      zoom: initialCamera?.zoom ?? DEFAULT_CAMERA.zoom,
+      center: initialCamera?.center ?? defaultView?.center ?? DEFAULT_CAMERA.center,
+      zoom: initialCamera?.zoom ?? defaultView?.zoom ?? DEFAULT_CAMERA.zoom,
       attributionControl: false,
     });
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+    if (geolocate) {
+      map.addControl(new mapboxgl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true },
+        trackUserLocation: true,
+        showUserHeading: true,
+      }), 'top-right');
+    }
     map.on('error', (e) => console.error('[context-journal] map error:', e.error?.message || e));
+    map.on('moveend', () => {
+      const cb = onViewportChangeRef.current;
+      if (!cb) return;
+      const c = map.getCenter();
+      const b = map.getBounds();
+      if (!b) return;
+      cb({ center: [c.lng, c.lat], zoom: map.getZoom(), bounds: [[b.getWest(), b.getSouth()], [b.getEast(), b.getNorth()]] });
+    });
     mapRef.current = map;
 
     // In a flex/dynamic layout the container can settle to its real size AFTER
@@ -91,6 +139,35 @@ export default function ContextMap({ mode, lensColour = '#347C4A', initialCamera
     return () => { ro.disconnect(); map.remove(); mapRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── pan/zoom constraint (the admin "constrain" box) ──
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m) return;
+    // setMaxBounds(null) clears the constraint at runtime; v3's type is strict.
+    (m.setMaxBounds as (b: Bounds | null) => void)(maxBounds ?? null);
+  }, [maxBounds]);
+
+  // ── fly to a focused context's area; null returns to the default view ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      if (focus?.geometry) {
+        const bb = bboxOf(focus.geometry);
+        if (bb) {
+          map.fitBounds(bb, { padding: 56, duration: 900, maxZoom: 16 });
+        } else {
+          const c = focus.camera?.center
+            ?? (focus.geometry.type === 'Point' ? (focus.geometry.coordinates as [number, number]) : null);
+          if (c) map.flyTo({ center: c, zoom: focus.camera?.zoom ?? 15, duration: 900 });
+        }
+      } else if (defaultView) {
+        map.flyTo({ center: defaultView.center, zoom: defaultView.zoom, duration: 900 });
+      }
+    };
+    if (map.isStyleLoaded()) apply(); else map.once('load', apply);
+  }, [focus, defaultView]);
 
   // ── add-mode drawing tools ──
   useEffect(() => {

@@ -15,6 +15,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   setDoc,
   deleteDoc,
@@ -25,8 +26,8 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
-import { CONTEXT_ENTRIES, SAVED_CONTEXTS } from './constants';
-import type { ContextEntry, NewContextEntry, SavedContext } from './types';
+import { CONTEXT_ENTRIES, SAVED_CONTEXTS, PLACE_CONFIG } from './constants';
+import type { ContextEntry, NewContextEntry, SavedContext, PlaceConfig } from './types';
 
 const VIEWER_KEY = 'provenance-context-viewer-id';
 
@@ -55,6 +56,25 @@ export function getViewerId(): string {
   } catch {
     return 'anon';
   }
+}
+
+// ── Place config (admin-set timeline domain + default view) ──
+
+export async function getPlaceConfig(placeId: string): Promise<PlaceConfig | null> {
+  try {
+    const snap = await getDoc(doc(db, PLACE_CONFIG, placeId));
+    return snap.exists() ? ({ ...(snap.data() as PlaceConfig), placeId }) : null;
+  } catch (err) {
+    console.error('[context-journal] getPlaceConfig failed:', err);
+    return null;
+  }
+}
+
+export async function savePlaceConfig(config: Omit<PlaceConfig, 'updatedAt'>): Promise<void> {
+  await setDoc(doc(db, PLACE_CONFIG, config.placeId), cleanUndefined({
+    ...config,
+    updatedAt: serverTimestamp(),
+  }));
 }
 
 // ── Photo upload ──
