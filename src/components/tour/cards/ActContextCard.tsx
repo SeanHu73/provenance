@@ -1,122 +1,130 @@
 'use client';
 
 /**
- * Context-Prototype — the end-of-act "Context" page (no map pin), shown after
- * the Context intro splash.
- *
- * The explorer SEES the admin-framed question first (a full snap section), then
- * scrolls down to the full context / answer the admin provides. When only one
- * of the two is authored, it falls back to a single centred section.
+ * Context-Prototype — the "Add Context" page shown to the learner after a stop
+ * (its framing question was just posed by ContextIntroCard). Shows the Title +
+ * Full Explanation (read aloud with word highlighting) + any photos/audio. At
+ * the bottom, "Add to Context Journal" clones it into the learner's journal
+ * (auto-filled, editable later); admin-authored context is NOT auto-added.
  */
 
+import { useState } from 'react';
 import { useTour } from '@/context/TourContext';
-import { findActOfStop } from '@/lib/tour-session';
-import { useAudioAutoplay } from '@/lib/audio-autoplay';
-import { usePhotoCues } from '../usePhotoCues';
-import PhotoContent from './PhotoContent';
-import AudioButton from './AudioButton';
+import { currentContextItem } from '@/lib/tour-session';
+import { LENS_BY_KEY } from '@/features/context-journal/constants';
+import { addContextEntry } from '@/features/context-journal/store';
+import ReadAloud from '@/features/context-journal/components/ReadAloud';
 import BackButton from './BackButton';
 import FormattedText from './FormattedText';
-import SnapScrollHint from './SnapScrollHint';
-import { SectionSubtitle } from './ActionTitle';
 
 interface Props {
   onComplete: () => void;
 }
 
 export default function ActContextCard({ onComplete }: Props) {
-  const { tour, currentStop } = useTour();
-  const [autoplayPref] = useAudioAutoplay();
-  const act = tour && currentStop ? findActOfStop(tour, currentStop.id) : null;
-  const ctx = act?.context ?? null;
-  const cues = usePhotoCues(undefined, ctx?.photos || [], false);
+  const { tour, session } = useTour();
+  const ctx = currentContextItem(tour, session);
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
 
-  if (!ctx) {
-    // Shouldn't happen (we only route here when context is authored), but
-    // never strand the explorer.
+  if (!ctx || !tour) {
     return (
-      <div className="animate-fade-in min-h-full flex flex-col justify-center space-y-5">
+      <div className="animate-fade-in min-h-full flex flex-col justify-center space-y-5 px-5">
         <button onClick={onComplete} className="w-full py-3 rounded-lg text-base font-semibold bg-accent-dark text-white">Continue</button>
       </div>
     );
   }
 
-  const autoplay = autoplayPref && !ctx.audioAutoplayDisabled;
-  const hasQuestion = !!ctx.question?.trim();
-  const hasBody = !!(ctx.context?.trim() || (ctx.photos && ctx.photos.length > 0) || ctx.audioUrl);
+  const lens = LENS_BY_KEY[ctx.pastCategory];
+  const photos = ctx.media.filter((m) => m.kind === 'photo');
+  const audio = ctx.media.filter((m) => m.kind === 'audio');
 
-  // The framed question, shown first / prominently.
-  const questionBlock = (
-    <>
-      <p className="uppercase tracking-[0.18em] font-display font-semibold mb-3" style={{ fontSize: 13, color: 'var(--th-accent-dark)' }}>
-        Context
-      </p>
-      <p className="font-serif leading-snug" style={{ fontSize: 28, color: 'var(--th-primary)' }}>
-        <FormattedText text={ctx.question} />
-      </p>
-    </>
-  );
+  const addToJournal = async () => {
+    if (adding || added) return;
+    setAdding(true);
+    try {
+      await addContextEntry({
+        question: ctx.question, title: ctx.title, shortSummary: ctx.shortSummary,
+        longExplanation: ctx.longExplanation, pastCategory: ctx.pastCategory,
+        timeRange: ctx.timeRange, geometry: ctx.geometry, camera: ctx.camera,
+        mapType: ctx.mapType, media: ctx.media, thumbnailMediaId: ctx.thumbnailMediaId,
+        placeId: tour.id,
+      });
+      setAdded(true);
+    } catch (err) {
+      console.error('[tour] add to context journal failed:', err);
+    }
+    setAdding(false);
+  };
 
-  // The full context / answer.
-  const bodyBlock = (
-    <>
-      <SectionSubtitle className="mb-2">The Context</SectionSubtitle>
-      {ctx.audioUrl && (
-        <AudioButton
-          audioUrl={ctx.audioUrl}
-          title={ctx.audioTitle}
-          autoplay={autoplay}
-          onTimeUpdate={cues.onTimeUpdate}
-          onEnded={cues.onEnded}
-        />
-      )}
-      <PhotoContent
-        text={ctx.context || ''}
-        photos={ctx.photos || []}
-        highlightedUrl={cues.highlightedUrl}
-      />
-    </>
-  );
-
-  const footer = (
-    <div className="flex gap-2 pt-1">
-      <BackButton />
-      <button
-        onClick={onComplete}
-        className="flex-1 py-3 rounded-lg text-base font-semibold bg-accent-dark text-white"
-      >
-        Continue
-      </button>
-    </div>
-  );
-
-  // Both authored → snap-scroll: question fills the screen, scroll to context.
-  if (hasQuestion && hasBody) {
-    return (
-      <div className="animate-fade-in absolute inset-0 overflow-y-auto" style={{ scrollSnapType: 'y mandatory' }}>
-        <section
-          className="relative min-h-full flex flex-col justify-center px-5 pt-10 pb-6"
-          style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
-        >
-          {questionBlock}
-          <SnapScrollHint />
-        </section>
-        <section
-          className="min-h-full flex flex-col justify-center space-y-4 px-5 pt-10 pb-6"
-          style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
-        >
-          {bodyBlock}
-          {footer}
-        </section>
-      </div>
-    );
-  }
-
-  // Only one of the two — single centred section.
   return (
-    <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
-      {hasQuestion ? questionBlock : bodyBlock}
-      {footer}
+    <div className="animate-fade-in absolute inset-0 overflow-y-auto">
+      <div className="min-h-full flex flex-col px-5 pt-10 pb-6 space-y-4">
+        <div>
+          <p className="uppercase tracking-[0.18em] font-display font-semibold mb-2" style={{ fontSize: 13, color: lens.colour }}>
+            {lens.label}
+          </p>
+          {ctx.title && (
+            <h1 className="font-display leading-tight" style={{ fontSize: 30, color: 'var(--th-primary)' }}>{ctx.title}</h1>
+          )}
+          {ctx.question && (
+            <p className="font-serif italic mt-1 leading-snug" style={{ fontSize: 16, color: 'var(--th-text-muted)' }}>
+              <FormattedText text={ctx.question} />
+            </p>
+          )}
+        </div>
+
+        {/* photo gallery */}
+        {photos.length > 0 && (
+          <div className={photos.length > 1 ? 'flex gap-3 overflow-x-auto -mx-1 px-1' : ''}>
+            {photos.map((p) => (
+              <figure key={p.id} className={photos.length > 1 ? 'shrink-0 w-[80%]' : ''}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.url} alt={p.title} className="w-full max-h-[40vh] object-cover rounded-xl" />
+                {p.title && <figcaption className="mt-1 text-xs text-text-muted">{p.title}</figcaption>}
+              </figure>
+            ))}
+          </div>
+        )}
+
+        {ctx.shortSummary && (
+          <p className="font-display text-lg leading-snug" style={{ color: 'var(--th-text)' }}>{ctx.shortSummary}</p>
+        )}
+
+        {/* full explanation, read aloud */}
+        {ctx.longExplanation && <ReadAloud text={ctx.longExplanation} colour={lens.colour} />}
+
+        {/* audio clips */}
+        {audio.length > 0 && (
+          <div className="space-y-3">
+            {audio.map((a) => (
+              <div key={a.id}>
+                {a.title && <p className="text-sm font-semibold mb-1" style={{ color: 'var(--th-text)' }}>{a.title}</p>}
+                <audio src={a.url} controls preload="none" className="w-full" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex-1" />
+
+        {/* Add to Context Journal — only on the learner's tap, never auto */}
+        <button
+          onClick={addToJournal}
+          disabled={adding || added}
+          className="w-full py-3 rounded-xl text-base font-semibold disabled:opacity-70"
+          style={{ backgroundColor: added ? `${lens.colour}22` : `${lens.colour}`, color: added ? lens.colour : '#fff' }}
+        >
+          {added ? '✓ Added to your Context Journal' : adding ? 'Adding…' : '+ Add to Context Journal'}
+        </button>
+
+        <div className="flex gap-2">
+          <BackButton />
+          <button onClick={onComplete} className="flex-1 py-3 rounded-lg text-base font-semibold bg-accent-dark text-white">
+            Continue
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

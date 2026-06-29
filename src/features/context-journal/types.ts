@@ -61,6 +61,10 @@ export interface ContextEntry {
 /** Payload for creating a context (id/timestamps are assigned on write). */
 export type NewContextEntry = Omit<ContextEntry, 'id' | 'createdAt' | 'updatedAt'>;
 
+/** The authored content of a context, without where it's stored (placeId). The
+ *  AddContextFlow form assembles this and hands it to its `onSubmit`. */
+export type ContextDraft = Omit<NewContextEntry, 'placeId'>;
+
 /** A bookmark, written to `saved-contexts`, keyed by an anonymous viewer id. */
 export interface SavedContext {
   id: string; // `${viewerId}__${contextId}`

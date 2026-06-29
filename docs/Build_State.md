@@ -1,7 +1,11 @@
 # Build State — Provenance
 
 *Handoff document for the next Claude Code session. Last updated 2026-06-29
-(latest: a new self-contained **Context Journal** module — Mapbox map +
+(latest: **Context authoring Stage 2 + 3** — admin "Add Context" items
+positioned after stops in the tour editor, a reusable AddContextFlow shared by
+learner + admin, and the learner sequence ending in "Add to Context Journal".
+See the Stage 2/3 entry in §15. Prior same-day: a new self-contained
+**Context Journal** module — Mapbox map +
 draggable timeline + tappable P.A.S.T. lenses + an Add-context flow — replacing
 the old footer "Journal" entry. See §15. Prior: a multi-part **explorer simplification + end-of-act redesign** for
 Context-Prototype mode — see the 2026-06-27 entries in §8. In short: the tour
@@ -2474,10 +2478,56 @@ the long explanation via **`ReadAloud`** — free **Web Speech API** TTS with
 e-reader **word highlighting** (`boundary` events; desktop Chrome/Edge reliable,
 some mobile voices don't fire boundaries → audio plays without highlight; premium
 voice e.g. ElevenLabs can swap in behind the same component later). `uploadContextPhoto`
-→ `uploadContextMedia`. **Still to come:** Stage 2 (admin "Add Context" in the tour,
-draggable between stops, renamed from "End of Act Context"), Stage 3 (learner
-sequence: question posed → title/explanation read → "Add to Context Journal"),
-Stage 4 (premium TTS + AI-response read-along).
+→ `uploadContextMedia`.
+
+**Context authoring — Stage 2 + 3 (2026-06-29 pt.7).** Admin-authored, positioned
+rich contexts plus the learner playback sequence. ⚠️ *Built but not yet verified
+live or committed in the session that wrote it (machine closed mid-work); the
+code compiles (tsc + `next build` pass). Needs a live QA pass.*
+
+- **Data model (`lib/types.ts`).** New **`ActContextItem`** — a rich context
+  authored on a tour and **positioned after a stop** (`afterStopId`) within an
+  act: `{ pastCategory, question, title, shortSummary, longExplanation,
+  timeRange, geometry, camera, mapType, media: ContextMediaItem[],
+  thumbnailMediaId }`. It mirrors the journal's `ContextEntry` so an item can be
+  **cloned into a learner's Context Journal**. `Act` gains **`contexts?:
+  ActContextItem[]`** (an act can hold several, after different stops); the old
+  single `Act.context` (`ActContext`) is now **legacy**, still read for old tours
+  via `getActContexts()`. `TourSession` gains **`currentContextId`** (which
+  positioned context is showing during the `act_context*` phases).
+- **Shared form (`AddContextFlow`).** Refactored from journal-only to **reusable**:
+  props are now `onSubmit(draft: ContextDraft) => Promise<void>`, `initial`
+  (pre-fill for edit), and `heading`; the caller decides where it's stored.
+  **`ContextDraft = Omit<NewContextEntry, 'placeId'>`** (the authored content,
+  minus where it lives). The learner journal and the admin tour editor both use it.
+- **Stage 2 — admin (`/admin/tours/[id]`).** Each act has an **"Add Context"**
+  section: add / edit (pre-filled via `initial`) / remove items, and a per-item
+  **"plays after \<stop\>"** selector (`afterStopId`). Handlers
+  `upsertActContextItem`, `removeActContextItem`, `setActContextItemAfter`.
+  Module-level **`makeCtxId()`** (crypto.randomUUID + Date.now/Math.random
+  fallback) — *was the render-purity bug fixed as the last edit before the
+  machine closed; it now lives at module scope, not in render.*
+- **Stage 3 — learner sequence + state machine (`tour-session.ts`).**
+  `getActContexts(act)`, `contextsAfterStop(act, stopId)`,
+  `currentContextItem(tour, session)`. After a stop, any contexts positioned
+  there play in order (`act_context_intro → act_context`), then
+  `resumeAfterContexts` advances to the next stop / `completeActContext` steps to
+  the next positioned context or on to `act_context_questions`. **`ActContextCard`**
+  shows the item and a learner-only **"+ Add to Context Journal"** button
+  (`addToJournal`) that clones it into the journal — never auto-saves.
+
+**Still to come — Stage 4 (premium TTS + AI-response read-along).** REMINDER (from
+the user): **work on Stage 4 when we get to the AI-response function.** Swap the
+free Web Speech API behind `ReadAloud` for a premium voice with word-level
+timestamps (e.g. ElevenLabs / Polly / Azure) so read-along highlighting works on
+mobile too, and apply the same read-along to the AI-generated response. The
+`ReadAloud` component is already structured so the premium voice drops in behind
+the same interface.
+
+**NOTE for next session:** Stage 2 + 3 above still need a **live QA pass** (author
+a positioned context in the tour editor, run the tour, confirm the after-stop
+sequence and "Add to Context Journal" cloning) — they were never exercised in the
+browser.
 
 **Data — `store.ts`.** Collections **`context-entries`** (live `onSnapshot`,
 scoped by `placeId`, default `memorial-church`) and **`saved-contexts`**

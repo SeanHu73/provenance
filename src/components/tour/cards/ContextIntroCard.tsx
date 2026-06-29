@@ -16,13 +16,20 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTour } from '@/context/TourContext';
+import { currentContextItem } from '@/lib/tour-session';
+import FormattedText from './FormattedText';
 
 interface Props {
   onComplete: () => void;
 }
 
 export default function ContextIntroCard({ onComplete }: Props) {
+  const { tour, session } = useTour();
   const [mounted, setMounted] = useState(false);
+  // Pose the current Add-Context item's framing question (fallback to the
+  // generic prompt for legacy contexts with no question).
+  const question = currentContextItem(tour, session)?.question?.trim();
 
   useEffect(() => {
     // Next frame so the opacity/transform transitions actually run.
@@ -73,7 +80,7 @@ export default function ContextIntroCard({ onComplete }: Props) {
             transition: 'opacity 800ms ease-out 1000ms, transform 800ms ease-out 1000ms',
           }}
         >
-          So what context do we need?
+          {question ? <FormattedText text={question} /> : 'So what context do we need?'}
         </h1>
 
         {/* Continue — fades in last */}

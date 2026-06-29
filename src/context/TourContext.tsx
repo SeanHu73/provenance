@@ -639,7 +639,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const completeActContextFn = useCallback(() => {
     if (!session || !tour) return;
-    persist(completeActContextImpl(session));
+    persist(completeActContextImpl(session, tour));
   }, [session, tour, persist]);
 
   const completeActContextQuestionsFn = useCallback((asked: ContextQuestionEntry[] = []) => {

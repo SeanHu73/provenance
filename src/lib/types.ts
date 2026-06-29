@@ -1,3 +1,5 @@
+import type { Geometry } from 'geojson';
+
 export type QuestionCategory = 'who' | 'what' | 'when' | 'where' | 'why' | 'how';
 
 export interface PhotoAnnotation {
@@ -220,6 +222,38 @@ export interface ActContext {
   audioAutoplayDisabled?: boolean;
 }
 
+/** A photo/audio clip on an Add-Context item (mirrors the journal's ContextMedia
+ *  so an item can be cloned into a learner's Context Journal). */
+export interface ContextMediaItem {
+  id: string;
+  kind: 'photo' | 'audio';
+  url: string;
+  title: string;
+}
+
+/**
+ * A rich "Add Context" item authored on a tour, positioned **after a stop**
+ * (`afterStopId`) and shown in the learner sequence (question posed → title +
+ * full explanation read aloud → "Add to Context Journal"). Its content mirrors
+ * the Context Journal's ContextEntry so it can be cloned into a learner's
+ * journal. Multiple items can sit after different stops in an act.
+ */
+export interface ActContextItem {
+  id: string;
+  afterStopId: string;               // plays after this stop (within the act)
+  pastCategory: 'place' | 'attitudes' | 'society' | 'technology';
+  question: string;                  // framing question, posed first
+  title: string;
+  shortSummary: string;
+  longExplanation: string;           // read aloud
+  timeRange: { start: number; end: number };
+  geometry: Geometry | null;
+  camera: { center: [number, number]; zoom: number } | null;
+  mapType: 'default' | 'satellite';
+  media: ContextMediaItem[];
+  thumbnailMediaId: string | null;
+}
+
 /** A group of stops in Context-Prototype mode. Stops play sequentially in
  *  `stopIds` order; acts play in array order. */
 export interface Act {
@@ -228,8 +262,11 @@ export interface Act {
   stopIds: string[];                 // Ordered stop IDs into `Tour.contextStops`
   openingQuestion: ActQuestion | null;  // Legacy — act_opening was retired
   closingQuestion: ActQuestion | null;  // Legacy — reflectionQuestion falls back to this
-  /** End-of-act read-only Context section (framed question + provided context). */
+  /** Legacy end-of-act Context section (framed question + provided context).
+   *  Superseded by `contexts[]`; still read for old tours via getActContexts(). */
   context?: ActContext | null;
+  /** Rich "Add Context" items positioned after stops in this act. */
+  contexts?: ActContextItem[];
   /** "Share What You Think" reflection prompt shown after the Context step.
    *  Falls back to `closingQuestion.prompt` for legacy tours. */
   reflectionQuestion?: ActQuestion | null;
@@ -638,6 +675,8 @@ export interface TourSession {
   currentStopIndex: number;
   currentPhase: TourPhase;
   currentRound: number;               // 0 = main wonder+reveal, 1+ = extra rounds
+  /** Which positioned Add-Context item is currently showing (act_context phases). */
+  currentContextId?: string | null;
   completedStops: string[];
   completionOrder: string[];           // Stop IDs in the order the explorer completed them (unstructured mode)
   midwayResponseText: string | null;   // Explorer's response to the midway check-in question

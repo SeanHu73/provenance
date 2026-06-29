@@ -19,7 +19,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-google-maps';
-import { Tour, Stop, Detour, StopPhoto, Act, ActContext, TourMode } from '@/lib/types';
+import { Tour, Stop, Detour, StopPhoto, Act, ActContextItem, TourMode } from '@/lib/types';
 import { getTour, saveTour, deleteTour, blankStop, blankDetour, getActiveStops, setActiveStops, duplicateStops, getTourMode, blankAct, blankOpeningFrame } from '@/lib/tours-store';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -28,6 +28,15 @@ import AudioUpload from '@/components/admin/AudioUpload';
 import PhotoOverlayEditor from '@/components/admin/PhotoOverlayEditor';
 import PhotoCueEditor from '@/components/admin/PhotoCueEditor';
 import ContextJournalConfig from '@/features/context-journal/admin/ContextJournalConfig';
+import AddContextFlow from '@/features/context-journal/components/AddContextFlow';
+import type { ContextDraft } from '@/features/context-journal/types';
+
+/** Stable id for a new Add-Context item (module-level: keeps render pure). */
+function makeCtxId(): string {
+  return (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+    ? crypto.randomUUID()
+    : `ctx_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
 import { registerPhotoInLibrary } from '@/lib/photo-sync-tour';
 
 const CHURCH_LOCATION = { lat: 37.42700, lng: -122.17015 };
@@ -323,10 +332,28 @@ export default function TourEditorPage() {
     updateAct(actId, { reflectionQuestion: prompt.trim() ? { prompt } : null });
   };
 
-  const setActContext = (actId: string, patch: Partial<ActContext>) => {
+  // ── Rich "Add Context" items (positioned after a stop within an act) ──
+  const [ctxEditor, setCtxEditor] = useState<{ actId: string; itemId: string | null } | null>(null);
+
+  const upsertActContextItem = (actId: string, draft: ContextDraft, itemId: string | null) => {
     const act = (tour?.acts || []).find((a) => a.id === actId);
-    const prev: ActContext = act?.context ?? { question: '', context: '' };
-    updateAct(actId, { context: { ...prev, ...patch } });
+    if (!act) return;
+    const items = act.contexts ?? [];
+    if (itemId) {
+      updateAct(actId, { contexts: items.map((c) => (c.id === itemId ? { ...c, ...draft } : c)) });
+    } else {
+      const afterStopId = act.stopIds[act.stopIds.length - 1] ?? '';
+      const newItem: ActContextItem = { id: makeCtxId(), afterStopId, ...draft };
+      updateAct(actId, { contexts: [...items, newItem] });
+    }
+  };
+  const removeActContextItem = (actId: string, itemId: string) => {
+    const act = (tour?.acts || []).find((a) => a.id === actId);
+    updateAct(actId, { contexts: (act?.contexts ?? []).filter((c) => c.id !== itemId) });
+  };
+  const setActContextItemAfter = (actId: string, itemId: string, afterStopId: string) => {
+    const act = (tour?.acts || []).find((a) => a.id === actId);
+    updateAct(actId, { contexts: (act?.contexts ?? []).map((c) => (c.id === itemId ? { ...c, afterStopId } : c)) });
   };
 
   const moveAct = (actId: string, direction: -1 | 1) => {
@@ -1819,39 +1846,38 @@ export default function TourEditorPage() {
                       </ul>
                     )}
 
-                    {/* End-of-act: Context section (read-only framed Q + context) */}
-                    <div className="rounded border border-stone-300 bg-white p-3 space-y-3">
-                      <p className="text-xs font-semibold text-stone-600 uppercase tracking-wide">End of act · Context</p>
-                      <RichTextarea
-                        label="Context question (framed for the explorer — read-only)"
-                        value={act.context?.question || ''}
-                        onChange={(v) => setActContext(act.id, { question: v })}
-                        rows={2}
-                        placeholder="A question to frame the context. Leave the whole Context section blank to skip it."
-                      />
-                      <RichTextarea
-                        label="The context (what you want them to know)"
-                        value={act.context?.context || ''}
-                        onChange={(v) => setActContext(act.id, { context: v })}
-                        rows={4}
-                        placeholder="The background / answer you provide. Supports [photo:N] markers."
-                      />
-                      <AudioUpload
-                        audioUrl={act.context?.audioUrl ?? null}
-                        audioTitle={act.context?.audioTitle ?? null}
-                        onChange={(url) => setActContext(act.id, { audioUrl: url })}
-                        onTitleChange={(title) => setActContext(act.id, { audioTitle: title })}
-                        uploadPath={`memorial-church/audio/tours/${tourId}/act_${act.id}_context`}
-                        onUploadFile={uploadPhoto}
-                        autoplayDisabled={act.context?.audioAutoplayDisabled}
-                        onAutoplayDisabledChange={(v) => setActContext(act.id, { audioAutoplayDisabled: v })}
-                      />
-                      <PhotoListEditor
-                        photos={act.context?.photos || []}
-                        onChange={(photos) => setActContext(act.id, { photos })}
-                        uploadPath={`memorial-church/photos/tours/${tourId}/act_${act.id}_context`}
-                        onUploadPhoto={uploadPhoto}
-                      />
+                    {/* Add Context — rich items (lens, question, media, map) positioned after stops */}
+                    <div className="rounded border border-stone-300 bg-white p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-stone-600 uppercase tracking-wide">Add Context</p>
+                        <button onClick={() => setCtxEditor({ actId: act.id, itemId: null })} className="px-2.5 py-1 rounded bg-blue-700 text-white text-xs hover:bg-blue-800">+ Add context</button>
+                      </div>
+                      <p className="text-[10px] text-stone-400">Rich contexts shown to the learner after a stop (question posed → title + explanation read aloud → &ldquo;Add to Context Journal&rdquo;). Set which stop each plays after.</p>
+                      {(act.contexts ?? []).length === 0 ? (
+                        <p className="text-xs text-stone-400 italic">No contexts yet.</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {(act.contexts ?? []).map((item) => (
+                            <li key={item.id} className="rounded border border-stone-200 p-2 flex items-start gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-semibold text-stone-800 truncate">{item.title || <span className="text-stone-400 italic">Untitled</span>}</div>
+                                {item.question && <div className="text-xs italic text-stone-500 truncate">{item.question}</div>}
+                                <label className="mt-1 flex items-center gap-1 text-[11px] text-stone-500">
+                                  Plays after:
+                                  <select value={item.afterStopId} onChange={(e) => setActContextItemAfter(act.id, item.id, e.target.value)} className="border border-stone-300 rounded px-1 py-0.5 text-[11px]">
+                                    {act.stopIds.map((sid, i) => {
+                                      const s = activeStops.find((x) => x.id === sid);
+                                      return <option key={sid} value={sid}>{i + 1}. {s?.title || sid}</option>;
+                                    })}
+                                  </select>
+                                </label>
+                              </div>
+                              <button onClick={() => setCtxEditor({ actId: act.id, itemId: item.id })} className="text-xs text-blue-700 hover:underline shrink-0">Edit</button>
+                              <button onClick={() => removeActContextItem(act.id, item.id)} className="text-xs text-red-600 hover:underline shrink-0">Remove</button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
 
                     {/* End-of-act: Reflection question ("Share What You Think") */}
@@ -1890,6 +1916,20 @@ export default function TourEditorPage() {
             onClose={() => { setPreviewStopId(null); setPreviewPhase(0); }}
           />
         )}
+
+        {/* Add Context authoring modal (shared learner-style flow) */}
+        {ctxEditor && (() => {
+          const a = (tour?.acts || []).find((x) => x.id === ctxEditor.actId);
+          const editing = ctxEditor.itemId ? (a?.contexts?.find((c) => c.id === ctxEditor.itemId) ?? null) : null;
+          return (
+            <AddContextFlow
+              heading={ctxEditor.itemId ? 'Edit context' : 'Add Context'}
+              initial={editing ?? undefined}
+              onClose={() => setCtxEditor(null)}
+              onSubmit={async (draft) => { upsertActContextItem(ctxEditor.actId, draft, ctxEditor.itemId); }}
+            />
+          );
+        })()}
       </div>
     </div>
   );

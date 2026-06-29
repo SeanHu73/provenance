@@ -7,7 +7,7 @@
  * a single group visit.
  */
 
-import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry } from './types';
+import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry, ActContextItem, ContextMediaItem } from './types';
 import { getActiveStops, getTourMode } from './tours-store';
 
 export type { TourPhase };
@@ -372,10 +372,45 @@ export function reflectionPromptOf(act: Act | null): string {
   return (act?.reflectionQuestion?.prompt ?? act?.closingQuestion?.prompt ?? '').trim();
 }
 
-/** Whether an act has an authored Context section worth showing. */
+/** Rich "Add Context" items for an act, migrating a legacy `act.context` into a
+ *  single item positioned after the act's last stop. */
+export function getActContexts(act: Act | null): ActContextItem[] {
+  if (!act) return [];
+  if (act.contexts && act.contexts.length) return act.contexts;
+  const c = act.context;
+  if (c && (c.question?.trim() || c.context?.trim() || c.audioUrl || (c.photos && c.photos.length > 0))) {
+    const lastStopId = act.stopIds[act.stopIds.length - 1] ?? '';
+    const media: ContextMediaItem[] = [
+      ...(c.photos ?? []).map((p, i) => ({ id: `legacy-photo-${i}`, kind: 'photo' as const, url: p.url, title: p.caption ?? '' })),
+      ...(c.audioUrl ? [{ id: 'legacy-audio', kind: 'audio' as const, url: c.audioUrl, title: c.audioTitle ?? '' }] : []),
+    ];
+    return [{
+      id: 'legacy', afterStopId: lastStopId, pastCategory: 'place',
+      question: c.question ?? '', title: '', shortSummary: '', longExplanation: c.context ?? '',
+      timeRange: { start: 1900, end: 2000 }, geometry: null, camera: null, mapType: 'default',
+      media, thumbnailMediaId: null,
+    }];
+  }
+  return [];
+}
+
+/** Items positioned to play right after a given stop, in author order. */
+export function contextsAfterStop(act: Act | null, stopId: string): ActContextItem[] {
+  return getActContexts(act).filter((c) => c.afterStopId === stopId);
+}
+
+/** The Add-Context item currently being shown (act_context_intro / act_context). */
+export function currentContextItem(tour: Tour | null, session: TourSession | null): ActContextItem | null {
+  if (!tour || !session) return null;
+  const stop = getActiveStops(tour)[session.currentStopIndex];
+  const act = stop ? findActOfStop(tour, stop.id) : null;
+  if (!act) return null;
+  return getActContexts(act).find((c) => c.id === session.currentContextId) ?? null;
+}
+
+/** Whether an act has any authored context worth showing. */
 export function actHasContext(act: Act | null): boolean {
-  const c = act?.context;
-  return !!(c && (c.question?.trim() || c.context?.trim() || c.audioUrl || (c.photos && c.photos.length > 0)));
+  return getActContexts(act).length > 0;
 }
 
 /** Generate a fresh TourSession id. Exposed so room flows can mint
@@ -479,9 +514,30 @@ function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession
     };
   }
 
+  // Play any Add-Context items positioned after this stop first.
+  const pending = contextsAfterStop(act, currentStop.id);
+  if (pending.length) {
+    return {
+      ...session,
+      phaseHistory: pushHistory(session),
+      currentPhase: 'act_context_intro',
+      currentRound: 0,
+      completedStops,
+      currentContextId: pending[0].id,
+    };
+  }
+
+  return resumeAfterContexts(session, tour, act, currentStop, completedStops);
+}
+
+/** After a stop's positioned contexts are exhausted: advance to the next stop,
+ *  or (if this was the act's last stop) begin the end-of-act chain
+ *  (act_context_questions → [act_reflection] → community_share). */
+function resumeAfterContexts(
+  session: TourSession, tour: Tour, act: Act, currentStop: Stop, completedStops: string[],
+): TourSession {
   const posInAct = act.stopIds.indexOf(currentStop.id);
   const isLastInAct = posInAct === act.stopIds.length - 1;
-
   if (!isLastInAct) {
     const nextIdx = indexOfStopId(tour, act.stopIds[posInAct + 1]);
     return {
@@ -491,19 +547,17 @@ function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession
       currentRound: 0,
       currentPhase: 'stop_map',
       completedStops,
+      currentContextId: null,
     };
   }
-
-  // Last stop in the act — begin the end-of-act chain:
-  //   [act_context_intro → act_context] → act_context_questions →
-  //   [act_reflection] → community_share
   // currentStopIndex stays on the act's last stop so each step resolves the act.
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: actHasContext(act) ? 'act_context_intro' : 'act_context_questions',
+    currentPhase: 'act_context_questions',
     currentRound: 0,
     completedStops,
+    currentContextId: null,
   };
 }
 
@@ -774,14 +828,21 @@ export function completeContextIntro(session: TourSession): TourSession {
   };
 }
 
-/** Context mode: explorer read the act's Context section → context questions. */
-export function completeActContext(session: TourSession): TourSession {
-  return {
-    ...session,
-    phaseHistory: pushHistory(session),
-    currentPhase: 'act_context_questions',
-    currentRound: 0,
-  };
+/** Context mode: explorer finished an Add-Context item. Show the next item
+ *  positioned after the same stop, else resume (next stop / end-of-act chain). */
+export function completeActContext(session: TourSession, tour: Tour): TourSession {
+  const currentStop = getActiveStops(tour)[session.currentStopIndex];
+  const act = currentStop ? findActOfStop(tour, currentStop.id) : null;
+  if (!act || !currentStop) {
+    return { ...session, phaseHistory: pushHistory(session), currentPhase: 'act_context_questions', currentRound: 0, currentContextId: null };
+  }
+  const pending = contextsAfterStop(act, currentStop.id);
+  const idx = pending.findIndex((c) => c.id === session.currentContextId);
+  const next = idx >= 0 ? pending[idx + 1] : undefined;
+  if (next) {
+    return { ...session, phaseHistory: pushHistory(session), currentPhase: 'act_context_intro', currentRound: 0, currentContextId: next.id };
+  }
+  return resumeAfterContexts(session, tour, act, currentStop, session.completedStops);
 }
 
 /** Context mode: explorer is done asking context questions → reflection (if

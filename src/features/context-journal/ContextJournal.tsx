@@ -20,7 +20,7 @@ import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
 import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange } from './constants';
 import type { ContextEntry, MapType, TimeRange } from './types';
-import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds, getPlaceConfig } from './store';
+import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds, getPlaceConfig, addContextEntry } from './store';
 import ContextMapLoader from './components/ContextMapLoader';
 import ContextTimeline from './components/ContextTimeline';
 import PastPanel from './components/PastPanel';
@@ -162,7 +162,11 @@ export default function ContextJournal({ tourId }: Props) {
 
       <AnimatePresence>
         {addOpen && (
-          <AddContextFlow key="add" placeId={scopeId} onClose={() => setAddOpen(false)} />
+          <AddContextFlow
+            key="add"
+            onClose={() => setAddOpen(false)}
+            onSubmit={async (draft) => { await addContextEntry({ ...draft, placeId: scopeId }); }}
+          />
         )}
         {liveFull && (
           <ContextFullScreen

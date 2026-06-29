@@ -1,53 +1,56 @@
 'use client';
 
 /**
- * AddContextFlow — the shared "Add context" form (learner + admin).
- *
- * Collects lens / a framing question / title / summary / explanation / a
- * dedicated time-range / multiple media (photos + audio, each titled, with a
- * chosen thumbnail photo) / a map step (pin OR highlight, required). On save it
- * writes a ContextEntry to `context-entries`; the live journal shows it once its
- * range overlaps the current timeline selection.
+ * AddContextFlow — the shared "Add context" form, used by both the learner
+ * (Context Journal) and the admin (tour editor). It assembles a ContextDraft
+ * (lens / framing question / title / summary / explanation / time range /
+ * multiple titled photos+audio / a map pin or region) and hands it to
+ * `onSubmit`; the caller decides where it's stored. `initial` pre-fills it for
+ * editing (existing media kept by URL, new media uploaded on save).
  */
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { LENSES, TIMELINE_BOUNDS, LENS_BY_KEY } from '../constants';
-import type { ContextMedia, DrawResult, MapType, PastCategory } from '../types';
-import { addContextEntry, uploadContextMedia } from '../store';
+import type { ContextDraft, ContextMedia, MapType, PastCategory } from '../types';
+import { uploadContextMedia } from '../store';
 import ContextMapLoader from './ContextMapLoader';
 
 interface Props {
-  placeId: string;
   onClose: () => void;
-  onSaved?: () => void;
+  onSubmit: (draft: ContextDraft) => Promise<void>;
+  initial?: Partial<ContextDraft>;
+  heading?: string;
 }
 
-type DraftMedia = { id: string; kind: 'photo' | 'audio'; file: File; title: string; previewUrl: string };
+type DraftMedia = { id: string; kind: 'photo' | 'audio'; title: string; previewUrl: string; file?: File; existingUrl?: string };
 
 const mkId = () =>
   (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
     ? crypto.randomUUID()
     : `m_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 
-export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
-  const [question, setQuestion] = useState('');
-  const [title, setTitle] = useState('');
-  const [shortSummary, setShortSummary] = useState('');
-  const [longExplanation, setLongExplanation] = useState('');
-  const [category, setCategory] = useState<PastCategory>('place');
-  const [media, setMedia] = useState<DraftMedia[]>([]);
-  const [thumbId, setThumbId] = useState<string | null>(null);
-  const [startYear, setStartYear] = useState(1900);
-  const [endYear, setEndYear] = useState(1950);
-  const [draw, setDraw] = useState<DrawResult>({ geometry: null, camera: null });
-  const [mapType, setMapType] = useState<MapType>('default');
+export default function AddContextFlow({ onClose, onSubmit, initial, heading = 'Add context' }: Props) {
+  const [question, setQuestion] = useState(initial?.question ?? '');
+  const [title, setTitle] = useState(initial?.title ?? '');
+  const [shortSummary, setShortSummary] = useState(initial?.shortSummary ?? '');
+  const [longExplanation, setLongExplanation] = useState(initial?.longExplanation ?? '');
+  const [category, setCategory] = useState<PastCategory>(initial?.pastCategory ?? 'place');
+  const [media, setMedia] = useState<DraftMedia[]>(
+    (initial?.media ?? []).map((m) => ({ id: m.id, kind: m.kind, title: m.title, previewUrl: m.url, existingUrl: m.url })),
+  );
+  const [thumbId, setThumbId] = useState<string | null>(initial?.thumbnailMediaId ?? null);
+  const [startYear, setStartYear] = useState(initial?.timeRange?.start ?? 1900);
+  const [endYear, setEndYear] = useState(initial?.timeRange?.end ?? 1950);
+  const [geometry, setGeometry] = useState(initial?.geometry ?? null);
+  const [camera, setCamera] = useState(initial?.camera ?? null);
+  const [mapType, setMapType] = useState<MapType>(initial?.mapType ?? 'default');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const colour = LENS_BY_KEY[category].colour;
   const rangeValid = startYear <= endYear;
-  const canSave = title.trim().length > 0 && !!draw.geometry && rangeValid && !saving;
+  const canSave = title.trim().length > 0 && !!geometry && rangeValid && !saving;
 
   const addFiles = (kind: 'photo' | 'audio', files: FileList | null) => {
     if (!files) return;
@@ -56,7 +59,6 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
     }));
     setMedia((prev) => {
       const merged = [...prev, ...next];
-      // default the thumbnail to the first photo
       if (!thumbId) { const firstPhoto = merged.find((m) => m.kind === 'photo'); if (firstPhoto) setThumbId(firstPhoto.id); }
       return merged;
     });
@@ -65,7 +67,7 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
   const removeMedia = (id: string) => {
     setMedia((prev) => {
       const m = prev.find((x) => x.id === id);
-      if (m?.previewUrl) URL.revokeObjectURL(m.previewUrl);
+      if (m?.file && m.previewUrl) URL.revokeObjectURL(m.previewUrl);
       const next = prev.filter((x) => x.id !== id);
       if (thumbId === id) setThumbId(next.find((x) => x.kind === 'photo')?.id ?? null);
       return next;
@@ -81,25 +83,26 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
     setError(null);
     try {
       const uploaded: ContextMedia[] = await Promise.all(
-        media.map(async (m) => ({ id: m.id, kind: m.kind, title: m.title.trim(), url: await uploadContextMedia(m.file) })),
+        media.map(async (m) => ({
+          id: m.id, kind: m.kind, title: m.title.trim(),
+          url: m.file ? await uploadContextMedia(m.file) : (m.existingUrl ?? ''),
+        })),
       );
       const photoIds = uploaded.filter((m) => m.kind === 'photo').map((m) => m.id);
       const thumbnailMediaId = thumbId && photoIds.includes(thumbId) ? thumbId : (photoIds[0] ?? null);
-      await addContextEntry({
+      await onSubmit({
         question: question.trim(),
         title: title.trim(),
         shortSummary: shortSummary.trim(),
         longExplanation: longExplanation.trim(),
         pastCategory: category,
         timeRange: { start: startYear, end: endYear },
-        geometry: draw.geometry,
-        camera: draw.camera,
+        geometry,
+        camera,
         mapType,
         media: uploaded,
         thumbnailMediaId,
-        placeId,
       });
-      onSaved?.();
       onClose();
     } catch (err) {
       console.error('[context-journal] save failed:', err);
@@ -121,7 +124,7 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
         transition={{ type: 'spring', stiffness: 320, damping: 34 }}
       >
         <div className="shrink-0 flex items-center justify-between px-5 pt-4 pb-3 border-b" style={{ borderColor: 'var(--th-border)' }}>
-          <h2 className="font-display text-2xl text-text-primary">Add context</h2>
+          <h2 className="font-display text-2xl text-text-primary">{heading}</h2>
           <button onClick={onClose} aria-label="Close" className="w-9 h-9 rounded-full flex items-center justify-center text-text-secondary hover:bg-black/5 text-2xl leading-none">&times;</button>
         </div>
 
@@ -144,7 +147,7 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
             </div>
           </Field>
 
-          {/* framing question — frames the learning, shown in italics under the title */}
+          {/* framing question */}
           <Field label="Framing question">
             <input
               value={question} onChange={(e) => setQuestion(e.target.value)}
@@ -184,7 +187,7 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
             />
           </Field>
 
-          {/* time range — dedicated control */}
+          {/* time range */}
           <Field label="Time range (years)">
             <div className="flex items-center gap-3">
               <YearInput value={startYear} onChange={setStartYear} />
@@ -195,7 +198,7 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
             {!rangeValid && <p className="mt-1 text-xs" style={{ color: 'var(--th-primary)' }}>Start year must be on or before the end year.</p>}
           </Field>
 
-          {/* media — photos + audio, each titled; pick the thumbnail photo */}
+          {/* media */}
           <Field label="Photos & audio (optional)">
             <div className="flex gap-2 mb-2">
               <UploadButton label="Add photo" accept="image/*" onFiles={(f) => addFiles('photo', f)} colour={colour} />
@@ -234,21 +237,19 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
           {/* map step */}
           <Field label="Place on the map (required)">
             <div className="h-64 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
-              {/* keyed by mapType: toggling the basemap remounts the map and
-                 re-seeds the drawn geometry/camera (avoids fighting draw + setStyle). */}
               <ContextMapLoader
                 key={mapType}
                 mode="add"
                 mapType={mapType}
                 onMapTypeChange={setMapType}
                 lensColour={colour}
-                initialGeometry={draw.geometry}
-                initialCamera={draw.camera}
-                onDrawChange={setDraw}
+                initialGeometry={geometry}
+                initialCamera={camera}
+                onDrawChange={(r) => { setGeometry(r.geometry); setCamera(r.camera); }}
               />
             </div>
             <p className="mt-1.5 text-xs text-text-muted">
-              {draw.geometry ? '✓ Location captured.' : 'Drop a pin or colour in a region to continue.'}
+              {geometry ? '✓ Location captured.' : 'Drop a pin or colour in a region to continue.'}
             </p>
           </Field>
 
