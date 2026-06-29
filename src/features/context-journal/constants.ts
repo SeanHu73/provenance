@@ -72,6 +72,17 @@ export function defaultRange(domain: { start: number; end: number }): TimeRange 
   return { start, end: Math.min(domain.end, start + g) };
 }
 
+/** Smallest span the domain (its two ends) is allowed to shrink to. */
+export const MIN_DOMAIN_SPAN = 20;
+
+/** Re-fit a selection into a (possibly just-edited) domain, ≥ one segment wide. */
+export function clampRange(range: TimeRange, domain: { start: number; end: number }): TimeRange {
+  const g = floorGranularity(domain);
+  const start = Math.max(domain.start, Math.min(range.start, domain.end - g));
+  const end = Math.min(domain.end, Math.max(range.end, start + g));
+  return { start, end };
+}
+
 export interface LensDef {
   key: PastCategory;
   label: string;

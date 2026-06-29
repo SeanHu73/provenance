@@ -16,7 +16,7 @@
 
 import { useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { GRANULARITIES, floorGranularity, formatYear, type Granularity } from '../constants';
+import { GRANULARITIES, TIMELINE_BOUNDS, MIN_DOMAIN_SPAN, floorGranularity, formatYear, type Granularity } from '../constants';
 import type { TimeRange } from '../types';
 
 type DragMode = 'move' | 'start' | 'end';
@@ -25,9 +25,11 @@ interface Props {
   value: TimeRange;
   onChange: (range: TimeRange) => void;
   domain: { start: number; end: number };
+  /** Move one of the two timeline ends (viewer-editable). */
+  onDomainChange: (domain: { start: number; end: number }) => void;
 }
 
-export default function ContextTimeline({ value, onChange, domain }: Props) {
+export default function ContextTimeline({ value, onChange, domain, onDomainChange }: Props) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const floor = floorGranularity(domain);
   const [granularity, setGranularity] = useState<Granularity>(floor);
@@ -94,6 +96,18 @@ export default function ContextTimeline({ value, onChange, domain }: Props) {
 
   const granLabel = (n: number) => `${n}-year`;
 
+  // Viewer-editable timeline ends. Each clamps to the hard bounds and keeps a
+  // minimum span; nudge step scales with the current grain.
+  const endStep = Math.max(10, g);
+  const setStartEnd = (v: number) => {
+    const start = Math.min(Math.max(TIMELINE_BOUNDS.start, v), D1 - MIN_DOMAIN_SPAN);
+    onDomainChange({ start, end: D1 });
+  };
+  const setEndEnd = (v: number) => {
+    const end = Math.max(Math.min(TIMELINE_BOUNDS.end, v), D0 + MIN_DOMAIN_SPAN);
+    onDomainChange({ start: D0, end });
+  };
+
   // One gridline per segment (segment count is bounded, so this stays readable).
   const ticks: number[] = [];
   for (let y = D0; y <= D1 + 0.5; y += g) ticks.push(y);
@@ -142,7 +156,7 @@ export default function ContextTimeline({ value, onChange, domain }: Props) {
                           disabled={disabled}
                           onClick={() => pickGranularity(opt)}
                           className={`w-full text-left px-3 py-2.5 text-sm flex items-center justify-between ${
-                            disabled ? 'text-text-faint cursor-not-allowed' : 'hover:bg-sandstone-light/60 text-text-primary'
+                            disabled ? 'text-text-muted cursor-not-allowed' : 'hover:bg-sandstone-light/60 text-text-primary'
                           } ${selected ? 'font-semibold' : ''}`}
                         >
                           {granLabel(opt)} segments
@@ -182,10 +196,75 @@ export default function ContextTimeline({ value, onChange, domain }: Props) {
         <Handle posPct={pct(value.end)} onPointerDown={beginDrag('end')} />
       </div>
 
-      <div className="flex justify-between mt-1 text-[11px] text-text-muted tabular-nums" style={{ marginLeft: EDGE, marginRight: EDGE }}>
-        <span>{formatYear(D0)}</span>
-        <span>{formatYear(D1)}</span>
+      <div className="flex justify-between items-start mt-1.5" style={{ marginLeft: EDGE - 8, marginRight: EDGE - 8 }}>
+        <EndControl label="Start" value={D0} step={endStep} onChange={setStartEnd} align="left" />
+        <EndControl label="End" value={D1} step={endStep} onChange={setEndEnd} align="right" />
       </div>
+    </div>
+  );
+}
+
+/** An editable timeline end — tap to nudge (− / +) or type a year (negative = BC). */
+function EndControl({ label, value, step, onChange, align }: {
+  label: string; value: number; step: number; onChange: (v: number) => void; align: 'left' | 'right';
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+
+  const openEditor = () => { setDraft(String(value)); setOpen(true); };
+  const commit = () => {
+    const n = parseInt(draft, 10);
+    if (!Number.isNaN(n)) onChange(n);
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={openEditor}
+        className="flex items-center gap-1 text-[12px] font-semibold text-text-secondary tabular-nums"
+        aria-label={`Edit ${label.toLowerCase()} year (currently ${formatYear(value)})`}
+      >
+        <span className="border-b border-dotted border-text-muted pb-0.5">{formatYear(value)}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-60">
+          <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+        </svg>
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.16 }}
+              className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} bottom-full mb-2 z-20 w-48 rounded-xl bg-warm-white shadow-xl border p-3`}
+              style={{ borderColor: 'var(--th-border)' }}
+            >
+              <p className="text-[11px] uppercase tracking-[0.12em] font-semibold text-text-secondary mb-1.5">{label} year</p>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => onChange(value - step)} aria-label={`Earlier by ${step}`}
+                  className="w-8 h-9 rounded-lg bg-sandstone-light text-text-primary text-lg leading-none shrink-0">−</button>
+                <input
+                  type="number" inputMode="numeric"
+                  min={TIMELINE_BOUNDS.start} max={TIMELINE_BOUNDS.end}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') commit(); }}
+                  className="w-full min-w-0 px-2 py-2 rounded-lg border-2 bg-white text-[16px] font-serif tabular-nums text-text-primary text-center focus:outline-none"
+                  style={{ borderColor: 'var(--th-border)' }}
+                />
+                <button onClick={() => onChange(value + step)} aria-label={`Later by ${step}`}
+                  className="w-8 h-9 rounded-lg bg-sandstone-light text-text-primary text-lg leading-none shrink-0">+</button>
+              </div>
+              <p className="mt-1.5 text-[10px] text-text-muted">Negative = BC · 1000 BC → present</p>
+              <button onClick={commit} className="mt-2 w-full py-2 rounded-lg text-sm font-semibold text-warm-white" style={{ backgroundColor: 'var(--th-primary)' }}>
+                Done
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

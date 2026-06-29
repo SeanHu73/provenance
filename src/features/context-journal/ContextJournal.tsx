@@ -18,7 +18,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
-import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange } from './constants';
+import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange } from './constants';
 import type { ContextEntry, TimeRange } from './types';
 import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds } from './store';
 import ContextMapLoader from './components/ContextMapLoader';
@@ -29,17 +29,26 @@ import AddContextFlow from './components/AddContextFlow';
 
 interface Props {
   placeId?: string;
-  /** Timeline domain for this place/stop (admin-set; defaults to DEFAULT_DOMAIN). */
+  /** Initial timeline domain (admin-set per stop; the viewer can then move the
+   *  two ends). Defaults to DEFAULT_DOMAIN. */
   domain?: { start: number; end: number };
 }
 
-export default function ContextJournal({ placeId = DEFAULT_PLACE_ID, domain = DEFAULT_DOMAIN }: Props) {
+export default function ContextJournal({ placeId = DEFAULT_PLACE_ID, domain: initialDomain = DEFAULT_DOMAIN }: Props) {
   const [entries, setEntries] = useState<ContextEntry[]>([]);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   // viewer id lives in a ref: it's read once (client-only localStorage) and only
   // ever needed inside event handlers, never during render.
   const viewerIdRef = useRef<string>('');
-  const [range, setRange] = useState<TimeRange>(() => defaultRange(domain));
+  // The domain (the two timeline ends) is editable by the viewer; the selection
+  // re-fits whenever an end moves.
+  const [domain, setDomain] = useState(initialDomain);
+  const [range, setRange] = useState<TimeRange>(() => defaultRange(initialDomain));
+
+  const changeDomain = (next: { start: number; end: number }) => {
+    setDomain(next);
+    setRange((r) => clampRange(r, next));
+  };
   const [addOpen, setAddOpen] = useState(false);
   const [fullEntry, setFullEntry] = useState<ContextEntry | null>(null);
 
@@ -98,7 +107,7 @@ export default function ContextJournal({ placeId = DEFAULT_PLACE_ID, domain = DE
 
       {/* 2 — timeline */}
       <div className="shrink-0 border-b" style={{ borderColor: 'var(--th-border)', backgroundColor: 'var(--th-surface)' }}>
-        <ContextTimeline value={range} onChange={setRange} domain={domain} />
+        <ContextTimeline value={range} onChange={setRange} domain={domain} onDomainChange={changeDomain} />
       </div>
 
       {/* 3 — P.A.S.T. panel (remaining space) */}

@@ -2383,9 +2383,12 @@ panel** (`PastPanel`, remaining space, scrolls).
   sized with `h-full`, **not** `absolute inset-0`, which would collapse to 0
   height), and a **`ResizeObserver` calls `map.resize()`** so the flex-settled
   size is picked up (else zero tile coverage → blank map).
-- **ContextTimeline** — domain is **per-stop (admin-set)**, passed in as a prop;
-  it may span anywhere within `TIMELINE_BOUNDS` (**1000 BC → present**, BC shown
-  as "N BC", the upper bound as "Present"). `DEFAULT_DOMAIN` is the placeholder
+- **ContextTimeline** — domain (the two ends) starts from a **per-stop
+  admin-set** prop but is **editable by the viewer**: tap either end to nudge
+  (− / +, step scales with the grain) or type a year (negative = BC). It may span
+  anywhere within `TIMELINE_BOUNDS` (**1000 BC → present**, BC shown as "N BC",
+  the upper bound as "Present"), keeping a `MIN_DOMAIN_SPAN`. Moving an end re-fits
+  the selection via `clampRange()`. `DEFAULT_DOMAIN` is the initial placeholder
   (1600 → present) until the admin UI exists. A **dropdown** picks the segment
   size (1 / 10 / 100y); sizes that would exceed **`MAX_SEGMENTS` (30)** are
   **disabled** ("too many"), so the grain auto-coarsens (1 → 10 → 100) for long
