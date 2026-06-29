@@ -7,7 +7,7 @@
  * a single group visit.
  */
 
-import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry, ActContextItem, ContextMediaItem } from './types';
+import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry, ActContextItem, ContextMediaItem, ContextQuestion } from './types';
 import { getActiveStops, getTourMode } from './tours-store';
 
 export type { TourPhase };
@@ -394,9 +394,34 @@ export function getActContexts(act: Act | null): ActContextItem[] {
   return [];
 }
 
-/** Items positioned to play right after a given stop, in author order. */
+/** Items positioned to play right after a given stop, in author order.
+ *  (Legacy `afterStopId` positioning; the new model positions via questions.) */
 export function contextsAfterStop(act: Act | null, stopId: string): ActContextItem[] {
   return getActContexts(act).filter((c) => c.afterStopId === stopId);
+}
+
+// ── New question-centric model (designer poses questions; contexts tag to them) ──
+
+/** Designer-posed context questions for an act, in author order. */
+export function getActQuestions(act: Act | null): ContextQuestion[] {
+  return act?.questions ?? [];
+}
+
+/** Questions posed right after a given stop, in author order. */
+export function questionsAfterStop(act: Act | null, stopId: string): ContextQuestion[] {
+  return getActQuestions(act).filter((q) => q.afterStopId === stopId);
+}
+
+/** The contexts tagged to a given question — the contexts it can surface. */
+export function contextsForQuestion(act: Act | null, questionId: string): ActContextItem[] {
+  return getActContexts(act).filter((c) => (c.questionIds ?? []).includes(questionId));
+}
+
+/** The questions a context is tagged to (for the journal's "questions you asked"
+ *  section and the designer's tag editor). */
+export function questionsForContext(act: Act | null, context: ActContextItem): ContextQuestion[] {
+  const ids = new Set(context.questionIds ?? []);
+  return getActQuestions(act).filter((q) => ids.has(q.id));
 }
 
 /** The Add-Context item currently being shown (act_context_intro / act_context). */

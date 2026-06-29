@@ -222,6 +222,9 @@ export interface ActContext {
   audioAutoplayDisabled?: boolean;
 }
 
+/** A P.A.S.T. lens key (shared with the Context Journal's PastCategory). */
+export type PastLens = 'place' | 'attitudes' | 'society' | 'technology';
+
 /** A photo/audio clip on an Add-Context item (mirrors the journal's ContextMedia
  *  so an item can be cloned into a learner's Context Journal). */
 export interface ContextMediaItem {
@@ -229,6 +232,23 @@ export interface ContextMediaItem {
   kind: 'photo' | 'audio';
   url: string;
   title: string;
+}
+
+/**
+ * A **context question** attached to one P.A.S.T. lens and posed after a stop.
+ * The designer authors the question + the "context info" the learner receives,
+ * and may attach photos/audio (like a stop). One question can yield several
+ * contexts; contexts tag back to questions via `ActContextItem.questionIds`.
+ * (A learner's own free-form question is the same shape, authored at runtime.)
+ */
+export interface ContextQuestion {
+  id: string;
+  afterStopId: string;               // posed after this stop within the act
+  lens: PastLens;
+  text: string;                      // the question itself
+  contextInfo: string;               // the larger context shown on "Learn more"
+  media: ContextMediaItem[];         // optional photos/audio for the question
+  thumbnailMediaId: string | null;
 }
 
 /**
@@ -240,18 +260,26 @@ export interface ContextMediaItem {
  */
 export interface ActContextItem {
   id: string;
-  afterStopId: string;               // plays after this stop (within the act)
-  pastCategory: 'place' | 'attitudes' | 'society' | 'technology';
-  question: string;                  // framing question, posed first
+  pastCategory: PastLens;
   title: string;
   shortSummary: string;
-  longExplanation: string;           // read aloud
+  /** Optional "Full Explanation" — collapsible in the UI; '' = none. */
+  longExplanation: string;
   timeRange: { start: number; end: number };
   geometry: Geometry | null;
   camera: { center: [number, number]; zoom: number } | null;
   mapType: 'default' | 'satellite';
   media: ContextMediaItem[];
   thumbnailMediaId: string | null;
+  /** Questions this context informs. A designer-created context auto-tags its
+   *  origin question; more can be tagged. Replaces the old per-context framing
+   *  `question` + `afterStopId` positioning. */
+  questionIds?: string[];
+  /** @deprecated legacy: contexts used to be positioned after a stop and carry
+   *  their own framing question. Read for old tours only. */
+  afterStopId?: string;
+  /** @deprecated legacy framing question — superseded by `questionIds`. */
+  question?: string;
 }
 
 /** A group of stops in Context-Prototype mode. Stops play sequentially in
@@ -265,7 +293,9 @@ export interface Act {
   /** Legacy end-of-act Context section (framed question + provided context).
    *  Superseded by `contexts[]`; still read for old tours via getActContexts(). */
   context?: ActContext | null;
-  /** Rich "Add Context" items positioned after stops in this act. */
+  /** Designer-posed context questions in this act (each posed after a stop). */
+  questions?: ContextQuestion[];
+  /** Rich "Add Context" items, tagged to questions via `questionIds`. */
   contexts?: ActContextItem[];
   /** "Share What You Think" reflection prompt shown after the Context step.
    *  Falls back to `closingQuestion.prompt` for legacy tours. */

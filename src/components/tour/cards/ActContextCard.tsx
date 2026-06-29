@@ -44,7 +44,7 @@ export default function ActContextCard({ onComplete }: Props) {
     setAdding(true);
     try {
       await addContextEntry({
-        question: ctx.question, title: ctx.title, shortSummary: ctx.shortSummary,
+        question: ctx.question ?? '', title: ctx.title, shortSummary: ctx.shortSummary,
         longExplanation: ctx.longExplanation, pastCategory: ctx.pastCategory,
         timeRange: ctx.timeRange, geometry: ctx.geometry, camera: ctx.camera,
         mapType: ctx.mapType, media: ctx.media, thumbnailMediaId: ctx.thumbnailMediaId,

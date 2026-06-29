@@ -37,12 +37,26 @@ export interface ContextMedia {
   title: string;
 }
 
+/** A snapshot of a question that led a learner to this context, stored on the
+ *  saved entry so the journal can show "the questions you asked to get this
+ *  context" — with the context info and an optional photo thumbnail — even after
+ *  the tour data changes. */
+export interface TaggedQuestion {
+  id: string;
+  lens: PastCategory;
+  text: string;
+  contextInfo: string;
+  thumbnailUrl: string | null;
+}
+
 export interface ContextEntry {
   id: string;
   title: string;
-  /** A framing question, shown in italics under the title (thumbnail + page). */
+  /** @deprecated framing question, shown in italics under the title. Superseded
+   *  by `taggedQuestions`; kept for older entries. */
   question: string;
   shortSummary: string;
+  /** Optional "Full Explanation" — collapsible in the reader; '' = none. */
   longExplanation: string;
   pastCategory: PastCategory;
   timeRange: TimeRange;
@@ -53,6 +67,9 @@ export interface ContextEntry {
   /** Photos + audio. The thumbnail photo is chosen by `thumbnailMediaId`. */
   media: ContextMedia[];
   thumbnailMediaId: string | null;
+  /** The question(s) that led to this context (snapshot), shown at the bottom of
+   *  the context page; tap one to read its context info. */
+  taggedQuestions?: TaggedQuestion[];
   placeId: string;
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;

@@ -2615,6 +2615,37 @@ should select by *name*, not reverse-geocode a point):
 ⚠️ *tsc clean; full `next build` still blocked locally by the `next/font/google`
 fetch (environment). Place tap (click-a-name) + the lifted search bar need live QA.*
 
+**Context interaction redesign — plan + Phase A data model (2026-06-29 pt.13).**
+Big reshape of the question→context interaction (questions and contexts become
+many-to-many; one question can yield several contexts across lenses, e.g. Gilded
+Age → Society + Technology). Decisions: **defer the generative AI** (free-form
+learner questions keep the `/api/context-answer` stub; *preloaded tour-guide
+questions need no AI* — the "response" is the designer's authored contexts);
+**build data model + designer side first**; **fold the mobile place-tap fix into
+the learner-flow rebuild**.
+
+Planned phases: **A** data model · **B** designer authoring (tour editor) ·
+**C** learner flow (4-lens "What context questions do you have?", preloaded
+pulse/lock + Learn more, Add-Context pills one-at-a-time + no X-out, collapsible
+Full Explanation, question section w/ thumbnails; mobile tap fix folds in here) ·
+**D** wire the real AI.
+
+**Phase A (done, additive — nothing rewired yet):**
+- `lib/types.ts`: new `PastLens` alias; new **`ContextQuestion`** (id, afterStopId,
+  lens, text, `contextInfo`, media[], thumbnailMediaId) — a designer-posed
+  question carrying the context info + optional media. `Act` gains
+  **`questions?: ContextQuestion[]`**. `ActContextItem` gains
+  **`questionIds?: string[]`** (tags → questions; designer-created auto-tags its
+  origin) and its `afterStopId`/`question` are now **deprecated/optional** (legacy
+  reads only); `longExplanation` is now the optional/collapsible "Full Explanation".
+- `context-journal/types.ts`: new **`TaggedQuestion`** snapshot + optional
+  **`ContextEntry.taggedQuestions?`** so a saved context shows "the questions you
+  asked" with their info + thumbnail.
+- `tour-session.ts`: accessors `getActQuestions`, `questionsAfterStop`,
+  `contextsForQuestion`, `questionsForContext`. Old `contextsAfterStop` kept for
+  the still-live legacy learner flow.
+- tsc clean. **Next: Phase B** — designer authoring UI in the tour editor.
+
 **Mobile tap fix + context moderation (2026-06-29 pt.12).**
 - **Place tap on mobile:** finger taps rarely land on the tiny label, so the
   click-a-name `queryRenderedFeatures` box was widened (6→16 px) and now **falls
