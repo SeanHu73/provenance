@@ -2361,7 +2361,8 @@ tour are otherwise untouched.
 
 **Two map libraries, isolated.** The tour keeps **Google Maps**
 (`@vis.gl/react-google-maps`). The Context Journal uses **Mapbox GL JS v3**
-(`mapbox-gl`, `@mapbox/mapbox-gl-draw`, `mapbox-gl-draw-freehand-mode`),
+(`satellite-streets-v12` style; `mapbox-gl`, `@mapbox/mapbox-gl-draw`,
+`mapbox-gl-draw-freehand-mode`),
 **dynamically imported `ssr:false`** via `ContextMapLoader` so mapbox **only
 ships on this route, never in the tour bundle**. Needs `NEXT_PUBLIC_MAPBOX_TOKEN`
 (already set); if absent, `ContextMapLoader` short-circuits to a placeholder and
@@ -2371,8 +2372,9 @@ never loads mapbox at all.
 `ContextMap`, BROWSE mode) → **Timeline** (`ContextTimeline`) → **P.A.S.T.
 panel** (`PastPanel`, remaining space, scrolls).
 
-- **ContextMap** — BROWSE = plain base map (saved geometry deliberately NOT
-  drawn yet — geography doesn't filter the list in this phase). ADD mode enables
+- **ContextMap** — BROWSE = **satellite** base map (`satellite-streets-v12`,
+  imagery + street labels; saved geometry deliberately NOT drawn yet — geography
+  doesn't filter the list in this phase). ADD mode enables
   a toolbar: **Pin** (`draw_point`) or **Highlight** (freehand "colour in" via
   `mapbox-gl-draw-freehand-mode`, dynamically imported with a **polygon
   fallback**), filled in the active lens colour at low opacity, plus **Clear**.
@@ -2381,15 +2383,23 @@ panel** (`PastPanel`, remaining space, scrolls).
   sized with `h-full`, **not** `absolute inset-0`, which would collapse to 0
   height), and a **`ResizeObserver` calls `map.resize()`** so the flex-settled
   size is picked up (else zero tile coverage → blank map).
-- **ContextTimeline** — fixed `TIMELINE_DOMAIN {1750, 2025}`. Tapping the
-  "Timeline" title cycles granularity **1 → 10 → 100 → 10** years (shown on a
-  pill). A draggable selector (one segment wide by default): drag body to move,
-  drag either handle to resize; edges **snap** to the granularity. The selected
-  `{start, end}` is **lifted to `ContextJournal` as the single source of truth**.
+- **ContextTimeline** — domain is **per-stop (admin-set)**, passed in as a prop;
+  it may span anywhere within `TIMELINE_BOUNDS` (**1000 BC → present**, BC shown
+  as "N BC", the upper bound as "Present"). `DEFAULT_DOMAIN` is the placeholder
+  (1600 → present) until the admin UI exists. A **dropdown** picks the segment
+  size (1 / 10 / 100y); sizes that would exceed **`MAX_SEGMENTS` (30)** are
+  **disabled** ("too many"), so the grain auto-coarsens (1 → 10 → 100) for long
+  domains — `floorGranularity()` is the floor, 100y the cap. A draggable
+  selector (one segment wide, defaulting to a mid-domain segment via
+  `defaultRange()`): drag body to move, drag either handle to resize; edges
+  **snap**. The track is **inset ~34px from the screen edges** so an edge handle
+  clears the phone's back-swipe zone. Selected `{start, end}` is **lifted to
+  `ContextJournal` as the single source of truth**.
 - **PastPanel / PastLens** — four colour-coded lenses (Place `#347C4A`,
   Attitudes `#B8752B`, Society `#7B4EA3`, Technology `#2C6488`), names only,
-  collapsed. **Single tap** toggles the dropdown of in-range contexts; **double
-  tap** toggles a short definition — disambiguated by a **280 ms** delay. A
+  collapsed. **No tap delay:** tapping the **name** (carries a dotted-underline +
+  ⓘ cue) toggles a short **definition shown to its right**; tapping anywhere else
+  on the row (or the chevron) toggles the dropdown of in-range contexts. A
   context shows when `pastCategory` matches and `start <= selEnd && end >=
   selStart`. Open = horizontally-scrolling **thumbnails**; tap → compact summary
   card; tap again / "Read more" → **full-screen reader** (`ContextFullScreen`).

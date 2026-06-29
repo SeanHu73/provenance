@@ -6,29 +6,71 @@
  * identity is stable across the red/teal themes.
  */
 
-import type { PastCategory } from './types';
+import type { PastCategory, TimeRange } from './types';
 
 /** Default place this journal is scoped to (one place for now). */
 export const DEFAULT_PLACE_ID = 'memorial-church';
 
-/** Map defaults (Mapbox). Camera the browse map opens on for the default place. */
-export const MAP_STYLE = 'mapbox://styles/mapbox/light-v11';
+/** Map defaults (Mapbox). Satellite imagery + street labels, opened on the place. */
+export const MAP_STYLE = 'mapbox://styles/mapbox/satellite-streets-v12';
 export const DEFAULT_CAMERA = { center: [-122.1697, 37.4272] as [number, number], zoom: 15.5 };
 
 /** Firestore collections owned by this module. */
 export const CONTEXT_ENTRIES = 'context-entries';
 export const SAVED_CONTEXTS = 'saved-contexts';
 
-/** Fixed timeline domain (years). */
-export const TIMELINE_DOMAIN = { start: 1750, end: 2025 } as const;
+/** "Present day" — placeholder for the live clock; the timeline's upper bound. */
+export const PRESENT_YEAR = 2026;
 
-/** Granularity cycle, in years. Tapping the Timeline title advances this. */
+/** Hard outer bounds the timeline may ever span: 1000 BC … present. */
+export const TIMELINE_BOUNDS = { start: -1000, end: PRESENT_YEAR } as const;
+
+/**
+ * Default browse domain. The admin sets this per tour stop; until that UI exists
+ * this is the placeholder default (e.g. a stop might use 1600 → present).
+ */
+export const DEFAULT_DOMAIN = { start: 1600, end: PRESENT_YEAR };
+
+/** Segment sizes, in years. */
 export const GRANULARITIES = [1, 10, 100] as const;
 export type Granularity = (typeof GRANULARITIES)[number];
-export const DEFAULT_GRANULARITY: Granularity = 10;
 
-/** ms window to disambiguate a single tap from a double tap on a lens. */
-export const TAP_DELAY_MS = 280;
+/**
+ * Keep the timeline readable: never show many more than this many segments. The
+ * finest granularity that stays within it is the floor; the user may pick
+ * coarser, never finer. At 100y (the cap) a 1000 BC → present domain runs a
+ * little over this, which is accepted.
+ */
+export const MAX_SEGMENTS = 30;
+
+export function segmentCount(span: number, g: number): number {
+  return Math.ceil(span / g);
+}
+
+/** Finest granularity (1 → 10 → 100) keeping segments ≤ MAX_SEGMENTS; 100 caps it. */
+export function floorGranularity(domain: { start: number; end: number }): Granularity {
+  const span = domain.end - domain.start;
+  for (const g of GRANULARITIES) {
+    if (segmentCount(span, g) <= MAX_SEGMENTS) return g;
+  }
+  return 100;
+}
+
+/** Format a year for axis/labels: negative = BC, the present bound = "Present". */
+export function formatYear(y: number): string {
+  if (y >= PRESENT_YEAR) return 'Present';
+  if (y < 0) return `${-y} BC`;
+  return `${y}`;
+}
+
+/** A sensible default selection: one segment near the middle of the domain. */
+export function defaultRange(domain: { start: number; end: number }): TimeRange {
+  const g = floorGranularity(domain);
+  const mid = (domain.start + domain.end) / 2;
+  let start = Math.round((mid - domain.start) / g) * g + domain.start;
+  start = Math.min(Math.max(domain.start, start), domain.end - g);
+  return { start, end: Math.min(domain.end, start + g) };
+}
 
 export interface LensDef {
   key: PastCategory;

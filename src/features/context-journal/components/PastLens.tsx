@@ -3,18 +3,19 @@
 /**
  * A single P.A.S.T. lens row.
  *
- * Collapsed by default, name only. Single tap toggles the dropdown of contexts
- * in range; double tap toggles a short definition. The two are disambiguated by
- * a ~280ms delay so a double tap never also fires the dropdown.
+ * Collapsed by default, name only. Tapping the **name** (which carries a dotted
+ * underline + ⓘ cue) toggles a short definition shown to its right — no delay.
+ * Tapping anywhere else on the row (or the chevron) toggles the dropdown of
+ * in-range contexts.
  *
  * Open, the lens lists its in-range contexts as horizontally-scrolling
  * thumbnails. Tapping a thumbnail reveals a compact summary card; tapping it
  * again (or "Read more") opens the full-screen reader.
  */
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { TAP_DELAY_MS, type LensDef } from '../constants';
+import { type LensDef } from '../constants';
 import type { ContextEntry } from '../types';
 import BookmarkButton from './BookmarkButton';
 
@@ -30,23 +31,12 @@ export default function PastLens({ lens, entries, savedIds, onToggleSave, onOpen
   const [open, setOpen] = useState(false);
   const [showDef, setShowDef] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const clickTimer = useRef<number | null>(null);
-
-  const handleHeaderTap = () => {
-    if (clickTimer.current !== null) {
-      // second tap within the window → double tap → toggle definition
-      window.clearTimeout(clickTimer.current);
-      clickTimer.current = null;
-      setShowDef((d) => !d);
-      return;
-    }
-    clickTimer.current = window.setTimeout(() => {
-      clickTimer.current = null;
-      setOpen((o) => !o);
-    }, TAP_DELAY_MS);
-  };
 
   const selected = entries.find((e) => e.id === selectedId) ?? null;
+
+  const onRowKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((o) => !o); }
+  };
 
   const handleThumb = (entry: ContextEntry) => {
     if (selectedId === entry.id) onOpenFull(entry); // tap again → full screen
@@ -55,40 +45,59 @@ export default function PastLens({ lens, entries, savedIds, onToggleSave, onOpen
 
   return (
     <div className="rounded-2xl bg-warm-white border" style={{ borderColor: 'var(--th-border)' }}>
-      {/* header */}
-      <button
-        onClick={handleHeaderTap}
-        className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+      {/* header — tap the row (or chevron) to expand; tap the NAME for the definition */}
+      <div
+        role="button"
+        tabIndex={0}
         aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={onRowKey}
+        className="flex items-start gap-2.5 px-4 py-3.5 cursor-pointer"
       >
-        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: lens.colour }} />
-        <span className="font-display text-xl flex-1" style={{ color: lens.colour }}>{lens.label}</span>
+        <span className="w-3 h-3 mt-2 rounded-full shrink-0" style={{ backgroundColor: lens.colour }} />
+
+        {/* name → definition (with dotted-underline + ⓘ cue) */}
+        <button
+          onClick={(e) => { e.stopPropagation(); setShowDef((d) => !d); }}
+          className="shrink-0 flex items-center gap-1 font-display text-xl leading-none"
+          style={{ color: lens.colour }}
+          aria-label={`Show the definition of ${lens.label}`}
+          aria-pressed={showDef}
+        >
+          <span className="border-b border-dotted pb-0.5" style={{ borderColor: `${lens.colour}88` }}>{lens.label}</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-70 mt-0.5">
+            <circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
+          </svg>
+        </button>
+
+        {/* definition to the right of the name when shown */}
+        <AnimatePresence initial={false} mode="wait">
+          {showDef ? (
+            <motion.span
+              key="def"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}
+              className="flex-1 min-w-0 self-center text-sm font-serif italic text-text-secondary leading-snug"
+            >
+              {lens.definition}
+            </motion.span>
+          ) : (
+            <span key="spacer" className="flex-1" />
+          )}
+        </AnimatePresence>
+
         {entries.length > 0 && (
-          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold tabular-nums"
+          <span className="mt-1 px-2 py-0.5 rounded-full text-[11px] font-semibold tabular-nums shrink-0"
             style={{ backgroundColor: `${lens.colour}1A`, color: lens.colour }}>
             {entries.length}
           </span>
         )}
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
-          className={`text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}>
+          className={`mt-1 shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}>
           <polyline points="6 9 12 15 18 9" />
         </svg>
-      </button>
+      </div>
 
-      {/* definition (double tap) */}
-      <AnimatePresence initial={false}>
-        {showDef && (
-          <motion.p
-            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22 }}
-            className="overflow-hidden px-4 text-sm font-serif italic text-text-secondary"
-          >
-            <span className="block pb-3">{lens.definition}</span>
-          </motion.p>
-        )}
-      </AnimatePresence>
-
-      {/* dropdown (single tap) */}
+      {/* dropdown */}
       <AnimatePresence initial={false}>
         {open && (
           <motion.div

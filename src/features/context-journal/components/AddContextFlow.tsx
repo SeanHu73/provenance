@@ -12,7 +12,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { LENSES, TIMELINE_DOMAIN, LENS_BY_KEY } from '../constants';
+import { LENSES, TIMELINE_BOUNDS, LENS_BY_KEY } from '../constants';
 import type { DrawResult, PastCategory } from '../types';
 import { addContextEntry, uploadContextPhoto } from '../store';
 import ContextMapLoader from './ContextMapLoader';
@@ -138,6 +138,7 @@ export default function AddContextFlow({ placeId, onClose, onSaved }: Props) {
               <span className="text-text-muted">to</span>
               <YearInput value={endYear} onChange={setEndYear} />
             </div>
+            <p className="mt-1 text-xs text-text-muted">Use negative years for BC (e.g. −500 = 500 BC).</p>
             {!rangeValid && <p className="mt-1 text-xs" style={{ color: 'var(--th-primary)' }}>Start year must be on or before the end year.</p>}
           </Field>
 
@@ -195,12 +196,12 @@ function YearInput({ value, onChange }: { value: number; onChange: (n: number) =
     <input
       type="number"
       inputMode="numeric"
-      min={TIMELINE_DOMAIN.start}
-      max={TIMELINE_DOMAIN.end}
+      min={TIMELINE_BOUNDS.start}
+      max={TIMELINE_BOUNDS.end}
       value={value}
       onChange={(e) => {
         const n = parseInt(e.target.value, 10);
-        if (!Number.isNaN(n)) onChange(Math.min(TIMELINE_DOMAIN.end, Math.max(TIMELINE_DOMAIN.start, n)));
+        if (!Number.isNaN(n)) onChange(Math.min(TIMELINE_BOUNDS.end, Math.max(TIMELINE_BOUNDS.start, n)));
       }}
       className="w-24 px-3 py-2.5 rounded-lg border-2 bg-white text-[17px] font-serif tabular-nums text-text-primary focus:outline-none"
       style={{ borderColor: 'var(--th-border)' }}
