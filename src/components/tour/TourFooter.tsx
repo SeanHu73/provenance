@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Tour, TourSession } from '@/lib/types';
 import { getTourMode, getActiveStops } from '@/lib/tours-store';
 import { findActOfStop, getActs } from '@/lib/tour-session';
 import { useTour } from '@/context/TourContext';
-import JournalOverlay from './JournalOverlay';
 import MicButton from './MicButton';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoom } from '@/context/RoomContext';
@@ -27,7 +27,6 @@ interface Props {
  * closing) so the footer stays visible across the whole active tour.
  */
 export default function TourFooter({ tour, session, pointAtQuestion = false, pointAtAutoplay = false }: Props) {
-  const [showJournal, setShowJournal] = useState(false);
   const [showQuestionInput, setShowQuestionInput] = useState(false);
   const [showRoomMenu, setShowRoomMenu] = useState(false);
   const [autoplayPref, setAutoplayPref] = useAudioAutoplay();
@@ -55,8 +54,8 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
         className={`shrink-0 px-4 py-3 border-t flex items-center gap-3 ${isContext ? 'justify-between' : 'justify-center'}`}
         style={{ backgroundColor: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
       >
-        <button
-          onClick={() => setShowJournal(true)}
+        <Link
+          href="/context-journal"
           className="shrink-0 flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-base font-semibold text-warm-white bg-white/25 hover:bg-white/35 transition-colors border border-white/50"
           style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' }}
         >
@@ -64,8 +63,8 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
             <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
           </svg>
-          Journal
-        </button>
+          Context Journal
+        </Link>
 
         {/* Current Act (context mode) — sits next to Journal: number on top,
             title in italics below, truncated so it always fits. */}
@@ -199,10 +198,6 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
             </div>
           </div>
         </div>
-      )}
-
-      {showJournal && (
-        <JournalOverlay tour={tour} session={session} onClose={() => setShowJournal(false)} />
       )}
 
       {showRoomMenu && <RoomMenu onDismiss={() => setShowRoomMenu(false)} />}

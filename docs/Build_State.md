@@ -1,7 +1,9 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-06-27
-(latest: a multi-part **explorer simplification + end-of-act redesign** for
+*Handoff document for the next Claude Code session. Last updated 2026-06-29
+(latest: a new self-contained **Context Journal** module — Mapbox map +
+draggable timeline + tappable P.A.S.T. lenses + an Add-context flow — replacing
+the old footer "Journal" entry. See §15. Prior: a multi-part **explorer simplification + end-of-act redesign** for
 Context-Prototype mode — see the 2026-06-27 entries in §8. In short: the tour
 background photo + the floating "card" chrome were removed (content sits
 directly on the page); the pin-tap peek became a full **NPS-style Tour Overview**
@@ -2337,3 +2339,87 @@ remains the surrounding feature set, all live on `master`. The room system
 system (§9) remain in place. Two adoption steps require manual console work:
 the Sheets logging columns (run `addHeaders()` once — see §4) and the three
 `memorial-church-community-*` Firestore rule blocks (see §3 / §13).*
+
+---
+
+## 15. Context Journal (2026-06-29)
+
+A new **self-contained module** at `src/features/context-journal/` — a place's
+context explored through a map, a timeline, and the four P.A.S.T. lenses. It
+**replaces the old footer "Journal" entry** (which opened the `JournalOverlay`
+study panel). Route: **`/context-journal`** (`src/app/context-journal/page.tsx`).
+
+**Removal / nav swap.** The tour's `JournalOverlay` was poorly named — the
+component `Journal.tsx` is actually the *tour playback engine* (left untouched),
+and `JournalOverlay.tsx` is the study panel, **still used by `EqClosingCard`**
+(the tour's closing "theory journal"), so it was **kept**. Only the footer entry
+changed: `TourFooter.tsx`'s "Journal" button (which opened `JournalOverlay`) is
+now a **`<Link>` to `/context-journal` labelled "Context Journal"**; its
+`showJournal` state + the footer's `JournalOverlay` render were removed. The
+deprecated, unused `JournalPeek.tsx` was deleted. The tour flow + Google Maps
+tour are otherwise untouched.
+
+**Two map libraries, isolated.** The tour keeps **Google Maps**
+(`@vis.gl/react-google-maps`). The Context Journal uses **Mapbox GL JS v3**
+(`mapbox-gl`, `@mapbox/mapbox-gl-draw`, `mapbox-gl-draw-freehand-mode`),
+**dynamically imported `ssr:false`** via `ContextMapLoader` so mapbox **only
+ships on this route, never in the tour bundle**. Needs `NEXT_PUBLIC_MAPBOX_TOKEN`
+(already set); if absent, `ContextMapLoader` short-circuits to a placeholder and
+never loads mapbox at all.
+
+**Layout (mobile-first, 390px):** header (back + Add context) → **Map** (top,
+`ContextMap`, BROWSE mode) → **Timeline** (`ContextTimeline`) → **P.A.S.T.
+panel** (`PastPanel`, remaining space, scrolls).
+
+- **ContextMap** — BROWSE = plain base map (saved geometry deliberately NOT
+  drawn yet — geography doesn't filter the list in this phase). ADD mode enables
+  a toolbar: **Pin** (`draw_point`) or **Highlight** (freehand "colour in" via
+  `mapbox-gl-draw-freehand-mode`, dynamically imported with a **polygon
+  fallback**), filled in the active lens colour at low opacity, plus **Clear**.
+  Emits `{ geometry, camera }` (GeoJSON + centre/zoom). Two gotchas handled:
+  `mapbox-gl.css` forces `.mapboxgl-map{position:relative}` (so the container is
+  sized with `h-full`, **not** `absolute inset-0`, which would collapse to 0
+  height), and a **`ResizeObserver` calls `map.resize()`** so the flex-settled
+  size is picked up (else zero tile coverage → blank map).
+- **ContextTimeline** — fixed `TIMELINE_DOMAIN {1750, 2025}`. Tapping the
+  "Timeline" title cycles granularity **1 → 10 → 100 → 10** years (shown on a
+  pill). A draggable selector (one segment wide by default): drag body to move,
+  drag either handle to resize; edges **snap** to the granularity. The selected
+  `{start, end}` is **lifted to `ContextJournal` as the single source of truth**.
+- **PastPanel / PastLens** — four colour-coded lenses (Place `#347C4A`,
+  Attitudes `#B8752B`, Society `#7B4EA3`, Technology `#2C6488`), names only,
+  collapsed. **Single tap** toggles the dropdown of in-range contexts; **double
+  tap** toggles a short definition — disambiguated by a **280 ms** delay. A
+  context shows when `pastCategory` matches and `start <= selEnd && end >=
+  selStart`. Open = horizontally-scrolling **thumbnails**; tap → compact summary
+  card; tap again / "Read more" → **full-screen reader** (`ContextFullScreen`).
+  Empty state: "No context here yet." Framer Motion animates dropdown, summary,
+  and overlay.
+- **AddContextFlow** — the single shared "Add context" form (designer- and
+  learner-side entry points wire in later): title / summary / explanation /
+  lens / optional photo / a **dedicated year-range picker** (separate from the
+  browse timeline) / a **required** map step (pin or highlight). On save it
+  writes a `ContextEntry` and (live subscription) it appears in its lens the
+  moment its range overlaps the selection.
+
+**Data — `store.ts`.** Collections **`context-entries`** (live `onSnapshot`,
+scoped by `placeId`, default `memorial-church`) and **`saved-contexts`**
+(bookmarks keyed by an anonymous `provenance-context-viewer-id`; structured so a
+real user id drops in later). Photos upload to Storage under
+`context-journal/photos/`. Timestamps use `serverTimestamp()`.
+
+> **⚠ Manual step (required):** like every collection in this project, the two
+> new collections need their own Firestore console rule blocks
+> (`match /context-entries/{id} { allow read, write: if true; }` and the same
+> for `saved-contexts`) — until then reads/writes **fail silently** with
+> "Missing or insufficient permissions" and the journal stays empty. **No seed
+> data** ships; the Add-context flow is the only way to create entries.
+
+**Verification.** `tsc`, `eslint`, and `next build` all pass; `/context-journal`
+prerenders. Live structural check at the route confirmed the layout, the map
+mounting (controls, attribution, valid token, style 200), the timeline, and the
+lenses. Two notes from the automated browser: the map **basemap tiles and Framer
+Motion tweens don't paint there because the tab is backgrounded** (`document.hidden`,
+so `requestAnimationFrame` is paused — both are rAF-driven); they render normally
+on a real device. And the expected "missing permissions" errors confirm the
+Firestore rules step above is still pending.

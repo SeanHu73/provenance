@@ -524,3 +524,9 @@ body {
 /* Hide scrollbar (for swipeable carousels) */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* Context Journal — horizontal thumbnail rail (P.A.S.T. lens dropdown) */
+.cj-hscroll { scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.cj-hscroll::-webkit-scrollbar { height: 6px; }
+.cj-hscroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+.cj-hscroll::-webkit-scrollbar-track { background: transparent; }
