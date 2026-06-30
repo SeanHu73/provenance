@@ -62,6 +62,9 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
   const [showMapPanel, setShowMapPanel] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [fullEntry, setFullEntry] = useState<ContextEntry | null>(null);
+  // In-tour gate: the learner must open at least one context before continuing.
+  const [explored, setExplored] = useState(false);
+  const openFull = (entry: ContextEntry) => { setFullEntry(entry); setExplored(true); };
   // The context the viewer has tapped — drives the map (fly to its area); null
   // returns the map to the admin default view.
   const [focused, setFocused] = useState<ContextEntry | null>(null);
@@ -236,7 +239,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
           compact={showMapPanel}
           onFocus={handleFocus}
           onToggleSave={toggleSave}
-          onOpenFull={setFullEntry}
+          onOpenFull={openFull}
         />
 
         {/* Ask your own question (AI flow lands later; opens the add form for now) */}
@@ -257,11 +260,15 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
           <div className="px-5 pb-8 pt-1">
             <button
               onClick={onExit}
-              className="w-full py-3.5 rounded-2xl text-base font-semibold text-warm-white"
+              disabled={!explored}
+              className="w-full py-3.5 rounded-2xl text-base font-semibold text-warm-white disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ backgroundColor: 'var(--th-primary)' }}
             >
               Continue tour
             </button>
+            {!explored && (
+              <p className="mt-2 text-center text-xs text-text-muted">Explore at least one context before continuing.</p>
+            )}
           </div>
         )}
       </div>

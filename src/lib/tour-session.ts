@@ -853,21 +853,18 @@ export function completeContextIntro(session: TourSession): TourSession {
   };
 }
 
-/** Context mode: explorer finished an Add-Context item. Show the next item
- *  positioned after the same stop, else resume (next stop / end-of-act chain). */
-export function completeActContext(session: TourSession, tour: Tour): TourSession {
-  const currentStop = getActiveStops(tour)[session.currentStopIndex];
-  const act = currentStop ? findActOfStop(tour, currentStop.id) : null;
-  if (!act || !currentStop) {
-    return { ...session, phaseHistory: pushHistory(session), currentPhase: 'act_context_questions', currentRound: 0, currentContextId: null };
-  }
-  const pending = contextsAfterStop(act, currentStop.id);
-  const idx = pending.findIndex((c) => c.id === session.currentContextId);
-  const next = idx >= 0 ? pending[idx + 1] : undefined;
-  if (next) {
-    return { ...session, phaseHistory: pushHistory(session), currentPhase: 'act_context_intro', currentRound: 0, currentContextId: next.id };
-  }
-  return resumeAfterContexts(session, tour, act, currentStop, session.completedStops);
+/** Context mode: explorer left the Context Journal ("Continue tour"). The journal
+ *  now shows the whole act's contexts at once *and* handles question-asking, so we
+ *  go straight to the community step — no per-stop context stepping (which used to
+ *  loop back into the context phase), no separate act_context_questions. */
+export function completeActContext(session: TourSession): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'community_share',
+    currentRound: 0,
+    currentContextId: null,
+  };
 }
 
 /** Context mode: explorer is done asking context questions → reflection (if

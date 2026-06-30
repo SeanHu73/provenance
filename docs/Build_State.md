@@ -2794,6 +2794,19 @@ these.
 = the re-spec'd overlay (map/timeline on top, TTS Title→pause→Long, tap-1/tap-2
 thumbnail levels, edit, unlocked scroll).*
 
+**Intro redesign + Continue-loop fix + explore gate (2026-06-30 pt.22).**
+- **"Continue tour" loop fixed:** `completeActContext` ran the old per-stop
+  positioned-context stepping (`contextsAfterStop`/`currentContextId`) and looped
+  back into the context phase. Now the journal shows the whole act at once + asks
+  questions, so it goes straight to `community_share` (signature dropped `tour`;
+  `TourContext` call updated).
+- **Explore gate:** in-tour "Continue tour" is **disabled until the learner opens
+  ≥1 context** (`explored` set on `openFull`), with a hint.
+- **Immersive intro:** `ContextIntroCard` is now a two-beat **snap-scroll** —
+  "Now that we've learned…" + scroll cue → (revealed on scroll) "…using the
+  P.A.S.T." with the four lenses staggering in as colour chips → "Ask about
+  context". (IntersectionObserver drives beat 2.)
+
 ## NEXT STEPS — Context Journal (maintained list; prune each as it ships)
 
 *Authoritative to-do for the in-progress learner build. Slice 1 (authored
