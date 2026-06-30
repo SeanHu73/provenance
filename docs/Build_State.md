@@ -2731,13 +2731,19 @@ directly + import a per-account local copy, removing this split.)
   trash + 2-step confirm; `ContextJournal` wires it to `deleteContextEntry`. This
   is how to kill an orphaned saved copy from the learner side.
 
-**Stanford context — found it.** Not hardcoded anywhere (grep clean). It's a
-`context-entries` Firestore doc. The standalone journal scope is
-`DEFAULT_PLACE_ID = 'memorial-church'`, which has **no admin moderation UI** (the
-admin "Submitted contexts" list is per-tour, scoped to the tour's id) — so a
-context saved under the default scope is invisible on the admin side. **Fix for
-the user:** open it in the journal ("Read more") → new **trash** → Remove. (Or
-delete the doc in the Firebase console.)
+**Stanford context — REAL cause (corrects pt.17).** The user's Firestore has **no
+`context-entries` collection at all** (nothing was ever saved to the journal;
+Firestore creates collections lazily on first write — so `context-entries` /
+`saved-contexts` simply don't exist yet, which is normal). The Stanford context
+is therefore NOT a journal doc — it's the **legacy `act.context`** field on an act
+inside a tour doc (`memorial-church-tours`). `getActContexts()` **migrates**
+`act.context` into a context shown to the learner (with the "Add to context"
+button), but the new admin "Add Context" UI only manages `act.contexts[]`, so
+there was no way to remove the legacy one. **Fix (2026-06-30 pt.18):**
+`removeLegacyContext(actId)` → `updateAct({ context: null })`, surfaced as an
+**amber "Legacy context (still shown to learners) → Remove"** row in the tour
+editor's Add Context section. (The journal-side trash from pt.17 stays for real
+`context-entries` once those exist.)
 
 **Still TODO (next slices):**
 - **AddContextFlow cleanup:** remove the framing-question field (deprecated); make

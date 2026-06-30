@@ -352,6 +352,9 @@ export default function TourEditorPage() {
     const act = (tour?.acts || []).find((a) => a.id === actId);
     updateAct(actId, { contexts: (act?.contexts ?? []).filter((c) => c.id !== itemId) });
   };
+  /** Clear the legacy end-of-act `act.context` (still shown to learners via the
+   *  getActContexts migration, but with no other admin UI to remove it). */
+  const removeLegacyContext = (actId: string) => updateAct(actId, { context: null });
   const moveAct = (actId: string, direction: -1 | 1) => {
     const acts = tour?.acts || [];
     const idx = acts.findIndex((a) => a.id === actId);
@@ -1849,6 +1852,17 @@ export default function TourEditorPage() {
                         <button onClick={() => setCtxEditor({ actId: act.id, itemId: null })} className="px-2.5 py-1 rounded bg-blue-700 text-white text-xs hover:bg-blue-800">+ Add context</button>
                       </div>
                       <p className="text-[10px] text-stone-400">Each context is a question the learner can ask plus the answer (title, explanation, map, timeline, photos). It appears under its P.A.S.T. lens in the Context Journal.</p>
+                      {/* Legacy end-of-act context — still shown to learners, no other UI to remove it */}
+                      {act.context && (act.context.question?.trim() || act.context.context?.trim() || act.context.audioUrl || (act.context.photos?.length ?? 0) > 0) && (
+                        <div className="rounded border border-amber-300 bg-amber-50 p-2 flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Legacy context (still shown to learners)</div>
+                            {act.context.question?.trim() && <div className="text-xs italic text-stone-600 truncate">{act.context.question}</div>}
+                            {act.context.context?.trim() && <div className="text-xs text-stone-500 truncate">{act.context.context}</div>}
+                          </div>
+                          <button onClick={() => removeLegacyContext(act.id)} className="text-xs text-red-600 hover:underline shrink-0">Remove</button>
+                        </div>
+                      )}
                       {(act.contexts ?? []).length === 0 ? (
                         <p className="text-xs text-stone-400 italic">No contexts yet.</p>
                       ) : (
