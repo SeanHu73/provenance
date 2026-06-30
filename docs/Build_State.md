@@ -2745,7 +2745,16 @@ there was no way to remove the legacy one. **Fix (2026-06-30 pt.18):**
 editor's Add Context section. (The journal-side trash from pt.17 stays for real
 `context-entries` once those exist.)
 
+**Gear icon + per-act reflection retired (2026-06-30 pt.19).** Technology lens
+icon swapped to a clean Feather gear (the old one read like a ribbon). **Per-act
+reflection removed:** dropped the admin "Reflection question" editor +
+`setActReflection` handler, and `completeActContextQuestions` now skips
+`act_reflection` → straight to `community_share`. (`act_reflection` phase +
+`completeActReflection`/`ActReflectionCard` remain as dead code for now.)
+
 **Still TODO (next slices):**
+- **Single end-of-tour reflection** with multiple options (replaces the removed
+  per-act reflections) — set up later.
 - **AddContextFlow cleanup:** remove the framing-question field (deprecated); make
   Full Explanation **optional + collapsible**; default-hidden for the learner.
 - **Learner overlay + thumbnail select-levels (revised pt.15 spec):** a context

@@ -329,9 +329,6 @@ export default function TourEditorPage() {
     updateActs(acts.map((a) => (a.id === actId ? { ...a, ...patch } : a)));
   };
 
-  const setActReflection = (actId: string, prompt: string) => {
-    updateAct(actId, { reflectionQuestion: prompt.trim() ? { prompt } : null });
-  };
 
   // ── Rich "Add Context" items (positioned after a stop within an act) ──
   const [ctxEditor, setCtxEditor] = useState<{ actId: string; itemId: string | null } | null>(null);
@@ -1880,15 +1877,6 @@ export default function TourEditorPage() {
                         </ul>
                       )}
                     </div>
-
-                    {/* End-of-act: Reflection question ("Share What You Think") */}
-                    <RichTextarea
-                      label={'Reflection question — "Share What You Think" (optional)'}
-                      value={act.reflectionQuestion?.prompt ?? act.closingQuestion?.prompt ?? ''}
-                      onChange={(v) => setActReflection(act.id, v)}
-                      rows={2}
-                      placeholder="Asked after the Context step. The explorer responds (with photos + a map pin) and can share to the community. Leave blank to skip."
-                    />
                   </div>
                 );
               })}

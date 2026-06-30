@@ -883,11 +883,12 @@ export function completeActContextQuestions(
   const act = stop ? findActOfStop(tour, stop.id) : null;
   let actResponses = session.actResponses;
   if (act) for (const entry of asked) actResponses = addContextQuestion(actResponses, act.id, entry);
-  const hasReflection = reflectionPromptOf(act).length > 0;
+  // Per-act reflection is retired — skip act_reflection and go straight to the
+  // community. (A single end-of-tour reflection with options lands later.)
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: hasReflection ? 'act_reflection' : 'community_share',
+    currentPhase: 'community_share',
     currentRound: 0,
     actResponses,
   };
