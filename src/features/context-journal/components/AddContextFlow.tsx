@@ -231,6 +231,9 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
                 </button>
               ))}
             </div>
+            <p className="mt-2 text-xs italic" style={{ color: colour }}>
+              <span className="not-italic font-semibold">{LENS_BY_KEY[category].label}:</span> {LENS_BY_KEY[category].definition}
+            </p>
           </Field>
 
           {/* title */}

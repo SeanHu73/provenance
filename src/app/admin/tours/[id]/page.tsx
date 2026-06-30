@@ -30,6 +30,7 @@ import PhotoCueEditor from '@/components/admin/PhotoCueEditor';
 import ContextJournalConfig from '@/features/context-journal/admin/ContextJournalConfig';
 import AddContextFlow from '@/features/context-journal/components/AddContextFlow';
 import type { ContextDraft } from '@/features/context-journal/types';
+import { LENS_BY_KEY } from '@/features/context-journal/constants';
 
 /** Stable id for a new Add-Context item (module-level: keeps render pure). */
 function makeCtxId(): string {
@@ -1864,16 +1865,23 @@ export default function TourEditorPage() {
                         <p className="text-xs text-stone-400 italic">No contexts yet.</p>
                       ) : (
                         <ul className="space-y-2">
-                          {(act.contexts ?? []).map((item) => (
-                            <li key={item.id} className="rounded border border-stone-200 p-2 flex items-start gap-2">
-                              <div className="flex-1 min-w-0">
-                                {item.question && <div className="text-xs italic text-stone-500 truncate">{item.question}</div>}
-                                <div className="text-sm font-semibold text-stone-800 truncate">{item.title || <span className="text-stone-400 italic">Untitled</span>}</div>
-                              </div>
-                              <button onClick={() => setCtxEditor({ actId: act.id, itemId: item.id })} className="text-xs text-blue-700 hover:underline shrink-0">Edit</button>
-                              <button onClick={() => removeActContextItem(act.id, item.id)} className="text-xs text-red-600 hover:underline shrink-0">Remove</button>
-                            </li>
-                          ))}
+                          {(act.contexts ?? []).map((item) => {
+                            const lens = LENS_BY_KEY[item.pastCategory];
+                            return (
+                              <li key={item.id} className="rounded border-l-4 border border-stone-200 p-2 flex items-start gap-2" style={{ borderLeftColor: lens?.colour ?? '#bbb' }}>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: lens?.colour ?? '#bbb' }} />
+                                    <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: lens?.colour ?? '#777' }}>{lens?.label ?? item.pastCategory}</span>
+                                  </div>
+                                  {item.question && <div className="text-xs italic text-stone-500 truncate mt-0.5">{item.question}</div>}
+                                  <div className="text-sm font-semibold text-stone-800 truncate">{item.title || <span className="text-stone-400 italic">Untitled</span>}</div>
+                                </div>
+                                <button onClick={() => setCtxEditor({ actId: act.id, itemId: item.id })} className="text-xs text-blue-700 hover:underline shrink-0">Edit</button>
+                                <button onClick={() => removeActContextItem(act.id, item.id)} className="text-xs text-red-600 hover:underline shrink-0">Remove</button>
+                              </li>
+                            );
+                          })}
                         </ul>
                       )}
                     </div>
