@@ -162,11 +162,13 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
       {/* top bar */}
       <header className="shrink-0 flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: 'var(--th-primary)' }}>
         {inTour ? (
-          <button onClick={onExit} aria-label="Back to tour" className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15 18l-6-6 6-6" />
+          // No back affordance in-tour: the only way onward is the gated
+          // "Continue tour" button, so a stray tap can't skip into later phases.
+          <span className="w-9 h-9 flex items-center justify-center text-warm-white/80" aria-hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
             </svg>
-          </button>
+          </span>
         ) : (
           <Link href="/" aria-label="Back" className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

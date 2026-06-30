@@ -855,16 +855,13 @@ export function completeContextIntro(session: TourSession): TourSession {
 
 /** Context mode: explorer left the Context Journal ("Continue tour"). The journal
  *  now shows the whole act's contexts at once *and* handles question-asking, so we
- *  go straight to the community step — no per-stop context stepping (which used to
- *  loop back into the context phase), no separate act_context_questions. */
-export function completeActContext(session: TourSession): TourSession {
-  return {
-    ...session,
-    phaseHistory: pushHistory(session),
-    currentPhase: 'community_share',
-    currentRound: 0,
-    currentContextId: null,
-  };
+ *  go straight to the next act (or the tour's close) — no per-stop context
+ *  stepping (which used to loop), no separate questions screen, and no per-act
+ *  community step. */
+export function completeActContext(session: TourSession, tour: Tour): TourSession {
+  const stop = getActiveStops(tour)[session.currentStopIndex];
+  const act = stop ? findActOfStop(tour, stop.id) : null;
+  return advanceToNextActOrClosing({ ...session, currentContextId: null }, tour, act);
 }
 
 /** Context mode: explorer is done asking context questions → reflection (if

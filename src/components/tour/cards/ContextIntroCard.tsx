@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * Context intro — an immersive two-beat snap-scroll shown at the start of the
- * context step (`act_context_intro`), on the rich dark journal surface.
+ * Context intro — an immersive snap-scroll shown at the start of the context step
+ * (`act_context_intro`), on the rich dark journal surface.
  *
- *   Beat 1: a huge "Context" section title (we're entering a new mode), with the
- *           "Now that we've learned…" line anchored low and a scroll cue.
- *   Beat 2 (revealed on scroll): left-aligned "let's ask about some context using
- *           the…", then P·A·S·T stepping diagonally down — each lens's initial
- *           BIG (in its colour) with the rest of the word smaller — then a
- *           directional "Ask about context" button.
+ *   Beat 1: a huge "Context" section title with the "Now that we've learned…"
+ *           line, sitting a little above centre, plus a scroll cue.
+ *   Beat 2 (revealed on scroll): a vertically-centred block — "Let's ASK about
+ *           some context using the…" just above the P·A·S·T stepping diagonally
+ *           down (each lens initial BIG + coloured, the rest smaller).
+ *   Then scrolling on past a sentinel slides into the Context Journal (no button).
  *
  * Portaled to document.body so the fixed overlay escapes the Journal's
  * transformed (framer-motion) ancestor (Build_State §7).
@@ -27,6 +27,7 @@ export default function ContextIntroCard({ onComplete }: Props) {
   const [mounted, setMounted] = useState(false);
   const [beat2, setBeat2] = useState(false);
   const beat2Ref = useRef<HTMLElement | null>(null);
+  const enterRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
@@ -36,13 +37,19 @@ export default function ContextIntroCard({ onComplete }: Props) {
   useEffect(() => {
     const el = beat2Ref.current;
     if (!el) return;
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setBeat2(true); },
-      { threshold: 0.4 },
-    );
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setBeat2(true); }, { threshold: 0.4 });
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
+
+  // Scrolling past the sentinel enters the Context Journal.
+  useEffect(() => {
+    const el = enterRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) onComplete(); }, { threshold: 0.75 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [onComplete]);
 
   if (typeof document === 'undefined') return null;
 
@@ -51,9 +58,9 @@ export default function ContextIntroCard({ onComplete }: Props) {
       className="fixed inset-0 z-[60] overflow-y-auto select-none"
       style={{ backgroundColor: 'var(--th-journal)', scrollSnapType: 'y mandatory' }}
     >
-      {/* Beat 1 — huge section title, opening line low, scroll cue */}
+      {/* Beat 1 */}
       <section
-        className="relative min-h-[100dvh] flex flex-col justify-end px-7 pb-24"
+        className="relative min-h-[100dvh] flex flex-col justify-end px-7 pb-36"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <div
@@ -93,64 +100,62 @@ export default function ContextIntroCard({ onComplete }: Props) {
         </div>
       </section>
 
-      {/* Beat 2 — left-aligned lead, diagonal P·A·S·T, directional button */}
+      {/* Beat 2 — vertically centred: lead just above the diagonal P·A·S·T */}
       <section
         ref={beat2Ref}
-        className="min-h-[100dvh] flex flex-col px-7 py-14"
+        className="relative min-h-[100dvh] flex flex-col justify-center px-7"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        <h2
-          className="font-serif leading-snug"
-          style={{
-            fontSize: 'clamp(22px, 6vw, 34px)',
-            color: 'var(--th-surface)',
-            maxWidth: '16ch',
-            opacity: beat2 ? 1 : 0,
-            transform: beat2 ? 'translateY(0)' : 'translateY(14px)',
-            transition: 'opacity 700ms ease-out, transform 700ms ease-out',
-          }}
-        >
-          let&rsquo;s ask about some context using the&hellip;
-        </h2>
+        <div className="mx-auto w-fit">
+          <h2
+            className="font-serif leading-snug mb-4"
+            style={{
+              fontSize: 'clamp(24px, 6.6vw, 38px)',
+              color: 'var(--th-surface)',
+              maxWidth: '15ch',
+              opacity: beat2 ? 1 : 0,
+              transform: beat2 ? 'translateY(0)' : 'translateY(14px)',
+              transition: 'opacity 700ms ease-out, transform 700ms ease-out',
+            }}
+          >
+            Let&rsquo;s <span className="font-bold tracking-wide">ASK</span> about some{' '}
+            <span className="font-bold">context</span> using the&hellip;
+          </h2>
 
-        {/* the P.A.S.T. stepping diagonally down, each initial accentuated */}
-        <div className="flex-1 flex flex-col justify-center gap-2 mt-6">
           {LENSES.map((l, i) => (
             <div
               key={l.key}
               className="flex items-baseline"
               style={{
-                marginLeft: `${i * 9}%`,
+                marginLeft: `${i * 14}%`,
                 opacity: beat2 ? 1 : 0,
                 transform: beat2 ? 'translateX(0)' : 'translateX(-16px)',
                 transition: `opacity 500ms ease-out ${250 + i * 140}ms, transform 500ms ease-out ${250 + i * 140}ms`,
               }}
             >
-              <span className="font-display leading-none" style={{ color: l.colour, fontSize: 'clamp(46px, 15vw, 96px)' }}>{l.label[0]}</span>
-              <span className="font-display leading-none" style={{ color: l.colour, fontSize: 'clamp(20px, 6vw, 38px)' }}>{l.label.slice(1)}</span>
+              <span className="font-display leading-none" style={{ color: l.colour, fontSize: 'clamp(46px, 15vw, 92px)' }}>{l.label[0]}</span>
+              <span className="font-display leading-none" style={{ color: l.colour, fontSize: 'clamp(20px, 6vw, 36px)' }}>{l.label.slice(1)}</span>
             </div>
           ))}
         </div>
 
-        {/* directional CTA — feels like stepping through */}
-        <button
-          onClick={onComplete}
-          className="self-start inline-flex items-center gap-3 pl-6 pr-2.5 py-2.5 rounded-full font-semibold shadow-xl active:scale-[0.98] transition-transform"
-          style={{
-            backgroundColor: 'var(--th-secondary)',
-            color: 'var(--th-journal)',
-            opacity: beat2 ? 1 : 0,
-            transition: `opacity 600ms ease-out ${250 + LENSES.length * 140 + 200}ms`,
-          }}
+        <div
+          className="absolute bottom-7 left-0 right-0 flex flex-col items-center gap-1.5"
+          style={{ opacity: beat2 ? 0.75 : 0, transition: 'opacity 700ms ease-out 900ms' }}
         >
-          <span className="text-[15px]">Ask about context</span>
-          <span className="flex items-center justify-center w-9 h-9 rounded-full" style={{ backgroundColor: 'var(--th-journal)' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--th-secondary)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-          </span>
-        </button>
+          <span className="text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--th-secondary)' }}>Keep scrolling</span>
+          <svg className="animate-bounce" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--th-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
       </section>
+
+      {/* Sentinel — scrolling into it enters the Context Journal */}
+      <div ref={enterRef} className="h-[55vh] flex items-end justify-center pb-10" style={{ scrollSnapAlign: 'end' }}>
+        <span className="font-serif italic text-[15px]" style={{ color: 'var(--th-surface)', opacity: 0.6 }}>
+          Opening the Context Journal&hellip;
+        </span>
+      </div>
     </div>,
     document.body,
   );
