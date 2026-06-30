@@ -168,9 +168,17 @@ export default function ContextJournal({ tourId }: Props) {
 
       {/* 2 — P.A.S.T. framework (the main space) */}
       <div className="flex-1 overflow-y-auto">
-        <p className="px-5 pt-5 pb-1 font-serif text-xl leading-snug text-text-primary">
-          Tap on a lens to find the question you want to ask, or add your own!
-        </p>
+        <div className="px-5 pt-6 pb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="h-px flex-1 max-w-8" style={{ backgroundColor: 'var(--th-border)' }} />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Look through the P.A.S.T.</span>
+            <span className="h-px flex-1" style={{ backgroundColor: 'var(--th-border)' }} />
+          </div>
+          <h2 className="mt-3 font-display text-[26px] leading-tight text-text-primary">Which lens will you look through?</h2>
+          <p className="mt-1 font-serif italic text-[15px] text-text-secondary leading-snug">
+            Tap a lens to find a question worth asking — or add one of your own.
+          </p>
+        </div>
         <PastPanel
           entries={entries}
           selectedRange={range}

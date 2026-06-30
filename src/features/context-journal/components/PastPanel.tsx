@@ -37,7 +37,7 @@ export default function PastPanel({ entries, selectedRange, savedIds, focusedId,
   }, [entries, selectedRange]);
 
   return (
-    <div className="px-4 py-3 space-y-2.5">
+    <div className="px-4 pb-5 space-y-4">
       {byLens.map(({ lens, items }) => (
         <PastLens
           key={lens.key}
