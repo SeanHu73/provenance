@@ -16,20 +16,13 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useTour } from '@/context/TourContext';
-import { currentContextItem } from '@/lib/tour-session';
-import FormattedText from './FormattedText';
 
 interface Props {
   onComplete: () => void;
 }
 
 export default function ContextIntroCard({ onComplete }: Props) {
-  const { tour, session } = useTour();
   const [mounted, setMounted] = useState(false);
-  // Pose the current Add-Context item's framing question (fallback to the
-  // generic prompt for legacy contexts with no question).
-  const question = currentContextItem(tour, session)?.question?.trim();
 
   useEffect(() => {
     // Next frame so the opacity/transform transitions actually run.
@@ -68,34 +61,48 @@ export default function ContextIntroCard({ onComplete }: Props) {
           Context
         </div>
 
-        {/* The framing question — cream, fades in after */}
+        {/* Intro line 1 — cream, fades in after the kicker */}
         <h1
           className="font-serif leading-snug mt-6"
           style={{
             fontSize: 'clamp(26px, 7vw, 42px)',
             color: 'var(--th-surface)',
-            maxWidth: '18ch',
+            maxWidth: '20ch',
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(14px)',
             transition: 'opacity 800ms ease-out 1000ms, transform 800ms ease-out 1000ms',
           }}
         >
-          {question ? <FormattedText text={question} /> : 'So what context do we need?'}
+          Now that we&rsquo;ve learned a bit about this place&hellip;
         </h1>
 
-        {/* Continue — fades in last */}
+        {/* Intro line 2 — fades in after */}
+        <p
+          className="font-serif leading-snug mt-4"
+          style={{
+            fontSize: 'clamp(20px, 5.5vw, 32px)',
+            color: 'var(--th-surface)',
+            maxWidth: '20ch',
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? 'translateY(0)' : 'translateY(14px)',
+            transition: 'opacity 800ms ease-out 1500ms, transform 800ms ease-out 1500ms',
+          }}
+        >
+          let&rsquo;s ask about some context using the <strong style={{ color: 'var(--th-secondary)' }}>P.A.S.T.</strong>
+        </p>
+
+        {/* Ask about context — fades in last */}
         <button
           onClick={onComplete}
           className="mt-12 px-8 py-3 rounded-full text-[15px] font-semibold"
           style={{
-            color: 'var(--th-surface)',
-            border: '1.5px solid var(--th-surface)',
-            backgroundColor: 'transparent',
+            color: 'var(--th-journal)',
+            backgroundColor: 'var(--th-surface)',
             opacity: mounted ? 1 : 0,
-            transition: 'opacity 600ms ease-out 1900ms',
+            transition: 'opacity 600ms ease-out 2200ms',
           }}
         >
-          Continue
+          Ask about context
         </button>
       </section>
     </div>,

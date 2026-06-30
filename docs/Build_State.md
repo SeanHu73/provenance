@@ -2752,9 +2752,36 @@ reflection removed:** dropped the admin "Reflection question" editor +
 `act_reflection` → straight to `community_share`. (`act_reflection` phase +
 `completeActReflection`/`ActReflectionCard` remain as dead code for now.)
 
-**Still TODO (next slices):**
+**Context intro rewritten (2026-06-30 pt.20).** `ContextIntroCard` (shown at the
+`act_context_intro` phase) now reads the new generic intro — "Now that we've
+learned a bit about this place…" / "let's ask about some context using the
+**P.A.S.T.**" — with an **"Ask about context"** button (no longer poses a
+per-context framing question; questions are chosen in the journal now).
+⚠️ Its button still advances to the existing `ActContextCard` for now — routing it
+to the immersive Context Journal is part of the cohesive build below.
+
+**THE cohesive learner build (next, must be done together):** feeding the tour's
+**authored** contexts into the learner **Context Journal** + the new
+overlay/thumbnail interaction are interdependent — doing half creates a
+contradictory interim, so build as one:
+1. Convert `getActContexts(act)` (ActContextItem) → `ContextEntry` and show them
+   in the journal as the explorable questions (journal currently only reads
+   `context-entries`, which is empty).
+2. Render the immersive journal at the `act_context` phase (in-tour mode: a
+   Continue/exit instead of the home link), reached from the intro's "Ask about
+   context".
+3. The re-spec'd interaction: lens → questions; first tap = overlay (map/timeline
+   on top, TTS Title→pause→Long explanation, "Add" closes) → thumbnail (photo+
+   title) → tap-1 select + short summary + map/timeline updates → tap-2 full
+   context page (map/timeline, title, italic question, audio, photo, Read-Along
+   long, sources, related) + **edit**; overlay map/timeline unlocked on scroll.
+4. Adding = import a **per-account local copy** (account system later).
+
+**Still TODO (smaller):**
 - **Single end-of-tour reflection** with multiple options (replaces the removed
   per-act reflections) — set up later.
+- ⏰ photo slideshow for the context overlay.
+- Show the context intro **once per tour** (currently per act).
 - **AddContextFlow cleanup:** remove the framing-question field (deprecated); make
   Full Explanation **optional + collapsible**; default-hidden for the learner.
 - **Learner overlay + thumbnail select-levels (revised pt.15 spec):** a context
