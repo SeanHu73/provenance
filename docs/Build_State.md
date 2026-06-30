@@ -1,10 +1,14 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-06-29
-(latest: **Context authoring Stage 2 + 3** — admin "Add Context" items
-positioned after stops in the tour editor, a reusable AddContextFlow shared by
-learner + admin, and the learner sequence ending in "Add to Context Journal".
-See the Stage 2/3 entry in §15. Prior same-day: a new self-contained
+*Handoff document for the next Claude Code session. Last updated 2026-06-30
+(latest: the **learner context flow** — Context intro → "Ask about context" →
+in-tour **Context Journal** showing the act's authored contexts as **questions**,
+Add → thumbnail (Slice 1, pt.21). **See the maintained `## NEXT STEPS — Context
+Journal` list in §15 for what's left** (Slice 2 overlay/tap-levels, edit-on-copy,
+AI, etc.). Earlier same week: Context authoring Stage 2 + 3 — admin "Add Context"
+items, a reusable AddContextFlow, the immersive P.A.S.T. lens redesign, the
+question-centric model + walk-back, and the geometry/Storage save fixes — all in
+§15. Prior: a new self-contained
 **Context Journal** module — Mapbox map +
 draggable timeline + tappable P.A.S.T. lenses + an Add-context flow — replacing
 the old footer "Journal" entry. See §15. Prior: a multi-part **explorer simplification + end-of-act redesign** for
@@ -2790,41 +2794,41 @@ these.
 = the re-spec'd overlay (map/timeline on top, TTS Title→pause→Long, tap-1/tap-2
 thumbnail levels, edit, unlocked scroll).*
 
-**THE cohesive learner build (slices 2+):** feeding the tour's
-**authored** contexts into the learner **Context Journal** + the new
-overlay/thumbnail interaction are interdependent — doing half creates a
-contradictory interim, so build as one:
-1. Convert `getActContexts(act)` (ActContextItem) → `ContextEntry` and show them
-   in the journal as the explorable questions (journal currently only reads
-   `context-entries`, which is empty).
-2. Render the immersive journal at the `act_context` phase (in-tour mode: a
-   Continue/exit instead of the home link), reached from the intro's "Ask about
-   context".
-3. The re-spec'd interaction: lens → questions; first tap = overlay (map/timeline
-   on top, TTS Title→pause→Long explanation, "Add" closes) → thumbnail (photo+
-   title) → tap-1 select + short summary + map/timeline updates → tap-2 full
-   context page (map/timeline, title, italic question, audio, photo, Read-Along
-   long, sources, related) + **edit**; overlay map/timeline unlocked on scroll.
-4. Adding = import a **per-account local copy** (account system later).
+## NEXT STEPS — Context Journal (maintained list; prune each as it ships)
 
-**Still TODO (smaller):**
-- **Single end-of-tour reflection** with multiple options (replaces the removed
-  per-act reflections) — set up later.
-- ⏰ photo slideshow for the context overlay.
-- Show the context intro **once per tour** (currently per act).
-- **AddContextFlow cleanup:** remove the framing-question field (deprecated); make
-  Full Explanation **optional + collapsible**; default-hidden for the learner.
-- **Learner overlay + thumbnail select-levels (revised pt.15 spec):** a context
-  **thumbnail = photo + title only**. **Tap 1** → show short explanation AND
-  auto-**uncollapse the map+timeline** to that context's settings; accentuate the
-  thumbnail (pulse) to cue a second tap. **Tap 2** (while selected) → the long
-  **context overlay**. **Deselect** by tapping elsewhere (NOT the map/timeline, so
-  they stay adjustable).
-- **Editable imported contexts:** the learner can **edit any context they add**
-  — adding = importing a *local copy to their account* (note for the account
-  system later).
-- Lens opens → show its **questions** (tappable) rather than context cards.
-- ⏰ photo slideshow for the overlay (still pending).
+*Authoritative to-do for the in-progress learner build. Slice 1 (authored
+contexts → questions in the in-tour journal, Add → thumbnail) is DONE (pt.21).
+Remove items here as they're completed; record the completion in a dated pt.X
+note above.*
+
+1. **Slice 2 — learner overlay + thumbnail select-levels** (the core remaining
+   interaction):
+   - Tap a question → **overlay**: the context's **map/timeline pinned on top**,
+     TTS auto-reads **Title → ~1s pause → Long explanation** (autoplay on; else a
+     play button), photos below, expand-to-read-along between map and photos. X
+     closes back to the question. **Add** closes the overlay.
+   - After Add → **thumbnail = photo + title only**. **Tap 1** = select + show
+     short summary + map/timeline updates to that context (+ pulse to cue tap 2).
+     **Tap 2** = full **context page** (map/timeline, title, italic question,
+     audio, photo, Read-Along long explanation, sources, related). **Deselect** by
+     tapping elsewhere (NOT the map/timeline). Overlay map/timeline **unlocked on
+     scroll** (unlike the main page).
+2. **Edit on the added copy** — the learner can edit any context they've added
+   (their local copy); the authored original stays read-only. (The overlay's
+   "edit" affordance.)
+3. **AI / self-asked questions (Phase D)** — "Ask your own question" → pick lens →
+   dictate/type → AI fills the structure (title/short/long, **no** map/timeline);
+   CTA is **"Edit Context"** (not Add) → opens the editor with on-page
+   instructions to add map+timeline (photo optional). Mark `origin:'self'`. Wire
+   `/api/context-answer` (knowledge DB → academic/gov web → Claude Haiku).
+4. **Per-account isolation** — added copies are private to each learner (currently
+   in shared `context-entries`); needs the account system.
+5. **AddContextFlow** — make **Full Explanation optional + collapsible**, default
+   hidden for the learner. (Framing-question-first gate is already done.)
+6. **Single end-of-tour reflection** with multiple options (replaces the removed
+   per-act reflections).
+7. **Context intro once per tour** (currently fires per act).
+8. ⏰ **Photo slideshow** in the context overlay.
 
 **Mobile tap fix + context moderation (2026-06-29 pt.12).**
 - **Place tap on mobile:** finger taps rarely land on the tiny label, so the
