@@ -20,7 +20,7 @@ import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
 import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange } from './constants';
 import type { ContextEntry, MapType, TimeRange } from './types';
-import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds, getPlaceConfig, addContextEntry } from './store';
+import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds, getPlaceConfig, addContextEntry, deleteContextEntry } from './store';
 import ContextMapLoader from './components/ContextMapLoader';
 import ContextTimeline from './components/ContextTimeline';
 import PastPanel from './components/PastPanel';
@@ -109,6 +109,12 @@ export default function ContextJournal({ tourId }: Props) {
     }
   };
 
+  const removeEntry = async (id: string) => {
+    setFullEntry(null);
+    try { await deleteContextEntry(id); }
+    catch (err) { console.error('[context-journal] remove failed:', err); }
+  };
+
   // keep the full-screen entry in sync with live data (e.g. after edits)
   const liveFull = fullEntry ? entries.find((e) => e.id === fullEntry.id) ?? fullEntry : null;
 
@@ -189,6 +195,20 @@ export default function ContextJournal({ tourId }: Props) {
           onToggleSave={toggleSave}
           onOpenFull={setFullEntry}
         />
+
+        {/* Ask your own question (AI flow lands later; opens the add form for now) */}
+        <div className="px-5 pb-8 pt-1">
+          <button
+            onClick={() => setAddOpen(true)}
+            className="w-full py-3.5 rounded-2xl border-2 border-dashed flex items-center justify-center gap-2 font-semibold text-text-secondary hover:bg-black/[0.02]"
+            style={{ borderColor: 'var(--th-border)' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Ask your own question
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -206,6 +226,7 @@ export default function ContextJournal({ tourId }: Props) {
             saved={savedIds.has(liveFull.id)}
             onToggleSave={() => toggleSave(liveFull.id)}
             onClose={() => setFullEntry(null)}
+            onDelete={() => removeEntry(liveFull.id)}
           />
         )}
       </AnimatePresence>

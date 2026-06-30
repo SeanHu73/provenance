@@ -2720,6 +2720,25 @@ tour). If that fails, the `context-entries` Firestore rule must allow **delete**
 (The Phase-C unification will have the journal read the tour's authored contexts
 directly + import a per-account local copy, removing this split.)
 
+**Framing-question-first + ask-your-own + journal remove (2026-06-30 pt.17).**
+- **AddContextFlow is now two steps**: step 1 asks ONLY the framing question;
+  step 2 is the full form with the question shown on top (still editable).
+  Editing an existing context skips straight to step 2. Used by both the admin
+  "Add Context" and the learner journal.
+- **Context Journal bottom button** "Ask your own question" (keeps the top "Add
+  context"); both open the framing-question-first form. (AI branch = Phase D.)
+- **Remove from journal:** `ContextFullScreen` now takes `onDelete` and shows a
+  trash + 2-step confirm; `ContextJournal` wires it to `deleteContextEntry`. This
+  is how to kill an orphaned saved copy from the learner side.
+
+**Stanford context — found it.** Not hardcoded anywhere (grep clean). It's a
+`context-entries` Firestore doc. The standalone journal scope is
+`DEFAULT_PLACE_ID = 'memorial-church'`, which has **no admin moderation UI** (the
+admin "Submitted contexts" list is per-tour, scoped to the tour's id) — so a
+context saved under the default scope is invisible on the admin side. **Fix for
+the user:** open it in the journal ("Read more") → new **trash** → Remove. (Or
+delete the doc in the Firebase console.)
+
 **Still TODO (next slices):**
 - **AddContextFlow cleanup:** remove the framing-question field (deprecated); make
   Full Explanation **optional + collapsible**; default-hidden for the learner.

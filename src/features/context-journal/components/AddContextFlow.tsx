@@ -48,6 +48,12 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
   const [mapType, setMapType] = useState<MapType>(initial?.mapType ?? 'default');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Step 1 asks only for the framing question; step 2 is the full form (with the
+  // question shown on top, still editable). Editing an existing context skips to
+  // the details.
+  const [step, setStep] = useState<'question' | 'details'>(
+    (initial?.question?.trim() || initial?.title?.trim()) ? 'details' : 'question',
+  );
 
   // Place tool: the search bar lives here (above the map, not over it). The map
   // reports its active tool and any tapped place name; we resolve boundaries and
@@ -174,7 +180,41 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
           <button onClick={onClose} aria-label="Close" className="w-9 h-9 rounded-full flex items-center justify-center text-text-secondary hover:bg-black/5 text-2xl leading-none">&times;</button>
         </div>
 
+        {step === 'question' ? (
+          /* Step 1 — the framing question, on its own */
+          <div className="flex-1 overflow-y-auto px-5 py-8 flex flex-col">
+            <h3 className="font-display text-2xl text-text-primary leading-snug">What question does this context answer?</h3>
+            <p className="mt-1.5 font-serif text-text-secondary">Start with the question — you&apos;ll add the answer and details next.</p>
+            <input
+              value={question} onChange={(e) => setQuestion(e.target.value)} autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter' && question.trim()) setStep('details'); }}
+              placeholder="e.g. Where did Stanford get the money to build a university?"
+              className="mt-5 w-full px-4 py-3 rounded-xl border-2 bg-white text-[17px] font-serif italic text-text-primary focus:outline-none"
+              style={{ borderColor: 'var(--th-border)' }}
+            />
+            <div className="mt-auto pt-8">
+              <button
+                onClick={() => setStep('details')} disabled={!question.trim()}
+                className="w-full py-3 rounded-xl text-base font-semibold text-white disabled:opacity-30"
+                style={{ backgroundColor: 'var(--th-primary)' }}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        ) : (
+        <>
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+          {/* framing question — on top, still editable */}
+          <Field label="Framing question">
+            <input
+              value={question} onChange={(e) => setQuestion(e.target.value)}
+              placeholder="The question this context helps answer"
+              className="w-full px-3 py-2.5 rounded-lg border-2 bg-white text-[16px] font-serif italic text-text-primary focus:outline-none"
+              style={{ borderColor: 'var(--th-border)' }}
+            />
+          </Field>
+
           {/* lens */}
           <Field label="Lens">
             <div className="flex flex-wrap gap-2">
@@ -191,16 +231,6 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
                 </button>
               ))}
             </div>
-          </Field>
-
-          {/* framing question */}
-          <Field label="Framing question">
-            <input
-              value={question} onChange={(e) => setQuestion(e.target.value)}
-              placeholder="The question this context helps answer"
-              className="w-full px-3 py-2.5 rounded-lg border-2 bg-white text-[16px] font-serif italic text-text-primary focus:outline-none"
-              style={{ borderColor: 'var(--th-border)' }}
-            />
           </Field>
 
           {/* title */}
@@ -359,6 +389,8 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
             {saving ? 'Saving…' : 'Save context'}
           </button>
         </div>
+        </>
+        )}
       </motion.div>
     </motion.div>
   );

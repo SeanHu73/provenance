@@ -6,6 +6,7 @@
  * audio clips. Save/bookmark + dismiss controls. Animated with Framer Motion.
  */
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { LENS_BY_KEY, formatYear, contextPhotos, contextAudio } from '../constants';
 import type { ContextEntry } from '../types';
@@ -17,10 +18,13 @@ interface Props {
   saved: boolean;
   onToggleSave: () => void;
   onClose: () => void;
+  /** When provided, shows a "remove from journal" control (deletes the entry). */
+  onDelete?: () => void;
 }
 
-export default function ContextFullScreen({ entry, saved, onToggleSave, onClose }: Props) {
+export default function ContextFullScreen({ entry, saved, onToggleSave, onClose, onDelete }: Props) {
   const lens = LENS_BY_KEY[entry.pastCategory];
+  const [confirmDel, setConfirmDel] = useState(false);
   const photos = contextPhotos(entry);
   const audio = contextAudio(entry);
 
@@ -54,6 +58,19 @@ export default function ContextFullScreen({ entry, saved, onToggleSave, onClose 
             )}
           </div>
           <BookmarkButton saved={saved} onToggle={onToggleSave} colour={lens.colour} />
+          {onDelete && (confirmDel ? (
+            <span className="flex items-center gap-1 shrink-0">
+              <button onClick={onDelete} className="px-2 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700">Remove</button>
+              <button onClick={() => setConfirmDel(false)} className="px-2 py-1 text-xs text-text-secondary">Cancel</button>
+            </span>
+          ) : (
+            <button onClick={() => setConfirmDel(true)} aria-label="Remove from journal"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-text-secondary hover:bg-red-50 hover:text-red-600">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+            </button>
+          ))}
           <button
             onClick={onClose}
             aria-label="Close"
