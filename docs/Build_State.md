@@ -2760,7 +2760,37 @@ per-context framing question; questions are chosen in the journal now).
 ⚠️ Its button still advances to the existing `ActContextCard` for now — routing it
 to the immersive Context Journal is part of the cohesive build below.
 
-**THE cohesive learner build (next, must be done together):** feeding the tour's
+**Cohesive learner build — Slice 1 done (2026-06-30 pt.21).** The in-tour
+Context Journal now shows the act's **authored contexts as questions**, with
+Add → thumbnail. Confirmed model: authored vs added are **separate sources, not
+merged** (no lossy conversion — `adapters.authoredToEntry` is an in-memory
+display map only). Built:
+- `ContextEntry` gains `sourceId?` (the authored item an added copy came from) +
+  `origin?: 'authored' | 'added' | 'self'`.
+- `ContextJournal` props `authored?` / `inTour` / `onExit`. Display = authored
+  questions **minus any already added** + the learner's added/self copies.
+  `addAuthored` persists a learner copy (`sourceId`, `origin:'added'`) so the
+  question hides and a thumbnail appears.
+- `PastLens` renders `origin:'authored'` items as **QuestionRow**s (tap to open),
+  others as thumbnail cards.
+- `ContextFullScreen` gains `onAdd` (authored → "Add to Context Journal" footer;
+  added → the remove trash, not add).
+- `Journal.tsx`: the `act_context` phase now portals the in-tour `ContextJournal`
+  (authored = `getActContexts(act)` adapted; `onExit = completeActContext`)
+  instead of `ActContextCard`. Reached from the intro's "Ask about context".
+
+**AI / self-asked hook (for Phase D):** a self-asked question → AI fills the
+Add-Context structure (Title, short, long, audio/photo slots) **without map/
+timeline**; its CTA is **"Edit Context"** (not "Add") → opens the editor so the
+learner adds map+timeline, *with on-page instructions*. `origin:'self'` will mark
+these.
+
+⚠️ *tsc clean; NOT browser-tested. Slice-1 interim uses the existing
+`ContextFullScreen` reader (with ReadAloud) as the "explore" view + Add. Slice 2
+= the re-spec'd overlay (map/timeline on top, TTS Title→pause→Long, tap-1/tap-2
+thumbnail levels, edit, unlocked scroll).*
+
+**THE cohesive learner build (slices 2+):** feeding the tour's
 **authored** contexts into the learner **Context Journal** + the new
 overlay/thumbnail interaction are interdependent — doing half creates a
 contradictory interim, so build as one:

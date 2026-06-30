@@ -15,7 +15,7 @@
  * learner-side entry points wire into this later).
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
 import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange } from './constants';
@@ -31,9 +31,16 @@ interface Props {
   /** When opened from a tour, the journal scopes its config + contexts to it.
    *  (Per-stop scoping drops in here later.) */
   tourId?: string;
+  /** The tour's authored contexts for this act, shown as read-only *questions*
+   *  to explore. Adding one persists a learner copy carrying its `sourceId`. */
+  authored?: ContextEntry[];
+  /** In-tour: the back control continues the tour (via onExit) instead of going
+   *  home, and a footer "Continue" appears. */
+  inTour?: boolean;
+  onExit?: () => void;
 }
 
-export default function ContextJournal({ tourId }: Props) {
+export default function ContextJournal({ tourId, authored, inTour, onExit }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
 
   const [entries, setEntries] = useState<ContextEntry[]>([]);
@@ -115,18 +122,54 @@ export default function ContextJournal({ tourId }: Props) {
     catch (err) { console.error('[context-journal] remove failed:', err); }
   };
 
+  // Display = the act's authored questions (minus any already added) + the
+  // learner's own added/self copies. Authored items render as questions; the rest
+  // as thumbnails (distinguished by `origin`).
+  const displayEntries = useMemo(() => {
+    const addedSources = new Set(entries.map((e) => e.sourceId).filter(Boolean));
+    const questions = (authored ?? []).filter((a) => !addedSources.has(a.id));
+    return [...questions, ...entries];
+  }, [authored, entries]);
+
+  // Import a learner copy of an authored context (carries its sourceId so the
+  // authored question hides once added).
+  const addAuthored = async (entry: ContextEntry) => {
+    try {
+      await addContextEntry({
+        question: entry.question, title: entry.title, shortSummary: entry.shortSummary,
+        longExplanation: entry.longExplanation, pastCategory: entry.pastCategory,
+        timeRange: entry.timeRange, geometry: entry.geometry, camera: entry.camera,
+        mapType: entry.mapType, media: entry.media, thumbnailMediaId: entry.thumbnailMediaId,
+        sourceId: entry.id, origin: 'added', placeId: scopeId,
+      });
+      setFullEntry(null);
+    } catch (err) {
+      console.error('[context-journal] add failed:', err);
+    }
+  };
+
   // keep the full-screen entry in sync with live data (e.g. after edits)
-  const liveFull = fullEntry ? entries.find((e) => e.id === fullEntry.id) ?? fullEntry : null;
+  const liveFull = fullEntry
+    ? entries.find((e) => e.id === fullEntry.id) ?? (authored ?? []).find((a) => a.id === fullEntry.id) ?? fullEntry
+    : null;
 
   return (
     <div className="flex flex-col" style={{ height: '100dvh', backgroundColor: 'var(--th-bg)' }}>
       {/* top bar */}
       <header className="shrink-0 flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: 'var(--th-primary)' }}>
-        <Link href="/" aria-label="Back" className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </Link>
+        {inTour ? (
+          <button onClick={onExit} aria-label="Back to tour" className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+        ) : (
+          <Link href="/" aria-label="Back" className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </Link>
+        )}
         <h1 className="flex-1 font-display text-xl text-warm-white">Context Journal</h1>
         <button
           onClick={() => setAddOpen(true)}
@@ -186,7 +229,7 @@ export default function ContextJournal({ tourId }: Props) {
           </p>
         </div>
         <PastPanel
-          entries={entries}
+          entries={displayEntries}
           selectedRange={range}
           savedIds={savedIds}
           focusedId={focused?.id ?? null}
@@ -209,6 +252,18 @@ export default function ContextJournal({ tourId }: Props) {
             Ask your own question
           </button>
         </div>
+
+        {inTour && (
+          <div className="px-5 pb-8 pt-1">
+            <button
+              onClick={onExit}
+              className="w-full py-3.5 rounded-2xl text-base font-semibold text-warm-white"
+              style={{ backgroundColor: 'var(--th-primary)' }}
+            >
+              Continue tour
+            </button>
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -226,7 +281,8 @@ export default function ContextJournal({ tourId }: Props) {
             saved={savedIds.has(liveFull.id)}
             onToggleSave={() => toggleSave(liveFull.id)}
             onClose={() => setFullEntry(null)}
-            onDelete={() => removeEntry(liveFull.id)}
+            onDelete={liveFull.origin === 'authored' ? undefined : () => removeEntry(liveFull.id)}
+            onAdd={liveFull.origin === 'authored' ? () => addAuthored(liveFull) : undefined}
           />
         )}
       </AnimatePresence>

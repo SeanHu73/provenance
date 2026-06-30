@@ -70,6 +70,13 @@ export interface ContextEntry {
   /** The question(s) that led to this context (snapshot), shown at the bottom of
    *  the context page; tap one to read its context info. */
   taggedQuestions?: TaggedQuestion[];
+  /** When this is a learner's *added copy* of a designer-authored context, the id
+   *  of the authored `ActContextItem` it came from — so the journal hides the
+   *  authored question once it's been added. Absent for self-asked contexts. */
+  sourceId?: string;
+  /** Origin of the entry, for behaviour (authored = read-only question; added =
+   *  the learner's own copy; self = their own question/AI answer). */
+  origin?: 'authored' | 'added' | 'self';
   placeId: string;
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;

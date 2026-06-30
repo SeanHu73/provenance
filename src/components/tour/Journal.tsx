@@ -14,7 +14,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { getActiveStops, getTourMode } from '@/lib/tours-store';
-import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs } from '@/lib/tour-session';
+import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts } from '@/lib/tour-session';
 import IntroScreens from './cards/IntroScreens';
 import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
@@ -42,8 +42,10 @@ import CommunityForumCard from './cards/CommunityForumCard';
 import ResourcesCard from './cards/ResourcesCard';
 import ActIntroCard from './cards/ActIntroCard';
 import StopMapCard from './cards/StopMapCard';
+import { createPortal } from 'react-dom';
 import ContextIntroCard from './cards/ContextIntroCard';
-import ActContextCard from './cards/ActContextCard';
+import ContextJournal from '@/features/context-journal/ContextJournal';
+import { authoredToEntry } from '@/features/context-journal/adapters';
 import ContextQuestionsCard from './cards/ContextQuestionsCard';
 import ActReflectionCard from './cards/ActReflectionCard';
 import HearFromCommunityCard from './cards/HearFromCommunityCard';
@@ -345,8 +347,17 @@ export default function Journal({ onMapPeek }: JournalProps) {
           <ContextIntroCard onComplete={completeContextIntro} />
         )}
 
-        {phase === 'act_context' && currentStop && (
-          <ActContextCard onComplete={completeActContext} />
+        {phase === 'act_context' && currentStop && typeof document !== 'undefined' && createPortal(
+          (() => {
+            const act = findActOfStop(tour, currentStop.id);
+            const authored = getActContexts(act).map((c) => authoredToEntry(c, tour.id));
+            return (
+              <div className="fixed inset-0 z-[55]">
+                <ContextJournal tourId={tour.id} authored={authored} inTour onExit={completeActContext} />
+              </div>
+            );
+          })(),
+          document.body,
         )}
 
         {phase === 'act_context_questions' && currentStop && (

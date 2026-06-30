@@ -20,9 +20,12 @@ interface Props {
   onClose: () => void;
   /** When provided, shows a "remove from journal" control (deletes the entry). */
   onDelete?: () => void;
+  /** When provided (authored context not yet added), shows an "Add to context"
+   *  footer that imports a learner copy. */
+  onAdd?: () => void;
 }
 
-export default function ContextFullScreen({ entry, saved, onToggleSave, onClose, onDelete }: Props) {
+export default function ContextFullScreen({ entry, saved, onToggleSave, onClose, onDelete, onAdd }: Props) {
   const lens = LENS_BY_KEY[entry.pastCategory];
   const [confirmDel, setConfirmDel] = useState(false);
   const photos = contextPhotos(entry);
@@ -115,6 +118,19 @@ export default function ContextFullScreen({ entry, saved, onToggleSave, onClose,
             </div>
           )}
         </div>
+
+        {/* Add to context (authored, not yet added) */}
+        {onAdd && (
+          <div className="shrink-0 px-5 py-3 border-t" style={{ borderColor: 'var(--th-border)' }}>
+            <button
+              onClick={onAdd}
+              className="w-full py-3 rounded-xl text-base font-semibold text-warm-white"
+              style={{ backgroundColor: lens.colour }}
+            >
+              + Add to Context Journal
+            </button>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );

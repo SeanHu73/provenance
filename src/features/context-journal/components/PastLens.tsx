@@ -145,28 +145,60 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
             transition={{ duration: 0.26 }}
             className="overflow-hidden bg-warm-white"
           >
-            {entries.length === 0 ? (
-              <p className="px-5 py-4 text-sm text-text-muted">No context here yet.</p>
-            ) : (
-              <div className="flex gap-3 overflow-x-auto px-5 py-4 cj-hscroll">
-                {entries.map((entry) => (
-                  <ContextCard
-                    key={entry.id}
-                    entry={entry}
-                    colour={colour}
-                    active={focusedId === entry.id}
-                    saved={savedIds.has(entry.id)}
-                    onTap={() => handleThumb(entry)}
-                    onOpenFull={() => onOpenFull(entry)}
-                    onToggleSave={() => onToggleSave(entry.id)}
-                  />
-                ))}
-              </div>
-            )}
+            {(() => {
+              const questions = entries.filter((e) => e.origin === 'authored');
+              const added = entries.filter((e) => e.origin !== 'authored');
+              if (questions.length === 0 && added.length === 0) {
+                return <p className="px-5 py-4 text-sm text-text-muted">No context here yet.</p>;
+              }
+              return (
+                <div className="px-5 py-4 space-y-3">
+                  {/* unanswered questions to explore */}
+                  {questions.map((entry) => (
+                    <QuestionRow key={entry.id} entry={entry} colour={colour} onTap={() => onOpenFull(entry)} />
+                  ))}
+                  {/* contexts already added (thumbnails) */}
+                  {added.length > 0 && (
+                    <div className="flex gap-3 overflow-x-auto cj-hscroll -mx-1 px-1">
+                      {added.map((entry) => (
+                        <ContextCard
+                          key={entry.id}
+                          entry={entry}
+                          colour={colour}
+                          active={focusedId === entry.id}
+                          saved={savedIds.has(entry.id)}
+                          onTap={() => handleThumb(entry)}
+                          onOpenFull={() => onOpenFull(entry)}
+                          onToggleSave={() => onToggleSave(entry.id)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </motion.div>
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+/** An unexplored authored context, shown as its *question* — tap to open it. */
+function QuestionRow({ entry, colour, onTap }: { entry: ContextEntry; colour: string; onTap: () => void }) {
+  const label = entry.question?.trim() || entry.title?.trim() || 'Explore this context';
+  return (
+    <button
+      onClick={onTap}
+      className="w-full flex items-center gap-3 text-left rounded-xl border bg-warm-white px-4 py-3 hover:bg-black/[0.02]"
+      style={{ borderColor: 'var(--th-border)' }}
+    >
+      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: colour }} />
+      <span className="flex-1 min-w-0 font-serif text-[16px] text-text-primary leading-snug">{label}</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+        <path d="M9 6l6 6-6 6" />
+      </svg>
+    </button>
   );
 }
 
