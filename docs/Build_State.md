@@ -2807,6 +2807,18 @@ thumbnail levels, edit, unlocked scroll).*
   P.A.S.T." with the four lenses staggering in as colour chips → "Ask about
   context". (IntersectionObserver drives beat 2.)
 
+**Map fixes + lens surfacing + intro v2 (2026-06-30 pt.23).**
+- **Map:** double-click zoom **disabled in add/edit** (taps no longer zoom);
+  browse map now **draws** the focused context's geometry (region fill/outline or
+  pin, tinted to its lens) instead of only flying to it, and focusing a context
+  **auto-opens the map panel**; editing **fits to the seeded geometry** so the
+  saved shape is visible (was sometimes off-screen → looked blank).
+- **Lens surfaced:** admin Add-Context list items show a coloured left-border +
+  lens dot/label; AddContextFlow shows the selected lens's name + definition.
+- **Context intro v2:** huge "Context" title, opening line anchored low (negative
+  space up top), beat 2 left-aligned with **P·A·S·T stepping diagonally** (big
+  coloured initial + smaller rest of each word) and a directional arrow CTA.
+
 ## NEXT STEPS — Context Journal (maintained list; prune each as it ships)
 
 *Authoritative to-do for the in-progress learner build. Slice 1 (authored
