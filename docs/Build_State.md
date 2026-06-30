@@ -2698,6 +2698,28 @@ optional photos; the AI mirrors that structure minus media/map.
   item now has **question-tag pills** (`toggleContextQuestion` → `questionIds`).
   Dropped the legacy per-context "Plays after" (positioning now via questions).
 
+**Model walk-back + lens polish (2026-06-30 pt.16).** Per feedback the separate
+"Context questions" editor was confusing — **reverted**. Back to **one "Add
+Context"** where each context carries its **own question** (the AddContextFlow
+framing question = "provide a question first, then details"). Removed the admin
+questions editor + tag-pills + handlers; `ActContextItem.question` is the
+question again (the `ContextQuestion`/`Act.questions` types stay defined but
+unused for now — harmless). Lens polish: lightbulb (Attitudes) + gear
+(Technology) icons; banners shorter + bolder P/A/S/T watermark; **opening a lens
+slims its banner to title+icon**; **opening the map slims ALL banners** (via
+`compact`, doesn't auto-open them) and **restores them when the map collapses**;
+map height 38vh→30vh.
+
+**Stanford-context confusion — explained (not a bug).** Two separate stores:
+the tour's **authored** contexts (`Act.contexts` / ActContextItem, edited in "Add
+Context") vs the learner's **saved journal copies** (`context-entries`, created
+when "Add to Context Journal" is tapped; `placeId = tour.id`). Removing the Add
+Context *item* does NOT remove a saved journal copy. Delete journal copies via the
+tour editor → Context Journal → **"Submitted contexts"** list (scoped to this
+tour). If that fails, the `context-entries` Firestore rule must allow **delete**.
+(The Phase-C unification will have the journal read the tour's authored contexts
+directly + import a per-account local copy, removing this split.)
+
 **Still TODO (next slices):**
 - **AddContextFlow cleanup:** remove the framing-question field (deprecated); make
   Full Explanation **optional + collapsible**; default-hidden for the learner.

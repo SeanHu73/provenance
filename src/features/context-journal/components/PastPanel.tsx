@@ -20,12 +20,14 @@ interface Props {
   savedIds: Set<string>;
   /** The currently focused context (drives the map); null = none. */
   focusedId: string | null;
+  /** When the map panel is open, lens banners slim down. */
+  compact?: boolean;
   onFocus: (entry: ContextEntry | null) => void;
   onToggleSave: (id: string) => void;
   onOpenFull: (entry: ContextEntry) => void;
 }
 
-export default function PastPanel({ entries, selectedRange, savedIds, focusedId, onFocus, onToggleSave, onOpenFull }: Props) {
+export default function PastPanel({ entries, selectedRange, savedIds, focusedId, compact, onFocus, onToggleSave, onOpenFull }: Props) {
   const byLens = useMemo(() => {
     const inRange = entries.filter((e) =>
       overlapsRange({ start: e.timeRange.start, end: e.timeRange.end }, selectedRange),
@@ -45,6 +47,7 @@ export default function PastPanel({ entries, selectedRange, savedIds, focusedId,
           entries={items}
           savedIds={savedIds}
           focusedId={focusedId}
+          compact={compact}
           onFocus={onFocus}
           onToggleSave={onToggleSave}
           onOpenFull={onOpenFull}

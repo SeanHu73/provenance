@@ -19,7 +19,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-google-maps';
-import { Tour, Stop, Detour, StopPhoto, Act, ActContextItem, ContextQuestion, PastLens, TourMode } from '@/lib/types';
+import { Tour, Stop, Detour, StopPhoto, Act, ActContextItem, TourMode } from '@/lib/types';
 import { getTour, saveTour, deleteTour, blankStop, blankDetour, getActiveStops, setActiveStops, duplicateStops, getTourMode, blankAct, blankOpeningFrame } from '@/lib/tours-store';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -38,13 +38,6 @@ function makeCtxId(): string {
     : `ctx_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-/** The four P.A.S.T. lenses for the question editor's lens picker. */
-const LENS_OPTIONS: { key: PastLens; label: string }[] = [
-  { key: 'place', label: 'Place' },
-  { key: 'attitudes', label: 'Attitudes' },
-  { key: 'society', label: 'Society' },
-  { key: 'technology', label: 'Technology' },
-];
 import { registerPhotoInLibrary } from '@/lib/photo-sync-tour';
 
 const CHURCH_LOCATION = { lat: 37.42700, lng: -122.17015 };
@@ -359,40 +352,6 @@ export default function TourEditorPage() {
     const act = (tour?.acts || []).find((a) => a.id === actId);
     updateAct(actId, { contexts: (act?.contexts ?? []).filter((c) => c.id !== itemId) });
   };
-  // ── Context questions (designer-posed; contexts tag to them) ──
-  const addActQuestion = (actId: string) => {
-    const act = (tour?.acts || []).find((a) => a.id === actId);
-    if (!act) return;
-    const newQ: ContextQuestion = {
-      id: makeCtxId(),
-      afterStopId: act.stopIds[act.stopIds.length - 1] ?? '',
-      lens: 'place', text: '', contextInfo: '', media: [], thumbnailMediaId: null,
-    };
-    updateAct(actId, { questions: [...(act.questions ?? []), newQ] });
-  };
-  const updateActQuestion = (actId: string, qId: string, patch: Partial<ContextQuestion>) => {
-    const act = (tour?.acts || []).find((a) => a.id === actId);
-    updateAct(actId, { questions: (act?.questions ?? []).map((q) => (q.id === qId ? { ...q, ...patch } : q)) });
-  };
-  const removeActQuestion = (actId: string, qId: string) => {
-    const act = (tour?.acts || []).find((a) => a.id === actId);
-    // also untag this question from any contexts
-    updateAct(actId, {
-      questions: (act?.questions ?? []).filter((q) => q.id !== qId),
-      contexts: (act?.contexts ?? []).map((c) => ({ ...c, questionIds: (c.questionIds ?? []).filter((id) => id !== qId) })),
-    });
-  };
-  const toggleContextQuestion = (actId: string, itemId: string, qId: string) => {
-    const act = (tour?.acts || []).find((a) => a.id === actId);
-    updateAct(actId, {
-      contexts: (act?.contexts ?? []).map((c) => {
-        if (c.id !== itemId) return c;
-        const ids = c.questionIds ?? [];
-        return { ...c, questionIds: ids.includes(qId) ? ids.filter((id) => id !== qId) : [...ids, qId] };
-      }),
-    });
-  };
-
   const moveAct = (actId: string, direction: -1 | 1) => {
     const acts = tour?.acts || [];
     const idx = acts.findIndex((a) => a.id === actId);
@@ -1883,91 +1842,27 @@ export default function TourEditorPage() {
                       </ul>
                     )}
 
-                    {/* Context questions — designer-posed; contexts tag to them */}
-                    <div className="rounded border border-stone-300 bg-white p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-stone-600 uppercase tracking-wide">Context questions</p>
-                        <button onClick={() => addActQuestion(act.id)} className="px-2.5 py-1 rounded bg-emerald-700 text-white text-xs hover:bg-emerald-800">+ Add question</button>
-                      </div>
-                      <p className="text-[10px] text-stone-400">A question the learner can ask, on one P.A.S.T. lens. Tag contexts (below) to a question; one question can surface several contexts.</p>
-                      {(act.questions ?? []).length === 0 ? (
-                        <p className="text-xs text-stone-400 italic">No questions yet.</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {(act.questions ?? []).map((q) => (
-                            <li key={q.id} className="rounded border border-stone-200 p-2 space-y-1.5">
-                              <div className="flex items-center gap-2">
-                                <select value={q.lens} onChange={(e) => updateActQuestion(act.id, q.id, { lens: e.target.value as PastLens })}
-                                  className="border border-stone-300 rounded px-1.5 py-1 text-xs">
-                                  {LENS_OPTIONS.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
-                                </select>
-                                <input value={q.text} onChange={(e) => updateActQuestion(act.id, q.id, { text: e.target.value })}
-                                  placeholder="The question (e.g. How did industry reshape the economy?)"
-                                  className="flex-1 min-w-0 border border-stone-300 rounded px-2 py-1 text-sm" />
-                                <button onClick={() => removeActQuestion(act.id, q.id)} className="text-xs text-red-600 hover:underline shrink-0">Remove</button>
-                              </div>
-                              <textarea value={q.contextInfo} onChange={(e) => updateActQuestion(act.id, q.id, { contextInfo: e.target.value })}
-                                rows={2} placeholder="Context info shown on “Learn more” (optional — the tagged contexts carry the detail)."
-                                className="w-full border border-stone-300 rounded px-2 py-1 text-xs" />
-                              <label className="flex items-center gap-1 text-[11px] text-stone-500">
-                                Posed after:
-                                <select value={q.afterStopId} onChange={(e) => updateActQuestion(act.id, q.id, { afterStopId: e.target.value })}
-                                  className="border border-stone-300 rounded px-1 py-0.5 text-[11px]">
-                                  {act.stopIds.map((sid, i) => {
-                                    const s = activeStops.find((x) => x.id === sid);
-                                    return <option key={sid} value={sid}>{i + 1}. {s?.title || sid}</option>;
-                                  })}
-                                </select>
-                              </label>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-
-                    {/* Add Context — rich items (lens, media, map) tagged to questions */}
+                    {/* Add Context — each context carries its own question + details */}
                     <div className="rounded border border-stone-300 bg-white p-3 space-y-2">
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-semibold text-stone-600 uppercase tracking-wide">Add Context</p>
                         <button onClick={() => setCtxEditor({ actId: act.id, itemId: null })} className="px-2.5 py-1 rounded bg-blue-700 text-white text-xs hover:bg-blue-800">+ Add context</button>
                       </div>
-                      <p className="text-[10px] text-stone-400">Rich contexts the learner can add to their journal. Tag each to the question(s) it answers.</p>
+                      <p className="text-[10px] text-stone-400">Each context is a question the learner can ask plus the answer (title, explanation, map, timeline, photos). It appears under its P.A.S.T. lens in the Context Journal.</p>
                       {(act.contexts ?? []).length === 0 ? (
                         <p className="text-xs text-stone-400 italic">No contexts yet.</p>
                       ) : (
                         <ul className="space-y-2">
-                          {(act.contexts ?? []).map((item) => {
-                            const questions = act.questions ?? [];
-                            const tagged = new Set(item.questionIds ?? []);
-                            return (
-                              <li key={item.id} className="rounded border border-stone-200 p-2">
-                                <div className="flex items-start gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-semibold text-stone-800 truncate">{item.title || <span className="text-stone-400 italic">Untitled</span>}</div>
-                                    {item.shortSummary && <div className="text-xs text-stone-500 truncate">{item.shortSummary}</div>}
-                                  </div>
-                                  <button onClick={() => setCtxEditor({ actId: act.id, itemId: item.id })} className="text-xs text-blue-700 hover:underline shrink-0">Edit</button>
-                                  <button onClick={() => removeActContextItem(act.id, item.id)} className="text-xs text-red-600 hover:underline shrink-0">Remove</button>
-                                </div>
-                                {/* tag this context to the question(s) it answers */}
-                                <div className="mt-1.5">
-                                  <span className="text-[11px] text-stone-500">Answers question(s):</span>
-                                  {questions.length === 0 ? (
-                                    <span className="ml-1 text-[11px] text-stone-400 italic">add a question above first</span>
-                                  ) : (
-                                    <div className="mt-1 flex flex-wrap gap-1.5">
-                                      {questions.map((q) => (
-                                        <button key={q.id} onClick={() => toggleContextQuestion(act.id, item.id, q.id)}
-                                          className={`px-2 py-0.5 rounded-full text-[11px] border ${tagged.has(q.id) ? 'bg-blue-700 text-white border-blue-700' : 'text-stone-600 border-stone-300 hover:bg-stone-50'}`}>
-                                          {(LENS_OPTIONS.find((l) => l.key === q.lens)?.label ?? q.lens)}: {q.text.trim() ? (q.text.length > 28 ? q.text.slice(0, 28) + '…' : q.text) : '(untitled)'}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </li>
-                            );
-                          })}
+                          {(act.contexts ?? []).map((item) => (
+                            <li key={item.id} className="rounded border border-stone-200 p-2 flex items-start gap-2">
+                              <div className="flex-1 min-w-0">
+                                {item.question && <div className="text-xs italic text-stone-500 truncate">{item.question}</div>}
+                                <div className="text-sm font-semibold text-stone-800 truncate">{item.title || <span className="text-stone-400 italic">Untitled</span>}</div>
+                              </div>
+                              <button onClick={() => setCtxEditor({ actId: act.id, itemId: item.id })} className="text-xs text-blue-700 hover:underline shrink-0">Edit</button>
+                              <button onClick={() => removeActContextItem(act.id, item.id)} className="text-xs text-red-600 hover:underline shrink-0">Remove</button>
+                            </li>
+                          ))}
                         </ul>
                       )}
                     </div>

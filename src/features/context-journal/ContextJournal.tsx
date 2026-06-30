@@ -149,7 +149,7 @@ export default function ContextJournal({ tourId }: Props) {
         </button>
         {showMapPanel && (
           <>
-            <div style={{ height: '38vh' }}>
+            <div style={{ height: '30vh' }}>
               <ContextMapLoader
                 mode="browse"
                 geolocate
@@ -184,6 +184,7 @@ export default function ContextJournal({ tourId }: Props) {
           selectedRange={range}
           savedIds={savedIds}
           focusedId={focused?.id ?? null}
+          compact={showMapPanel}
           onFocus={handleFocus}
           onToggleSave={toggleSave}
           onOpenFull={setFullEntry}

@@ -3,14 +3,11 @@
 /**
  * A single P.A.S.T. lens — an immersive "door" the learner enters.
  *
- * Collapsed, each lens is a large colour-washed panel with its emblem, the big
- * initial letter as a watermark, the lens name, and a count of what's inside —
- * it should feel like stepping into that way of looking at the past, not reading
- * a list row. Tapping the panel opens it; tapping the **name** reveals the lens's
- * short definition.
- *
- * Open, the lens reveals its contexts. (The lens→question presentation and the
- * new thumbnail select-levels land in the next Phase-C slices.)
+ * Collapsed, each lens is a colour-washed panel with its emblem, a bold initial
+ * watermark, the lens name, and a count of what's inside. Two things slim the
+ * banner down to just the title + icon: opening the lens, or opening the map at
+ * the top of the page (`compact`) — so the framework stays scannable. Tapping the
+ * panel toggles it open; tapping the **name** reveals the lens's definition.
  */
 
 import { useState } from 'react';
@@ -24,30 +21,34 @@ interface Props {
   entries: ContextEntry[];
   savedIds: Set<string>;
   focusedId: string | null;
+  /** When the map panel is open, all lens banners slim to title + icon. */
+  compact?: boolean;
   onFocus: (entry: ContextEntry | null) => void;
   onToggleSave: (id: string) => void;
   onOpenFull: (entry: ContextEntry) => void;
 }
 
 /** Per-lens emblem — a simple line glyph that hints at what the lens looks at. */
-function LensEmblem({ kind }: { kind: PastCategory }) {
-  const common = { width: 30, height: 30, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+function LensEmblem({ kind, size = 30 }: { kind: PastCategory; size?: number }) {
+  const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
   switch (kind) {
     case 'place': // mountains / terrain
       return <svg {...common}><path d="M3 19l5.5-8 3.5 4.5L15 11l6 8z" /><circle cx="7" cy="6.5" r="1.6" /></svg>;
-    case 'attitudes': // ideas / values — a radiant sun
-      return <svg {...common}><circle cx="12" cy="12" r="3.4" /><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6" /></svg>;
+    case 'attitudes': // ideas / values — a lightbulb
+      return <svg {...common}><path d="M9.5 18h5M10.5 21h3" /><path d="M15.2 14c.2-1 .7-1.8 1.45-2.55A4.8 4.8 0 0 0 18 8 6 6 0 1 0 6.8 11.45C7.55 12.2 8.05 13 8.25 14" /></svg>;
     case 'society': // people
       return <svg {...common}><circle cx="9" cy="8" r="2.6" /><circle cx="16.5" cy="9.5" r="2" /><path d="M4 19c0-2.8 2.2-4.6 5-4.6s5 1.8 5 4.6M15 19c0-1.9.9-3.3 2.5-3.9" /></svg>;
     case 'technology': // gear
-      return <svg {...common}><circle cx="12" cy="12" r="3" /><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8" /></svg>;
+      return <svg {...common}><circle cx="12" cy="12" r="3.2" /><path d="M12 4.2l1.1 1.7 2-.4.4 2 1.7 1.1-1 1.7 1 1.7-1.7 1.1-.4 2-2-.4L12 19.8l-1.1-1.7-2 .4-.4-2-1.7-1.1 1-1.7-1-1.7 1.7-1.1.4-2 2 .4z" /></svg>;
   }
 }
 
-export default function PastLens({ lens, entries, savedIds, focusedId, onFocus, onToggleSave, onOpenFull }: Props) {
+export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, onFocus, onToggleSave, onOpenFull }: Props) {
   const [open, setOpen] = useState(false);
   const [showDef, setShowDef] = useState(false);
   const colour = lens.colour;
+  // Slim banner when the lens is open, or when the map panel is up.
+  const slim = open || compact;
 
   const toggleOpen = () => {
     setOpen((o) => {
@@ -68,59 +69,72 @@ export default function PastLens({ lens, entries, savedIds, focusedId, onFocus, 
       <button
         onClick={toggleOpen}
         aria-expanded={open}
-        className="relative w-full text-left px-5 pt-5 pb-4 flex flex-col gap-3"
-        style={{ backgroundColor: colour, minHeight: 148 }}
+        className={`relative w-full text-left flex transition-all ${slim ? 'flex-row items-center gap-3 px-5 py-3' : 'flex-col gap-3 px-5 pt-4 pb-3.5'}`}
+        style={{ backgroundColor: colour, minHeight: slim ? 56 : 120 }}
       >
         {/* depth wash */}
         <span className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-black/30 pointer-events-none" />
-        {/* big initial watermark */}
-        <span className="absolute right-1 -bottom-7 font-display leading-none text-white/10 select-none pointer-events-none"
-          style={{ fontSize: 150 }}>{lens.label[0]}</span>
-        {/* emblem */}
-        <span className="absolute top-4 right-4 text-white/85 pointer-events-none">
-          <LensEmblem kind={lens.key} />
-        </span>
+        {/* big initial watermark (bolder) */}
+        {!slim && (
+          <span className="absolute right-2 -bottom-8 font-display leading-none text-white/20 select-none pointer-events-none"
+            style={{ fontSize: 160 }}>{lens.label[0]}</span>
+        )}
 
-        <div className="relative">
-          {/* name → tap for definition */}
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); setShowDef((d) => !d); }}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setShowDef((d) => !d); } }}
-            aria-pressed={showDef}
-            className="inline-flex items-center gap-1.5 font-display text-3xl text-warm-white leading-none"
-          >
-            <span className="border-b border-dotted border-white/45 pb-0.5">{lens.label}</span>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-70">
-              <circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
-            </svg>
-          </span>
-          <AnimatePresence initial={false}>
-            {showDef && (
-              <motion.p
-                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden font-serif italic text-warm-white/90 text-[15px] leading-snug mt-1.5 max-w-[88%]"
-              >
-                {lens.definition}
-              </motion.p>
+        {slim ? (
+          <>
+            <span className="relative text-warm-white/90 shrink-0"><LensEmblem kind={lens.key} size={22} /></span>
+            <span className="relative font-display text-xl text-warm-white leading-none">{lens.label}</span>
+            {entries.length > 0 && (
+              <span className="relative ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold tabular-nums bg-white/20 text-warm-white">{entries.length}</span>
             )}
-          </AnimatePresence>
-        </div>
-
-        <div className="relative mt-auto flex items-center justify-between">
-          <span className="text-warm-white/90 text-sm font-semibold">
-            {entries.length > 0 ? `${entries.length} ${entries.length === 1 ? 'context' : 'contexts'} to explore` : 'No contexts yet'}
-          </span>
-          <span className="inline-flex items-center gap-1 text-warm-white text-sm font-semibold">
-            {open ? 'Close' : 'Explore'}
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
-              className={`transition-transform ${open ? 'rotate-180' : ''}`}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
+              className={`relative ml-auto text-warm-white transition-transform ${open ? 'rotate-180' : ''}`}>
               <polyline points="6 9 12 15 18 9" />
             </svg>
-          </span>
-        </div>
+          </>
+        ) : (
+          <>
+            {/* emblem */}
+            <span className="absolute top-4 right-4 text-white/85 pointer-events-none"><LensEmblem kind={lens.key} /></span>
+            <div className="relative">
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); setShowDef((d) => !d); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setShowDef((d) => !d); } }}
+                aria-pressed={showDef}
+                className="inline-flex items-center gap-1.5 font-display text-3xl text-warm-white leading-none"
+              >
+                <span className="border-b border-dotted border-white/45 pb-0.5">{lens.label}</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-70">
+                  <circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
+                </svg>
+              </span>
+              <AnimatePresence initial={false}>
+                {showDef && (
+                  <motion.p
+                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden font-serif italic text-warm-white/90 text-[15px] leading-snug mt-1.5 max-w-[88%]"
+                  >
+                    {lens.definition}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </div>
+            <div className="relative mt-auto flex items-center justify-between">
+              <span className="text-warm-white/90 text-sm font-semibold">
+                {entries.length > 0 ? `${entries.length} ${entries.length === 1 ? 'context' : 'contexts'} to explore` : 'No contexts yet'}
+              </span>
+              <span className="inline-flex items-center gap-1 text-warm-white text-sm font-semibold">
+                Explore
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </span>
+            </div>
+          </>
+        )}
       </button>
 
       {/* contents */}
