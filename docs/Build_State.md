@@ -2687,6 +2687,32 @@ Question`; media/geometry/timeRange live on the context). Designer side (Phase B
 must let the designer author the question + context answer + map/timeline +
 optional photos; the AI mirrors that structure minus media/map.
 
+**Immersive lens redesign + thin Phase B (2026-06-30 pt.15).**
+- **P.A.S.T. redesign** (`PastLens`/`PastPanel`/`ContextJournal`): each lens is now
+  a large colour-washed "door" (depth wash, emblem, big initial watermark, serif
+  name tap-for-definition, count) instead of a thin row; intro restyled to a
+  display heading + italic subline (the old line read "cheap").
+- **Thin Phase B** (tour editor): per act, a **"Context questions"** editor (lens
+  picker + question text + optional contextInfo + posed-after stop:
+  `addActQuestion`/`updateActQuestion`/`removeActQuestion`), and each Add-Context
+  item now has **question-tag pills** (`toggleContextQuestion` → `questionIds`).
+  Dropped the legacy per-context "Plays after" (positioning now via questions).
+
+**Still TODO (next slices):**
+- **AddContextFlow cleanup:** remove the framing-question field (deprecated); make
+  Full Explanation **optional + collapsible**; default-hidden for the learner.
+- **Learner overlay + thumbnail select-levels (revised pt.15 spec):** a context
+  **thumbnail = photo + title only**. **Tap 1** → show short explanation AND
+  auto-**uncollapse the map+timeline** to that context's settings; accentuate the
+  thumbnail (pulse) to cue a second tap. **Tap 2** (while selected) → the long
+  **context overlay**. **Deselect** by tapping elsewhere (NOT the map/timeline, so
+  they stay adjustable).
+- **Editable imported contexts:** the learner can **edit any context they add**
+  — adding = importing a *local copy to their account* (note for the account
+  system later).
+- Lens opens → show its **questions** (tappable) rather than context cards.
+- ⏰ photo slideshow for the overlay (still pending).
+
 **Mobile tap fix + context moderation (2026-06-29 pt.12).**
 - **Place tap on mobile:** finger taps rarely land on the tiny label, so the
   click-a-name `queryRenderedFeatures` box was widened (6→16 px) and now **falls
