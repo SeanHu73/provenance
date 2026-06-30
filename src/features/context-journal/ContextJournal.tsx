@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
-import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange } from './constants';
+import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange, LENS_BY_KEY } from './constants';
 import type { ContextEntry, MapType, TimeRange } from './types';
 import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds, getPlaceConfig, addContextEntry, deleteContextEntry } from './store';
 import ContextMapLoader from './components/ContextMapLoader';
@@ -78,7 +78,8 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
   // was authored on; collapsing clears focus (map returns to the default view).
   const handleFocus = (entry: ContextEntry | null) => {
     setFocused(entry);
-    if (entry) setMapType(entry.mapType ?? 'default');
+    // Focusing a context reveals the map so its highlighted area is visible.
+    if (entry) { setMapType(entry.mapType ?? 'default'); setShowMapPanel(true); }
   };
 
   useEffect(() => {
@@ -208,7 +209,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
                 defaultView={defaultView}
                 mapType={mapType}
                 onMapTypeChange={setMapType}
-                focus={focused ? { geometry: focused.geometry, camera: focused.camera } : null}
+                focus={focused ? { geometry: focused.geometry, camera: focused.camera, colour: LENS_BY_KEY[focused.pastCategory]?.colour } : null}
               />
             </div>
             <div className="border-t" style={{ borderColor: 'var(--th-border)' }}>

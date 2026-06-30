@@ -42,8 +42,9 @@ interface Props {
   defaultView?: { center: [number, number]; zoom: number } | null;
   /** Show the GPS "locate me" control (a dot at the viewer's position + recenter). */
   geolocate?: boolean;
-  /** Fly the map to show this context's geometry; null returns to defaultView. */
-  focus?: { geometry: Geometry | null; camera: Camera | null } | null;
+  /** Show this context's geometry on the browse map (drawn + framed); null clears
+   *  it and returns to defaultView. `colour` tints the highlight to its lens. */
+  focus?: { geometry: Geometry | null; camera: Camera | null; colour?: string } | null;
   /** Fires on every settle (moveend) so an admin can capture the current view. */
   onViewportChange?: (v: { center: [number, number]; zoom: number; bounds: Bounds }) => void;
   /** Basemap style. */
@@ -203,6 +204,9 @@ export default function ContextMap({
       attributionControl: false,
     });
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+    // In add/edit mode a tap (to drop a pin, pick a place, or finish a region)
+    // must NOT also zoom — disable double-click zoom so taps don't jump the map.
+    if (mode === 'add') map.doubleClickZoom.disable();
     if (geolocate) {
       map.addControl(new mapboxgl.GeolocateControl({
         positionOptions: { enableHighAccuracy: true },
@@ -245,11 +249,32 @@ export default function ContextMap({
     map.once('style.load', () => map.resize());
   }, [mapType]);
 
-  // ── fly to a focused context's area; null returns to the default view ──
+  // ── browse: draw + frame the focused context's geometry; null clears it ──
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || mode !== 'browse') return;
+    const SRC = 'cj-focus';
+    const colour = focus?.colour ?? '#175E54';
     const apply = () => {
+      // upsert the highlight source + layers, tinted to the lens colour
+      const data = {
+        type: 'FeatureCollection' as const,
+        features: focus?.geometry ? [{ type: 'Feature' as const, properties: {}, geometry: focus.geometry }] : [],
+      };
+      const existing = map.getSource(SRC) as mapboxgl.GeoJSONSource | undefined;
+      if (!existing) {
+        map.addSource(SRC, { type: 'geojson', data: data as GeoJSON.FeatureCollection });
+        map.addLayer({ id: 'cj-focus-fill', type: 'fill', source: SRC, filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': colour, 'fill-opacity': 0.28 } });
+        map.addLayer({ id: 'cj-focus-line', type: 'line', source: SRC, filter: ['==', '$type', 'Polygon'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colour, 'line-width': 2.5 } });
+        map.addLayer({ id: 'cj-focus-pt-outer', type: 'circle', source: SRC, filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 9, 'circle-color': '#FFFFFF' } });
+        map.addLayer({ id: 'cj-focus-pt-inner', type: 'circle', source: SRC, filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 6, 'circle-color': colour } });
+      } else {
+        existing.setData(data as GeoJSON.FeatureCollection);
+        if (map.getLayer('cj-focus-fill')) map.setPaintProperty('cj-focus-fill', 'fill-color', colour);
+        if (map.getLayer('cj-focus-line')) map.setPaintProperty('cj-focus-line', 'line-color', colour);
+        if (map.getLayer('cj-focus-pt-inner')) map.setPaintProperty('cj-focus-pt-inner', 'circle-color', colour);
+      }
+      // then frame it
       if (focus?.geometry) {
         const bb = bboxOf(focus.geometry);
         if (bb) {
@@ -264,7 +289,7 @@ export default function ContextMap({
       }
     };
     if (map.isStyleLoaded()) apply(); else map.once('load', apply);
-  }, [focus, defaultView]);
+  }, [focus, defaultView, mode]);
 
   // ── add-mode drawing tools ──
   useEffect(() => {
@@ -308,10 +333,13 @@ export default function ContextMap({
       drawRef.current = draw;
       map.addControl(draw);
 
-      // Seed any existing geometry (edit case).
+      // Seed any existing geometry (edit case) and frame it so it's visible —
+      // otherwise the saved shape can sit off-screen and look like it's gone.
       if (initialGeometry) {
         draw.add({ type: 'Feature', properties: {}, geometry: initialGeometry as Geometry });
         setHasGeometry(true);
+        const bb = bboxOf(initialGeometry as Geometry);
+        if (bb) map.once('idle', () => map.fitBounds(bb, { padding: 44, duration: 0, maxZoom: 16 }));
       }
 
       map.on('draw.create', onCreate);
