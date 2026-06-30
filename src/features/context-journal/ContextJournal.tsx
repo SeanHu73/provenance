@@ -50,6 +50,9 @@ export default function ContextJournal({ tourId }: Props) {
     setDomain(next);
     setRange((r) => clampRange(r, next));
   };
+  // The map + timeline collapse from the top (collapsed by default) so the
+  // P.A.S.T. framework gets most of the space — the focus is choosing a question.
+  const [showMapPanel, setShowMapPanel] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [fullEntry, setFullEntry] = useState<ContextEntry | null>(null);
   // The context the viewer has tapped — drives the map (fly to its area); null
@@ -130,25 +133,44 @@ export default function ContextJournal({ tourId }: Props) {
         </button>
       </header>
 
-      {/* 1 — map (top) */}
-      <div className="shrink-0" style={{ height: '42vh' }}>
-        <ContextMapLoader
-          mode="browse"
-          geolocate
-          defaultView={defaultView}
-          mapType={mapType}
-          onMapTypeChange={setMapType}
-          focus={focused ? { geometry: focused.geometry, camera: focused.camera } : null}
-        />
-      </div>
-
-      {/* 2 — timeline */}
+      {/* 1 — collapsible map + timeline (collapsed by default) */}
       <div className="shrink-0 border-b" style={{ borderColor: 'var(--th-border)', backgroundColor: 'var(--th-surface)' }}>
-        <ContextTimeline value={range} onChange={setRange} domain={domain} onDomainChange={changeDomain} />
+        <button
+          onClick={() => setShowMapPanel((v) => !v)}
+          className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold text-text-secondary"
+          aria-expanded={showMapPanel}
+        >
+          <span>Map &amp; timeline</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+            strokeLinecap="round" strokeLinejoin="round"
+            className={`transition-transform ${showMapPanel ? 'rotate-180' : ''}`}>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        {showMapPanel && (
+          <>
+            <div style={{ height: '38vh' }}>
+              <ContextMapLoader
+                mode="browse"
+                geolocate
+                defaultView={defaultView}
+                mapType={mapType}
+                onMapTypeChange={setMapType}
+                focus={focused ? { geometry: focused.geometry, camera: focused.camera } : null}
+              />
+            </div>
+            <div className="border-t" style={{ borderColor: 'var(--th-border)' }}>
+              <ContextTimeline value={range} onChange={setRange} domain={domain} onDomainChange={changeDomain} />
+            </div>
+          </>
+        )}
       </div>
 
-      {/* 3 — P.A.S.T. panel (remaining space) */}
+      {/* 2 — P.A.S.T. framework (the main space) */}
       <div className="flex-1 overflow-y-auto">
+        <p className="px-5 pt-5 pb-1 font-serif text-xl leading-snug text-text-primary">
+          Tap on a lens to find the question you want to ask, or add your own!
+        </p>
         <PastPanel
           entries={entries}
           selectedRange={range}

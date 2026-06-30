@@ -2646,6 +2646,47 @@ Full Explanation, question section w/ thumbnails; mobile tap fix folds in here) 
   the still-live legacy learner flow.
 - tsc clean. **Next: Phase B** — designer authoring UI in the tour editor.
 
+**Phase C learner flow — revised spec (lighten listening, add choice)
+(2026-06-30 pt.14).** After advisor feedback the learner context experience is
+reworked around *choosing* questions, not passively listening. The learner-facing
+view IS the **Context Journal page** (`ContextJournal.tsx`), reached from a new
+intro. Full spec to build:
+
+1. **Context intro** (first time the learner hits context on the tour): a screen
+   reading "Now that we have learned a bit about this place…\n let's ask about
+   some context using the P.A.S.T." with an **"Ask about context"** button → opens
+   the Context Journal page.
+2. **Context Journal page layout** *(✅ slice done this commit)*: Map + timeline
+   **collapse from the top, collapsed by default**; the **P.A.S.T. framework** is
+   the main space with **bigger text**; prompt line "Tap on a lens to find the
+   question you want to ask, or add your own!".
+3. **Lens → question** *(todo)*: tapping a lens opens to show its **question(s)**
+   (not a ready-made context card), clearly tappable to select. Tap a question →
+   opens the **context overlay**.
+4. **Context overlay** *(todo)*: X top-right (X returns to the question form).
+   Auto-plays (if autoplay on; else a TTS play button): reads the **Title**, then
+   **pauses ~1s**, then reads the **Full Explanation**. Top of overlay shows the
+   designer's **map + timeline** for this context; **photos** underneath; the
+   **expand-text-to-read-along** button sits **between the map and the photos**.
+   *(Photo slideshow = LATER — ⏰ REMINDER: build the photo slideshow for the
+   context overlay.)*
+5. **Add → thumbnail** *(todo)*: after listening, prompt **"Add Context"**; on add,
+   the **thumbnail appears** (photo + title + short explanation) and the **question
+   disappears** (saved for them). Re-tapping the thumbnail → **no autoplay**, opens
+   the full context overlay **with the asked question visible**.
+6. **Across acts** *(todo)*: earlier-act thumbnails keep showing, but **below the
+   current act's pre-prepared questions** (prompt new questions first, still see
+   prior learning).
+7. **Ask your own** *(todo)*: a button beneath the P.A.S.T. → pick a lens → dictate
+   or type → AI returns a context in the **human structure** (title, question,
+   short explanation, long explanation; **no** photo/map/timeline — the learner is
+   asked to add map/timeline, photo optional). AI itself = **Phase D**.
+
+Model note: Phase A already supports this (lens→`ContextQuestion`→`contextsFor
+Question`; media/geometry/timeRange live on the context). Designer side (Phase B)
+must let the designer author the question + context answer + map/timeline +
+optional photos; the AI mirrors that structure minus media/map.
+
 **Mobile tap fix + context moderation (2026-06-29 pt.12).**
 - **Place tap on mobile:** finger taps rarely land on the tiny label, so the
   click-a-name `queryRenderedFeatures` box was widened (6→16 px) and now **falls
