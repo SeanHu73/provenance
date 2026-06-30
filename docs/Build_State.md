@@ -2819,7 +2819,40 @@ thumbnail levels, edit, unlocked scroll).*
   space up top), beat 2 left-aligned with **P·A·S·T stepping diagonally** (big
   coloured initial + smaller rest of each word) and a directional arrow CTA.
 
+**Flow + intro v3 + the real edit-map bug (2026-06-30 pt.24).**
+- **Community/back:** "Continue tour" now goes straight to the next act / close
+  (skips the per-act "Hear from the Community"); the in-tour **back arrow is
+  removed** so a stray tap can't jump phases.
+- **Intro v3:** beat-2 "Let's ASK about some **context**…" above a centred-but-
+  diagonal P·A·S·T, vertically centred; **button removed** — scrolling past a
+  sentinel enters the journal.
+- **Edit-map bug fixed (root cause):** seeding the existing geometry then calling
+  `startTool` (which `deleteAll()`s) **wiped the seeded shape** → blank edit map,
+  redraw every time, "doesn't save". Now the seed is preserved, **framed**, and
+  **editable** (`direct_select` → draggable vertices for regions; movable point),
+  and `startTool` only runs when there's nothing seeded.
+
 ## NEXT STEPS — Context Journal (maintained list; prune each as it ships)
+
+**Guest-local saving + no duplicates (NEW — important):** stop persisting added
+contexts to Firestore (no accounts yet). Added contexts should be **session-local
+to a guest** — visible across acts + the whole tour, **reset at tour end** (no
+saved contexts persist). With accounts later: per-account; on a **repeat** tour,
+already-added contexts are **hidden until the learner re-explores** that question
+(so they don't re-add duplicates). *(Currently `addAuthored` writes to
+`context-entries`, which is why a re-login shows the old one and risks dupes.)*
+
+**Map-editing rework (NEW — needs a tight test loop; blind edits keep
+regressing):**
+- Region/boundary **vertices draggable** when editing (now seeded via
+  direct_select — verify).
+- **Multiple pins** (currently one point only).
+- **Highlight vs pan:** freehand drag = paint, so the map can't be panned while in
+  highlight — need a pan affordance / mode.
+- **Place: tap a label to select** still not working (queryRenderedFeatures path).
+- **Unwanted zoom on tap** — confirm doubleClickZoom-disable covered it; may be
+  another gesture.
+
 
 *Authoritative to-do for the in-progress learner build. Slice 1 (authored
 contexts → questions in the in-tour journal, Add → thumbnail) is DONE (pt.21).

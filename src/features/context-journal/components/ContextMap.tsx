@@ -333,21 +333,35 @@ export default function ContextMap({
       drawRef.current = draw;
       map.addControl(draw);
 
-      // Seed any existing geometry (edit case) and frame it so it's visible —
-      // otherwise the saved shape can sit off-screen and look like it's gone.
-      if (initialGeometry) {
-        draw.add({ type: 'Feature', properties: {}, geometry: initialGeometry as Geometry });
-        setHasGeometry(true);
-        const bb = bboxOf(initialGeometry as Geometry);
-        if (bb) map.once('idle', () => map.fitBounds(bb, { padding: 44, duration: 0, maxZoom: 16 }));
-      }
+      // Seed any existing geometry (edit case): keep it, frame it, and make it
+      // editable. Crucially we must NOT then run startTool — it calls deleteAll()
+      // and would wipe the seeded shape (that was the "edit loses the map" bug).
+      const seededIds = initialGeometry
+        ? draw.add({ type: 'Feature', properties: {}, geometry: initialGeometry as Geometry })
+        : [];
 
       map.on('draw.create', onCreate);
       map.on('draw.update', emit);
       map.on('draw.delete', emit);
       map.on('click', onPlaceClick);
-      // Start in the currently-selected tool.
-      map.once('idle', () => { if (!cancelled) startTool(tool, draw); });
+
+      map.once('idle', () => {
+        if (cancelled) return;
+        if (initialGeometry) {
+          setHasGeometry(true);
+          const bb = bboxOf(initialGeometry as Geometry);
+          if (bb) map.fitBounds(bb, { padding: 44, duration: 0, maxZoom: 16 });
+          // Polygons → direct_select so vertices/midpoints drag; points → movable.
+          if ((initialGeometry as Geometry).type !== 'Point' && seededIds[0]) {
+            try { draw.changeMode('direct_select', { featureId: seededIds[0] }); }
+            catch { draw.changeMode('simple_select'); }
+          } else {
+            draw.changeMode('simple_select');
+          }
+        } else {
+          startTool(tool, draw);
+        }
+      });
     };
 
     // Smooth a freehand-painted region into a clean shape on completion. The
