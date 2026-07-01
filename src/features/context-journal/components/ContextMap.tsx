@@ -19,8 +19,13 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import type { Feature, FeatureCollection, Geometry, LineString, Polygon } from 'geojson';
 import { MAP_STYLES, DEFAULT_CAMERA } from '../constants';
-import type { PlaceResult } from '../places';
+import { boundaryAtPoint, searchPlaces, type PlaceResult } from '../places';
 import type { Bounds, Camera, DrawResult, DrawTool, MapMode, MapType } from '../types';
+
+type Tool = 'pin' | 'paint' | 'select';
+// A brush-shaped cursor for paint mode (hotspot at the brush tip); crosshair fallback.
+const BRUSH_CURSOR =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 24 24' fill='none' stroke='%23175E54' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.5 3l6 6-8.5 8.5-4 1 1-4z'/%3E%3Cpath d='M14 5.5l1.8-1.8a1.5 1.5 0 012.1 0l.4.4a1.5 1.5 0 010 2.1L18 8'/%3E%3C/svg%3E\") 2 24, crosshair";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -104,7 +109,7 @@ function pinsFC(pins: LngLat[]): FeatureCollection {
   };
 }
 function polysFC(polys: Polygon[]): FeatureCollection {
-  return { type: 'FeatureCollection', features: polys.map((p): Feature => ({ type: 'Feature', properties: {}, geometry: p })) };
+  return { type: 'FeatureCollection', features: polys.map((p, i): Feature => ({ type: 'Feature', id: i, properties: {}, geometry: p })) };
 }
 function strokesFC(strokes: LineString[], live?: LngLat[]): FeatureCollection {
   const feats: Feature[] = strokes.map((s): Feature => ({ type: 'Feature', properties: {}, geometry: s }));
@@ -130,13 +135,54 @@ export default function ContextMap({
 
   const seed = useMemo(() => parseGeometry(initialGeometry ?? null), []); // eslint-disable-line react-hooks/exhaustive-deps
   const [pins, setPins] = useState<LngLat[]>(seed.pins);
-  const [polys] = useState<Polygon[]>(seed.polys); // display-only until place editing returns
+  const [places, setPlaces] = useState<Polygon[]>(seed.polys); // tapped-in region/place boundaries
   const [strokes, setStrokes] = useState<LineString[]>(seed.strokes);
-  const [tool, setTool] = useState<'pin' | 'paint'>('pin');
+  const [tool, setTool] = useState<Tool>('pin');
+  const [selecting, setSelecting] = useState(false); // reverse-geocode in flight
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<PlaceResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const toolRef = useRef(tool);
   toolRef.current = tool;
   const strokesRef = useRef(strokes);
   strokesRef.current = strokes;
+  const placesRef = useRef(places);
+  placesRef.current = places;
+  // Timestamp of the last paint stroke — used to swallow the phantom desktop
+  // click that otherwise flips the tool back to Pin right after a swipe.
+  const lastStrokeEndRef = useRef(0);
+
+  const changeTool = (next: Tool) => {
+    if (next === 'pin' && lastStrokeEndRef.current && performance.now() - lastStrokeEndRef.current < 500) return;
+    setTool(next);
+  };
+
+  // Add the boundary of whatever place sits under a lng/lat (reverse geocode).
+  const addPlaceAt = async (lng: number, lat: number) => {
+    setSelecting(true);
+    try {
+      const res = await boundaryAtPoint(lng, lat);
+      if (res?.geometry?.type === 'Polygon') setPlaces((prev) => [...prev, res.geometry as Polygon]);
+    } catch { /* ignore */ }
+    finally { setSelecting(false); }
+  };
+
+  const addPlaceFromResult = (res: PlaceResult) => {
+    if (res.geometry?.type === 'Polygon') setPlaces((prev) => [...prev, res.geometry as Polygon]);
+    setQuery('');
+    setResults([]);
+    const map = mapRef.current;
+    if (map && res.geometry) { const bb = bboxOf(res.geometry); if (bb) map.fitBounds(bb, { padding: 44, duration: 500, maxZoom: 14 }); }
+  };
+
+  const runSearch = async () => {
+    const q = query.trim();
+    if (!q) return;
+    setSearching(true);
+    try { setResults(await searchPlaces(q)); }
+    catch { setResults([]); }
+    finally { setSearching(false); }
+  };
 
   // ── init map (once) ──
   useEffect(() => {
@@ -227,14 +273,25 @@ export default function ContextMap({
 
     const canvas = map.getCanvas();
 
-    // Pin mode: tap to add a pin, tap a pin to remove it.
     const onMapClick = (e: mapboxgl.MapMouseEvent) => {
-      if (toolRef.current !== 'pin') return;
       const pad = 12;
-      const hits = map.queryRenderedFeatures(
-        [[e.point.x - pad, e.point.y - pad], [e.point.x + pad, e.point.y + pad]],
-        { layers: ['cj-pins-outer'] },
-      );
+      const box: [mapboxgl.PointLike, mapboxgl.PointLike] =
+        [[e.point.x - pad, e.point.y - pad], [e.point.x + pad, e.point.y + pad]];
+      // Select mode: tap a place to remove it, or tap open map to select the
+      // region under the point (reverse geocode — picks exactly what you tapped).
+      if (toolRef.current === 'select') {
+        const onPlace = map.queryRenderedFeatures(box, { layers: ['cj-polys-fill'] });
+        if (onPlace.length && onPlace[0].id != null) {
+          const idx = Number(onPlace[0].id);
+          setPlaces((prev) => prev.filter((_, i) => i !== idx));
+        } else {
+          void addPlaceAt(e.lngLat.lng, e.lngLat.lat);
+        }
+        return;
+      }
+      // Pin mode: tap to add a pin, tap a pin to remove it.
+      if (toolRef.current !== 'pin') return;
+      const hits = map.queryRenderedFeatures(box, { layers: ['cj-pins-outer'] });
       if (hits.length && hits[0].id != null) {
         const idx = Number(hits[0].id);
         setPins((prev) => prev.filter((_, i) => i !== idx));
@@ -272,6 +329,7 @@ export default function ContextMap({
       if (!painting) return;
       painting = false;
       map.dragPan.enable();
+      lastStrokeEndRef.current = performance.now();
       const done = current;
       current = [];
       if (done.length >= 2) setStrokes((prev) => [...prev, { type: 'LineString', coordinates: done }]);
@@ -281,7 +339,7 @@ export default function ContextMap({
     const setup = () => {
       if (cancelled || !mapRef.current) return;
       if (!map.getSource('cj-polys')) {
-        map.addSource('cj-polys', { type: 'geojson', data: polysFC(polys) });
+        map.addSource('cj-polys', { type: 'geojson', data: polysFC(placesRef.current) });
         map.addLayer({ id: 'cj-polys-fill', type: 'fill', source: 'cj-polys', paint: { 'fill-color': lensColour, 'fill-opacity': 0.28 } });
         map.addLayer({ id: 'cj-polys-line', type: 'line', source: 'cj-polys', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': lensColour, 'line-width': 2.5 } });
       }
@@ -295,7 +353,7 @@ export default function ContextMap({
         map.addLayer({ id: 'cj-pins-inner', type: 'circle', source: 'cj-pins', paint: { 'circle-radius': 6, 'circle-color': lensColour } });
       }
       // frame any seeded geometry
-      const g = buildGeometry(pinsRef.current, polys, strokesRef.current);
+      const g = buildGeometry(pinsRef.current, placesRef.current, strokesRef.current);
       if (g) { const bb = bboxOf(g); if (bb) map.fitBounds(bb, { padding: 44, duration: 0, maxZoom: 16 }); }
       map.on('click', onMapClick);
       canvas.addEventListener('pointerdown', onPointerDown);
@@ -319,26 +377,30 @@ export default function ContextMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  // Cursor reflects the active tool.
+  // Cursor reflects the active tool: brush for paint, grab hand (Mapbox default)
+  // for pin so it reads as pannable, precise cross for select.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || mode !== 'add') return;
-    try { map.getCanvas().style.cursor = tool === 'paint' ? 'cell' : 'crosshair'; } catch { /* ok */ }
+    const c = tool === 'paint' ? BRUSH_CURSOR : tool === 'select' ? 'crosshair' : '';
+    try { map.getCanvas().style.cursor = c; } catch { /* ok */ }
   }, [tool, mode]);
 
-  // ── sync data + emit whenever pins or strokes change ──
+  // ── sync data + emit whenever pins, strokes, or places change ──
   useEffect(() => {
     const map = mapRef.current;
     if (!map || mode !== 'add') return;
     const pinsSrc = map.getSource('cj-pins') as mapboxgl.GeoJSONSource | undefined;
     const strokesSrc = map.getSource('cj-strokes') as mapboxgl.GeoJSONSource | undefined;
+    const polysSrc = map.getSource('cj-polys') as mapboxgl.GeoJSONSource | undefined;
     if (!pinsSrc) return; // setup will seed the first time
     pinsSrc.setData(pinsFC(pins));
     if (strokesSrc) strokesSrc.setData(strokesFC(strokes));
-    const g = buildGeometry(pins, polys, strokes);
+    if (polysSrc) polysSrc.setData(polysFC(places));
+    const g = buildGeometry(pins, places, strokes);
     const c = map.getCenter();
     onDrawChangeRef.current?.({ geometry: g, camera: g ? { center: [c.lng, c.lat], zoom: map.getZoom() } : null });
-  }, [pins, strokes, polys, mode]);
+  }, [pins, strokes, places, mode]);
 
   if (!TOKEN) {
     return (
@@ -355,26 +417,28 @@ export default function ContextMap({
 
   const hasPins = pins.length > 0;
   const hasStrokes = strokes.length > 0;
+  const hasPlaces = places.length > 0;
+  const TOOLS = [
+    { id: 'pin' as const, label: 'Pin', icon: <><path d="M12 21s-7-6.4-7-11a7 7 0 0114 0c0 4.6-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></> },
+    { id: 'paint' as const, label: 'Highlighter', icon: <><path d="M9.5 3l6 6-8.5 8.5-4 1 1-4z" /><path d="M14 5.5l1.8-1.8a1.5 1.5 0 012.1 0l.4.4a1.5 1.5 0 010 2.1L18 8" /></> },
+    { id: 'select' as const, label: 'Select', icon: <><circle cx="12" cy="10" r="7" /><path d="M12 21v-4 M5 10h4 M15 10h4" /></> },
+  ];
 
   return (
     <div className="w-full h-full flex flex-col">
       {mode === 'add' && (
         <div className="shrink-0 bg-warm-white border-b" style={{ borderColor: 'var(--th-border)' }}>
           <div className="flex flex-wrap items-center gap-1.5 px-2 pt-2">
-            {(['pin', 'paint'] as const).map((t) => (
+            {TOOLS.map((t) => (
               <button
-                key={t}
+                key={t.id}
                 type="button"
-                onClick={() => setTool(t)}
+                onClick={() => changeTool(t.id)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-                style={tool === t ? { backgroundColor: lensColour, color: '#fff' } : { color: 'var(--th-text-secondary)' }}
+                style={tool === t.id ? { backgroundColor: lensColour, color: '#fff' } : { color: 'var(--th-text-secondary)' }}
               >
-                {t === 'pin' ? (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.4-7-11a7 7 0 0114 0c0 4.6-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
-                ) : (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 3l6 6-8.5 8.5-4 1 1-4z" /><path d="M14 5.5l1.8-1.8a1.5 1.5 0 012.1 0l.4.4a1.5 1.5 0 010 2.1L18 8" /></svg>
-                )}
-                {t === 'pin' ? 'Pin' : 'Highlighter'}
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{t.icon}</svg>
+                {t.label}
               </button>
             ))}
             <div className="ml-auto flex items-center gap-1.5">
@@ -384,13 +448,49 @@ export default function ContextMap({
               {tool === 'paint' && hasStrokes && (
                 <button type="button" onClick={() => setStrokes([])} className="px-2.5 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear brush</button>
               )}
+              {tool === 'select' && hasPlaces && (
+                <button type="button" onClick={() => setPlaces([])} className="px-2.5 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear places</button>
+              )}
             </div>
           </div>
+
+          {tool === 'select' && (
+            <div className="px-2 pt-2">
+              <div className="flex items-center gap-1.5">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void runSearch(); } }}
+                  placeholder="Search a place by name (optional)…"
+                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg text-xs bg-black/[0.03] border border-black/10 focus:outline-none focus:border-black/25"
+                />
+                <button type="button" onClick={() => void runSearch()} disabled={searching || !query.trim()} className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-40" style={{ backgroundColor: lensColour }}>
+                  {searching ? '…' : 'Search'}
+                </button>
+              </div>
+              {results.length > 0 && (
+                <ul className="mt-1.5 max-h-40 overflow-y-auto rounded-lg border border-black/10 divide-y divide-black/5">
+                  {results.map((r, i) => (
+                    <li key={i}>
+                      <button type="button" onClick={() => addPlaceFromResult(r)} className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-black/5">
+                        <span className="font-medium text-text-primary">{r.name}</span>
+                        <span className="ml-1 text-text-muted">· {r.kind}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           <p className="px-2.5 pb-1.5 pt-1 text-[11px] text-text-muted">
             {tool === 'pin'
               ? `Tap the map to drop a pin${hasPins ? ' · tap a pin to remove it' : ''}.`
-              : 'Press and drag to paint a highlight — swipe over the area.'}
-            {polys.length > 0 && <span> (Existing region/place kept.)</span>}
+              : tool === 'paint'
+                ? 'Press and drag to paint a highlight — swipe over the area.'
+                : selecting
+                  ? 'Finding the place you tapped…'
+                  : `Tap a spot to select the region there${hasPlaces ? ' · tap a selected area to remove it' : ''}.`}
           </p>
         </div>
       )}
