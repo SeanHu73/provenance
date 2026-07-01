@@ -330,6 +330,8 @@ export default function ContextMap({
       // Select mode: tap a selected area to remove it; otherwise read the visible
       // name nearest the tap and highlight that place (nearest match to the tap).
       if (toolRef.current === 'select') {
+        // Swallow the phantom desktop click that would otherwise flip us to Pin.
+        lastStrokeEndRef.current = performance.now();
         const onPlace = map.queryRenderedFeatures(box, { layers: ['cj-polys-fill'] });
         if (onPlace.length && onPlace[0].id != null) {
           const idx = Number(onPlace[0].id);
@@ -481,7 +483,7 @@ export default function ContextMap({
     <div className="w-full h-full flex flex-col">
       {mode === 'add' && (
         <div className="relative z-30 shrink-0 bg-warm-white border-b" style={{ borderColor: 'var(--th-border)' }}>
-          <div className="flex flex-wrap items-center gap-1.5 px-2 pt-2">
+          <div className="flex items-center gap-1.5 px-2 pt-2">
             {TOOLS.map((t) => (
               <button
                 key={t.id}
@@ -495,33 +497,36 @@ export default function ContextMap({
               </button>
             ))}
             <div className="ml-auto flex items-center gap-1.5">
-              {/* Highlighter: switch between painting and moving (panning) the map. */}
-              {tool === 'paint' && (
-                <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
-                  {(['paint', 'pan'] as const).map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setPaintMode(m)}
-                      className="px-2.5 py-1 text-[11px] font-semibold transition-colors"
-                      style={paintMode === m ? { backgroundColor: lensColour, color: '#fff' } : { color: 'var(--th-text-secondary)' }}
-                    >
-                      {m === 'paint' ? 'Paint' : 'Move'}
-                    </button>
-                  ))}
-                </div>
-              )}
               {tool === 'pin' && hasPins && (
                 <button type="button" onClick={() => setPins([])} className="px-2.5 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear pins</button>
-              )}
-              {tool === 'paint' && hasStrokes && (
-                <button type="button" onClick={() => setStrokes([])} className="px-2.5 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear brush</button>
               )}
               {tool === 'select' && hasPlaces && (
                 <button type="button" onClick={() => setPlaces([])} className="px-2.5 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear places</button>
               )}
             </div>
           </div>
+
+          {/* Highlighter: paint vs move (pan) the map — own row so it never wraps oddly. */}
+          {tool === 'paint' && (
+            <div className="flex items-center gap-1.5 px-2 pt-2">
+              <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
+                {(['paint', 'pan'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setPaintMode(m)}
+                    className="px-3 py-1 text-[11px] font-semibold transition-colors"
+                    style={paintMode === m ? { backgroundColor: lensColour, color: '#fff' } : { color: 'var(--th-text-secondary)' }}
+                  >
+                    {m === 'paint' ? 'Paint' : 'Move'}
+                  </button>
+                ))}
+              </div>
+              {hasStrokes && (
+                <button type="button" onClick={() => setStrokes([])} className="ml-auto px-2.5 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear brush</button>
+              )}
+            </div>
+          )}
 
           {tool === 'select' && (
             <div className="px-2 pt-2">
