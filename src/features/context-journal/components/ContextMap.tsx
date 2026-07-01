@@ -533,9 +533,7 @@ export default function ContextMap({
    *  immediately, place selects a boundary by tap or search. */
   function startTool(next: DrawTool, draw = drawRef.current) {
     if (!draw) return;
-    const stack = (new Error().stack || '').split('\n').slice(2, 7)
-      .map((s) => s.trim().replace(/https?:\/\/[^)]*\/chunks\//, '').replace(/\)$/, '')).join('\n  ');
-    console.log('[cj-map] startTool →', next, '\n  ' + stack);
+    console.log('[cj-map] startTool →', next);
     draw.deleteAll();
     setHasGeometry(false);
     onDrawChangeRef.current?.({ geometry: null, camera: null });
@@ -589,40 +587,45 @@ export default function ContextMap({
   }
 
   return (
-    <div className="relative w-full h-full">
-      {/* NB: mapbox-gl.css forces `.mapboxgl-map { position: relative }`, which
-         would override an `absolute inset-0` here and collapse the height to 0.
-         Size the container with h-full instead. */}
-      <div ref={containerRef} className="w-full h-full" />
-
+    <div className="w-full h-full flex flex-col">
+      {/* Toolbar in NORMAL FLOW above the map — NOT overlaid on it. A map click on
+         desktop was resolving to an overlaid button (MapboxDraw mutates the DOM
+         between mousedown/up); keeping the buttons out of the map's box prevents
+         that entirely. */}
       {mode === 'add' && (
-        <>
-          <div className="absolute top-2 left-2 right-2 z-10 flex flex-wrap items-center gap-1.5 rounded-xl p-1 bg-warm-white/95 shadow-lg backdrop-blur">
-            <ToolBtn active={tool === 'pin'} onClick={() => handleTool('pin')} label="Pin" colour={lensColour}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 21s-7-6.4-7-11a7 7 0 0114 0c0 4.6-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" />
-              </svg>
-            </ToolBtn>
-            <ToolBtn active={tool === 'highlight'} onClick={() => handleTool('highlight')} label="Highlight" colour={lensColour}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" />
-              </svg>
-            </ToolBtn>
-            <ToolBtn active={tool === 'place'} onClick={() => handleTool('place')} label="Place" colour={lensColour}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18" />
-              </svg>
-            </ToolBtn>
-            <button
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={(e) => { if (e.detail === 0) return; handleClear(); e.currentTarget.blur(); }}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5"
-            >
-              Clear
-            </button>
-          </div>
+        <div className="shrink-0 flex flex-wrap items-center gap-1.5 p-2 bg-warm-white border-b" style={{ borderColor: 'var(--th-border)' }}>
+          <ToolBtn active={tool === 'pin'} onClick={() => handleTool('pin')} label="Pin" colour={lensColour}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 21s-7-6.4-7-11a7 7 0 0114 0c0 4.6-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" />
+            </svg>
+          </ToolBtn>
+          <ToolBtn active={tool === 'highlight'} onClick={() => handleTool('highlight')} label="Highlight" colour={lensColour}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" />
+            </svg>
+          </ToolBtn>
+          <ToolBtn active={tool === 'place'} onClick={() => handleTool('place')} label="Place" colour={lensColour}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18" />
+            </svg>
+          </ToolBtn>
+          <button
+            type="button"
+            onClick={() => handleClear()}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5"
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
+      {/* map + its own overlays (status pill, map-type toggle) live in a separate
+         relative box below the toolbar */}
+      <div className="relative flex-1 min-h-0">
+        {/* NB: mapbox-gl.css forces `.mapboxgl-map { position: relative }`. */}
+        <div ref={containerRef} className="w-full h-full" />
+
+        {mode === 'add' && (
           <div className="absolute bottom-2 left-0 right-0 z-10 text-center pointer-events-none">
             <span className="inline-block px-3 py-1.5 rounded-full text-xs font-medium bg-black/55 text-white">
               {hasGeometry
@@ -634,24 +637,23 @@ export default function ContextMap({
                     : usingFreehand ? 'Draw around an area to highlight it' : 'Tap to outline a region, double-tap to finish'}
             </span>
           </div>
-        </>
-      )}
+        )}
 
-      {/* Map / Satellite toggle */}
-      {onMapTypeChange && (
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={(e) => { onMapTypeChange(mapType === 'default' ? 'satellite' : 'default'); e.currentTarget.blur(); }}
-          className="absolute bottom-2 left-2 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-warm-white/95 shadow-lg backdrop-blur text-text-primary"
-          aria-label={`Switch to ${mapType === 'default' ? 'satellite' : 'map'} view`}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
-          </svg>
-          {mapType === 'default' ? 'Satellite' : 'Map'}
-        </button>
-      )}
+        {/* Map / Satellite toggle */}
+        {onMapTypeChange && (
+          <button
+            type="button"
+            onClick={() => onMapTypeChange(mapType === 'default' ? 'satellite' : 'default')}
+            className="absolute bottom-2 left-2 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-warm-white/95 shadow-lg backdrop-blur text-text-primary"
+            aria-label={`Switch to ${mapType === 'default' ? 'satellite' : 'map'} view`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
+            </svg>
+            {mapType === 'default' ? 'Satellite' : 'Map'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -662,13 +664,7 @@ function ToolBtn({ active, onClick, label, colour, children }: {
   return (
     <button
       type="button"
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={(e) => {
-        console.log('[cj-map] toolbtn onClick', label, '· detail', e.detail, '· trusted', e.isTrusted);
-        if (e.detail === 0) return; // ignore synthetic / keyboard-focus activations
-        onClick();
-        e.currentTarget.blur();
-      }}
+      onClick={onClick}
       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
         active ? 'text-white' : 'text-text-secondary hover:bg-black/5'
       }`}
