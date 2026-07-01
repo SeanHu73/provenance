@@ -211,12 +211,16 @@ export default function ContextMap({
     // In add/edit mode a tap (to drop a pin, pick a place, or finish a region)
     // must NOT also zoom — disable double-click zoom so taps don't jump the map.
     if (mode === 'add') {
+      // A tap must never zoom. Double-click zoom off, and scroll/trackpad zoom
+      // off too — Mac trackpad taps can emit a stray wheel event that Mapbox
+      // turns into a +1 zoom. Deliberate zoom is via the +/- buttons (and pinch).
       map.doubleClickZoom.disable();
-      // TEMP diagnostics for the tap-zoom bug — logs what a tap actually fires.
-      map.on('click', (e) => console.log('[cj-map] click @', Math.round(e.point.x), Math.round(e.point.y), '· zoom', map.getZoom().toFixed(2), '· dblZoom', map.doubleClickZoom.isEnabled()));
+      map.scrollZoom.disable();
+      // TEMP diagnostics — confirm what a tap fires.
+      map.on('click', (e) => console.log('[cj-map] click @', Math.round(e.point.x), Math.round(e.point.y), '· zoom', map.getZoom().toFixed(2)));
       map.on('dblclick', () => console.log('[cj-map] DBLCLICK'));
       map.on('zoomstart', () => console.log('[cj-map] zoomstart · zoom', map.getZoom().toFixed(2)));
-      map.on('zoomend', () => console.log('[cj-map] zoomend · zoom', map.getZoom().toFixed(2)));
+      map.getCanvas().addEventListener('wheel', () => console.log('[cj-map] wheel'), { passive: true });
     }
     if (geolocate) {
       map.addControl(new mapboxgl.GeolocateControl({
