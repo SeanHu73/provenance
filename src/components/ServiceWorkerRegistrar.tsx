@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 
 /** Bump this on each deploy we want to verify is live — it prints to the console
  *  so we can confirm which build the browser is actually running. */
-const BUILD_MARKER = 'ctx-journal 2026-07-01 #10 (draw no longer rebuilt on lens)';
+const BUILD_MARKER = 'ctx-journal 2026-07-01 #11 (map taps stop firing buttons)';
 
 /**
  * The service worker is retired (it had a bug that broke page loads and served

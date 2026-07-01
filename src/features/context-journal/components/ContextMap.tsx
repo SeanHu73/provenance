@@ -221,6 +221,13 @@ export default function ContextMap({
       // off too — Mac trackpad taps can emit a stray wheel event that Mapbox
       // turns into a +1 zoom. Deliberate zoom is via the +/- buttons (and pinch).
       map.doubleClickZoom.disable();
+      // Root cause of "a map tap fires a toolbar/zoom button": focus stays on the
+      // last button, and the tap gets routed to it. Blur any focused button the
+      // instant the map canvas is touched, BEFORE the click is dispatched.
+      map.getCanvas().addEventListener('pointerdown', () => {
+        const ae = document.activeElement;
+        if (ae instanceof HTMLElement && ae.tagName === 'BUTTON') ae.blur();
+      }, { passive: true });
       // scrollZoom stays ENABLED so trackpad pinch still zooms — the tap-zoom is a
       // programmatic zoomTo (per the trace), not scroll, so this is safe.
       // Narrow guard: the tap-zoom fires ~4ms after the tap, so cancel any zoom
@@ -605,7 +612,9 @@ export default function ContextMap({
               </svg>
             </ToolBtn>
             <button
-              onClick={handleClear}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => { handleClear(); e.currentTarget.blur(); }}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5"
             >
               Clear
@@ -629,7 +638,9 @@ export default function ContextMap({
       {/* Map / Satellite toggle */}
       {onMapTypeChange && (
         <button
-          onClick={() => onMapTypeChange(mapType === 'default' ? 'satellite' : 'default')}
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => { onMapTypeChange(mapType === 'default' ? 'satellite' : 'default'); e.currentTarget.blur(); }}
           className="absolute bottom-2 left-2 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-warm-white/95 shadow-lg backdrop-blur text-text-primary"
           aria-label={`Switch to ${mapType === 'default' ? 'satellite' : 'map'} view`}
         >
@@ -648,7 +659,9 @@ function ToolBtn({ active, onClick, label, colour, children }: {
 }) {
   return (
     <button
-      onClick={onClick}
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => { onClick(); e.currentTarget.blur(); }}
       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
         active ? 'text-white' : 'text-text-secondary hover:bg-black/5'
       }`}
