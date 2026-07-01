@@ -229,12 +229,17 @@ export default function ContextMap({
       });
       map.on('zoomstart', () => {
         if (correcting) return;
-        console.log('[cj-map] zoomstart · zoom', map.getZoom().toFixed(2), '· sinceTap', Math.round(performance.now() - tapAt), 'ms');
-        if (performance.now() - tapAt < 500) {
+        const since = Math.round(performance.now() - tapAt);
+        if (since < 500) {
+          // Log the call chain that triggered this zoom (who's calling it).
+          const stack = (new Error().stack || '').split('\n').slice(2, 6).map((s) => s.trim()).join('  ⟵  ');
+          console.log('[cj-map] tap-zoom src:', stack);
           correcting = true;
           map.stop();
           map.setZoom(zoomAtTap);
           setTimeout(() => { correcting = false; }, 60);
+        } else {
+          console.log('[cj-map] zoomstart (not tap) · sinceTap', since, 'ms');
         }
       });
       map.on('dblclick', () => console.log('[cj-map] DBLCLICK'));
