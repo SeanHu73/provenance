@@ -1,13 +1,18 @@
 # Build State — Provenance
 
 *Handoff document for the next Claude Code session. Last updated 2026-07-01
-(latest: **Context Journal Slice 2** — the immersive learner **overlay** (map +
-timeline pinned on top, auto read-aloud Title→pause→Long, expand-to-read-along,
-photos/audio/related) and the **thumbnail select-levels** (tap 1 = select + short
-summary + map focus + pulse; tap 2 = full overlay; tap-elsewhere deselects). New
-`ContextOverlay` + `useReadAloud`; `ContextFullScreen` removed. See §15 **pt.26**;
-Slice 2 item #1 pruned from `## NEXT STEPS`. Debug scaffolding
-`DebugLogOverlay` / `BUILD_MARKER` / `sw.js` **now removed** (committed `927df80`).
+(latest: **Context Journal Slice 2 + follow-ups** (§15 **pt.26–pt.27**). Slice 2
+= the immersive learner **overlay** (map + timeline pinned on top, auto read-aloud
+Title→pause→Long, expand-to-read-along, photos/audio/sources/related) and
+**thumbnail select-levels** (tap 1 = select + summary + map/timeline focus + pulse;
+tap 2 = full overlay; tap-*only* deselect; selected lens scrolls to top). pt.27
+follow-ups: the **timeline follows the tapped context**, **cited sources** (admin +
+learner, in `AddContextFlow` → Sources section), **guest-local saving** (added
+contexts live in `sessionStorage` per tour, reset at tour end — not Firestore), and
+**edit-on-added** (Edit pencil on the learner's copy). New `ContextOverlay` /
+`useReadAloud` / `guest-contexts.ts`; `ContextFullScreen` removed. Debug scaffolding
+`DebugLogOverlay` / `BUILD_MARKER` / `sw.js` **removed** (`927df80`). *Open:*
+AI/self-asked answers (item #3), map self-filtering by zoom.
 Prior latest: the Add-Context map was **rebuilt Draw-free** — pins, a highlighter-
 swipe brush, and a tap-the-visible-name **Select**, all on independent stacking
 layers with no `deleteAll`; fixes the long-running desktop pin/highlight bug (§15
@@ -2933,15 +2938,47 @@ saving rework at the top of the list. Not browser-tested yet — the overlay's
 autoplay TTS + word-highlight need a real-device check (mobile voices may not fire
 `boundary` events, so highlighting can be absent while audio still plays).*
 
+**Slice 2 follow-ups — timeline sync, sources, guest-local saving, edit-on-added
+(2026-07-01 pt.27).** Four requested items after browser-testing Slice 2; all
+green (`tsc`/`eslint`/`next build`).
+
+- **Timeline follows the tapped context.** `handleFocus` now moves the timeline
+  selection to the selected context's own span (map + timeline both reflect it),
+  and a hint under the timeline ("Move the timeline to see which contexts apply to
+  each period") tells learners the filter changed. *Map self-filtering by zoom is
+  deferred* — the open question is that a state/national context should show when
+  zoomed into a city but not when zoomed out to the whole country; the filter rule
+  for that isn't designed yet.
+- **Cited sources.** New `ContextSource` (journal) / `ContextSourceItem` (lib) —
+  name (required) + author + date + optional picture. Authored in the shared
+  `AddContextFlow` (so **admins and learners both** get it; AI-found sources will
+  land here later), carried through `authoredToEntry` + `addAuthored`, and shown
+  as a **Sources** section in `ContextOverlay` (above Related questions). This
+  supersedes pt.26's "no sources field" note.
+- **Guest-local saving.** A learner's added contexts are **no longer persisted to
+  Firestore** in a tour. New `guest-contexts.ts` keeps them in `sessionStorage`
+  keyed by the tour (visible across acts + the whole tour), and
+  `TourContext.finishTour` calls `resetGuestContexts(tour.id)` so a repeat run
+  neither shows nor duplicates them. `ContextJournal` branches on `inTour` (guest
+  store vs Firestore) via `persistAdd/persistUpdate/persistDelete`; self-adds are
+  tagged `origin:'self'`. Per-account isolation still swaps this store later.
+- **Edit-on-added.** The overlay for an added/self context has an **Edit** pencil
+  (authored originals don't) that opens `AddContextFlow` prefilled with the copy;
+  saving patches it in place (`updateGuestContext` in-tour, new
+  `store.updateContextEntry` standalone).
+
+⚠️ *Bookmarks (`saved-contexts`) still write to Firestore even in-tour — they can
+reference a guest-local id that resets at tour end (minor orphaning; out of scope
+for now). AI/self-asked answers (item #3) remain the big open piece.*
+
 ## NEXT STEPS — Context Journal (maintained list; prune each as it ships)
 
-**Guest-local saving + no duplicates (NEW — important):** stop persisting added
-contexts to Firestore (no accounts yet). Added contexts should be **session-local
-to a guest** — visible across acts + the whole tour, **reset at tour end** (no
-saved contexts persist). With accounts later: per-account; on a **repeat** tour,
-already-added contexts are **hidden until the learner re-explores** that question
-(so they don't re-add duplicates). *(Currently `addAuthored` writes to
-`context-entries`, which is why a re-login shows the old one and risks dupes.)*
+**Guest-local saving + no duplicates — DONE (pt.27).** Added contexts are now
+session-local to a guest (`guest-contexts.ts`, `sessionStorage` keyed by tour),
+visible across acts + the whole tour, reset at tour end. *Still to do with
+accounts:* per-account isolation (see #4) and, on a **repeat** tour, hiding
+already-added contexts until the learner re-explores that question (so they don't
+re-add dupes) — needs the account system.
 
 **Map-editing rework — mostly DONE in the Draw-free rebuild (pt.25):**
 - ✅ **Multiple pins** — pins stack (MultiPoint).
@@ -2960,20 +2997,20 @@ contexts → questions in the in-tour journal, Add → thumbnail) is DONE (pt.21
 Remove items here as they're completed; record the completion in a dated pt.X
 note above.*
 
-1. ✅ **Slice 2 — learner overlay + thumbnail select-levels** — DONE (pt.26).
-   `ContextOverlay` (map/timeline pinned on top, auto read-aloud Title→pause→Long,
-   expand-to-read-along, photos/audio/related) + thumbnail tap-1 select / tap-2
-   open with tap-elsewhere deselect. (Not browser-tested — see the pt.26 note.)
-2. **Edit on the added copy** — the learner can edit any context they've added
-   (their local copy); the authored original stays read-only. (The overlay's
-   "edit" affordance.)
+1. ✅ **Slice 2 — learner overlay + thumbnail select-levels** — DONE (pt.26),
+   browser-tested + polished pt.27 (tap-only deselect, scroll-to-top, timeline
+   follows the tapped context). `ContextOverlay` + thumbnail tap-1/tap-2 levels.
+2. ✅ **Edit on the added copy** — DONE (pt.27). The overlay's Edit pencil (added/
+   self only) opens the prefilled `AddContextFlow`; authored originals stay
+   read-only.
 3. **AI / self-asked questions (Phase D)** — "Ask your own question" → pick lens →
    dictate/type → AI fills the structure (title/short/long, **no** map/timeline);
    CTA is **"Edit Context"** (not Add) → opens the editor with on-page
    instructions to add map+timeline (photo optional). Mark `origin:'self'`. Wire
    `/api/context-answer` (knowledge DB → academic/gov web → Claude Haiku).
-4. **Per-account isolation** — added copies are private to each learner (currently
-   in shared `context-entries`); needs the account system.
+4. **Per-account isolation** — added copies are now guest-local (`guest-contexts.ts`,
+   session-scoped per tour, pt.27); with accounts they become private per learner
+   by swapping that store. Needs the account system.
 5. **AddContextFlow** — make **Full Explanation optional + collapsible**, default
    hidden for the learner. (Framing-question-first gate is already done.)
 6. **Single end-of-tour reflection** with multiple options (replaces the removed
