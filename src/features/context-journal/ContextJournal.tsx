@@ -108,18 +108,32 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
     return unsub;
   }, []);
 
-  // Deselect a focused (tapped-once) thumbnail when the learner taps *elsewhere*
-  // — but not on the map/timeline or the thumbnail rail (both marked
-  // `data-cj-keep`), so panning the map or switching cards keeps the selection.
+  // Deselect a focused (tapped-once) thumbnail only on a genuine *tap* elsewhere
+  // — a drag/scroll must NOT deselect. We record the pointer-down spot and only
+  // act on pointer-up if it barely moved (a tap) and landed outside a
+  // `data-cj-keep` zone (the map/timeline panel or the thumbnail rail), so
+  // panning the map, scrolling the list, or switching cards keeps the selection.
   useEffect(() => {
     if (!focused) return;
-    const onDown = (e: PointerEvent) => {
+    let sx = 0, sy = 0, moved = false;
+    const onDown = (e: PointerEvent) => { sx = e.clientX; sy = e.clientY; moved = false; };
+    const onMove = (e: PointerEvent) => {
+      if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) moved = true;
+    };
+    const onUp = (e: PointerEvent) => {
+      if (moved) return; // a drag/scroll, not a tap
       const el = e.target as HTMLElement | null;
       if (el?.closest('[data-cj-keep]')) return;
       setFocused(null);
     };
     document.addEventListener('pointerdown', onDown);
-    return () => document.removeEventListener('pointerdown', onDown);
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+    };
   }, [focused]);
 
   const toggleSave = (contextId: string) => {

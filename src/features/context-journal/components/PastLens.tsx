@@ -10,7 +10,7 @@
  * panel toggles it open; tapping the **name** reveals the lens's definition.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { thumbnailPhotoUrl, type LensDef } from '../constants';
 import type { ContextEntry, PastCategory } from '../types';
@@ -50,6 +50,20 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
   // Slim banner when the lens is open, or when the map panel is up.
   const slim = open || compact;
 
+  // When a thumbnail in this lens is selected (tap 1), the map/timeline expand
+  // above the fold — bring this lens up to the top of the scrollable lower half
+  // so the selected card + its revealed summary stay in view. Runs after the
+  // layout settles (rAF) so the just-expanded map is accounted for.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const ownsFocus = focusedId != null && entries.some((e) => e.id === focusedId);
+  useEffect(() => {
+    if (!ownsFocus) return;
+    const id = requestAnimationFrame(() => {
+      rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [ownsFocus, focusedId]);
+
   const toggleOpen = () => {
     setOpen((o) => {
       const next = !o;
@@ -64,7 +78,7 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
   };
 
   return (
-    <div className="rounded-3xl overflow-hidden shadow-md">
+    <div ref={rootRef} className="scroll-mt-2 rounded-3xl overflow-hidden shadow-md">
       {/* the immersive lens "door" */}
       <button
         onClick={toggleOpen}
