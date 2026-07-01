@@ -207,7 +207,13 @@ export default function ContextMap({
       zoom: initialCamera?.zoom ?? defaultView?.zoom ?? DEFAULT_CAMERA.zoom,
       attributionControl: false,
     });
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+    // The +/- zoom buttons (NavigationControl) are the source of the "tap zooms"
+    // bug on the authoring map — a tap ends up firing the focused "+" button's
+    // handler (Map.zoomIn). Drawing taps must never zoom, and pinch/scroll cover
+    // deliberate zoom, so omit the control in add mode. Browse maps keep it.
+    if (mode !== 'add') {
+      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+    }
     // In add/edit mode a tap (to drop a pin, pick a place, or finish a region)
     // must NOT also zoom — disable double-click zoom so taps don't jump the map.
     if (mode === 'add') {
