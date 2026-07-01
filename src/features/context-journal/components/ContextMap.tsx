@@ -334,9 +334,14 @@ export default function ContextMap({
   }, [focus, defaultView, mode]);
 
   // ── add-mode drawing tools ──
+  // Depend on `mode` ONLY. It used to also depend on `lensColour`, which tore
+  // the whole draw down (deleting the in-progress shape) whenever the parent
+  // re-rendered — that's why a tap's pin, and a drawn highlight, were wiped by a
+  // fresh startTool right after being created.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || mode !== 'add') return;
+    console.log('[cj-map] add-effect RUN · initGeom', initialGeometry ? (initialGeometry as Geometry).type : 'null');
 
     let cancelled = false;
     let draw: MapboxDraw;
@@ -480,6 +485,7 @@ export default function ContextMap({
 
     void setup();
     return () => {
+      console.log('[cj-map] add-effect CLEANUP');
       cancelled = true;
       if (draw) {
         map.off('draw.create', onCreate);
@@ -490,9 +496,19 @@ export default function ContextMap({
       }
       drawRef.current = null;
     };
-    // re-init drawing when colour changes so the fill matches the active lens
+    // Only `mode` — NOT lensColour (see note above). Lens colour changes update
+    // the draw styles via the effect below without rebuilding the draw.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, lensColour]);
+  }, [mode]);
+
+  // Retint the draw layers when the lens colour changes (no rebuild).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || mode !== 'add') return;
+    for (const [id, prop] of [['gl-draw-polygon-fill.hot', 'fill-color'], ['gl-draw-polygon-fill.cold', 'fill-color'], ['gl-draw-polygon-stroke-active.hot', 'line-color'], ['gl-draw-polygon-stroke-active.cold', 'line-color'], ['gl-draw-point-inner.hot', 'circle-color'], ['gl-draw-point-inner.cold', 'circle-color']] as const) {
+      try { if (map.getLayer(id)) map.setPaintProperty(id, prop, lensColour); } catch { /* layer id may differ across draw versions */ }
+    }
+  }, [lensColour, mode]);
 
   /** Emit the current geometry with the live camera (used when geometry is set
    *  outside the draw event flow — boundary select). */
