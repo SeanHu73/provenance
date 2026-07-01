@@ -2,10 +2,6 @@
 
 import { useEffect } from 'react';
 
-/** Bump this on each deploy we want to verify is live — it prints to the console
- *  so we can confirm which build the browser is actually running. */
-const BUILD_MARKER = 'ctx-journal 2026-07-01 #23 (Clear text shares the hint row)';
-
 /**
  * The service worker is retired (it had a bug that broke page loads and served
  * stale content). Instead of registering, we now actively unregister any worker
@@ -14,7 +10,6 @@ const BUILD_MARKER = 'ctx-journal 2026-07-01 #23 (Clear text shares the hint row
  */
 export default function ServiceWorkerRegistrar() {
   useEffect(() => {
-    console.log(`[provenance] build: ${BUILD_MARKER}`);
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations()
         .then((regs) => regs.forEach((r) => r.unregister()))
