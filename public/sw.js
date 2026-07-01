@@ -1,39 +1,33 @@
-const CACHE_NAME = "memorial-church-v2";
-const PRECACHE_URLS = ["/", "/manifest.json"];
+// Self-destructing service worker.
+//
+// This app no longer uses a service worker — the previous one (cache-first-ish)
+// had a bug: when a request wasn't cached and the network hiccuped it called
+// respondWith(undefined) → "Failed to convert value to 'Response'", which broke
+// page loads and made deploys look like they "didn't take". Any client that
+// still has an old worker will update to THIS one, which clears all caches,
+// unregisters itself, and reloads onto the plain network. There is deliberately
+// no fetch handler, so requests are never intercepted.
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
-  );
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
-    )
-  );
-  self.clients.claim();
-});
-
-self.addEventListener("fetch", (event) => {
-  // Network-first; skip API calls
-  if (event.request.url.includes("/api/")) return;
-
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        if (event.request.method === "GET" && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return response;
-      })
-      .catch(() => caches.match(event.request))
-  );
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    } catch {
+      /* ignore */
+    }
+    try {
+      await self.registration.unregister();
+    } catch {
+      /* ignore */
+    }
+    const clients = await self.clients.matchAll({ type: 'window' });
+    for (const client of clients) {
+      try { client.navigate(client.url); } catch { /* ignore */ }
+    }
+  })());
 });
