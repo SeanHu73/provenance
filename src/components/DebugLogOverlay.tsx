@@ -16,19 +16,17 @@ export default function DebugLogOverlay() {
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    const orig = console.log.bind(console);
-    console.log = (...args: unknown[]) => {
-      orig(...args);
+    const origLog = console.log.bind(console);
+    const origDebug = console.debug.bind(console);
+    const capture = (...args: unknown[]) => {
       try {
         const s = args.map((a) => (typeof a === 'string' ? a : String(a))).join(' ');
-        if (TAGS.some((t) => s.includes(t))) {
-          setLines((prev) => [...prev.slice(-11), s]);
-        }
-      } catch {
-        /* ignore */
-      }
+        if (TAGS.some((t) => s.includes(t))) setLines((prev) => [...prev.slice(-11), s]);
+      } catch { /* ignore */ }
     };
-    return () => { console.log = orig; };
+    console.log = (...args: unknown[]) => { origLog(...args); capture(...args); };
+    console.debug = (...args: unknown[]) => { origDebug(...args); capture(...args); };
+    return () => { console.log = origLog; console.debug = origDebug; };
   }, []);
 
   if (hidden || lines.length === 0) return null;
