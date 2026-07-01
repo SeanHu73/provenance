@@ -533,7 +533,9 @@ export default function ContextMap({
    *  immediately, place selects a boundary by tap or search. */
   function startTool(next: DrawTool, draw = drawRef.current) {
     if (!draw) return;
-    console.log('[cj-map] startTool →', next);
+    const stack = (new Error().stack || '').split('\n').slice(2, 7)
+      .map((s) => s.trim().replace(/https?:\/\/[^)]*\/chunks\//, '').replace(/\)$/, '')).join('\n  ');
+    console.log('[cj-map] startTool →', next, '\n  ' + stack);
     draw.deleteAll();
     setHasGeometry(false);
     onDrawChangeRef.current?.({ geometry: null, camera: null });
