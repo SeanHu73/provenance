@@ -3,6 +3,7 @@ import { Newsreader, DM_Serif_Display, Montserrat } from 'next/font/google';
 import localFont from 'next/font/local';
 import './globals.css';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
+import DebugLogOverlay from '@/components/DebugLogOverlay';
 import ThemeColorMeta from '@/components/ThemeColorMeta';
 import ContextOnboarding from '@/components/onboarding/ContextOnboarding';
 import { ThemeProvider } from '@/context/ThemeContext';
@@ -97,6 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ContextOnboarding>{children}</ContextOnboarding>
           </RoomProvider>
           <ServiceWorkerRegistrar />
+          <DebugLogOverlay />
         </ThemeProvider>
       </body>
     </html>

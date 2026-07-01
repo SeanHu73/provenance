@@ -216,10 +216,28 @@ export default function ContextMap({
       // turns into a +1 zoom. Deliberate zoom is via the +/- buttons (and pinch).
       map.doubleClickZoom.disable();
       map.scrollZoom.disable();
-      // TEMP diagnostics — confirm what a tap fires.
-      map.on('click', (e) => console.log('[cj-map] click @', Math.round(e.point.x), Math.round(e.point.y), '· zoom', map.getZoom().toFixed(2)));
+      // Hard guard: whatever the source, a zoom that STARTS within 500ms of a map
+      // tap is the unwanted tap-zoom — cancel it and restore the pre-tap zoom.
+      // The +/- buttons and pinch don't fire a map 'click', so they're unaffected.
+      let tapAt = 0;
+      let zoomAtTap = map.getZoom();
+      let correcting = false;
+      map.on('click', (e) => {
+        tapAt = performance.now();
+        zoomAtTap = map.getZoom();
+        console.log('[cj-map] click @', Math.round(e.point.x), Math.round(e.point.y), '· zoom', map.getZoom().toFixed(2));
+      });
+      map.on('zoomstart', () => {
+        if (correcting) return;
+        console.log('[cj-map] zoomstart · zoom', map.getZoom().toFixed(2), '· sinceTap', Math.round(performance.now() - tapAt), 'ms');
+        if (performance.now() - tapAt < 500) {
+          correcting = true;
+          map.stop();
+          map.setZoom(zoomAtTap);
+          setTimeout(() => { correcting = false; }, 60);
+        }
+      });
       map.on('dblclick', () => console.log('[cj-map] DBLCLICK'));
-      map.on('zoomstart', () => console.log('[cj-map] zoomstart · zoom', map.getZoom().toFixed(2)));
       map.getCanvas().addEventListener('wheel', () => console.log('[cj-map] wheel'), { passive: true });
     }
     if (geolocate) {
