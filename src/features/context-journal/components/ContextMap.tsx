@@ -542,7 +542,16 @@ export default function ContextMap({
     else draw.changeMode('simple_select'); // place: tap/search drives it
   }
 
+  // Neutralise the phantom tool click (a stray, real click that lands on the Pin
+  // button right after any interaction — mechanism still unknown, desktop only):
+  // ignore switching to the tool you're already on, and ignore a second switch
+  // within 350ms of a genuine one.
+  const lastToolSwitchRef = useRef(0);
   const handleTool = (next: DrawTool) => {
+    const now = performance.now();
+    if (next === tool) { console.log('[cj-map] handleTool ignored (same tool)', next); return; }
+    if (now - lastToolSwitchRef.current < 350) { console.log('[cj-map] handleTool ignored (rapid)', next); return; }
+    lastToolSwitchRef.current = now;
     setTool(next);
     startTool(next);
   };
