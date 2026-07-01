@@ -19,8 +19,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
 import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange, LENS_BY_KEY } from './constants';
-import type { ContextEntry, MapType, TimeRange } from './types';
+import type { ContextEntry, MapType, NewContextEntry, TimeRange } from './types';
 import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds, getPlaceConfig, addContextEntry, deleteContextEntry } from './store';
+import { subscribeGuestContexts, addGuestContext, deleteGuestContext } from './guest-contexts';
 import ContextMapLoader from './components/ContextMapLoader';
 import ContextTimeline from './components/ContextTimeline';
 import PastPanel from './components/PastPanel';
@@ -89,10 +90,19 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
     }
   };
 
+  // In a tour, the learner's added contexts are guest-local (sessionStorage,
+  // reset at tour end) — not persisted to Firestore. Standalone, they live in
+  // Firestore. Both surface the same ContextEntry shape.
   useEffect(() => {
-    const unsub = subscribeContextEntries(scopeId, setEntries);
-    return unsub;
-  }, [scopeId]);
+    return inTour
+      ? subscribeGuestContexts(scopeId, setEntries)
+      : subscribeContextEntries(scopeId, setEntries);
+  }, [scopeId, inTour]);
+
+  const persistAdd = (entry: NewContextEntry): Promise<string> =>
+    inTour ? Promise.resolve(addGuestContext(scopeId, entry)) : addContextEntry(entry);
+  const persistDelete = (id: string): Promise<void> =>
+    inTour ? Promise.resolve(deleteGuestContext(scopeId, id)) : deleteContextEntry(id);
 
   // Load the per-tour config: timeline domain + default map view.
   useEffect(() => {
@@ -157,7 +167,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
 
   const removeEntry = async (id: string) => {
     setFullEntry(null);
-    try { await deleteContextEntry(id); }
+    try { await persistDelete(id); }
     catch (err) { console.error('[context-journal] remove failed:', err); }
   };
 
@@ -174,7 +184,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
   // authored question hides once added).
   const addAuthored = async (entry: ContextEntry) => {
     try {
-      await addContextEntry({
+      await persistAdd({
         question: entry.question, title: entry.title, shortSummary: entry.shortSummary,
         longExplanation: entry.longExplanation, pastCategory: entry.pastCategory,
         timeRange: entry.timeRange, geometry: entry.geometry, camera: entry.camera,
@@ -323,7 +333,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
           <AddContextFlow
             key="add"
             onClose={() => setAddOpen(false)}
-            onSubmit={async (draft) => { await addContextEntry({ ...draft, placeId: scopeId }); }}
+            onSubmit={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); }}
           />
         )}
         {liveFull && (

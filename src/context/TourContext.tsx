@@ -12,6 +12,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { Tour, Stop, TourSession, TourPhase, BankedQuestion, ContextQuestionEntry, ActReflectionResponse } from '@/lib/types';
 import { getTour, getActiveStops, getTourMode } from '@/lib/tours-store';
 import { persistTourSession } from '@/lib/tour-sessions-store';
+import { resetGuestContexts } from '@/features/context-journal/guest-contexts';
 import { useRoom } from './RoomContext';
 import { logReflection, logQuestionRouted, logTourComplete, logEqOpening, logEqClosing, logEqFinalReflect, logStopEntered } from '@/lib/tour-logger';
 import {
@@ -561,6 +562,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const finishTourFn = useCallback(() => {
     if (!session || !tour) return;
     persist(finishTourImpl(session, tour));
+    // Guest-local added contexts are session-scoped to this tour — clear them at
+    // tour end so a repeat run neither shows nor duplicates them.
+    resetGuestContexts(tour.id);
     logTourComplete({
       tourId: tour.id,
       sessionId: session.id,
