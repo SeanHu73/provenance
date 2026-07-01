@@ -1,4 +1,4 @@
-const CACHE_NAME = "memorial-church-v1";
+const CACHE_NAME = "memorial-church-v2";
 const PRECACHE_URLS = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
