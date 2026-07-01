@@ -215,10 +215,10 @@ export default function ContextMap({
       // off too — Mac trackpad taps can emit a stray wheel event that Mapbox
       // turns into a +1 zoom. Deliberate zoom is via the +/- buttons (and pinch).
       map.doubleClickZoom.disable();
-      map.scrollZoom.disable();
-      // Hard guard: whatever the source, a zoom that STARTS within 500ms of a map
-      // tap is the unwanted tap-zoom — cancel it and restore the pre-tap zoom.
-      // The +/- buttons and pinch don't fire a map 'click', so they're unaffected.
+      // scrollZoom stays ENABLED so trackpad pinch still zooms — the tap-zoom is a
+      // programmatic zoomTo (per the trace), not scroll, so this is safe.
+      // Narrow guard: the tap-zoom fires ~4ms after the tap, so cancel any zoom
+      // that starts within 150ms of a tap (a deliberate pinch won't be that close).
       let tapAt = 0;
       let zoomAtTap = map.getZoom();
       let correcting = false;
@@ -230,20 +230,18 @@ export default function ContextMap({
       map.on('zoomstart', () => {
         if (correcting) return;
         const since = Math.round(performance.now() - tapAt);
-        if (since < 500) {
-          // Log the call chain that triggered this zoom (who's calling it).
-          const stack = (new Error().stack || '').split('\n').slice(2, 6).map((s) => s.trim()).join('  ⟵  ');
-          console.log('[cj-map] tap-zoom src:', stack);
+        if (since < 150) {
+          const stack = (new Error().stack || '')
+            .split('\n').slice(2, 14)
+            .map((s) => s.trim().replace(/https?:\/\/[^)]*\/chunks\//, '').replace(/\)$/, ''))
+            .join('\n  ');
+          console.log('[cj-map] tap-zoom src:\n  ' + stack);
           correcting = true;
           map.stop();
           map.setZoom(zoomAtTap);
           setTimeout(() => { correcting = false; }, 60);
-        } else {
-          console.log('[cj-map] zoomstart (not tap) · sinceTap', since, 'ms');
         }
       });
-      map.on('dblclick', () => console.log('[cj-map] DBLCLICK'));
-      map.getCanvas().addEventListener('wheel', () => console.log('[cj-map] wheel'), { passive: true });
     }
     if (geolocate) {
       map.addControl(new mapboxgl.GeolocateControl({
