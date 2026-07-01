@@ -78,8 +78,15 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
   // was authored on; collapsing clears focus (map returns to the default view).
   const handleFocus = (entry: ContextEntry | null) => {
     setFocused(entry);
-    // Focusing a context reveals the map so its highlighted area is visible.
-    if (entry) { setMapType(entry.mapType ?? 'default'); setShowMapPanel(true); }
+    // Focusing a context reveals the map so its highlighted area is visible, and
+    // moves the timeline selection to the context's own span so the map + timeline
+    // both reflect the tapped context. (The active filter changes as a result —
+    // the timeline hint tells learners they can move it to browse other periods.)
+    if (entry) {
+      setMapType(entry.mapType ?? 'default');
+      setShowMapPanel(true);
+      setRange(clampRange(entry.timeRange, domain));
+    }
   };
 
   useEffect(() => {
@@ -244,6 +251,12 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
             </div>
             <div className="border-t" style={{ borderColor: 'var(--th-border)' }}>
               <ContextTimeline value={range} onChange={setRange} domain={domain} onDomainChange={changeDomain} />
+              <p className="px-4 pb-2.5 -mt-0.5 flex items-center gap-1.5 text-[11px] text-text-muted leading-snug">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                  <circle cx="12" cy="12" r="9" /><path d="M12 8v5l3 2" />
+                </svg>
+                Move the timeline to see which contexts apply to each period.
+              </p>
             </div>
           </>
         )}
