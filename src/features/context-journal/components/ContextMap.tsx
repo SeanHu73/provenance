@@ -498,35 +498,22 @@ export default function ContextMap({
                 {t.label}
               </button>
             ))}
-            <div className="ml-auto flex items-center gap-1.5">
-              {/* Highlighter: paint vs move (pan) the map. */}
-              {tool === 'paint' && (
-                <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
-                  {(['paint', 'pan'] as const).map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setPaintMode(m)}
-                      className="px-2.5 py-1 text-[11px] font-semibold transition-colors"
-                      style={paintMode === m ? { backgroundColor: lensColour, color: '#fff' } : { color: 'var(--th-text-secondary)' }}
-                    >
-                      {m === 'paint' ? 'Paint' : 'Move'}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {canClear && (
-                <button
-                  type="button"
-                  onClick={clearCurrent}
-                  className="shrink-0 p-1.5 rounded-lg text-text-secondary hover:bg-black/5"
-                  aria-label={`Clear ${tool === 'pin' ? 'pins' : tool === 'paint' ? 'brush' : 'places'}`}
-                  title="Clear"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /></svg>
-                </button>
-              )}
-            </div>
+            {/* Highlighter: paint vs move (pan) the map. */}
+            {tool === 'paint' && (
+              <div className="ml-auto flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
+                {(['paint', 'pan'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setPaintMode(m)}
+                    className="px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                    style={paintMode === m ? { backgroundColor: lensColour, color: '#fff' } : { color: 'var(--th-text-secondary)' }}
+                  >
+                    {m === 'paint' ? 'Paint' : 'Move'}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {tool === 'select' && (
@@ -562,15 +549,20 @@ export default function ContextMap({
             </div>
           )}
 
-          <p className="px-2.5 pb-1.5 pt-1 text-[11px] text-text-muted">
-            {tool === 'pin'
-              ? `Tap the map to drop a pin${hasPins ? ' · tap a pin to remove it' : ''}.`
-              : tool === 'paint'
-                ? (paintMode === 'paint' ? 'Press and drag to paint a highlight — swipe over the area.' : 'Move mode: drag to pan the map. Switch to Paint to highlight.')
-                : selecting
-                  ? 'Finding the place you tapped…'
-                  : `Tap a place name on the map to select it${hasPlaces ? ' · tap a selected area to remove it' : ''}.`}
-          </p>
+          <div className="flex items-center gap-2 px-2.5 pb-1.5 pt-1">
+            <p className="flex-1 min-w-0 text-[11px] text-text-muted">
+              {tool === 'pin'
+                ? `Tap the map to drop a pin${hasPins ? ' · tap a pin to remove it' : ''}.`
+                : tool === 'paint'
+                  ? (paintMode === 'paint' ? 'Press and drag to paint a highlight — swipe over the area.' : 'Move mode: drag to pan the map. Switch to Paint to highlight.')
+                  : selecting
+                    ? 'Finding the place you tapped…'
+                    : `Tap a place name on the map to select it${hasPlaces ? ' · tap a selected area to remove it' : ''}.`}
+            </p>
+            {canClear && (
+              <button type="button" onClick={clearCurrent} className="shrink-0 px-2 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear</button>
+            )}
+          </div>
         </div>
       )}
 

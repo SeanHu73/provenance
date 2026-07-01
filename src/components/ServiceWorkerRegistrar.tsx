@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 
 /** Bump this on each deploy we want to verify is live — it prints to the console
  *  so we can confirm which build the browser is actually running. */
-const BUILD_MARKER = 'ctx-journal 2026-07-01 #22 (compact clear icon fits on phone)';
+const BUILD_MARKER = 'ctx-journal 2026-07-01 #23 (Clear text shares the hint row)';
 
 /**
  * The service worker is retired (it had a bug that broke page loads and served
