@@ -368,6 +368,7 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
                 onDrawChange={(r) => { setGeometry(r.geometry); setCamera(r.camera); }}
                 onToolChange={setMapTool}
                 onTapName={handleTapName}
+                onTapBoundary={selectBoundary}
                 boundary={boundary}
               />
             </div>

@@ -96,6 +96,24 @@ interface NominatimReverse {
   address?: Record<string, string>;
 }
 
+/** Reverse-geocode a point straight to the boundary of the area under it (a
+ *  region/city polygon), so a tap — especially on mobile, where hitting the tiny
+ *  label is hard — selects the enclosing place directly. Null if none/HTTP fail. */
+export async function boundaryAtPoint(lng: number, lat: number, signal?: AbortSignal): Promise<PlaceResult | null> {
+  const url = `${REVERSE}?format=jsonv2&polygon_geojson=1&polygon_threshold=0.008&zoom=8&lat=${lat}&lon=${lng}`;
+  try {
+    const res = await fetch(url, { signal, headers: { Accept: 'application/json' } });
+    if (!res.ok) return null;
+    const d = (await res.json()) as NominatimItem;
+    if (!d.geojson) return null;
+    const poly = toSinglePolygon(d.geojson);
+    if (!poly) return null;
+    return { name: d.display_name ?? '', kind: d.class === 'boundary' ? (d.type ?? 'area') : (d.type ?? d.class ?? 'place'), geometry: poly };
+  } catch {
+    return null;
+  }
+}
+
 /** Reverse-geocode a point to the city / state / country names sitting under it,
  *  so tapping the map offers those levels to highlight. Throws on HTTP failure. */
 export async function placesAtPoint(lng: number, lat: number, signal?: AbortSignal): Promise<PlaceCandidate[]> {

@@ -24,7 +24,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import type { Geometry, Polygon } from 'geojson';
 import { MAP_STYLES, DEFAULT_CAMERA } from '../constants';
-import { placesAtPoint } from '../places';
+import { boundaryAtPoint, type PlaceResult } from '../places';
 import type { Bounds, Camera, DrawResult, DrawTool, MapMode, MapType } from '../types';
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -57,6 +57,8 @@ interface Props {
   /** Place tool: when the user taps a place label on the map, its name is
    *  reported here (null = tapped somewhere with no place name). */
   onTapName?: (name: string | null) => void;
+  /** Place tool: a tap that resolved straight to a boundary (touch fallback). */
+  onTapBoundary?: (result: PlaceResult) => void;
   /** Place tool: a boundary the parent wants shown (from its search) — bumping
    *  `nonce` re-applies it even if the geometry is unchanged. */
   boundary?: { geometry: Geometry; nonce: number } | null;
@@ -169,7 +171,7 @@ function drawStyles(colour: string) {
 export default function ContextMap({
   mode, lensColour = '#347C4A', initialCamera, initialGeometry, onDrawChange,
   defaultView, geolocate, focus, onViewportChange, mapType = 'default', onMapTypeChange,
-  onToolChange, onTapName, boundary,
+  onToolChange, onTapName, onTapBoundary, boundary,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -180,6 +182,8 @@ export default function ContextMap({
   onViewportChangeRef.current = onViewportChange;
   const onTapNameRef = useRef(onTapName);
   onTapNameRef.current = onTapName;
+  const onTapBoundaryRef = useRef(onTapBoundary);
+  onTapBoundaryRef.current = onTapBoundary;
   const [tool, setTool] = useState<DrawTool>('pin');
   const toolRef = useRef<DrawTool>('pin');
   toolRef.current = tool;
@@ -340,6 +344,8 @@ export default function ContextMap({
       });
       drawRef.current = draw;
       map.addControl(draw);
+      // Belt-and-suspenders: ensure no click/dblclick zoom while drawing.
+      map.doubleClickZoom.disable();
 
       // Seed any existing geometry (edit case): keep it, frame it, and make it
       // editable. Crucially we must NOT then run startTool — it calls deleteAll()
@@ -418,9 +424,14 @@ export default function ContextMap({
         onTapNameRef.current?.(name);
         return;
       }
-      console.debug('[context-journal] place tap → no label, reverse-geocoding');
-      placesAtPoint(e.lngLat.lng, e.lngLat.lat)
-        .then((cands) => onTapNameRef.current?.(cands[0]?.query ?? null))
+      // No label under the tap (common on touch) → reverse-geocode the point
+      // straight to the enclosing boundary and select it directly.
+      console.debug('[context-journal] place tap → no label, reverse-geocoding boundary');
+      boundaryAtPoint(e.lngLat.lng, e.lngLat.lat)
+        .then((result) => {
+          if (result && onTapBoundaryRef.current) onTapBoundaryRef.current(result);
+          else onTapNameRef.current?.(null);
+        })
         .catch((err) => { console.error('[context-journal] reverse lookup failed:', err); onTapNameRef.current?.(null); });
     };
 
