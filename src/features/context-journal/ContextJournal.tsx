@@ -20,8 +20,8 @@ import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
 import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange, LENS_BY_KEY } from './constants';
 import type { ContextEntry, MapType, NewContextEntry, TimeRange } from './types';
-import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds, getPlaceConfig, addContextEntry, deleteContextEntry } from './store';
-import { subscribeGuestContexts, addGuestContext, deleteGuestContext } from './guest-contexts';
+import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds, getPlaceConfig, addContextEntry, updateContextEntry, deleteContextEntry } from './store';
+import { subscribeGuestContexts, addGuestContext, updateGuestContext, deleteGuestContext } from './guest-contexts';
 import ContextMapLoader from './components/ContextMapLoader';
 import ContextTimeline from './components/ContextTimeline';
 import PastPanel from './components/PastPanel';
@@ -62,6 +62,8 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
   // P.A.S.T. framework gets most of the space — the focus is choosing a question.
   const [showMapPanel, setShowMapPanel] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  // The learner's own added copy being edited (authored originals stay read-only).
+  const [editEntry, setEditEntry] = useState<ContextEntry | null>(null);
   const [fullEntry, setFullEntry] = useState<ContextEntry | null>(null);
   // In-tour gate: the learner must open at least one context before continuing.
   const [explored, setExplored] = useState(false);
@@ -101,6 +103,8 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
 
   const persistAdd = (entry: NewContextEntry): Promise<string> =>
     inTour ? Promise.resolve(addGuestContext(scopeId, entry)) : addContextEntry(entry);
+  const persistUpdate = (id: string, patch: Partial<NewContextEntry>): Promise<void> =>
+    inTour ? Promise.resolve(updateGuestContext(scopeId, id, patch)) : updateContextEntry(id, patch);
   const persistDelete = (id: string): Promise<void> =>
     inTour ? Promise.resolve(deleteGuestContext(scopeId, id)) : deleteContextEntry(id);
 
@@ -346,7 +350,17 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
             domain={domain}
             defaultView={defaultView}
             onDelete={liveFull.origin === 'authored' ? undefined : () => removeEntry(liveFull.id)}
+            onEdit={liveFull.origin === 'authored' ? undefined : () => setEditEntry(liveFull)}
             onAdd={liveFull.origin === 'authored' ? () => addAuthored(liveFull) : undefined}
+          />
+        )}
+        {editEntry && (
+          <AddContextFlow
+            key="edit"
+            heading="Edit context"
+            initial={editEntry}
+            onClose={() => setEditEntry(null)}
+            onSubmit={async (draft) => { await persistUpdate(editEntry.id, draft); }}
           />
         )}
       </AnimatePresence>

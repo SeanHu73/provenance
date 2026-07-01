@@ -104,6 +104,14 @@ export async function addContextEntry(entry: NewContextEntry): Promise<string> {
   return id;
 }
 
+/** Patch an existing context entry (e.g. a learner editing their added copy on
+ *  the standalone route). Geometry is re-serialized like on create. */
+export async function updateContextEntry(id: string, patch: Partial<NewContextEntry>): Promise<void> {
+  const data: Record<string, unknown> = cleanUndefined({ ...patch, updatedAt: serverTimestamp() });
+  if ('geometry' in patch) data.geometry = geometryToStore(patch.geometry ?? null);
+  await setDoc(doc(db, CONTEXT_ENTRIES, id), data, { merge: true });
+}
+
 /** Permanently delete a context entry (admin moderation). It disappears
  *  immediately for everyone via the live subscription. */
 export async function deleteContextEntry(id: string): Promise<void> {

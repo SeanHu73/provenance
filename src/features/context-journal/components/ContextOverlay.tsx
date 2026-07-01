@@ -34,10 +34,12 @@ interface Props {
   onAdd?: () => void;
   /** Added context → shows a "remove from journal" control. */
   onDelete?: () => void;
+  /** Added context → shows an "edit" control (opens the editor on the copy). */
+  onEdit?: () => void;
 }
 
 export default function ContextOverlay({
-  entry, saved, onToggleSave, onClose, domain, defaultView, onAdd, onDelete,
+  entry, saved, onToggleSave, onClose, domain, defaultView, onAdd, onDelete, onEdit,
 }: Props) {
   const lens = LENS_BY_KEY[entry.pastCategory];
   const colour = lens.colour;
@@ -92,6 +94,14 @@ export default function ContextOverlay({
             {lens.label} · {formatYear(entry.timeRange.start)}–{formatYear(entry.timeRange.end)}
           </p>
           <BookmarkButton saved={saved} onToggle={onToggleSave} colour={colour} />
+          {onEdit && (
+            <button onClick={onEdit} aria-label="Edit this context"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-text-secondary hover:bg-black/5">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
+              </svg>
+            </button>
+          )}
           {onDelete && (confirmDel ? (
             <span className="flex items-center gap-1 shrink-0">
               <button onClick={onDelete} className="px-2 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700">Remove</button>
