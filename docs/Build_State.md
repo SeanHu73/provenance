@@ -1,7 +1,12 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-06-30
-(latest: the **learner context flow** — Context intro → "Ask about context" →
+*Handoff document for the next Claude Code session. Last updated 2026-07-01
+(latest: the Add-Context map was **rebuilt Draw-free** — pins, a highlighter-swipe
+brush, and a tap-the-visible-name **Select**, all on independent stacking layers
+with no `deleteAll`; fixes the long-running desktop pin/highlight bug. See §15
+**pt.25** and the pruned map-editing list under `## NEXT STEPS`. Debug scaffolding
+`DebugLogOverlay` / `BUILD_MARKER` / `sw.js` still to be removed once signed off.)
+Prior latest: the **learner context flow** — Context intro → "Ask about context" →
 in-tour **Context Journal** showing the act's authored contexts as **questions**,
 Add → thumbnail (Slice 1, pt.21). **See the maintained `## NEXT STEPS — Context
 Journal` list in §15 for what's left** (Slice 2 overlay/tap-levels, edit-on-copy,
@@ -2832,6 +2837,57 @@ thumbnail levels, edit, unlocked scroll).*
   **editable** (`direct_select` → draggable vertices for regions; movable point),
   and `startTool` only runs when there's nothing seeded.
 
+**Add-Context map rebuilt Draw-free — layer-based, additive, stacking
+(2026-07-01 pt.25).** The recurring desktop bug (a real, trusted click on the
+**Pin** button firing after any map interaction → `deleteAll()` wiping pins /
+highlights; pins never persisting; "jumps back to pin") was never root-caused,
+so `ContextMap.tsx`'s add-mode was **rewritten to remove `@mapbox/mapbox-gl-draw`
++ `mapbox-gl-draw-freehand-mode` entirely**. No Draw, **no `deleteAll` anywhere**
+— each tool paints its own GeoJSON source/layer and they **stack**. Confirmed
+working on desktop **and** phone. Build marker now `#23`
+(`ServiceWorkerRegistrar.tsx`).
+
+- **Geometry model** (`ContextMap.tsx`): `parseGeometry` splits stored geometry
+  into `{ pins: LngLat[], polys: Polygon[], strokes: LineString[] }` (handles
+  Point/MultiPoint/Polygon/MultiPolygon/LineString/MultiLineString/Geometry
+  Collection); `buildGeometry(pins, polys, strokes)` recombines — one geometry if
+  singular, else a **`GeometryCollection`**. Three independent React states
+  (`pins`/`places`/`strokes`) each drive their own source (`cj-pins`, `cj-polys`,
+  `cj-strokes`); a single data-sync effect setData's all three and emits
+  `{ geometry, camera }`. Still stored as a JSON string via `geo-serialize.ts`.
+- **Pin** — tap to drop (white outer + lens-colour inner circle); tap a pin
+  (12px pick box on `cj-pins-outer`) to remove it. **Multiple pins** now (was one).
+- **Highlighter** — press-drag paints a **translucent swipe** (own `cj-strokes`
+  line layer, `line-width 20`, `opacity .35`, round caps) as a **`LineString`**,
+  via **custom canvas pointer handlers** (`unproject` on canvas-relative coords,
+  cross-device). `dragPan` disabled only during a stroke. A **Paint / Move toggle**
+  (in the tool row) lets you pan the map without leaving the tool. Replaced the old
+  freehand-polygon highlight.
+- **Select** (renamed from **Place**) — tap reads the **visible basemap label
+  nearest the tap** (`queryRenderedFeatures`, filtered to place labels —
+  country/state/settlement/…; **roads/water/POIs excluded**), echoes the name into
+  the search bar, resolves it via `searchPlaces`, and adds the **boundary of the
+  match nearest the tapped point** (so tapping "Stanford" picks *that* Stanford,
+  not a list). Falls back to `boundaryAtPoint` reverse-geocode when no label is
+  visible. Tap a selected area to remove it. An optional name-search remains (its
+  results **float over the map** instead of shrinking it). Places = `Polygon`s in
+  the same `cj-polys` layer, stacking with pins + strokes.
+- **Phantom-click guard** — a switch **to Pin** within 500 ms of a paint stroke or
+  a select tap is swallowed (`lastStrokeEndRef`), so the tool no longer snaps back
+  to Pin after highlighting/selecting on desktop.
+- **Cursors** — brush for Highlighter (paint), grab-hand for Pin / Highlighter-Move
+  (pannable), crosshair for Select.
+- **Toolbar** — Pin · Highlighter · Select on one row (+ the Paint/Move toggle when
+  Highlighter is active); the single text **"Clear"** shares the instruction row
+  (right-aligned) so nothing wraps or clips on a phone.
+
+⚠️ *Save fix is live (Storage rule `context-journal/media/**` from pt.10 + the
+geometry JSON-string serialization). Still to strip once the map is signed off:
+the **`DebugLogOverlay`**, the **`BUILD_MARKER`** in `ServiceWorkerRegistrar`, and
+the self-destruct **`sw.js`** scaffolding. Region-**vertex dragging** is NOT in the
+Draw-free version — a place is added as a whole boundary; freeform reshape would
+need a bespoke (non-Draw) vertex editor if wanted.*
+
 ## NEXT STEPS — Context Journal (maintained list; prune each as it ships)
 
 **Guest-local saving + no duplicates (NEW — important):** stop persisting added
@@ -2842,16 +2898,16 @@ already-added contexts are **hidden until the learner re-explores** that questio
 (so they don't re-add duplicates). *(Currently `addAuthored` writes to
 `context-entries`, which is why a re-login shows the old one and risks dupes.)*
 
-**Map-editing rework (NEW — needs a tight test loop; blind edits keep
-regressing):**
-- Region/boundary **vertices draggable** when editing (now seeded via
-  direct_select — verify).
-- **Multiple pins** (currently one point only).
-- **Highlight vs pan:** freehand drag = paint, so the map can't be panned while in
-  highlight — need a pan affordance / mode.
-- **Place: tap a label to select** still not working (queryRenderedFeatures path).
-- **Unwanted zoom on tap** — confirm doubleClickZoom-disable covered it; may be
-  another gesture.
+**Map-editing rework — mostly DONE in the Draw-free rebuild (pt.25):**
+- ✅ **Multiple pins** — pins stack (MultiPoint).
+- ✅ **Highlight vs pan** — Paint/Move toggle pans without leaving the highlighter.
+- ✅ **Place: tap a label to select** — Select reads the visible label nearest the
+  tap and highlights the nearest match.
+- ✅ **Unwanted zoom on tap** — gone with Draw removed (no NavigationControl, no
+  Draw click-swallow).
+- ⛔ **Region/boundary vertices draggable** — NOT reimplemented Draw-free; a place
+  is added as a whole boundary. Only build a bespoke vertex editor if freeform
+  reshape is actually wanted.
 
 
 *Authoritative to-do for the in-progress learner build. Slice 1 (authored
