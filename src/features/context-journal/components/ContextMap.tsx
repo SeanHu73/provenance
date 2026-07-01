@@ -397,7 +397,10 @@ export default function ContextMap({
       map.on('draw.delete', emit);
       map.on('click', onPlaceClick);
 
-      map.once('idle', () => {
+      // Arm the tool as soon as the style is ready — NOT on 'idle', which may
+      // never fire while the modal animates/resizes (that left the draw in
+      // select mode, so taps didn't create pins).
+      const finish = () => {
         if (cancelled) return;
         if (initialGeometry) {
           setHasGeometry(true);
@@ -414,7 +417,8 @@ export default function ContextMap({
         } else {
           startTool(tool, draw);
         }
-      });
+      };
+      if (map.isStyleLoaded()) finish(); else map.once('load', finish);
     };
 
     // Smooth a freehand-painted region into a clean shape on completion. The
@@ -422,6 +426,7 @@ export default function ContextMap({
     // (and programmatic adds — boundary select — skip straight to emit).
     const onCreate = (e: DrawCreateEvt) => {
       const f = e.features?.[0];
+      console.log('[cj-map] created', f?.geometry?.type, '· tool', toolRef.current, '· s', f?.properties?.s ?? 0);
       // Highlight: smooth the freehand path once (re-add carries properties.s).
       if (f && toolRef.current === 'highlight' && f.geometry?.type === 'Polygon' && !f.properties?.s) {
         const smooth = smoothPolygon(f.geometry);
@@ -434,11 +439,11 @@ export default function ContextMap({
       // A polygon has settled → open vertex editing so its dots/midpoints drag.
       if (f && f.geometry?.type === 'Polygon' && f.id != null) {
         const id = String(f.id);
-        map.once('idle', () => { if (!cancelled) { try { draw.changeMode('direct_select', { featureId: id }); } catch { /* keep current */ } } });
+        setTimeout(() => { if (!cancelled) { try { draw.changeMode('direct_select', { featureId: id }); } catch { /* keep current */ } } }, 0);
       }
       // Pin: re-arm so the learner can drop more pins (emit combines to MultiPoint).
       if (toolRef.current === 'pin' && f?.geometry?.type === 'Point') {
-        map.once('idle', () => { if (!cancelled && toolRef.current === 'pin') { try { draw.changeMode('draw_point'); } catch { /* keep current */ } } });
+        setTimeout(() => { if (!cancelled && toolRef.current === 'pin') { try { draw.changeMode('draw_point'); } catch { /* keep current */ } } }, 0);
       }
       emit();
     };
@@ -505,6 +510,7 @@ export default function ContextMap({
    *  immediately, place selects a boundary by tap or search. */
   function startTool(next: DrawTool, draw = drawRef.current) {
     if (!draw) return;
+    console.log('[cj-map] startTool →', next);
     draw.deleteAll();
     setHasGeometry(false);
     onDrawChangeRef.current?.({ geometry: null, camera: null });
