@@ -616,7 +616,7 @@ export default function ContextMap({
             <button
               type="button"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={(e) => { handleClear(); e.currentTarget.blur(); }}
+              onClick={(e) => { if (e.detail === 0) return; handleClear(); e.currentTarget.blur(); }}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5"
             >
               Clear
@@ -663,7 +663,12 @@ function ToolBtn({ active, onClick, label, colour, children }: {
     <button
       type="button"
       onMouseDown={(e) => e.preventDefault()}
-      onClick={(e) => { onClick(); e.currentTarget.blur(); }}
+      onClick={(e) => {
+        console.log('[cj-map] toolbtn onClick', label, '· detail', e.detail, '· trusted', e.isTrusted);
+        if (e.detail === 0) return; // ignore synthetic / keyboard-focus activations
+        onClick();
+        e.currentTarget.blur();
+      }}
       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
         active ? 'text-white' : 'text-text-secondary hover:bg-black/5'
       }`}
