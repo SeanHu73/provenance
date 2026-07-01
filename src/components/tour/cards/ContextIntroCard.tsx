@@ -119,7 +119,9 @@ export default function ContextIntroCard({ onComplete }: Props) {
             }}
           >
             Let&rsquo;s <span className="font-bold tracking-wide">ASK</span> about some{' '}
-            <span className="font-bold">context</span> using the&hellip;
+            <span className="font-bold">context</span>
+            <br />
+            using the&hellip;
           </h2>
 
           {LENSES.map((l, i) => (

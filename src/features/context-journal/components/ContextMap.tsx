@@ -300,9 +300,17 @@ export default function ContextMap({
     let draw: MapboxDraw;
 
     const emit = () => {
-      const fc = draw.getAll();
-      const feature = fc.features[0];
-      const geometry = (feature?.geometry as Geometry) ?? null;
+      const feats = draw.getAll().features;
+      let geometry: Geometry | null = null;
+      if (feats.length === 1) {
+        geometry = feats[0].geometry as Geometry;
+      } else if (feats.length > 1) {
+        // Several pins → one MultiPoint; otherwise fall back to the first shape.
+        const pts = feats.filter((f) => f.geometry.type === 'Point').map((f) => (f.geometry as GeoJSON.Point).coordinates);
+        geometry = pts.length === feats.length
+          ? { type: 'MultiPoint', coordinates: pts }
+          : (feats[0].geometry as Geometry);
+      }
       setHasGeometry(!!geometry);
       const c = map.getCenter();
       onDrawChangeRef.current?.({
@@ -352,7 +360,8 @@ export default function ContextMap({
           const bb = bboxOf(initialGeometry as Geometry);
           if (bb) map.fitBounds(bb, { padding: 44, duration: 0, maxZoom: 16 });
           // Polygons → direct_select so vertices/midpoints drag; points → movable.
-          if ((initialGeometry as Geometry).type !== 'Point' && seededIds[0]) {
+          const t = (initialGeometry as Geometry).type;
+          if ((t === 'Polygon' || t === 'MultiPolygon') && seededIds[0]) {
             try { draw.changeMode('direct_select', { featureId: seededIds[0] }); }
             catch { draw.changeMode('simple_select'); }
           } else {
@@ -369,13 +378,23 @@ export default function ContextMap({
     // (and programmatic adds — boundary select — skip straight to emit).
     const onCreate = (e: DrawCreateEvt) => {
       const f = e.features?.[0];
+      // Highlight: smooth the freehand path once (re-add carries properties.s).
       if (f && toolRef.current === 'highlight' && f.geometry?.type === 'Polygon' && !f.properties?.s) {
         const smooth = smoothPolygon(f.geometry);
         if (smooth && f.id != null) {
           draw.delete(String(f.id));
           draw.add({ type: 'Feature', properties: { s: 1 }, geometry: smooth });
-          return; // the re-add fires draw.create again (s:1) → emits below
+          return; // the re-add fires draw.create again (s:1) → handled below
         }
+      }
+      // A polygon has settled → open vertex editing so its dots/midpoints drag.
+      if (f && f.geometry?.type === 'Polygon' && f.id != null) {
+        const id = String(f.id);
+        map.once('idle', () => { if (!cancelled) { try { draw.changeMode('direct_select', { featureId: id }); } catch { /* keep current */ } } });
+      }
+      // Pin: re-arm so the learner can drop more pins (emit combines to MultiPoint).
+      if (toolRef.current === 'pin' && f?.geometry?.type === 'Point') {
+        map.once('idle', () => { if (!cancelled && toolRef.current === 'pin') { try { draw.changeMode('draw_point'); } catch { /* keep current */ } } });
       }
       emit();
     };
@@ -527,7 +546,7 @@ export default function ContextMap({
               {hasGeometry
                 ? '✓ Location set — drag to move, or Clear to redo'
                 : tool === 'pin'
-                  ? 'Tap the map to drop a pin'
+                  ? 'Tap the map to drop pins — add as many as you like'
                   : tool === 'place'
                     ? 'Tap a place name on the map, or use the search above'
                     : usingFreehand ? 'Draw around an area to highlight it' : 'Tap to outline a region, double-tap to finish'}
