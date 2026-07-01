@@ -497,36 +497,33 @@ export default function ContextMap({
               </button>
             ))}
             <div className="ml-auto flex items-center gap-1.5">
+              {/* Highlighter: paint vs move (pan) the map. */}
+              {tool === 'paint' && (
+                <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
+                  {(['paint', 'pan'] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setPaintMode(m)}
+                      className="px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                      style={paintMode === m ? { backgroundColor: lensColour, color: '#fff' } : { color: 'var(--th-text-secondary)' }}
+                    >
+                      {m === 'paint' ? 'Paint' : 'Move'}
+                    </button>
+                  ))}
+                </div>
+              )}
               {tool === 'pin' && hasPins && (
-                <button type="button" onClick={() => setPins([])} className="px-2.5 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear pins</button>
+                <button type="button" onClick={() => setPins([])} className="px-2 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear</button>
+              )}
+              {tool === 'paint' && hasStrokes && (
+                <button type="button" onClick={() => setStrokes([])} className="px-2 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear</button>
               )}
               {tool === 'select' && hasPlaces && (
-                <button type="button" onClick={() => setPlaces([])} className="px-2.5 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear places</button>
+                <button type="button" onClick={() => setPlaces([])} className="px-2 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear</button>
               )}
             </div>
           </div>
-
-          {/* Highlighter: paint vs move (pan) the map — own row so it never wraps oddly. */}
-          {tool === 'paint' && (
-            <div className="flex items-center gap-1.5 px-2 pt-2">
-              <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
-                {(['paint', 'pan'] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setPaintMode(m)}
-                    className="px-3 py-1 text-[11px] font-semibold transition-colors"
-                    style={paintMode === m ? { backgroundColor: lensColour, color: '#fff' } : { color: 'var(--th-text-secondary)' }}
-                  >
-                    {m === 'paint' ? 'Paint' : 'Move'}
-                  </button>
-                ))}
-              </div>
-              {hasStrokes && (
-                <button type="button" onClick={() => setStrokes([])} className="ml-auto px-2.5 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear brush</button>
-              )}
-            </div>
-          )}
 
           {tool === 'select' && (
             <div className="px-2 pt-2">
