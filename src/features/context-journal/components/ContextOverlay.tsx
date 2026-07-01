@@ -43,6 +43,7 @@ export default function ContextOverlay({
   const colour = lens.colour;
   const photos = contextPhotos(entry);
   const audio = contextAudio(entry);
+  const sources = entry.sources ?? [];
   const related = entry.taggedQuestions ?? [];
 
   const [confirmDel, setConfirmDel] = useState(false);
@@ -204,7 +205,28 @@ export default function ContextOverlay({
             </div>
           )}
 
-          {/* 6 — related questions (the closest thing to "sources / related") */}
+          {/* 6 — cited sources */}
+          {sources.length > 0 && (
+            <div className="px-5 pt-5 space-y-2">
+              <p className="text-[11px] uppercase tracking-[0.14em] font-semibold text-text-secondary">Sources</p>
+              {sources.map((s) => (
+                <div key={s.id} className="flex items-start gap-3 rounded-xl border px-3 py-2.5" style={{ borderColor: 'var(--th-border)' }}>
+                  {s.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={s.imageUrl} alt="" className="w-12 h-12 rounded object-cover shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-serif text-[15px] text-text-primary leading-snug">{s.name}</p>
+                    {(s.author || s.date) && (
+                      <p className="mt-0.5 text-xs text-text-muted">{[s.author, s.date].filter(Boolean).join(' · ')}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 7 — related questions */}
           {related.length > 0 && (
             <div className="px-5 pt-5 space-y-2">
               <p className="text-[11px] uppercase tracking-[0.14em] font-semibold text-text-secondary">Related questions</p>

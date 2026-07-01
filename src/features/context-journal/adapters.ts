@@ -25,6 +25,7 @@ export function authoredToEntry(item: ActContextItem, placeId: string): ContextE
     mapType: item.mapType,
     media: item.media, // ContextMediaItem and ContextMedia share a shape
     thumbnailMediaId: item.thumbnailMediaId,
+    sources: item.sources, // ContextSourceItem and ContextSource share a shape
     origin: 'authored',
     placeId,
     createdAt: null,

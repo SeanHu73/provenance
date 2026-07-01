@@ -12,7 +12,7 @@
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { LENSES, TIMELINE_BOUNDS, LENS_BY_KEY } from '../constants';
-import type { ContextDraft, ContextMedia, DrawTool, MapType, PastCategory } from '../types';
+import type { ContextDraft, ContextMedia, ContextSource, DrawTool, MapType, PastCategory } from '../types';
 import { uploadContextMedia } from '../store';
 import { searchPlaces, type PlaceResult } from '../places';
 import ContextMapLoader from './ContextMapLoader';
@@ -25,6 +25,7 @@ interface Props {
 }
 
 type DraftMedia = { id: string; kind: 'photo' | 'audio'; title: string; previewUrl: string; file?: File; existingUrl?: string };
+type DraftSource = { id: string; name: string; author: string; date: string; previewUrl: string; file?: File; existingUrl?: string };
 
 const mkId = () =>
   (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
@@ -41,6 +42,12 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
     (initial?.media ?? []).map((m) => ({ id: m.id, kind: m.kind, title: m.title, previewUrl: m.url, existingUrl: m.url })),
   );
   const [thumbId, setThumbId] = useState<string | null>(initial?.thumbnailMediaId ?? null);
+  const [sources, setSources] = useState<DraftSource[]>(
+    (initial?.sources ?? []).map((s) => ({
+      id: s.id, name: s.name, author: s.author, date: s.date,
+      previewUrl: s.imageUrl ?? '', existingUrl: s.imageUrl ?? undefined,
+    })),
+  );
   const [startYear, setStartYear] = useState(initial?.timeRange?.start ?? 1900);
   const [endYear, setEndYear] = useState(initial?.timeRange?.end ?? 1950);
   const [geometry, setGeometry] = useState(initial?.geometry ?? null);
@@ -125,6 +132,24 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
   const setMediaTitle = (id: string, t: string) =>
     setMedia((prev) => prev.map((m) => (m.id === id ? { ...m, title: t } : m)));
 
+  const addSource = () => setSources((prev) => [...prev, { id: mkId(), name: '', author: '', date: '', previewUrl: '' }]);
+  const removeSource = (id: string) => setSources((prev) => {
+    const s = prev.find((x) => x.id === id);
+    if (s?.file && s.previewUrl) URL.revokeObjectURL(s.previewUrl);
+    return prev.filter((x) => x.id !== id);
+  });
+  const setSourceField = (id: string, field: 'name' | 'author' | 'date', val: string) =>
+    setSources((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: val } : s)));
+  const setSourceImage = (id: string, files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    setSources((prev) => prev.map((s) => {
+      if (s.id !== id) return s;
+      if (s.file && s.previewUrl) URL.revokeObjectURL(s.previewUrl);
+      return { ...s, file, previewUrl: URL.createObjectURL(file), existingUrl: undefined };
+    }));
+  };
+
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
@@ -138,6 +163,12 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
       );
       const photoIds = uploaded.filter((m) => m.kind === 'photo').map((m) => m.id);
       const thumbnailMediaId = thumbId && photoIds.includes(thumbId) ? thumbId : (photoIds[0] ?? null);
+      const uploadedSources: ContextSource[] = await Promise.all(
+        sources.filter((s) => s.name.trim()).map(async (s) => ({
+          id: s.id, name: s.name.trim(), author: s.author.trim(), date: s.date.trim(),
+          imageUrl: s.file ? await uploadContextMedia(s.file) : (s.existingUrl ?? null),
+        })),
+      );
       await onSubmit({
         question: question.trim(),
         title: title.trim(),
@@ -150,6 +181,7 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
         mapType,
         media: uploaded,
         thumbnailMediaId,
+        sources: uploadedSources,
       });
       onClose();
     } catch (err) {
@@ -311,6 +343,49 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
                 </div>
               ))}
             </div>
+          </Field>
+
+          {/* sources */}
+          <Field label="Sources (optional)">
+            <p className="text-[11px] text-text-muted mb-2">Cite where this context comes from — a book, document, archive, oral account… Name is required; author, date, and a picture are optional.</p>
+            <div className="space-y-2">
+              {sources.map((s) => (
+                <div key={s.id} className="p-2 rounded-lg border space-y-2" style={{ borderColor: 'var(--th-border)' }}>
+                  <div className="flex items-center gap-2">
+                    <label className="w-12 h-12 rounded shrink-0 flex items-center justify-center cursor-pointer overflow-hidden border" style={{ borderColor: 'var(--th-border)' }} title="Add a picture (optional)">
+                      {s.previewUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={s.previewUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+                      )}
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => { setSourceImage(s.id, e.target.files); e.target.value = ''; }} />
+                    </label>
+                    <input
+                      value={s.name} onChange={(e) => setSourceField(s.id, 'name', e.target.value)}
+                      placeholder="Source name (required)"
+                      className="flex-1 min-w-0 px-2 py-1.5 rounded border bg-white text-sm" style={{ borderColor: 'var(--th-border)' }}
+                    />
+                    <button onClick={() => removeSource(s.id)} aria-label="Remove source" className="shrink-0 text-text-muted text-xl leading-none px-1">&times;</button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      value={s.author} onChange={(e) => setSourceField(s.id, 'author', e.target.value)}
+                      placeholder="Author (optional)"
+                      className="flex-1 min-w-0 px-2 py-1.5 rounded border bg-white text-sm" style={{ borderColor: 'var(--th-border)' }}
+                    />
+                    <input
+                      value={s.date} onChange={(e) => setSourceField(s.id, 'date', e.target.value)}
+                      placeholder="Date (optional)"
+                      className="w-32 px-2 py-1.5 rounded border bg-white text-sm" style={{ borderColor: 'var(--th-border)' }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={addSource} className="mt-2 px-3 py-1.5 rounded-full text-sm font-semibold border-2" style={{ color: colour, borderColor: `${colour}55` }}>
+              + Add source
+            </button>
           </Field>
 
           {/* map step */}

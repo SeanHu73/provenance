@@ -37,6 +37,17 @@ export interface ContextMedia {
   title: string;
 }
 
+/** A cited source for a context — a titled reference with optional author,
+ *  date, and an image (a document scan, book cover, photo of an artefact…).
+ *  Authored by admins and learners alike; AI-found sources will land here too. */
+export interface ContextSource {
+  id: string;
+  name: string;
+  author: string;
+  date: string;
+  imageUrl: string | null;
+}
+
 /** A snapshot of a question that led a learner to this context, stored on the
  *  saved entry so the journal can show "the questions you asked to get this
  *  context" — with the context info and an optional photo thumbnail — even after
@@ -70,6 +81,8 @@ export interface ContextEntry {
   /** The question(s) that led to this context (snapshot), shown at the bottom of
    *  the context page; tap one to read its context info. */
   taggedQuestions?: TaggedQuestion[];
+  /** Cited sources shown on the context page. */
+  sources?: ContextSource[];
   /** When this is a learner's *added copy* of a designer-authored context, the id
    *  of the authored `ActContextItem` it came from — so the journal hides the
    *  authored question once it's been added. Absent for self-asked contexts. */

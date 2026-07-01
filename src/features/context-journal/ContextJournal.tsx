@@ -179,6 +179,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
         longExplanation: entry.longExplanation, pastCategory: entry.pastCategory,
         timeRange: entry.timeRange, geometry: entry.geometry, camera: entry.camera,
         mapType: entry.mapType, media: entry.media, thumbnailMediaId: entry.thumbnailMediaId,
+        sources: entry.sources, taggedQuestions: entry.taggedQuestions,
         sourceId: entry.id, origin: 'added', placeId: scopeId,
       });
       setFullEntry(null);

@@ -234,6 +234,16 @@ export interface ContextMediaItem {
   title: string;
 }
 
+/** A cited source on an Add-Context item (mirrors the journal's ContextSource so
+ *  an item can be cloned into a learner's Context Journal). */
+export interface ContextSourceItem {
+  id: string;
+  name: string;
+  author: string;
+  date: string;
+  imageUrl: string | null;
+}
+
 /**
  * A **context question** attached to one P.A.S.T. lens and posed after a stop.
  * The designer authors the question + the "context info" the learner receives,
@@ -271,6 +281,8 @@ export interface ActContextItem {
   mapType: 'default' | 'satellite';
   media: ContextMediaItem[];
   thumbnailMediaId: string | null;
+  /** Cited sources shown on the context page (admin- or learner-authored). */
+  sources?: ContextSourceItem[];
   /** Questions this context informs. A designer-created context auto-tags its
    *  origin question; more can be tagged. Replaces the old per-context framing
    *  `question` + `afterStopId` positioning. */
