@@ -138,12 +138,15 @@ export default function ContextMap({
   const [places, setPlaces] = useState<Polygon[]>(seed.polys); // tapped-in region/place boundaries
   const [strokes, setStrokes] = useState<LineString[]>(seed.strokes);
   const [tool, setTool] = useState<Tool>('pin');
-  const [selecting, setSelecting] = useState(false); // reverse-geocode in flight
+  const [paintMode, setPaintMode] = useState<'paint' | 'pan'>('paint'); // brush vs move the map
+  const [selecting, setSelecting] = useState(false); // place lookup in flight
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<PlaceResult[]>([]);
   const [searching, setSearching] = useState(false);
   const toolRef = useRef(tool);
   toolRef.current = tool;
+  const paintModeRef = useRef(paintMode);
+  paintModeRef.current = paintMode;
   const strokesRef = useRef(strokes);
   strokesRef.current = strokes;
   const placesRef = useRef(places);
@@ -157,12 +160,37 @@ export default function ContextMap({
     setTool(next);
   };
 
-  // Add the boundary of whatever place sits under a lng/lat (reverse geocode).
+  // Fallback: add the boundary of whatever place sits under a lng/lat when the
+  // tap wasn't near any visible label (reverse geocode).
   const addPlaceAt = async (lng: number, lat: number) => {
     setSelecting(true);
     try {
       const res = await boundaryAtPoint(lng, lat);
       if (res?.geometry?.type === 'Polygon') setPlaces((prev) => [...prev, res.geometry as Polygon]);
+    } catch { /* ignore */ }
+    finally { setSelecting(false); }
+  };
+
+  // Resolve a place *name* to a boundary, picking the match nearest the point
+  // the user tapped — so "Stanford" becomes the Stanford they clicked, not a
+  // list of every Stanford. The name is echoed into the search bar to confirm.
+  const selectByName = async (name: string, near: LngLat) => {
+    setSelecting(true);
+    setQuery(name);
+    try {
+      const rs = await searchPlaces(name);
+      setResults(rs);
+      let best: PlaceResult | null = null;
+      let bestD = Infinity;
+      for (const r of rs) {
+        const bb = bboxOf(r.geometry);
+        if (!bb) continue;
+        const cx = (bb[0][0] + bb[1][0]) / 2, cy = (bb[0][1] + bb[1][1]) / 2;
+        const d = (cx - near[0]) ** 2 + (cy - near[1]) ** 2;
+        if (d < bestD) { bestD = d; best = r; }
+      }
+      if (best) setPlaces((prev) => [...prev, best.geometry]);
+      else await addPlaceAt(near[0], near[1]); // name found no boundary — fall back
     } catch { /* ignore */ }
     finally { setSelecting(false); }
   };
@@ -273,20 +301,45 @@ export default function ContextMap({
 
     const canvas = map.getCanvas();
 
+    // The visible place label nearest a screen point (country/state/city/…),
+    // ignoring roads/water/POIs — so a tap lands on the name you can see.
+    const nameFromLabels = (pt: mapboxgl.Point): string | null => {
+      const pad = 44;
+      const feats = map.queryRenderedFeatures([[pt.x - pad, pt.y - pad], [pt.x + pad, pt.y + pad]]);
+      let best: string | null = null;
+      let bestD = Infinity;
+      for (const f of feats) {
+        const layerId = f.layer?.id ?? '';
+        if (!/label/i.test(layerId)) continue;
+        if (/road|street|water|natural|poi|transit|airport|rail|marine|building|house/i.test(layerId)) continue;
+        if (!/country|state|settlement|place|city|town|village|region|province|subdivision|district|county|locality|neighou?rhood/i.test(layerId)) continue;
+        const props = f.properties ?? {};
+        const nm = (props.name_en || props.name) as string | undefined;
+        if (!nm || f.geometry?.type !== 'Point') continue;
+        const p = map.project(f.geometry.coordinates as [number, number]);
+        const d = (p.x - pt.x) ** 2 + (p.y - pt.y) ** 2;
+        if (d < bestD) { bestD = d; best = String(nm); }
+      }
+      return best;
+    };
+
     const onMapClick = (e: mapboxgl.MapMouseEvent) => {
       const pad = 12;
       const box: [mapboxgl.PointLike, mapboxgl.PointLike] =
         [[e.point.x - pad, e.point.y - pad], [e.point.x + pad, e.point.y + pad]];
-      // Select mode: tap a place to remove it, or tap open map to select the
-      // region under the point (reverse geocode — picks exactly what you tapped).
+      // Select mode: tap a selected area to remove it; otherwise read the visible
+      // name nearest the tap and highlight that place (nearest match to the tap).
       if (toolRef.current === 'select') {
         const onPlace = map.queryRenderedFeatures(box, { layers: ['cj-polys-fill'] });
         if (onPlace.length && onPlace[0].id != null) {
           const idx = Number(onPlace[0].id);
           setPlaces((prev) => prev.filter((_, i) => i !== idx));
-        } else {
-          void addPlaceAt(e.lngLat.lng, e.lngLat.lat);
+          return;
         }
+        const near: LngLat = [e.lngLat.lng, e.lngLat.lat];
+        const label = nameFromLabels(e.point);
+        if (label) void selectByName(label, near);
+        else void addPlaceAt(near[0], near[1]); // no visible name → reverse geocode
         return;
       }
       // Pin mode: tap to add a pin, tap a pin to remove it.
@@ -313,7 +366,7 @@ export default function ContextMap({
       if (src) src.setData(strokesFC(strokesRef.current, painting ? current : undefined));
     };
     const onPointerDown = (e: PointerEvent) => {
-      if (toolRef.current !== 'paint') return;
+      if (toolRef.current !== 'paint' || paintModeRef.current !== 'paint') return;
       painting = true;
       current = [toLngLat(e.clientX, e.clientY)];
       map.dragPan.disable();
@@ -377,14 +430,14 @@ export default function ContextMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  // Cursor reflects the active tool: brush for paint, grab hand (Mapbox default)
-  // for pin so it reads as pannable, precise cross for select.
+  // Cursor reflects the active tool: brush for painting, grab hand (Mapbox
+  // default) for pin/move so it reads as pannable, precise cross for select.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || mode !== 'add') return;
-    const c = tool === 'paint' ? BRUSH_CURSOR : tool === 'select' ? 'crosshair' : '';
+    const c = tool === 'paint' ? (paintMode === 'paint' ? BRUSH_CURSOR : '') : tool === 'select' ? 'crosshair' : '';
     try { map.getCanvas().style.cursor = c; } catch { /* ok */ }
-  }, [tool, mode]);
+  }, [tool, paintMode, mode]);
 
   // ── sync data + emit whenever pins, strokes, or places change ──
   useEffect(() => {
@@ -427,7 +480,7 @@ export default function ContextMap({
   return (
     <div className="w-full h-full flex flex-col">
       {mode === 'add' && (
-        <div className="shrink-0 bg-warm-white border-b" style={{ borderColor: 'var(--th-border)' }}>
+        <div className="relative z-30 shrink-0 bg-warm-white border-b" style={{ borderColor: 'var(--th-border)' }}>
           <div className="flex flex-wrap items-center gap-1.5 px-2 pt-2">
             {TOOLS.map((t) => (
               <button
@@ -442,6 +495,22 @@ export default function ContextMap({
               </button>
             ))}
             <div className="ml-auto flex items-center gap-1.5">
+              {/* Highlighter: switch between painting and moving (panning) the map. */}
+              {tool === 'paint' && (
+                <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
+                  {(['paint', 'pan'] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setPaintMode(m)}
+                      className="px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                      style={paintMode === m ? { backgroundColor: lensColour, color: '#fff' } : { color: 'var(--th-text-secondary)' }}
+                    >
+                      {m === 'paint' ? 'Paint' : 'Move'}
+                    </button>
+                  ))}
+                </div>
+              )}
               {tool === 'pin' && hasPins && (
                 <button type="button" onClick={() => setPins([])} className="px-2.5 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear pins</button>
               )}
@@ -461,18 +530,22 @@ export default function ContextMap({
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void runSearch(); } }}
-                  placeholder="Search a place by name (optional)…"
+                  placeholder="Tap a name on the map, or search here…"
                   className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg text-xs bg-black/[0.03] border border-black/10 focus:outline-none focus:border-black/25"
                 />
+                {query && (
+                  <button type="button" onClick={() => { setQuery(''); setResults([]); }} className="shrink-0 px-2 py-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5" aria-label="Clear search">✕</button>
+                )}
                 <button type="button" onClick={() => void runSearch()} disabled={searching || !query.trim()} className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-40" style={{ backgroundColor: lensColour }}>
                   {searching ? '…' : 'Search'}
                 </button>
               </div>
+              {/* Floating results — overlay the top of the map so they don't steal map height. */}
               {results.length > 0 && (
-                <ul className="mt-1.5 max-h-40 overflow-y-auto rounded-lg border border-black/10 divide-y divide-black/5">
+                <ul className="absolute left-2 right-2 mt-1.5 max-h-52 overflow-y-auto rounded-lg border border-black/10 bg-warm-white shadow-xl divide-y divide-black/5">
                   {results.map((r, i) => (
                     <li key={i}>
-                      <button type="button" onClick={() => addPlaceFromResult(r)} className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-black/5">
+                      <button type="button" onClick={() => addPlaceFromResult(r)} className="w-full text-left px-2.5 py-2 text-xs hover:bg-black/5">
                         <span className="font-medium text-text-primary">{r.name}</span>
                         <span className="ml-1 text-text-muted">· {r.kind}</span>
                       </button>
@@ -487,10 +560,10 @@ export default function ContextMap({
             {tool === 'pin'
               ? `Tap the map to drop a pin${hasPins ? ' · tap a pin to remove it' : ''}.`
               : tool === 'paint'
-                ? 'Press and drag to paint a highlight — swipe over the area.'
+                ? (paintMode === 'paint' ? 'Press and drag to paint a highlight — swipe over the area.' : 'Move mode: drag to pan the map. Switch to Paint to highlight.')
                 : selecting
                   ? 'Finding the place you tapped…'
-                  : `Tap a spot to select the region there${hasPlaces ? ' · tap a selected area to remove it' : ''}.`}
+                  : `Tap a place name on the map to select it${hasPlaces ? ' · tap a selected area to remove it' : ''}.`}
           </p>
         </div>
       )}
