@@ -159,7 +159,7 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
                   ))}
                   {/* contexts already added (thumbnails) */}
                   {added.length > 0 && (
-                    <div className="flex gap-3 overflow-x-auto cj-hscroll -mx-1 px-1">
+                    <div data-cj-keep className="flex gap-3 overflow-x-auto cj-hscroll -mx-1 px-1 py-0.5">
                       {added.map((entry) => (
                         <ContextCard
                           key={entry.id}
@@ -168,7 +168,6 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
                           active={focusedId === entry.id}
                           saved={savedIds.has(entry.id)}
                           onTap={() => handleThumb(entry)}
-                          onOpenFull={() => onOpenFull(entry)}
                           onToggleSave={() => onToggleSave(entry.id)}
                         />
                       ))}
@@ -202,20 +201,31 @@ function QuestionRow({ entry, colour, onTap }: { entry: ContextEntry; colour: st
   );
 }
 
-/** A context card in the lens rail: photo, title, framing question (italic),
- *  short summary. Tap focuses the map; "Read more" opens the full page. */
-function ContextCard({ entry, colour, active, saved, onTap, onOpenFull, onToggleSave }: {
+/**
+ * An added context in the lens rail — Slice 2 select-levels.
+ *
+ * Collapsed the thumbnail is **photo + title only**. **Tap 1** selects it
+ * (`onTap` → focus): the map/timeline update to this context, a short summary
+ * reveals, and a pulse ring cues that a second tap opens it. **Tap 2** (`onTap`
+ * again, while active) opens the full overlay. Deselecting is handled by the
+ * journal's outside-tap listener (this card is inside a `data-cj-keep` rail).
+ */
+function ContextCard({ entry, colour, active, saved, onTap, onToggleSave }: {
   entry: ContextEntry; colour: string; active: boolean; saved: boolean;
-  onTap: () => void; onOpenFull: () => void; onToggleSave: () => void;
+  onTap: () => void; onToggleSave: () => void;
 }) {
   const photo = thumbnailPhotoUrl(entry);
   return (
     <div
-      className="shrink-0 w-60 rounded-xl overflow-hidden bg-warm-white border"
-      style={{ borderColor: active ? colour : 'var(--th-border)', boxShadow: active ? `0 0 0 1px ${colour}` : 'none', scrollSnapAlign: 'start' }}
+      className={`relative shrink-0 rounded-xl overflow-hidden bg-warm-white border transition-all ${active ? 'w-60' : 'w-40'}`}
+      style={{ borderColor: active ? colour : 'var(--th-border)', scrollSnapAlign: 'start' }}
     >
+      {/* pulse ring cueing the second tap */}
+      {active && (
+        <span className="pointer-events-none absolute inset-0 rounded-xl animate-pulse z-10" style={{ boxShadow: `0 0 0 2px ${colour}` }} aria-hidden />
+      )}
       <button onClick={onTap} className="block w-full text-left">
-        <div className="w-full h-28 flex items-center justify-center" style={{ backgroundColor: `${colour}1f` }}>
+        <div className="w-full h-24 flex items-center justify-center" style={{ backgroundColor: `${colour}1f` }}>
           {photo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={photo} alt="" className="w-full h-full object-cover" />
@@ -225,20 +235,25 @@ function ContextCard({ entry, colour, active, saved, onTap, onOpenFull, onToggle
             </svg>
           )}
         </div>
-        <div className="p-3">
-          <h3 className="font-display text-base text-text-primary leading-tight">{entry.title}</h3>
-          {entry.question && (
-            <p className="text-xs font-serif italic text-text-secondary mt-0.5 leading-snug line-clamp-2">{entry.question}</p>
+        <div className="px-3 py-2.5">
+          <h3 className="font-display text-[15px] text-text-primary leading-tight line-clamp-2">{entry.title}</h3>
+          {/* tap-1 reveal: short summary + open cue */}
+          {active && entry.shortSummary && (
+            <p className="mt-1.5 text-xs font-serif text-text-secondary leading-snug line-clamp-4">{entry.shortSummary}</p>
           )}
-          {entry.shortSummary && (
-            <p className="text-xs font-serif text-text-secondary mt-1.5 leading-snug line-clamp-3">{entry.shortSummary}</p>
+          {active && (
+            <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: colour }}>
+              Tap again to open
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+            </span>
           )}
         </div>
       </button>
-      <div className="flex items-center justify-between px-3 pb-2.5">
-        <button onClick={onOpenFull} className="text-xs font-semibold" style={{ color: colour }}>Read more →</button>
-        <BookmarkButton saved={saved} onToggle={onToggleSave} colour={colour} />
-      </div>
+      {active && (
+        <div className="flex items-center justify-end px-2 pb-2">
+          <BookmarkButton saved={saved} onToggle={onToggleSave} colour={colour} />
+        </div>
+      )}
     </div>
   );
 }

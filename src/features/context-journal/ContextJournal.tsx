@@ -24,7 +24,7 @@ import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subsc
 import ContextMapLoader from './components/ContextMapLoader';
 import ContextTimeline from './components/ContextTimeline';
 import PastPanel from './components/PastPanel';
-import ContextFullScreen from './components/ContextFullScreen';
+import ContextOverlay from './components/ContextOverlay';
 import AddContextFlow from './components/AddContextFlow';
 
 interface Props {
@@ -108,6 +108,20 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
     return unsub;
   }, []);
 
+  // Deselect a focused (tapped-once) thumbnail when the learner taps *elsewhere*
+  // — but not on the map/timeline or the thumbnail rail (both marked
+  // `data-cj-keep`), so panning the map or switching cards keeps the selection.
+  useEffect(() => {
+    if (!focused) return;
+    const onDown = (e: PointerEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el?.closest('[data-cj-keep]')) return;
+      setFocused(null);
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [focused]);
+
   const toggleSave = (contextId: string) => {
     const viewerId = viewerIdRef.current;
     if (!viewerId) return;
@@ -189,7 +203,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
       </header>
 
       {/* 1 — collapsible map + timeline (collapsed by default) */}
-      <div className="shrink-0 border-b" style={{ borderColor: 'var(--th-border)', backgroundColor: 'var(--th-surface)' }}>
+      <div data-cj-keep className="shrink-0 border-b" style={{ borderColor: 'var(--th-border)', backgroundColor: 'var(--th-surface)' }}>
         <button
           onClick={() => setShowMapPanel((v) => !v)}
           className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold text-text-secondary"
@@ -285,12 +299,14 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
           />
         )}
         {liveFull && (
-          <ContextFullScreen
+          <ContextOverlay
             key="full"
             entry={liveFull}
             saved={savedIds.has(liveFull.id)}
             onToggleSave={() => toggleSave(liveFull.id)}
             onClose={() => setFullEntry(null)}
+            domain={domain}
+            defaultView={defaultView}
             onDelete={liveFull.origin === 'authored' ? undefined : () => removeEntry(liveFull.id)}
             onAdd={liveFull.origin === 'authored' ? () => addAuthored(liveFull) : undefined}
           />

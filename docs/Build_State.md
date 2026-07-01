@@ -1,11 +1,17 @@
 # Build State — Provenance
 
 *Handoff document for the next Claude Code session. Last updated 2026-07-01
-(latest: the Add-Context map was **rebuilt Draw-free** — pins, a highlighter-swipe
-brush, and a tap-the-visible-name **Select**, all on independent stacking layers
-with no `deleteAll`; fixes the long-running desktop pin/highlight bug. See §15
-**pt.25** and the pruned map-editing list under `## NEXT STEPS`. Debug scaffolding
-`DebugLogOverlay` / `BUILD_MARKER` / `sw.js` still to be removed once signed off.)
+(latest: **Context Journal Slice 2** — the immersive learner **overlay** (map +
+timeline pinned on top, auto read-aloud Title→pause→Long, expand-to-read-along,
+photos/audio/related) and the **thumbnail select-levels** (tap 1 = select + short
+summary + map focus + pulse; tap 2 = full overlay; tap-elsewhere deselects). New
+`ContextOverlay` + `useReadAloud`; `ContextFullScreen` removed. See §15 **pt.26**;
+Slice 2 item #1 pruned from `## NEXT STEPS`. Debug scaffolding
+`DebugLogOverlay` / `BUILD_MARKER` / `sw.js` **now removed** (committed `927df80`).
+Prior latest: the Add-Context map was **rebuilt Draw-free** — pins, a highlighter-
+swipe brush, and a tap-the-visible-name **Select**, all on independent stacking
+layers with no `deleteAll`; fixes the long-running desktop pin/highlight bug (§15
+**pt.25**).
 Prior latest: the **learner context flow** — Context intro → "Ask about context" →
 in-tour **Context Journal** showing the act's authored contexts as **questions**,
 Add → thumbnail (Slice 1, pt.21). **See the maintained `## NEXT STEPS — Context
@@ -2888,6 +2894,45 @@ the self-destruct **`sw.js`** scaffolding. Region-**vertex dragging** is NOT in 
 Draw-free version — a place is added as a whole boundary; freeform reshape would
 need a bespoke (non-Draw) vertex editor if wanted.*
 
+**Context Journal Slice 2 — learner overlay + thumbnail select-levels
+(2026-07-01 pt.26).** The core remaining in-tour interaction (NEXT STEPS item #1),
+built and green (`tsc`/`eslint`/`next build` all pass; not yet browser-tested).
+
+- **`useReadAloud` hook** (`components/useReadAloud.ts`) — sequenced Web-Speech
+  TTS: speaks an optional **lead** (the context Title), pauses ~1s, then the
+  **body** (Long explanation). Word-highlight `boundary` offsets track the *body*
+  only; exposes `{ supported, speaking, currentIdx, segments, play, stop }`.
+  Autoplay is attempted from the overlay's mount effect (the open tap keeps the
+  gesture warm); a play/stop button always shows as the fallback. Generalises the
+  old `ReadAloud` (which stays — `ActContextCard` still uses it).
+- **`ContextOverlay.tsx`** (new; **replaces `ContextFullScreen`**, now deleted) —
+  the immersive reader. Bottom-sheet with a **compact sticky header** (lens·years,
+  bookmark, remove-if-added, ×) over a scroll body: **map + timeline pinned on
+  top** (scroll-unlocked — `ContextMapLoader` browse + focus geometry, plus a
+  `ContextTimeline` opened on the entry's own span, both ephemeral to the
+  overlay) → Title + italic question + short summary → **auto read-aloud** →
+  **"Expand to read along"** (the Long explanation, collapsed, with the synced
+  word highlight) → photos → audio → **Related questions** (`taggedQuestions` —
+  the nearest thing to "sources/related"; no `sources` field exists in the model).
+  Serves both entry points: authored question → `onAdd` (adds a learner copy +
+  closes); added context "tap 2" → `onDelete`. Wired in `ContextJournal` with
+  `domain` + `defaultView` passed down.
+- **Thumbnail select-levels** (`PastLens` `ContextCard`) — collapsed thumbnail is
+  now **photo + title only** (was title+question+summary+Read-more+bookmark).
+  **Tap 1** (`onFocus`) selects it: widens the card, reveals the **short summary**
+  + a "Tap again to open" cue + a bookmark, focuses the map/timeline on it, and a
+  **pulse ring** (`animate-pulse` — opacity, so no `transform` clash) cues tap 2.
+  **Tap 2** (tap while active) opens the full overlay. **Deselect on tap
+  elsewhere** — a `pointerdown` listener in `ContextJournal` clears focus unless
+  the tap is inside a `data-cj-keep` zone (the map/timeline panel or the thumbnail
+  rail), so panning the map or switching cards keeps the selection.
+
+⚠️ *Still open in Slice 2's neighbourhood: **edit-on-added-copy** (item #2),
+**AI/self-asked** (item #3), per-account isolation (item #4), and the guest-local
+saving rework at the top of the list. Not browser-tested yet — the overlay's
+autoplay TTS + word-highlight need a real-device check (mobile voices may not fire
+`boundary` events, so highlighting can be absent while audio still plays).*
+
 ## NEXT STEPS — Context Journal (maintained list; prune each as it ships)
 
 **Guest-local saving + no duplicates (NEW — important):** stop persisting added
@@ -2915,18 +2960,10 @@ contexts → questions in the in-tour journal, Add → thumbnail) is DONE (pt.21
 Remove items here as they're completed; record the completion in a dated pt.X
 note above.*
 
-1. **Slice 2 — learner overlay + thumbnail select-levels** (the core remaining
-   interaction):
-   - Tap a question → **overlay**: the context's **map/timeline pinned on top**,
-     TTS auto-reads **Title → ~1s pause → Long explanation** (autoplay on; else a
-     play button), photos below, expand-to-read-along between map and photos. X
-     closes back to the question. **Add** closes the overlay.
-   - After Add → **thumbnail = photo + title only**. **Tap 1** = select + show
-     short summary + map/timeline updates to that context (+ pulse to cue tap 2).
-     **Tap 2** = full **context page** (map/timeline, title, italic question,
-     audio, photo, Read-Along long explanation, sources, related). **Deselect** by
-     tapping elsewhere (NOT the map/timeline). Overlay map/timeline **unlocked on
-     scroll** (unlike the main page).
+1. ✅ **Slice 2 — learner overlay + thumbnail select-levels** — DONE (pt.26).
+   `ContextOverlay` (map/timeline pinned on top, auto read-aloud Title→pause→Long,
+   expand-to-read-along, photos/audio/related) + thumbnail tap-1 select / tap-2
+   open with tap-elsewhere deselect. (Not browser-tested — see the pt.26 note.)
 2. **Edit on the added copy** — the learner can edit any context they've added
    (their local copy); the authored original stays read-only. (The overlay's
    "edit" affordance.)
