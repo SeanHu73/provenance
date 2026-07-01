@@ -473,6 +473,8 @@ export default function ContextMap({
   const hasPins = pins.length > 0;
   const hasStrokes = strokes.length > 0;
   const hasPlaces = places.length > 0;
+  const canClear = (tool === 'pin' && hasPins) || (tool === 'paint' && hasStrokes) || (tool === 'select' && hasPlaces);
+  const clearCurrent = () => { if (tool === 'pin') setPins([]); else if (tool === 'paint') setStrokes([]); else setPlaces([]); };
   const TOOLS = [
     { id: 'pin' as const, label: 'Pin', icon: <><path d="M12 21s-7-6.4-7-11a7 7 0 0114 0c0 4.6-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></> },
     { id: 'paint' as const, label: 'Highlighter', icon: <><path d="M9.5 3l6 6-8.5 8.5-4 1 1-4z" /><path d="M14 5.5l1.8-1.8a1.5 1.5 0 012.1 0l.4.4a1.5 1.5 0 010 2.1L18 8" /></> },
@@ -513,14 +515,16 @@ export default function ContextMap({
                   ))}
                 </div>
               )}
-              {tool === 'pin' && hasPins && (
-                <button type="button" onClick={() => setPins([])} className="px-2 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear</button>
-              )}
-              {tool === 'paint' && hasStrokes && (
-                <button type="button" onClick={() => setStrokes([])} className="px-2 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear</button>
-              )}
-              {tool === 'select' && hasPlaces && (
-                <button type="button" onClick={() => setPlaces([])} className="px-2 py-1 rounded-lg text-xs font-semibold text-text-secondary hover:bg-black/5">Clear</button>
+              {canClear && (
+                <button
+                  type="button"
+                  onClick={clearCurrent}
+                  className="shrink-0 p-1.5 rounded-lg text-text-secondary hover:bg-black/5"
+                  aria-label={`Clear ${tool === 'pin' ? 'pins' : tool === 'paint' ? 'brush' : 'places'}`}
+                  title="Clear"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /></svg>
+                </button>
               )}
             </div>
           </div>
