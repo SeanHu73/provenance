@@ -19,6 +19,11 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LENSES } from '@/features/context-journal/constants';
 
+/** A distinct "context" accent for these immersive splashes — deliberately NOT
+ *  --th-secondary (which equals the Attitudes lens colour), so CONTEXT and the
+ *  CTA don't clash with the coloured P·A·S·T lenses. A warm coral, no lens uses it. */
+export const CONTEXT_ACCENT = '#E08A5F';
+
 interface Props {
   onComplete: () => void;
   /** After the first context step, the intro is shorter: the same fade into the
@@ -130,7 +135,7 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
             <br />
             <span
               className="font-display"
-              style={{ fontSize: '1.55em', color: 'var(--th-secondary)', display: 'inline-block', margin: '0.06em 0' }}
+              style={{ fontSize: '1.55em', color: CONTEXT_ACCENT, display: 'inline-block', margin: '0.06em 0' }}
             >
               CONTEXT
             </span>
@@ -163,8 +168,8 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
               transition: 'opacity 600ms ease-out 950ms, transform 600ms ease-out 950ms',
             }}
           >
-            <span className="font-display leading-none" style={{ fontSize: 'clamp(20px, 5.5vw, 30px)', color: 'var(--th-secondary)' }}>Ready to ask questions?</span>
-            <svg className="animate-bounce shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--th-secondary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <span className="font-display leading-none" style={{ fontSize: 'clamp(20px, 5.5vw, 30px)', color: CONTEXT_ACCENT }}>Ready to ask questions?</span>
+            <svg className="animate-bounce shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={CONTEXT_ACCENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14M6 13l6 6 6-6" />
             </svg>
           </div>
