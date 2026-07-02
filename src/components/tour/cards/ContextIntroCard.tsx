@@ -35,7 +35,9 @@ interface Props {
 export default function ContextIntroCard({ onComplete, returning = false }: Props) {
   const [mounted, setMounted] = useState(false);
   const [beat2, setBeat2] = useState(false);
+  const [sitIn, setSitIn] = useState(false);
   const beat2Ref = useRef<HTMLElement | null>(null);
+  const sitRef = useRef<HTMLElement | null>(null);
   const enterRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -47,6 +49,14 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
     const el = beat2Ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setBeat2(true); }, { threshold: 0.4 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const el = sitRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setSitIn(true); }, { threshold: 0.4 });
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
@@ -176,6 +186,68 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
         </div>
       </section>
       )}
+
+      {/* Sit down — a beat to settle before reading/reflecting (both variants). */}
+      <section
+        ref={sitRef}
+        className="relative min-h-[100dvh] flex flex-col items-center justify-center text-center px-8"
+        style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+      >
+        <svg
+          width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="var(--th-surface)"
+          strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
+          style={{
+            opacity: sitIn ? 0.9 : 0,
+            transform: sitIn ? 'translateY(0) scale(1)' : 'translateY(12px) scale(0.92)',
+            transition: 'opacity 700ms ease-out, transform 700ms ease-out',
+          }}
+        >
+          <path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3" />
+          <path d="M2 13a2 2 0 0 1 2-2 2 2 0 0 1 2 2v3h12v-3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z" />
+          <path d="M5 18v2M19 18v2" />
+        </svg>
+
+        <p
+          className="font-serif mt-7"
+          style={{
+            fontSize: 'clamp(18px, 4.8vw, 24px)', color: 'var(--th-surface)',
+            opacity: sitIn ? 0.85 : 0, transform: sitIn ? 'translateY(0)' : 'translateY(12px)',
+            transition: 'opacity 700ms ease-out 150ms, transform 700ms ease-out 150ms',
+          }}
+        >
+          Feel free to find a place to
+        </p>
+        <p
+          className="font-display leading-none mt-1"
+          style={{
+            fontSize: 'clamp(46px, 15vw, 88px)', color: 'var(--th-surface)',
+            opacity: sitIn ? 1 : 0, transform: sitIn ? 'translateY(0)' : 'translateY(12px)',
+            transition: 'opacity 800ms ease-out 350ms, transform 800ms ease-out 350ms',
+          }}
+        >
+          sit down
+        </p>
+        <p
+          className="font-serif mt-7"
+          style={{
+            fontSize: 'clamp(18px, 4.8vw, 24px)', color: 'var(--th-surface)', maxWidth: '22ch',
+            opacity: sitIn ? 0.9 : 0, transform: sitIn ? 'translateY(0)' : 'translateY(12px)',
+            transition: 'opacity 800ms ease-out 750ms, transform 800ms ease-out 750ms',
+          }}
+        >
+          while we <span className="italic font-display" style={{ color: CONTEXT_ACCENT }}>reconstruct the world</span> around us.
+        </p>
+
+        <div
+          className="absolute bottom-7 left-0 right-0 flex flex-col items-center gap-1.5"
+          style={{ opacity: sitIn ? 0.65 : 0, transition: 'opacity 700ms ease-out 1200ms' }}
+        >
+          <span className="text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--th-surface)' }}>Scroll to begin</span>
+          <svg className="animate-bounce" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--th-surface)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+      </section>
 
       {/* Sentinel — scrolling into it enters the Context Journal */}
       <div ref={enterRef} className="h-[55vh] flex items-end justify-center pb-10" style={{ scrollSnapAlign: 'end' }}>
