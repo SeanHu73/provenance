@@ -67,7 +67,13 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
   const [fullEntry, setFullEntry] = useState<ContextEntry | null>(null);
   // In-tour gate: the learner must open at least one context before continuing.
   const [explored, setExplored] = useState(false);
-  const openFull = (entry: ContextEntry) => { setFullEntry(entry); setExplored(true); };
+  // The continue gate is engagement with a *question*: tapping an authored
+  // question (or asking your own — set on submit below), NOT just re-opening a
+  // context that's already been added.
+  const openFull = (entry: ContextEntry) => {
+    setFullEntry(entry);
+    if (entry.origin === 'authored') setExplored(true);
+  };
   // The context the viewer has tapped — drives the map (fly to its area); null
   // returns the map to the admin default view.
   const [focused, setFocused] = useState<ContextEntry | null>(null);
@@ -326,7 +332,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
               Continue tour
             </button>
             {!explored && (
-              <p className="mt-2 text-center text-xs text-text-muted">Explore at least one context before continuing.</p>
+              <p className="mt-2 text-center text-xs text-text-muted">Ask a question — or tap one to explore — before continuing.</p>
             )}
           </div>
         )}
@@ -337,7 +343,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
           <AddContextFlow
             key="add"
             onClose={() => setAddOpen(false)}
-            onSubmit={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); }}
+            onSubmit={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); setExplored(true); }}
           />
         )}
         {liveFull && (

@@ -719,6 +719,9 @@ export interface TourSession {
   currentRound: number;               // 0 = main wonder+reveal, 1+ = extra rounds
   /** Which positioned Add-Context item is currently showing (act_context phases). */
   currentContextId?: string | null;
+  /** True once the full Context intro has played — later context steps show the
+   *  shorter "let's explore the P.A.S.T. again" return intro instead. */
+  contextIntroSeen?: boolean;
   completedStops: string[];
   completionOrder: string[];           // Stop IDs in the order the explorer completed them (unstructured mode)
   midwayResponseText: string | null;   // Explorer's response to the midway check-in question

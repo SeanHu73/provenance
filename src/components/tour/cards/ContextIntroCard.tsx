@@ -21,9 +21,13 @@ import { LENSES } from '@/features/context-journal/constants';
 
 interface Props {
   onComplete: () => void;
+  /** After the first context step, the intro is shorter: the same fade into the
+   *  big CONTEXT title with a "let's explore the P.A.S.T. again" line, then scroll
+   *  straight into the journal (no ASK / P·A·S·T reveal beat). */
+  returning?: boolean;
 }
 
-export default function ContextIntroCard({ onComplete }: Props) {
+export default function ContextIntroCard({ onComplete, returning = false }: Props) {
   const [mounted, setMounted] = useState(false);
   const [beat2, setBeat2] = useState(false);
   const beat2Ref = useRef<HTMLElement | null>(null);
@@ -86,7 +90,9 @@ export default function ContextIntroCard({ onComplete }: Props) {
             maxWidth: '24ch',
           }}
         >
-          Now that we&rsquo;ve learned a bit about this place&hellip;
+          {returning
+            ? <>Now that you&rsquo;ve learned more, let&rsquo;s explore the <span className="font-bold">P.A.S.T.</span> again&hellip;</>
+            : <>Now that we&rsquo;ve learned a bit about this place&hellip;</>}
         </p>
 
         <div
@@ -100,7 +106,9 @@ export default function ContextIntroCard({ onComplete }: Props) {
         </div>
       </section>
 
-      {/* Beat 2 — vertically centred: lead just above the diagonal P·A·S·T */}
+      {/* Beat 2 — vertically centred: lead just above the diagonal P·A·S·T.
+          Skipped on the return intro (straight from CONTEXT into the journal). */}
+      {!returning && (
       <section
         ref={beat2Ref}
         className="relative min-h-[100dvh] flex flex-col justify-center px-7"
@@ -151,6 +159,7 @@ export default function ContextIntroCard({ onComplete }: Props) {
           </svg>
         </div>
       </section>
+      )}
 
       {/* Sentinel — scrolling into it enters the Context Journal */}
       <div ref={enterRef} className="h-[55vh] flex items-end justify-center pb-10" style={{ scrollSnapAlign: 'end' }}>

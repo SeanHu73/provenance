@@ -344,7 +344,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
         {/* End-of-act chain: Context intro → Context → Context questions → Reflection → Community */}
         {phase === 'act_context_intro' && currentStop && (
-          <ContextIntroCard onComplete={completeContextIntro} />
+          <ContextIntroCard onComplete={completeContextIntro} returning={!!session.contextIntroSeen} />
         )}
 
         {phase === 'act_context' && currentStop && typeof document !== 'undefined' && createPortal(

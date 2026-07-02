@@ -850,6 +850,8 @@ export function completeContextIntro(session: TourSession): TourSession {
     phaseHistory: pushHistory(session),
     currentPhase: 'act_context',
     currentRound: 0,
+    // Mark the full intro as played so later context steps use the return intro.
+    contextIntroSeen: true,
   };
 }
 
