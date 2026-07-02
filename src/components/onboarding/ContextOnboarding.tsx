@@ -18,12 +18,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import PastFramework from './PastFramework';
+import QuickSetUp from './QuickSetUp';
 
 const LEAVE_MS = 500;
 
 export default function ContextOnboarding({ children }: { children: React.ReactNode }) {
   const [dismissed, setDismissed] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  // After "Enter Provenance", the teaching flow hands off to the Quick Set Up
+  // wizard, which finishes by dismissing into the app.
+  const [setupOpen, setSetupOpen] = useState(false);
   const screenRef = useRef<HTMLDivElement | null>(null);
   // The teaching intro is for explorers, not the builder — skip it on admin.
   const onAdmin = usePathname()?.startsWith('/admin') ?? false;
@@ -54,7 +58,8 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
   return (
     <>
       {children}
-      {!dismissed && !onAdmin && (
+      {!dismissed && !onAdmin && setupOpen && <QuickSetUp onDone={dismiss} />}
+      {!dismissed && !onAdmin && !setupOpen && (
         <div className={`onb-screen ${leaving ? 'onb-leaving' : ''}`} ref={screenRef} aria-label="Introduction">
           <button className="onb-skip" onClick={dismiss}>Skip</button>
 
@@ -148,7 +153,7 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
               Explore the past all around us — and practice <span className="onb-em">asking the questions</span> that reconstruct the world it belongs to.
             </p>
             <button
-              onClick={dismiss}
+              onClick={() => setSetupOpen(true)}
               className="onb-r mt-9 px-9 py-4 rounded-full text-[16px] font-semibold"
               style={{ '--d': '0.5s', backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' } as React.CSSProperties}
             >

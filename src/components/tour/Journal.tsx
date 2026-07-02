@@ -15,7 +15,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { getActiveStops, getTourMode } from '@/lib/tours-store';
 import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts } from '@/lib/tour-session';
-import IntroScreens from './cards/IntroScreens';
 import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
 import EqSceneCard from './cards/EqSceneCard';
@@ -102,9 +101,13 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
   const [paused, setPaused] = useState(false);
   const [canScrollMore, setCanScrollMore] = useState(false);
-  const [pointAtQuestion, setPointAtQuestion] = useState(false);
-  const [pointAtAutoplay, setPointAtAutoplay] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // The old in-tour onboarding is gone (it moved to the opening Quick Set Up),
+  // so the `intro` phase just auto-advances to the first real screen.
+  useEffect(() => {
+    if (session?.currentPhase === 'intro') completeIntro();
+  }, [session?.currentPhase, completeIntro]);
 
   const checkScroll = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -273,9 +276,6 @@ export default function Journal({ onMapPeek }: JournalProps) {
               : 'relative min-h-full px-5 py-6 flex flex-col justify-center'}
             >
 
-        {phase === 'intro' && (
-          <IntroScreens tour={tour} onComplete={completeIntro} onPointAtQuestion={setPointAtQuestion} onPointAtAutoplay={setPointAtAutoplay} />
-        )}
 
         {phase === 'meet_guide' && (
           <MeetGuideCard tour={tour} onContinue={completeMeetGuide} />
@@ -581,7 +581,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
           map / midway / closing phases so the buttons stay visible across
           the whole tour. */}
       {phase !== 'end' && (
-        <TourFooter tour={tour} session={session} pointAtQuestion={pointAtQuestion} pointAtAutoplay={pointAtAutoplay} />
+        <TourFooter tour={tour} session={session} />
       )}
     </div>
   );
