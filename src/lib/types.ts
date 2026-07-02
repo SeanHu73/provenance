@@ -309,6 +309,9 @@ export interface ActContextItem {
 export interface Act {
   id: string;
   title: string;
+  /** The act's guiding question — shown to learners in place of the title (on
+   *  the act intro, the footer, and atop the act's Context Journal). */
+  guidingQuestion?: string;
   stopIds: string[];                 // Ordered stop IDs into `Tour.contextStops`
   openingQuestion: ActQuestion | null;  // Legacy — act_opening was retired
   closingQuestion: ActQuestion | null;  // Legacy — reflectionQuestion falls back to this

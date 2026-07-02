@@ -317,7 +317,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
           const act = findActOfStop(tour, currentStop.id);
           if (!act) return null;
           const actNumber = getActs(tour).findIndex((a) => a.id === act.id) + 1;
-          return <ActIntroCard key={`${act.id}-intro`} actNumber={actNumber} actTitle={act.title} onComplete={completeActIntro} />;
+          return <ActIntroCard key={`${act.id}-intro`} actNumber={actNumber} actTitle={act.guidingQuestion?.trim() || act.title} onComplete={completeActIntro} />;
         })()}
 
         {/* Context-Prototype: "walk to your next stop" map */}
@@ -361,7 +361,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
             });
             return (
               <div className="fixed inset-0 z-[55]">
-                <ContextJournal tourId={tour.id} authored={authored} inTour onExit={completeActContext} continueLabel="Continue to Share Your Thoughts…" responses={responses} />
+                <ContextJournal tourId={tour.id} authored={authored} inTour onExit={completeActContext} continueLabel="Continue to Share Your Thoughts…" responses={responses} guidingQuestion={act?.guidingQuestion?.trim() || undefined} />
               </div>
             );
           })(),

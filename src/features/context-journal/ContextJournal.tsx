@@ -44,9 +44,11 @@ interface Props {
   /** The learner's own prior reflections, shown in the header menu so they can
    *  revisit what they wrote. (In-tour; built from the session.) */
   responses?: { actTitle: string; promptText: string; text: string }[];
+  /** The act's guiding question, shown atop the P.A.S.T. section in a tour. */
+  guidingQuestion?: string;
 }
 
-export default function ContextJournal({ tourId, authored, inTour, onExit, continueLabel = 'Continue tour', responses = [] }: Props) {
+export default function ContextJournal({ tourId, authored, inTour, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
 
   const [entries, setEntries] = useState<ContextEntry[]>([]);
@@ -332,13 +334,15 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
       {/* 2 — P.A.S.T. framework (the main space) */}
       <div className="flex-1 overflow-y-auto">
         <div className="px-5 pt-6 pb-4">
-          <div className="flex items-center gap-2.5">
-            <span className="h-px flex-1 max-w-8" style={{ backgroundColor: 'var(--th-border)' }} />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Look through the P.A.S.T.</span>
-            <span className="h-px flex-1" style={{ backgroundColor: 'var(--th-border)' }} />
-          </div>
-          <h2 className="mt-3 font-display text-[26px] leading-tight text-text-primary">Which lens will you look through?</h2>
-          <p className="mt-1 font-serif italic text-[15px] text-text-secondary leading-snug">
+          {guidingQuestion ? (
+            <>
+              <h2 className="font-display text-[26px] leading-tight text-text-primary">Look through the P.A.S.T. to explore&hellip;</h2>
+              <p className="mt-2 font-serif italic text-[19px] leading-snug" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>
+            </>
+          ) : (
+            <h2 className="font-display text-[26px] leading-tight text-text-primary">Look through the P.A.S.T.</h2>
+          )}
+          <p className="mt-2 font-serif italic text-[15px] text-text-secondary leading-snug">
             Tap a lens to find a question worth asking — or add one of your own.
           </p>
         </div>

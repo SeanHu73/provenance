@@ -545,6 +545,7 @@ export default function TourEditorPage() {
           onChange={(patch) => updateStop(stop.id, patch)}
           onUploadPhoto={uploadPhoto}
           hideDiscussionAndBridge={mode === 'context'}
+          hideMergeGroup={mode === 'context'}
         />
       )}
     </li>
@@ -1830,6 +1831,19 @@ export default function TourEditorPage() {
                       <button onClick={() => removeAct(act.id)} className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200" title="Remove act">&times;</button>
                     </div>
 
+                    {/* Guiding question — shown to learners in place of the title */}
+                    <label className="block">
+                      <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Guiding question</span>
+                      <textarea
+                        value={act.guidingQuestion || ''}
+                        onChange={(e) => updateAct(act.id, { guidingQuestion: e.target.value })}
+                        placeholder="e.g. How did the railroad reshape who lived here?"
+                        rows={2}
+                        className="mt-1 w-full px-2 py-1.5 border border-amber-300 rounded text-sm bg-white"
+                      />
+                      <span className="text-[10px] text-stone-400">Replaces the act title for learners (act intro, footer, and the act&apos;s Context Journal).</span>
+                    </label>
+
                     {/* Stops in this act */}
                     {act.stopIds.length === 0 ? (
                       <p className="text-[11px] text-stone-400 italic border border-dashed border-stone-300 rounded p-3 text-center">
@@ -2082,9 +2096,10 @@ interface StopEditorProps {
   /** Context-Prototype mode hides the discussion question, extra rounds, and
    *  bridge fieldsets — those phases are stripped from that experience. */
   hideDiscussionAndBridge?: boolean;
+  hideMergeGroup?: boolean;
 }
 
-function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadPhoto, hideDiscussionAndBridge = false }: StopEditorProps) {
+function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadPhoto, hideDiscussionAndBridge = false, hideMergeGroup = false }: StopEditorProps) {
   // Defensive defaults for older stop data that may be missing newer fields
   const stop: Stop = {
     ...rawStop,
@@ -2199,15 +2214,17 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
             </select>
           </label>
         )}
-        <label className="block flex-1">
-          <span className="text-xs text-stone-600">Merge group (unstructured mode)</span>
-          <input
-            value={stop.mergeGroup || ''}
-            onChange={(e) => onChange({ mergeGroup: e.target.value || null })}
-            className="mt-1 w-full px-2 py-1.5 border border-stone-300 rounded text-sm"
-            placeholder="e.g. group-1 (shared string = sequence)"
-          />
-        </label>
+        {!hideMergeGroup && (
+          <label className="block flex-1">
+            <span className="text-xs text-stone-600">Merge group (unstructured mode)</span>
+            <input
+              value={stop.mergeGroup || ''}
+              onChange={(e) => onChange({ mergeGroup: e.target.value || null })}
+              className="mt-1 w-full px-2 py-1.5 border border-stone-300 rounded text-sm"
+              placeholder="e.g. group-1 (shared string = sequence)"
+            />
+          </label>
+        )}
       </div>
 
       {/* ── Background photo override ── */}

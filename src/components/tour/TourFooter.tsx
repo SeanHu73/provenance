@@ -44,7 +44,7 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
     if (act) {
       const num = getActs(tour).findIndex((a) => a.id === act.id) + 1;
       actNumLabel = `Act ${num}`;
-      actTitleText = act.title.trim();
+      actTitleText = (act.guidingQuestion?.trim() || act.title.trim());
     }
   }
 
@@ -56,14 +56,16 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
       >
         <Link
           href={`/context-journal?tour=${encodeURIComponent(tour.id)}`}
-          className="shrink-0 flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-base font-semibold text-warm-white bg-white/25 hover:bg-white/35 transition-colors border border-white/50"
+          aria-label="Context Journal"
+          title="Context Journal"
+          className={`shrink-0 flex items-center justify-center rounded-xl text-warm-white bg-white/25 hover:bg-white/35 transition-colors border border-white/50 ${isContext ? 'w-11 h-11' : 'gap-2 px-5 py-3.5 text-base font-semibold'}`}
           style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' }}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
           </svg>
-          Context Journal
+          {!isContext && 'Context Journal'}
         </Link>
 
         {/* Current Act (context mode) — sits next to Journal: number on top,

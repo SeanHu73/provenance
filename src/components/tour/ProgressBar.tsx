@@ -149,7 +149,7 @@ function LinearProgressBar({ tour, session }: Props) {
     const cur = getActiveStops(tour)[session.currentStopIndex];
     if (!cur) return -1;
     return logicalStops.findIndex(
-      ls => ls.id === cur.id || (cur.mergeGroup && ls.mergeGroup === cur.mergeGroup)
+      ls => ls.id === cur.id || (!isContext && cur.mergeGroup && ls.mergeGroup === cur.mergeGroup)
     );
   })();
 
@@ -236,6 +236,7 @@ function LinearProgressBar({ tour, session }: Props) {
                 stop={stop}
                 state={state}
                 visitNumber={state === 'current' ? i + 1 : undefined}
+                plainTitle={isContext}
                 ref={state === 'current' ? currentRef : undefined}
               />
             );
@@ -279,9 +280,11 @@ import React from 'react';
 
 const Pill = React.forwardRef<
   HTMLDivElement,
-  { stop: Tour['stops'][number]; state: 'completed' | 'current' | 'upcoming'; visitNumber?: number }
->(function Pill({ stop, state, visitNumber }, ref) {
-  const displayName = stop.mergeGroup || stop.title;
+  { stop: Tour['stops'][number]; state: 'completed' | 'current' | 'upcoming'; visitNumber?: number; plainTitle?: boolean }
+>(function Pill({ stop, state, visitNumber, plainTitle = false }, ref) {
+  // Context-Prototype titles pills by the individual stop; merge groups only
+  // apply to unstructured mode.
+  const displayName = plainTitle ? stop.title : (stop.mergeGroup || stop.title);
 
   if (state === 'completed') {
     return (
@@ -322,6 +325,7 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentRef = useRef<HTMLDivElement>(null);
   const completedIds = new Set(session.completedStops);
+  const isContext = getTourMode(tour) === 'context';
 
   // For unstructured tours, the thumbnail row should reflect the
   // journey the explorer is building, not the underlying authoring
@@ -448,7 +452,7 @@ function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: T
               null;
 
             const displayTitle = stop.title;
-            const groupLabel = stop.mergeGroup || null;
+            const groupLabel = isContext ? null : (stop.mergeGroup || null);
 
             return (
               <div
