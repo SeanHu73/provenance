@@ -70,9 +70,10 @@ export default function ReflectionIntroCard({ onComplete }: Props) {
             maxWidth: '26ch',
           }}
         >
-          Having explored the context&hellip;
+          Now that you have explored{' '}
+          <span style={{ color: 'var(--th-secondary)' }}>context</span>&hellip;
           <br />
-          now let&rsquo;s hear what you think&hellip;
+          Let&rsquo;s hear <span className="italic font-display">what you think</span>&hellip;
         </p>
 
         <div

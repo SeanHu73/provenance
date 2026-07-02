@@ -126,8 +126,14 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
               transition: 'opacity 700ms ease-out, transform 700ms ease-out',
             }}
           >
-            Let&rsquo;s <span className="italic">reconstruct</span> some{' '}
-            <span className="font-bold">CONTEXT</span>
+            Let&rsquo;s <span className="italic">reconstruct</span>
+            <br />
+            <span
+              className="font-display"
+              style={{ fontSize: '1.55em', color: 'var(--th-secondary)', display: 'inline-block', margin: '0.06em 0' }}
+            >
+              CONTEXT
+            </span>
             <br />
             using the&hellip;
           </h2>

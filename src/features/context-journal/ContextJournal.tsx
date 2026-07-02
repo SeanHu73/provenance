@@ -68,6 +68,9 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
   const [showMapPanel, setShowMapPanel] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // A prior response opened full-screen from the menu (previews are clamped, so
+  // long reflections don't blow out the dropdown).
+  const [viewResponse, setViewResponse] = useState<{ actTitle: string; promptText: string; text: string } | null>(null);
   // The learner's own added copy being edited (authored originals stay read-only).
   const [editEntry, setEditEntry] = useState<ContextEntry | null>(null);
   const [fullEntry, setFullEntry] = useState<ContextEntry | null>(null);
@@ -266,10 +269,18 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
               ) : (
                 <ul className="pb-2">
                   {responses.map((r, i) => (
-                    <li key={i} className="px-4 py-2 border-t" style={{ borderColor: 'var(--th-border)' }}>
-                      {r.actTitle && <p className="text-[11px] font-semibold" style={{ color: 'var(--th-primary)' }}>{r.actTitle}</p>}
-                      {r.promptText && <p className="text-xs italic text-text-secondary leading-snug mt-0.5">{r.promptText}</p>}
-                      <p className="text-sm text-text-primary leading-snug mt-0.5 whitespace-pre-wrap">{r.text}</p>
+                    <li key={i} className="border-t" style={{ borderColor: 'var(--th-border)' }}>
+                      <button
+                        onClick={() => { setMenuOpen(false); setViewResponse(r); }}
+                        className="w-full text-left px-4 py-2.5 flex items-start gap-2 hover:bg-black/[0.03]"
+                      >
+                        <span className="flex-1 min-w-0">
+                          {r.actTitle && <span className="block text-[11px] font-semibold" style={{ color: 'var(--th-primary)' }}>{r.actTitle}</span>}
+                          {r.promptText && <span className="block text-xs italic text-text-secondary leading-snug mt-0.5 line-clamp-1">{r.promptText}</span>}
+                          <span className="block text-sm text-text-primary leading-snug mt-0.5 line-clamp-2">{r.text}</span>
+                        </span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="shrink-0 mt-1 text-text-muted"><path d="M9 6l6 6-6 6" /></svg>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -405,6 +416,25 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
           />
         )}
       </AnimatePresence>
+
+      {/* Full reader for a prior response opened from the menu */}
+      {viewResponse && (
+        <div className="fixed inset-0 z-[1250] flex flex-col" onClick={() => setViewResponse(null)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative mt-auto w-full max-w-lg mx-auto bg-warm-white rounded-t-3xl shadow-2xl flex flex-col" style={{ maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
+            <div className="shrink-0 flex items-start gap-3 px-5 pt-4 pb-3 border-b" style={{ borderColor: 'var(--th-border)' }}>
+              <div className="flex-1 min-w-0">
+                {viewResponse.actTitle && <p className="text-[11px] uppercase tracking-[0.14em] font-semibold" style={{ color: 'var(--th-primary)' }}>{viewResponse.actTitle}</p>}
+                {viewResponse.promptText && <p className="font-serif italic text-text-secondary text-[15px] leading-snug mt-0.5">{viewResponse.promptText}</p>}
+              </div>
+              <button onClick={() => setViewResponse(null)} aria-label="Close" className="w-9 h-9 rounded-full flex items-center justify-center text-text-secondary hover:bg-black/5 text-2xl leading-none">&times;</button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              <p className="font-serif text-[17px] text-text-primary leading-relaxed whitespace-pre-wrap">{viewResponse.text}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
