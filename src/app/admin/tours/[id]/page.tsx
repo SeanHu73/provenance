@@ -1819,13 +1819,7 @@ export default function TourEditorPage() {
                   >
                     {/* Act header */}
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono text-amber-700 uppercase tracking-wide">Act {ai + 1}</span>
-                      <input
-                        value={act.title}
-                        onChange={(e) => updateAct(act.id, { title: e.target.value })}
-                        placeholder="Act title"
-                        className="flex-1 px-2 py-1 border border-amber-300 rounded text-sm font-semibold bg-white"
-                      />
+                      <span className="flex-1 text-lg font-bold text-amber-700">Act {ai + 1}</span>
                       <button onClick={() => moveAct(act.id, -1)} disabled={ai === 0} className="px-1.5 py-0.5 text-xs rounded bg-stone-100 hover:bg-stone-200 disabled:opacity-30" title="Move act up">&uarr;</button>
                       <button onClick={() => moveAct(act.id, 1)} disabled={ai === acts.length - 1} className="px-1.5 py-0.5 text-xs rounded bg-stone-100 hover:bg-stone-200 disabled:opacity-30" title="Move act down">&darr;</button>
                       <button onClick={() => removeAct(act.id)} className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200" title="Remove act">&times;</button>

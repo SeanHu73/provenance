@@ -37,7 +37,7 @@ function buildRows(sessions: StoredTourSession[], toursById: Record<string, Tour
     const ar = s.actResponses || {};
     for (const [actId, resp] of Object.entries(ar)) {
       const act = tour?.acts?.find((a) => a.id === actId);
-      const actTitle = act?.title || actId;
+      const actTitle = act?.title?.trim() || act?.guidingQuestion?.trim() || actId;
       if (resp?.opening) rows.push([...base, 'Act opening', actTitle, act?.openingQuestion?.prompt || '', resp.opening]);
       if (resp?.closing) rows.push([...base, 'Act closing', actTitle, act?.closingQuestion?.prompt || '', resp.closing]);
       // Context questions the explorer asked.

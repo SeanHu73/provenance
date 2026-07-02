@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, useAnimationControls } from 'framer-motion';
 import Link from 'next/link';
 import { Tour, TourSession } from '@/lib/types';
 import { getTourMode, getActiveStops } from '@/lib/tours-store';
@@ -76,8 +77,8 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
             style={{ color: 'var(--cream, #FFF8EE)' }}
             title={actTitleText ? `${actNumLabel}: ${actTitleText}` : actNumLabel}
           >
-            <div className="font-display font-bold tracking-wide" style={{ fontSize: 19 }}>{actNumLabel}</div>
-            {actTitleText && <div className="italic truncate" style={{ fontSize: 12 }}>{actTitleText}</div>}
+            <div className="uppercase tracking-[0.14em] opacity-80" style={{ fontSize: 11 }}>{actNumLabel}</div>
+            {actTitleText && <GuidingBanner text={actTitleText} />}
           </div>
         )}
         {showInquiries && (
@@ -204,6 +205,69 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
 
       {showRoomMenu && <RoomMenu onDismiss={() => setShowRoomMenu(false)} />}
     </>
+  );
+}
+
+/**
+ * The act's guiding question in the footer — big, single-line. If it overspills,
+ * it scrolls like a banner (a couple of passes) then settles truncated with "…".
+ * Tapping replays the scroll so it can be read again.
+ */
+function GuidingBanner({ text }: { text: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const controls = useAnimationControls();
+  const [overflow, setOverflow] = useState(0);
+  // Start un-settled so the first measure reads the full (non-truncated) width.
+  const [settled, setSettled] = useState(false);
+  const runIdRef = useRef(0);
+
+  useEffect(() => {
+    const measure = () => {
+      const c = containerRef.current, t = textRef.current;
+      if (!c || !t) return;
+      const ov = t.scrollWidth - c.clientWidth;
+      setOverflow(ov > 4 ? ov : 0);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [text]);
+
+  const runMarquee = useCallback(async () => {
+    const myId = ++runIdRef.current;
+    if (overflow <= 0) { setSettled(true); return; }
+    setSettled(false);
+    const dur = Math.max(2.2, overflow / 40);
+    for (let i = 0; i < 2; i++) {
+      await controls.start({ x: -overflow, transition: { duration: dur, ease: 'linear' } });
+      if (runIdRef.current !== myId) return;
+      await controls.start({ x: 0, transition: { duration: dur, ease: 'linear' } });
+      if (runIdRef.current !== myId) return;
+    }
+    setSettled(true);
+  }, [overflow, controls]);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => { void runMarquee(); });
+    return () => cancelAnimationFrame(id);
+  }, [runMarquee]);
+
+  return (
+    <div
+      ref={containerRef}
+      className={`overflow-hidden ${overflow > 0 ? 'text-left' : 'text-center'}`}
+      onClick={() => { if (settled) runMarquee(); }}
+    >
+      <motion.span
+        ref={textRef}
+        animate={controls}
+        className={`font-display font-bold ${settled ? 'block truncate' : 'inline-block whitespace-nowrap'}`}
+        style={{ fontSize: 19 }}
+      >
+        {text}
+      </motion.span>
+    </div>
   );
 }
 

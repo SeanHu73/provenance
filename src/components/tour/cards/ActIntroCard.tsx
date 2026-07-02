@@ -13,8 +13,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-const HOLD_MS = 2500;
-
 interface Props {
   actNumber: number;
   actTitle: string;
@@ -23,21 +21,21 @@ interface Props {
 
 export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props) {
   const [mounted, setMounted] = useState(false);
+  // The screen no longer auto-advances — a "Ready to explore?" button fades in
+  // so the learner confirms they've read it.
+  const [showButton, setShowButton] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    const t = setTimeout(onComplete, HOLD_MS);
-    return () => clearTimeout(t);
-    // onComplete is stable enough; we only want this to run once per mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const raf = requestAnimationFrame(() => setMounted(true));
+    const t = setTimeout(() => setShowButton(true), 1600);
+    return () => { cancelAnimationFrame(raf); clearTimeout(t); };
   }, []);
 
   if (typeof document === 'undefined') return null;
 
   return createPortal(
     <div
-      onClick={onComplete}
-      className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black cursor-pointer select-none px-8 text-center"
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black select-none px-8 text-center"
       style={{ opacity: mounted ? 1 : 0, transition: 'opacity 600ms ease-in' }}
     >
       <div
@@ -54,7 +52,7 @@ export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props)
         >
           Act {actNumber}
         </div>
-        {/* Act name — white, regular, slightly smaller but still large */}
+        {/* Act name / guiding question — white, regular, slightly smaller but still large */}
         {actTitle.trim() && (
           <div
             className="font-serif text-warm-white leading-tight mt-3"
@@ -64,6 +62,22 @@ export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props)
           </div>
         )}
       </div>
+
+      {/* Ready button — fades in to confirm they've read the screen */}
+      <button
+        onClick={onComplete}
+        className="mt-12 px-8 py-3.5 rounded-full text-lg font-semibold"
+        style={{
+          backgroundColor: '#F59E0B',
+          color: '#1a1a1a',
+          opacity: showButton ? 1 : 0,
+          transform: showButton ? 'translateY(0)' : 'translateY(10px)',
+          pointerEvents: showButton ? 'auto' : 'none',
+          transition: 'opacity 600ms ease-out, transform 600ms ease-out',
+        }}
+      >
+        Ready to explore?
+      </button>
     </div>,
     document.body,
   );

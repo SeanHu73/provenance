@@ -336,8 +336,8 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
         <div className="px-5 pt-6 pb-4">
           {guidingQuestion ? (
             <>
-              <h2 className="font-display text-[26px] leading-tight text-text-primary">Look through the P.A.S.T. to explore&hellip;</h2>
-              <p className="mt-2 font-serif italic text-[19px] leading-snug" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>
+              <h2 className="font-serif text-[18px] leading-snug text-text-secondary">Look through the P.A.S.T. to explore&hellip;</h2>
+              <p className="mt-1.5 font-display font-bold text-[24px] leading-tight" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>
             </>
           ) : (
             <h2 className="font-display text-[26px] leading-tight text-text-primary">Look through the P.A.S.T.</h2>

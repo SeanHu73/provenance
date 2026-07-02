@@ -203,8 +203,8 @@ function LinearProgressBar({ tour, session }: Props) {
           className="flex items-center gap-1.5 px-2 py-2.5 overflow-x-auto"
           style={{ scrollbarWidth: 'none' }}
         >
-          {/* Intro pill */}
-          {hasIntro && (() => {
+          {/* Intro pill — omitted in Context-Prototype (Acts stand on their own) */}
+          {hasIntro && !isContext && (() => {
             const isIntroActive = isIntroPhase;
             const isIntroDone = !isIntroActive && !isIntroPhase;
             return (
