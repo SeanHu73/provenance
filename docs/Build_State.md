@@ -1,18 +1,24 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-07-01
-(latest: **Context Journal Slice 2 + follow-ups** (§15 **pt.26–pt.27**). Slice 2
-= the immersive learner **overlay** (map + timeline pinned on top, auto read-aloud
-Title→pause→Long, expand-to-read-along, photos/audio/sources/related) and
-**thumbnail select-levels** (tap 1 = select + summary + map/timeline focus + pulse;
-tap 2 = full overlay; tap-*only* deselect; selected lens scrolls to top). pt.27
-follow-ups: the **timeline follows the tapped context**, **cited sources** (admin +
-learner, in `AddContextFlow` → Sources section), **guest-local saving** (added
-contexts live in `sessionStorage` per tour, reset at tour end — not Firestore), and
-**edit-on-added** (Edit pencil on the learner's copy). New `ContextOverlay` /
-`useReadAloud` / `guest-contexts.ts`; `ContextFullScreen` removed. Debug scaffolding
-`DebugLogOverlay` / `BUILD_MARKER` / `sw.js` **removed** (`927df80`). *Open:*
-AI/self-asked answers (item #3), map self-filtering by zoom.
+*Handoff document for the next Claude Code session. Last updated 2026-07-02
+(latest: **end-of-act Reflection + Community share flow, context-intro polish, and
+Act guiding questions** (§15 **pt.28**). The Context step now leads Context journal
+→ **REFLECTION** fade → **"Share Your Thoughts"** (swipeable prompt cards that
+**flip** to a record/type response with tag-contexts + photos incl. **online image
+search**) → **"Hear from the Community"** (Share your thoughts / Continue Tour /
+End Tour, with a share-or-not prompt + name/alias). Acts carry a **guiding
+question** (admin) shown on the act intro (now a **"Ready to explore?"** button, no
+auto-advance), the **footer** (small "Act N" + big marquee question), and atop the
+act's Context Journal. Context intro plays **once per tour** (short "explore the
+P.A.S.T. again" return after); continue is gated on **asking/tapping a question**.
+New `ReflectionIntroCard` / `/api/image-search` (Wikimedia Commons). *Open:*
+AI/self-asked answers (item #3), community **forum visual redesign** (compact card →
+overlay), map self-filtering by zoom.
+Prior: **Context Journal Slice 2 + follow-ups** (§15 **pt.26–pt.27**) — the
+immersive learner **overlay** + **thumbnail select-levels**, timeline-follows-
+context, **cited sources**, **guest-local saving**, and **edit-on-added**. New
+`ContextOverlay` / `useReadAloud` / `guest-contexts.ts`; `ContextFullScreen` removed.
+Debug scaffolding `DebugLogOverlay` / `BUILD_MARKER` / `sw.js` **removed** (`927df80`).
 Prior latest: the Add-Context map was **rebuilt Draw-free** — pins, a highlighter-
 swipe brush, and a tap-the-visible-name **Select**, all on independent stacking
 layers with no `deleteAll`; fixes the long-running desktop pin/highlight bug (§15
@@ -2971,6 +2977,80 @@ green (`tsc`/`eslint`/`next build`).
 reference a guest-local id that resets at tour end (minor orphaning; out of scope
 for now). AI/self-asked answers (item #3) remain the big open piece.*
 
+**End-of-act Reflection + Community share, context-intro polish, Act guiding
+questions (2026-07-02 pt.28).** A large multi-part session; all green
+(`tsc`/`eslint`/`next build`). Learner-side is not exhaustively device-tested.
+
+**Context intro — once per tour + gate.** New session flag `contextIntroSeen`;
+`completeContextIntro` sets it. First context step plays the full immersive intro;
+later ones show a **short return intro** (same fade to a big **CONTEXT** title +
+"Now that you've learned more, let's explore the P.A.S.T. again…" → scroll into the
+journal). `ContextIntroCard` gained a `returning` prop. The in-tour **Continue gate**
+now requires engaging with a *question* — opening an authored question or asking
+your own — not just re-opening an added context (`openFull` only counts authored;
+the ask flow sets `explored`).
+
+**End-of-act Reflection flow (redesign).** The Context step's continue button reads
+**"Continue to Share Your Thoughts…"** and routes `act_context` → new
+**`act_reflection_intro`** (a **REFLECTION** fade mirroring the Context intro) →
+`act_reflection` → `community_share` → next act (`completeActContext` rerouted;
+`completeReflectionIntro` added). `ActReflectionCard` was rewritten:
+- **"Share Your Thoughts"** picker — the act's authored prompts as **large,
+  centered, swipeable cards** (snap per card) + a distinct "Create your own" card.
+  Selecting one **flips** (AnimatePresence) to the response.
+- **Response** — big **record button** (dictation via `/api/transcribe`, appended
+  to the textbox), optional textbox, **chips to tag contexts** referred to (act's
+  authored + the tour's guest-added), and **photos** (upload *or* **"Find online"**
+  → new keyless **`/api/image-search`** proxy to **Wikimedia Commons**, CC-licensed).
+  Save (**"Save and see what others think"**) stores the response and moves to the
+  community; sharing happens there.
+- **Reflection prompts** are authored per Act in admin (`Act.reflectionPrompts:
+  {id, prompt, photoUrl?}[]`), each with an **optional photo**. `reflectionPromptsOf`
+  falls back to the legacy single prompt. Response shape (`ActReflectionResponse`)
+  gained `promptId`/`promptText`/`isCustom`/`taggedContexts:{id,title}[]`.
+
+**"Hear from the Community" — share flow.** `HearFromCommunityCard` now has a
+dedicated **"Share your thoughts"** button (posts without leaving) and a
+**"Continue Tour"** / **"End Tour"** (last act → closing) button. Continuing while
+unshared shows a simple **"Would you like to share your thoughts?"** (yes/no); yes →
+a **"Share your response"** name sheet (placeholder **"Your name (or alias)"**); no →
+continue. Sharing records it in the session via new `markReflectionShared(shareId)`
+so the backup shows shared vs unpublished. Guest identity via `community-store`; the
+account-permanent path is still stubbed (no auth yet).
+
+**Data lands in `/admin/sessions`, not Sheets.** Reflections persist to the
+`TourSession` (guest-local added contexts aside) → the Firestore session backup →
+`/admin/sessions` (updated `buildRows`: prompt picked incl. "their own prompt",
+tagged contexts, photos, shared/unpublished). This is more reliable than the
+fire-and-forget Sheets beacons, so reflections are **not** logged to Sheets.
+
+**Context-Prototype — Act guiding questions + chrome.** `Act.guidingQuestion`
+(admin field; the act **title input was removed**, "Act N" enlarged). Shown to
+learners **in place of the title**: the **act intro** (which no longer auto-advances
+— a **"Ready to explore?"** button fades in to confirm), the **footer** (small
+"Act N" over the big guiding question as a **marquee** that scrolls a couple passes
+then truncates with "…"; tap replays), and **atop the act's Context Journal**
+("Look through the P.A.S.T. to explore…" — not bold — with the guiding question
+**bigger + bold** below). Progress **pills are titled by the individual stop**
+(merge-group ignored in context; the merge-group admin field + the tracker's group
+label are hidden in context mode — Acts serve that role), and the **"Intro" pill is
+omitted**. `ContextJournal` header's grey kicker removed; "Which lens will you look
+through?" → **"Look through the P.A.S.T."**. New **CONTEXT accent** `#E08A5F` (a warm
+coral, distinct from every lens — `--th-secondary` equals the Attitudes colour) used
+on the context + reflection intros.
+
+**Other polish.** Meet-Your-Guide intro and the Background (seed) reading collapse
+behind a **"Read Along"** toggle; the Background audio box moved under the title;
+opening-frame scene description centered. Context Journal header is a **menu** (Add
+context + **Your responses** — the learner's prior reflections, clamped previews →
+tap opens a full-screen reader).
+
+⚠️ *Firestore: reflections reuse `memorial-church-tour-sessions` (backup) and
+sharing reuses `memorial-church-community-shares` — no new collections. Wikimedia
+image URLs are hotlinked (not re-hosted). Still open: the **community forum visual
+redesign** (compact card → full-response overlay, for long reflections) — this
+session did the share *flow*, not the forum's look; and AI/self-asked answers.*
+
 ## NEXT STEPS — Context Journal (maintained list; prune each as it ships)
 
 **Guest-local saving + no duplicates — DONE (pt.27).** Added contexts are now
@@ -3013,10 +3093,17 @@ note above.*
    by swapping that store. Needs the account system.
 5. **AddContextFlow** — make **Full Explanation optional + collapsible**, default
    hidden for the learner. (Framing-question-first gate is already done.)
-6. **Single end-of-tour reflection** with multiple options (replaces the removed
-   per-act reflections).
-7. **Context intro once per tour** (currently fires per act).
+6. ✅ **End-of-act reflection** — DONE (pt.28). Reworked into "Share Your Thoughts"
+   (several admin prompts, pick one or write your own) → flip response (record/type,
+   tag contexts, photos incl. online search) → community share flow. *(Was framed
+   as a single end-of-tour reflection; it's per-act.)*
+7. ✅ **Context intro once per tour** — DONE (pt.28). Full intro once, short return
+   intro after; tracked by `contextIntroSeen`.
 8. ⏰ **Photo slideshow** in the context overlay.
+9. **Community forum visual redesign** — the share *flow* is done (pt.28) but "Hear
+   from the Community" is still the simple list. Wanted: compact response cards →
+   tap opens a **full-response overlay** (handles long reflections + photos), a
+   prompt selector on top, likes.
 
 **Mobile tap fix + context moderation (2026-06-29 pt.12).**
 - **Place tap on mobile:** finger taps rarely land on the tiny label, so the
