@@ -74,7 +74,7 @@ export default function ActReflectionCard({ onComplete }: Props) {
     return (
       <div className="animate-fade-in">
         <h2 className="font-display font-bold leading-tight" style={{ fontSize: 34, color: 'var(--th-primary)' }}>Share Your Thoughts</h2>
-        <p className="mt-1 font-serif" style={{ fontSize: 18, color: 'var(--th-accent-dark)' }}>Choose a prompt or create your own:</p>
+        <p className="mt-1 font-serif italic" style={{ fontSize: 16, color: 'var(--text-secondary)' }}>Choose a prompt or create your own:</p>
 
         <div className="mt-5 -mx-4 px-4 flex gap-3 overflow-x-auto cj-hscroll pb-2" style={{ scrollSnapType: 'x mandatory' }}>
           {prompts.map((p) => (
@@ -85,7 +85,7 @@ export default function ActReflectionCard({ onComplete }: Props) {
               style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)', minHeight: 190 }}
             >
               <span className="text-[11px] uppercase tracking-[0.16em] font-semibold" style={{ color: 'var(--th-primary)' }}>Prompt</span>
-              <p className="mt-3 font-serif leading-snug" style={{ fontSize: 22, color: 'var(--th-accent-dark)' }}><FormattedText text={p.prompt} /></p>
+              <p className="mt-3 font-serif leading-relaxed" style={{ fontSize: 21, color: 'var(--text-primary)' }}><FormattedText text={p.prompt} /></p>
               <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-semibold" style={{ color: 'var(--th-primary)' }}>
                 Respond
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M9 6l6 6-6 6" /></svg>
@@ -127,7 +127,8 @@ export default function ActReflectionCard({ onComplete }: Props) {
         Choose another
       </button>
 
-      <p className="font-serif leading-snug" style={{ fontSize: 22, color: 'var(--th-accent-dark)' }}><FormattedText text={selected.text} /></p>
+      <p className="text-[11px] uppercase tracking-[0.16em] font-semibold mb-1" style={{ color: 'var(--th-primary)' }}>Responding to</p>
+      <p className="font-serif leading-relaxed" style={{ fontSize: 21, color: 'var(--text-primary)' }}><FormattedText text={selected.text} /></p>
 
       <div className="mt-4">
         <RecordButton onTranscript={(t) => setText((prev) => (prev ? `${prev} ${t}` : t))} />

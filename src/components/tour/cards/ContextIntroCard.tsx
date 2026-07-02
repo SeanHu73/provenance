@@ -137,7 +137,7 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
               key={l.key}
               className="flex items-baseline"
               style={{
-                marginLeft: `${i * 14}%`,
+                marginLeft: `${(i + 1) * 14}%`,
                 opacity: beat2 ? 1 : 0,
                 transform: beat2 ? 'translateX(0)' : 'translateX(-16px)',
                 transition: `opacity 500ms ease-out ${250 + i * 140}ms, transform 500ms ease-out ${250 + i * 140}ms`,

@@ -41,9 +41,12 @@ interface Props {
   onExit?: () => void;
   /** Label for the in-tour continue button (defaults to "Continue tour"). */
   continueLabel?: string;
+  /** The learner's own prior reflections, shown in the header menu so they can
+   *  revisit what they wrote. (In-tour; built from the session.) */
+  responses?: { actTitle: string; promptText: string; text: string }[];
 }
 
-export default function ContextJournal({ tourId, authored, inTour, onExit, continueLabel = 'Continue tour' }: Props) {
+export default function ContextJournal({ tourId, authored, inTour, onExit, continueLabel = 'Continue tour', responses = [] }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
 
   const [entries, setEntries] = useState<ContextEntry[]>([]);
@@ -64,6 +67,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
   // P.A.S.T. framework gets most of the space — the focus is choosing a question.
   const [showMapPanel, setShowMapPanel] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   // The learner's own added copy being edited (authored originals stay read-only).
   const [editEntry, setEditEntry] = useState<ContextEntry | null>(null);
   const [fullEntry, setFullEntry] = useState<ContextEntry | null>(null);
@@ -218,7 +222,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
   return (
     <div className="flex flex-col" style={{ height: '100dvh', backgroundColor: 'var(--th-bg)' }}>
       {/* top bar */}
-      <header className="shrink-0 flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: 'var(--th-primary)' }}>
+      <header className="relative shrink-0 flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: 'var(--th-primary)' }}>
         {inTour ? (
           // No back affordance in-tour: the only way onward is the gated
           // "Continue tour" button, so a stray tap can't skip into later phases.
@@ -236,14 +240,43 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
         )}
         <h1 className="flex-1 font-display text-xl text-warm-white">Context Journal</h1>
         <button
-          onClick={() => setAddOpen(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold text-warm-white bg-white/20 hover:bg-white/30 border border-white/40"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-label="Menu" aria-expanded={menuOpen}
+          className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white bg-white/20 hover:bg-white/30 border border-white/40"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-            <path d="M12 5v14M5 12h14" />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" />
           </svg>
-          Add context
         </button>
+        {menuOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+            <div className="absolute right-3 top-full mt-1 z-50 w-72 max-h-[70vh] overflow-y-auto rounded-2xl shadow-xl bg-warm-white border" style={{ borderColor: 'var(--th-border)' }}>
+              <button
+                onClick={() => { setMenuOpen(false); setAddOpen(true); }}
+                className="w-full flex items-center gap-2 px-4 py-3 text-left font-semibold text-text-primary hover:bg-black/[0.03] border-b"
+                style={{ borderColor: 'var(--th-border)' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                Add context
+              </button>
+              <p className="px-4 pt-3 pb-1 text-[11px] uppercase tracking-[0.14em] font-semibold text-text-secondary">Your responses</p>
+              {responses.length === 0 ? (
+                <p className="px-4 pb-3 text-sm italic text-text-muted">Nothing yet — your reflections will show up here.</p>
+              ) : (
+                <ul className="pb-2">
+                  {responses.map((r, i) => (
+                    <li key={i} className="px-4 py-2 border-t" style={{ borderColor: 'var(--th-border)' }}>
+                      {r.actTitle && <p className="text-[11px] font-semibold" style={{ color: 'var(--th-primary)' }}>{r.actTitle}</p>}
+                      {r.promptText && <p className="text-xs italic text-text-secondary leading-snug mt-0.5">{r.promptText}</p>}
+                      <p className="text-sm text-text-primary leading-snug mt-0.5 whitespace-pre-wrap">{r.text}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        )}
       </header>
 
       {/* 1 — collapsible map + timeline (collapsed by default) */}

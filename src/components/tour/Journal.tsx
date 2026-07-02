@@ -353,9 +353,15 @@ export default function Journal({ onMapPeek }: JournalProps) {
           (() => {
             const act = findActOfStop(tour, currentStop.id);
             const authored = getActContexts(act).map((c) => authoredToEntry(c, tour.id));
+            const responses = Object.entries(session.actResponses ?? {}).flatMap(([aid, r]) => {
+              const refl = r?.reflection;
+              if (!refl) return [];
+              const a = getActs(tour).find((x) => x.id === aid);
+              return [{ actTitle: a?.title ?? '', promptText: refl.promptText ?? '', text: refl.text }];
+            });
             return (
               <div className="fixed inset-0 z-[55]">
-                <ContextJournal tourId={tour.id} authored={authored} inTour onExit={completeActContext} continueLabel="Continue to Share Your Thoughts…" />
+                <ContextJournal tourId={tour.id} authored={authored} inTour onExit={completeActContext} continueLabel="Continue to Share Your Thoughts…" responses={responses} />
               </div>
             );
           })(),
