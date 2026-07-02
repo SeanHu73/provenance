@@ -70,7 +70,7 @@ export default function ReflectionIntroCard({ onComplete }: Props) {
             maxWidth: '26ch',
           }}
         >
-          We&rsquo;d like to hear what you think after exploring some context&hellip;
+          Having explored the context&hellip; now let&rsquo;s hear what you think&hellip;
         </p>
 
         <div

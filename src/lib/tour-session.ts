@@ -936,6 +936,20 @@ export function completeActReflection(
   };
 }
 
+/** Record that the explorer shared their act reflection to the community (from
+ *  the "Hear from the Community" screen) — updates the stored reflection without
+ *  changing the phase, so the backup shows shared vs unpublished. */
+export function markActReflectionShared(session: TourSession, tour: Tour, shareId: string): TourSession {
+  const stop = getActiveStops(tour)[session.currentStopIndex];
+  const act = stop ? findActOfStop(tour, stop.id) : null;
+  const prev = act ? session.actResponses?.[act.id]?.reflection : null;
+  if (!act || !prev) return session;
+  return {
+    ...session,
+    actResponses: setActReflection(session.actResponses, act.id, { ...prev, sharedToCommunity: true, shareId }),
+  };
+}
+
 /** Context mode: explorer leaves "Hear from the Community" → next act / end. */
 export function completeCommunityShare(session: TourSession, tour: Tour): TourSession {
   const stop = getActiveStops(tour)[session.currentStopIndex];

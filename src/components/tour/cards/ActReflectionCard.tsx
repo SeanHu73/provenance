@@ -62,7 +62,7 @@ export default function ActReflectionCard({ onComplete }: Props) {
     onComplete({
       text: text.trim(),
       photos,
-      taggedContextIds: tagged,
+      taggedContexts: tagged.map((id) => ({ id, title: taggable.find((c) => c.id === id)?.title ?? '' })),
       promptId: selected.isCustom ? null : selected.id,
       promptText: selected.isCustom ? CUSTOM_PROMPT : selected.text,
       isCustom: selected.isCustom,
@@ -82,7 +82,7 @@ export default function ActReflectionCard({ onComplete }: Props) {
               key={p.id}
               onClick={() => setSelected({ id: p.id, text: p.prompt, isCustom: false })}
               className="shrink-0 w-[78%] rounded-2xl p-5 text-left shadow-md flex flex-col"
-              style={{ scrollSnapAlign: 'center', backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)', minHeight: 190 }}
+              style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)', minHeight: 190 }}
             >
               <span className="text-[11px] uppercase tracking-[0.16em] font-semibold" style={{ color: 'var(--th-primary)' }}>Prompt</span>
               <p className="mt-3 font-serif leading-snug" style={{ fontSize: 22, color: 'var(--th-accent-dark)' }}><FormattedText text={p.prompt} /></p>
@@ -97,7 +97,7 @@ export default function ActReflectionCard({ onComplete }: Props) {
           <button
             onClick={() => setSelected({ id: null, text: CUSTOM_PROMPT, isCustom: true })}
             className="shrink-0 w-[78%] rounded-2xl p-5 text-left shadow-md flex flex-col"
-            style={{ scrollSnapAlign: 'center', backgroundColor: 'var(--th-journal)', minHeight: 190 }}
+            style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-journal)', minHeight: 190 }}
           >
             <p className="font-serif italic leading-snug" style={{ fontSize: 20, color: 'var(--th-surface)' }}>{CUSTOM_PROMPT}</p>
             <span className="mt-auto pt-4 inline-flex items-center gap-2 font-semibold" style={{ color: 'var(--th-secondary)' }}>

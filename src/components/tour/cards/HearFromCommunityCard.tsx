@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTour } from '@/context/TourContext';
-import { findActOfStop } from '@/lib/tour-session';
+import { findActOfStop, getActs } from '@/lib/tour-session';
 import { CommunityShare, CommunityComment, ForumIdentity } from '@/lib/types';
 import {
   getShares,
@@ -24,23 +24,27 @@ import {
   getForumIdentity,
   saveForumIdentity,
 } from '@/lib/community-store';
-import BackButton from './BackButton';
 
 interface Props {
   onComplete: () => void;
 }
 
 export default function HearFromCommunityCard({ onComplete }: Props) {
-  const { tour, session, currentStop } = useTour();
+  const { tour, session, currentStop, markReflectionShared } = useTour();
   const act = tour && currentStop ? findActOfStop(tour, currentStop.id) : null;
   const actId = act?.id ?? '';
   const reflection = (actId && session?.actResponses?.[actId]?.reflection) || null;
+  const acts = tour ? getActs(tour) : [];
+  const isLastAct = act ? acts.findIndex((a) => a.id === act.id) === acts.length - 1 : false;
 
   const [shares, setShares] = useState<CommunityShare[]>([]);
   const [loading, setLoading] = useState(true);
   const [upvoted, setUpvoted] = useState<Set<string>>(new Set());
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const [reprompt, setReprompt] = useState(false);
+  const [shared, setShared] = useState(!!reflection?.sharedToCommunity);
+  const [askShare, setAskShare] = useState(false);   // "Would you like to share your thoughts?"
+  const [nameSheet, setNameSheet] = useState(false); // "Share your response" (name entry)
+  const [continueAfter, setContinueAfter] = useState(false);
 
   useEffect(() => {
     if (!tour) return;
@@ -66,24 +70,44 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
     upvoteShare(id, !isUp).catch((err) => console.error('[community] upvote failed:', err));
   };
 
+  // Continue: if they wrote a reflection but haven't shared, ask first.
   const handleContinue = () => {
-    if (reflection && !reflection.sharedToCommunity) { setReprompt(true); return; }
+    if (reflection && !shared) { setContinueAfter(true); setAskShare(true); return; }
     onComplete();
   };
+
+  // Direct "Share your thoughts" — goes straight to the name sheet, stays here.
+  const openShareSheet = () => { setContinueAfter(false); setNameSheet(true); };
 
   const shareNow = async (name?: string) => {
     if (tour && act && reflection) {
       let identity: ForumIdentity | undefined = getForumIdentity() ?? undefined;
-      if (!identity && name?.trim()) { identity = { name: name.trim(), about: '' }; saveForumIdentity(identity); }
+      const typed = name?.trim();
+      if (typed && (!identity || identity.name !== typed)) {
+        identity = { name: typed, about: identity?.about || '' };
+        saveForumIdentity(identity);
+      }
       try {
-        await submitShare({
+        const shareId = await submitShare({
           tourId: tour.id, actId: act.id, text: reflection.text,
           photos: reflection.photos || [], pin: reflection.pin ?? null,
           sessionId: session?.id || 'unknown', name: identity?.name, about: identity?.about,
         });
-      } catch (err) { console.error('[community] re-share failed:', err); }
+        markReflectionShared(shareId);
+        setShares((prev) => [{
+          id: shareId, tourId: tour.id, actId: act.id, text: reflection.text,
+          photos: reflection.photos || [], pin: reflection.pin ?? null,
+          sessionId: session?.id || 'unknown', name: identity?.name, upvotes: 0,
+          status: 'approved', createdAt: new Date().toISOString(),
+        } as CommunityShare, ...prev]);
+        setShared(true);
+      } catch (err) {
+        console.error('[community] share failed:', err);
+      }
     }
-    onComplete();
+    setNameSheet(false);
+    setAskShare(false);
+    if (continueAfter) onComplete();
   };
 
   return (
@@ -117,18 +141,32 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
         </div>
       )}
 
+      {shared && (
+        <p className="text-center text-[13px] font-semibold" style={{ color: 'var(--th-primary)' }}>✓ Your response is shared with the community</p>
+      )}
+
       <div className="flex gap-2 pt-1">
-        <BackButton />
+        {reflection && !shared && (
+          <button onClick={openShareSheet} className="flex-1 py-3 rounded-lg text-base font-semibold border-2" style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
+            Share your thoughts
+          </button>
+        )}
         <button onClick={handleContinue} className="flex-1 py-3 rounded-lg text-base font-semibold bg-accent-dark text-white">
-          Continue
+          {isLastAct ? 'End Tour' : 'Continue Tour'}
         </button>
       </div>
 
-      {reprompt && (
-        <RepromptSheet
+      {askShare && (
+        <AskShareSheet
+          onYes={() => { setAskShare(false); setNameSheet(true); }}
+          onNo={() => { setAskShare(false); setContinueAfter(false); onComplete(); }}
+        />
+      )}
+      {nameSheet && (
+        <NameShareSheet
+          defaultName={getForumIdentity()?.name || ''}
           onShare={shareNow}
-          onSkip={onComplete}
-          hasIdentity={!!getForumIdentity()}
+          onCancel={() => { setNameSheet(false); setAskShare(false); setContinueAfter(false); }}
         />
       )}
     </div>
@@ -233,25 +271,41 @@ function CommentComposer({ onSubmit }: { onSubmit: (text: string, name?: string)
   );
 }
 
-function RepromptSheet({ onShare, onSkip, hasIdentity }: { onShare: (name?: string) => void; onSkip: () => void; hasIdentity: boolean }) {
-  const [name, setName] = useState('');
-  const needName = !hasIdentity;
+/** Step 1 on Continue-without-sharing: a simple yes/no. */
+function AskShareSheet({ onYes, onNo }: { onYes: () => void; onNo: () => void }) {
   return (
     <div className="fixed inset-0 z-40 flex flex-col justify-end animate-fade-in">
-      <div className="absolute inset-0 bg-black/40" onClick={onSkip} />
+      <div className="absolute inset-0 bg-black/40" onClick={onNo} />
       <div className="relative m-4 rounded-2xl shadow-xl p-5 space-y-3 animate-slide-up" style={{ backgroundColor: 'var(--th-surface)' }}>
-        <h3 className="font-display font-bold" style={{ fontSize: 22, color: 'var(--th-primary)' }}>Share your response?</h3>
-        <p className="text-[15px]" style={{ color: 'var(--text-secondary)' }}>Others can learn from what you wrote. Would you like to add it to the community?</p>
-        {needName && (
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name"
-            className="w-full px-4 py-2.5 rounded-lg text-[17px] font-serif border-2 border-sandstone-light bg-white focus:outline-none" />
-        )}
-        <button onClick={() => onShare(name.trim() || undefined)} disabled={needName && !name.trim()}
+        <h3 className="font-display font-bold" style={{ fontSize: 22, color: 'var(--th-primary)' }}>Would you like to share your thoughts?</h3>
+        <p className="text-[15px]" style={{ color: 'var(--text-secondary)' }}>Others can learn from what you wrote.</p>
+        <div className="flex gap-2 pt-1">
+          <button onClick={onNo} className="flex-1 py-3 rounded-full text-[15px] font-semibold border-2" style={{ color: 'var(--text-secondary)', borderColor: 'var(--th-border)' }}>No</button>
+          <button onClick={onYes} className="flex-1 py-3 rounded-full text-[15px] font-semibold" style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}>Yes</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Step 2: name / alias entry, then post to the community. */
+function NameShareSheet({ defaultName, onShare, onCancel }: { defaultName: string; onShare: (name?: string) => void; onCancel: () => void }) {
+  const [name, setName] = useState(defaultName);
+  const canShare = !!name.trim();
+  return (
+    <div className="fixed inset-0 z-40 flex flex-col justify-end animate-fade-in">
+      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
+      <div className="relative m-4 rounded-2xl shadow-xl p-5 space-y-3 animate-slide-up" style={{ backgroundColor: 'var(--th-surface)' }}>
+        <h3 className="font-display font-bold" style={{ fontSize: 22, color: 'var(--th-primary)' }}>Share your response</h3>
+        <p className="text-[15px]" style={{ color: 'var(--text-secondary)' }}>Add your name so others know whose reflection this is — then it joins the community wall.</p>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name (or alias)"
+          className="w-full px-4 py-2.5 rounded-lg text-[17px] font-serif border-2 border-sandstone-light bg-white focus:outline-none" />
+        <button onClick={() => onShare(name.trim())} disabled={!canShare}
           className="w-full py-3 rounded-full text-[15px] font-semibold disabled:opacity-40"
           style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}>
           Share with the community
         </button>
-        <button onClick={onSkip} className="w-full text-center text-sm py-1" style={{ color: 'var(--text-secondary)' }}>No thanks</button>
+        <button onClick={onCancel} className="w-full text-center text-sm py-1" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
       </div>
     </div>
   );

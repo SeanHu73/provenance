@@ -340,8 +340,9 @@ export interface ActReflectionResponse {
   promptId?: string | null;
   promptText?: string;
   isCustom?: boolean;
-  /** Context ids the learner tagged as ones they referred to. */
-  taggedContextIds?: string[];
+  /** Contexts the learner tagged as ones they referred to (id + title snapshot,
+   *  so the admin can see what was picked even for guest-added contexts). */
+  taggedContexts?: { id: string; title: string }[];
 }
 
 /** One context question the explorer asked (and the AI's answer, once wired). */

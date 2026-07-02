@@ -50,6 +50,7 @@ import {
   completeReflectionIntro as completeReflectionIntroImpl,
   completeActContextQuestions as completeActContextQuestionsImpl,
   completeActReflection as completeActReflectionImpl,
+  markActReflectionShared as markActReflectionSharedImpl,
   completeCommunityShare as completeCommunityShareImpl,
   completeStopMap as completeStopMapImpl,
   loadTourSession,
@@ -99,6 +100,7 @@ interface TourContextValue {
   completeReflectionIntro: () => void;
   completeActContextQuestions: (asked?: ContextQuestionEntry[]) => void;
   completeActReflection: (response: ActReflectionResponse) => void;
+  markReflectionShared: (shareId: string) => void;
   completeCommunityShare: () => void;
   completeResources: () => void;
   completeStopMap: () => void;
@@ -668,6 +670,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(completeCommunityShareImpl(session, tour));
   }, [session, tour, persist]);
 
+  const markReflectionSharedFn = useCallback((shareId: string) => {
+    if (!session || !tour) return;
+    persist(markActReflectionSharedImpl(session, tour, shareId));
+  }, [session, tour, persist]);
+
   const endTour = useCallback(() => {
     setTour(null);
     setSession(null);
@@ -714,6 +721,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeReflectionIntro: completeReflectionIntroFn,
       completeActContextQuestions: completeActContextQuestionsFn,
       completeActReflection: completeActReflectionFn,
+      markReflectionShared: markReflectionSharedFn,
       completeCommunityShare: completeCommunityShareFn,
       completeResources: completeResourcesFn,
       completeStopMap: completeStopMapFn,

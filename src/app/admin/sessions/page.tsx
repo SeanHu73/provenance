@@ -44,14 +44,20 @@ function buildRows(sessions: StoredTourSession[], toursById: Record<string, Tour
       for (const cq of resp?.contextQuestions || []) {
         rows.push([...base, 'Context question', actTitle, cq.question, cq.answer || `(${cq.status})`]);
       }
-      // "Share What You Think" reflection (text + photo/pin/share markers).
+      // "Share Your Thoughts" reflection — the prompt the learner picked (or
+      // their own), their response, the contexts they tagged, photos, and
+      // whether it was published to the community (stored even if unpublished).
       const refl = resp?.reflection;
       if (refl) {
-        const prompt = act?.reflectionQuestion?.prompt ?? act?.closingQuestion?.prompt ?? '';
+        const prompt = (refl.promptText || act?.reflectionQuestion?.prompt || act?.closingQuestion?.prompt || '')
+          + (refl.isCustom ? ' (their own prompt)' : '');
         const extras: string[] = [];
+        if (refl.taggedContexts && refl.taggedContexts.length) {
+          extras.push(`contexts: ${refl.taggedContexts.map((c) => c.title || c.id).join(', ')}`);
+        }
         if (refl.photos && refl.photos.length) extras.push(`${refl.photos.length} photo(s)`);
         if (refl.pin) extras.push(`pin: ${refl.pin.title || 'spot'}${refl.pin.note ? ` — ${refl.pin.note}` : ''}`);
-        if (refl.sharedToCommunity) extras.push('shared');
+        extras.push(refl.sharedToCommunity ? 'shared' : 'unpublished');
         const response = refl.text + (extras.length ? `  [${extras.join('; ')}]` : '');
         rows.push([...base, 'Act reflection', actTitle, prompt, response]);
       }

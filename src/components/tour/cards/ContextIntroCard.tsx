@@ -114,7 +114,7 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
         className="relative min-h-[100dvh] flex flex-col justify-center px-7"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        <div className="mx-auto w-fit">
+        <div className="w-fit">
           <h2
             className="font-serif leading-snug mb-4"
             style={{
@@ -126,8 +126,8 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
               transition: 'opacity 700ms ease-out, transform 700ms ease-out',
             }}
           >
-            Let&rsquo;s <span className="font-bold tracking-wide">ASK</span> about some{' '}
-            <span className="font-bold">context</span>
+            Let&rsquo;s <span className="italic">reconstruct</span> some{' '}
+            <span className="font-bold">CONTEXT</span>
             <br />
             using the&hellip;
           </h2>
@@ -147,16 +147,21 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
               <span className="font-display leading-none" style={{ color: l.colour, fontSize: 'clamp(20px, 6vw, 36px)' }}>{l.label.slice(1)}</span>
             </div>
           ))}
-        </div>
 
-        <div
-          className="absolute bottom-7 left-0 right-0 flex flex-col items-center gap-1.5"
-          style={{ opacity: beat2 ? 0.75 : 0, transition: 'opacity 700ms ease-out 900ms' }}
-        >
-          <span className="text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--th-secondary)' }}>Keep scrolling</span>
-          <svg className="animate-bounce" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--th-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
+          {/* Ready to ask questions? — same left margin, lighter font, scroll cue */}
+          <div
+            className="mt-7 flex items-center gap-2.5"
+            style={{
+              opacity: beat2 ? 1 : 0,
+              transform: beat2 ? 'translateY(0)' : 'translateY(10px)',
+              transition: 'opacity 600ms ease-out 950ms, transform 600ms ease-out 950ms',
+            }}
+          >
+            <span className="font-display leading-none" style={{ fontSize: 'clamp(20px, 5.5vw, 30px)', color: 'var(--th-secondary)' }}>Ready to ask questions?</span>
+            <svg className="animate-bounce shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--th-secondary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M6 13l6 6 6-6" />
+            </svg>
+          </div>
         </div>
       </section>
       )}
