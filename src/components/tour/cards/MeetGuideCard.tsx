@@ -6,6 +6,7 @@
  * title, a brief intro, and optional audio.
  */
 
+import { useState } from 'react';
 import { Tour } from '@/lib/types';
 import { guidePhotoStyle } from '@/lib/guide-photo';
 import AudioButton from './AudioButton';
@@ -21,6 +22,7 @@ export default function MeetGuideCard({ tour, onContinue }: Props) {
   const g = tour.guide;
   const [autoplayPref] = useAudioAutoplay();
   const shouldAutoplay = autoplayPref && !g.introAudioAutoplayDisabled;
+  const [readAlong, setReadAlong] = useState(false);
 
   return (
     <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
@@ -63,11 +65,22 @@ export default function MeetGuideCard({ tour, onContinue }: Props) {
         <AudioButton audioUrl={g.introAudioUrl} title={g.introAudioTitle ?? null} autoplay={shouldAutoplay} />
       )}
 
-      {/* Intro text */}
+      {/* Intro text — collapsed behind a "Read Along" toggle */}
       {g.intro && (
-        <p className="text-[21px] leading-relaxed font-serif text-text-primary">
-          {g.intro}
-        </p>
+        <div className="space-y-2 flex flex-col items-center">
+          <button
+            onClick={() => setReadAlong((v) => !v)}
+            className="text-base text-text-secondary flex items-center gap-2 py-2 px-3 rounded-lg border border-sandstone-light hover:bg-sandstone-light/20"
+          >
+            <span className="text-xs">{readAlong ? '▼' : '▶'}</span>
+            {readAlong ? 'Hide text' : 'Read Along'}
+          </button>
+          {readAlong && (
+            <p className="text-[21px] leading-relaxed font-serif text-text-primary animate-fade-in">
+              {g.intro}
+            </p>
+          )}
+        </div>
       )}
 
       {/* Continue */}

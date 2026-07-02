@@ -84,9 +84,9 @@ export default function EqSceneCard({
         </button>
       )}
 
-      {/* Scene description */}
+      {/* Scene description — centered in the opening-frame variant */}
       {eq.sceneDescription && (
-        <p className="text-[21px] leading-relaxed font-serif text-text-primary">
+        <p className={`text-[21px] leading-relaxed font-serif text-text-primary ${openingVariant ? 'text-center' : ''}`}>
           <FormattedText text={eq.sceneDescription} />
         </p>
       )}

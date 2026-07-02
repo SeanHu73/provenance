@@ -87,7 +87,7 @@ export default function ReflectionIntroCard({ onComplete }: Props) {
           <p
             className="font-display leading-none mt-1"
             style={{
-              fontSize: 'clamp(40px, 12vw, 72px)',
+              fontSize: 'clamp(34px, 10vw, 60px)',
               color: CONTEXT_ACCENT,
               opacity: mounted ? 1 : 0,
               transform: mounted ? 'translateY(0)' : 'translateY(14px)',
@@ -96,18 +96,19 @@ export default function ReflectionIntroCard({ onComplete }: Props) {
           >
             CONTEXT&hellip;
           </p>
-          <p
-            className="font-serif leading-snug mt-[1.1em]"
-            style={{
-              ...lineStyle,
-              opacity: line2 ? 0.92 : 0,
-              transform: line2 ? 'translateY(0)' : 'translateY(14px)',
-              transition: 'opacity 700ms ease-out, transform 700ms ease-out',
-            }}
-          >
-            Let&rsquo;s hear <span className="italic font-display">what you think</span>&hellip;
-          </p>
         </div>
+        {/* Delayed, centered across the screen (breaks out of the right-aligned block). */}
+        <p
+          className="self-stretch text-center font-serif leading-snug mt-[2.4em]"
+          style={{
+            ...lineStyle,
+            opacity: line2 ? 0.92 : 0,
+            transform: line2 ? 'translateY(0)' : 'translateY(14px)',
+            transition: 'opacity 700ms ease-out, transform 700ms ease-out',
+          }}
+        >
+          Let&rsquo;s hear <span className="italic font-display">what you think</span>&hellip;
+        </p>
 
         <div
           className="absolute bottom-7 left-0 right-0 flex flex-col items-center gap-1.5"

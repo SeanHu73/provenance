@@ -39,6 +39,9 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   // (notice) narrations.
   const seedCues = usePhotoCues(stop.seed.photoCues, stop.seed.photos || [], stop.seed.photoCuesHoldLast);
   const noticeCues = usePhotoCues(stop.notice.photoCues, stop.notice.photos || [], stop.notice.photoCuesHoldLast);
+  // Background reading is collapsed behind "Read Along" (open by default when
+  // there's no audio, so a text-only Background still shows).
+  const [bgReadAlong, setBgReadAlong] = useState(!stop.seed.audioUrl);
 
   const hasNoticeSection = !!(
     stop.notice.prompt
@@ -111,22 +114,39 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
     </>
   );
 
-  // Background reading — sits BELOW the find instructions.
+  // Background reading — sits BELOW the find instructions. The audio narration
+  // box sits directly under the "Background" title, and the reading itself is
+  // collapsed behind a "Read Along" toggle.
   const backgroundContent = (
     <>
-      {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedAutoplay} onTimeUpdate={seedCues.onTimeUpdate} onEnded={seedCues.onEnded} />}
-      {stop.seed.text ? (
+      {(stop.seed.text || stop.seed.audioUrl) ? (
         <div>
           <SectionSubtitle className="mb-2">Background</SectionSubtitle>
-          <PhotoContent
-            text={stop.seed.text}
-            photos={stop.seed.photos || []}
-            legacyPhotoUrl={stop.seed.photoUrl}
-            legacyPhotoCaption={stop.seed.photoCaption}
-            highlightedUrl={seedCues.highlightedUrl}
-          />
+          {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedAutoplay} onTimeUpdate={seedCues.onTimeUpdate} onEnded={seedCues.onEnded} />}
+          {stop.seed.text && (
+            <>
+              <button
+                onClick={() => setBgReadAlong((v) => !v)}
+                className="mt-2 text-base text-text-secondary flex items-center gap-2 py-2 px-3 rounded-lg border border-sandstone-light hover:bg-sandstone-light/20"
+              >
+                <span className="text-xs">{bgReadAlong ? '▼' : '▶'}</span>
+                {bgReadAlong ? 'Hide text' : 'Read Along'}
+              </button>
+              {bgReadAlong && (
+                <div className="mt-3 animate-fade-in">
+                  <PhotoContent
+                    text={stop.seed.text}
+                    photos={stop.seed.photos || []}
+                    legacyPhotoUrl={stop.seed.photoUrl}
+                    legacyPhotoCaption={stop.seed.photoCaption}
+                    highlightedUrl={seedCues.highlightedUrl}
+                  />
+                </div>
+              )}
+            </>
+          )}
         </div>
-      ) : !stop.seed.audioUrl && (
+      ) : (
         <p className="text-base text-text-secondary italic">Take a moment to look around this spot.</p>
       )}
     </>
