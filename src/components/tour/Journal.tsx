@@ -44,6 +44,7 @@ import ActIntroCard from './cards/ActIntroCard';
 import StopMapCard from './cards/StopMapCard';
 import { createPortal } from 'react-dom';
 import ContextIntroCard from './cards/ContextIntroCard';
+import ReflectionIntroCard from './cards/ReflectionIntroCard';
 import ContextJournal from '@/features/context-journal/ContextJournal';
 import { authoredToEntry } from '@/features/context-journal/adapters';
 import ContextQuestionsCard from './cards/ContextQuestionsCard';
@@ -91,6 +92,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeCommunityForum,
     completeContextIntro,
     completeActContext,
+    completeReflectionIntro,
     completeActContextQuestions,
     completeActReflection,
     completeCommunityShare,
@@ -136,7 +138,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const stopNum = session.currentStopIndex + 1;
 
   // Progress bar visibility — show during stops, hide on pre-tour/end screens
-  const showProgress = !['intro', 'meet_guide', 'guide_outro', 'end', 'act_intro', 'act_context_intro', 'resources'].includes(phase);
+  const showProgress = !['intro', 'meet_guide', 'guide_outro', 'end', 'act_intro', 'act_context_intro', 'act_reflection_intro', 'resources'].includes(phase);
 
   // Determine transition type from the phase history.
   // Look at the previous entry — if it was in the same stop, slide. Otherwise fade.
@@ -353,11 +355,15 @@ export default function Journal({ onMapPeek }: JournalProps) {
             const authored = getActContexts(act).map((c) => authoredToEntry(c, tour.id));
             return (
               <div className="fixed inset-0 z-[55]">
-                <ContextJournal tourId={tour.id} authored={authored} inTour onExit={completeActContext} />
+                <ContextJournal tourId={tour.id} authored={authored} inTour onExit={completeActContext} continueLabel="Continue to Share Your Thoughts…" />
               </div>
             );
           })(),
           document.body,
+        )}
+
+        {phase === 'act_reflection_intro' && currentStop && (
+          <ReflectionIntroCard onComplete={completeReflectionIntro} />
         )}
 
         {phase === 'act_context_questions' && currentStop && (

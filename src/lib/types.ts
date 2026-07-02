@@ -210,6 +210,14 @@ export interface ActQuestion {
   prompt: string;
 }
 
+/** One end-of-act reflection prompt the learner can choose to respond to. An act
+ *  can carry several (shown as swipeable cards); the learner picks one — or writes
+ *  their own. */
+export interface ReflectionPrompt {
+  id: string;
+  prompt: string;
+}
+
 /** A read-only "Context" section shown at the end of an Act (no map pin):
  *  an admin-framed question plus the context/answer the admin provides. The
  *  explorer reads it, then is prompted for their own context questions. */
@@ -312,6 +320,10 @@ export interface Act {
   /** "Share What You Think" reflection prompt shown after the Context step.
    *  Falls back to `closingQuestion.prompt` for legacy tours. */
   reflectionQuestion?: ActQuestion | null;
+  /** End-of-act reflection prompts the learner chooses from (the "Share Your
+   *  Thoughts" step). Several are shown as swipeable cards; the learner may also
+   *  write their own. Falls back to `reflectionQuestion` for older tours. */
+  reflectionPrompts?: ReflectionPrompt[];
 }
 
 /** The explorer's reflection ("Share What You Think") response for an act —
@@ -323,6 +335,13 @@ export interface ActReflectionResponse {
   pin?: { lat: number; lng: number; title?: string; note?: string } | null;
   sharedToCommunity?: boolean;
   shareId?: string;                  // CommunityShare doc id if shared
+  /** Which prompt the learner answered — its id + text snapshot, or a custom one
+   *  they wrote themselves (`isCustom`). */
+  promptId?: string | null;
+  promptText?: string;
+  isCustom?: boolean;
+  /** Context ids the learner tagged as ones they referred to. */
+  taggedContextIds?: string[];
 }
 
 /** One context question the explorer asked (and the AI's answer, once wired). */
@@ -708,7 +727,7 @@ export interface WebNode {
   y: number;
 }
 
-export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'act_intro' | 'act_opening' | 'act_closing' | 'act_questions' | 'stop_map' | 'community_forum' | 'resources' | 'act_context_intro' | 'act_context' | 'act_context_questions' | 'act_reflection' | 'community_share';
+export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'act_intro' | 'act_opening' | 'act_closing' | 'act_questions' | 'stop_map' | 'community_forum' | 'resources' | 'act_context_intro' | 'act_context' | 'act_context_questions' | 'act_reflection_intro' | 'act_reflection' | 'community_share';
 
 export interface TourSession {
   id: string;

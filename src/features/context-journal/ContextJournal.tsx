@@ -39,9 +39,11 @@ interface Props {
    *  home, and a footer "Continue" appears. */
   inTour?: boolean;
   onExit?: () => void;
+  /** Label for the in-tour continue button (defaults to "Continue tour"). */
+  continueLabel?: string;
 }
 
-export default function ContextJournal({ tourId, authored, inTour, onExit }: Props) {
+export default function ContextJournal({ tourId, authored, inTour, onExit, continueLabel = 'Continue tour' }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
 
   const [entries, setEntries] = useState<ContextEntry[]>([]);
@@ -329,7 +331,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit }: Pro
               className="w-full py-3.5 rounded-2xl text-base font-semibold text-warm-white disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ backgroundColor: 'var(--th-primary)' }}
             >
-              Continue tour
+              {continueLabel}
             </button>
             {!explored && (
               <p className="mt-2 text-center text-xs text-text-muted">Ask a question — or tap one to explore — before continuing.</p>

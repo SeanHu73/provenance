@@ -350,6 +350,18 @@ export default function TourEditorPage() {
     const act = (tour?.acts || []).find((a) => a.id === actId);
     updateAct(actId, { contexts: (act?.contexts ?? []).filter((c) => c.id !== itemId) });
   };
+  const addReflectionPrompt = (actId: string) => {
+    const act = (tour?.acts || []).find((a) => a.id === actId);
+    updateAct(actId, { reflectionPrompts: [...(act?.reflectionPrompts ?? []), { id: makeCtxId(), prompt: '' }] });
+  };
+  const updateReflectionPrompt = (actId: string, promptId: string, prompt: string) => {
+    const act = (tour?.acts || []).find((a) => a.id === actId);
+    updateAct(actId, { reflectionPrompts: (act?.reflectionPrompts ?? []).map((p) => (p.id === promptId ? { ...p, prompt } : p)) });
+  };
+  const removeReflectionPrompt = (actId: string, promptId: string) => {
+    const act = (tour?.acts || []).find((a) => a.id === actId);
+    updateAct(actId, { reflectionPrompts: (act?.reflectionPrompts ?? []).filter((p) => p.id !== promptId) });
+  };
   /** Clear the legacy end-of-act `act.context` (still shown to learners via the
    *  getActContexts migration, but with no other admin UI to remove it). */
   const removeLegacyContext = (actId: string) => updateAct(actId, { context: null });
@@ -1882,6 +1894,34 @@ export default function TourEditorPage() {
                               </li>
                             );
                           })}
+                        </ul>
+                      )}
+                    </div>
+
+                    {/* Reflection prompts — the end-of-act "Share Your Thoughts" cards */}
+                    <div className="rounded border border-stone-300 bg-white p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-stone-600 uppercase tracking-wide">Reflection prompts</p>
+                        <button onClick={() => addReflectionPrompt(act.id)} className="px-2.5 py-1 rounded bg-emerald-700 text-white text-xs hover:bg-emerald-800">+ Add prompt</button>
+                      </div>
+                      <p className="text-[10px] text-stone-400">Shown after the context step as swipeable &ldquo;Share Your Thoughts&rdquo; cards. The learner picks one (or writes their own). Add several to offer a choice.</p>
+                      {(act.reflectionPrompts ?? []).length === 0 ? (
+                        <p className="text-xs text-stone-400 italic">No prompts yet — learners will only see the &ldquo;create your own&rdquo; card.</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {(act.reflectionPrompts ?? []).map((p, pi) => (
+                            <li key={p.id} className="flex items-start gap-2">
+                              <span className="text-[10px] font-mono text-stone-400 mt-2">{pi + 1}</span>
+                              <textarea
+                                value={p.prompt}
+                                onChange={(e) => updateReflectionPrompt(act.id, p.id, e.target.value)}
+                                placeholder="e.g. What surprised you most about this place?"
+                                rows={2}
+                                className="flex-1 px-2 py-1 border border-stone-300 rounded text-sm bg-white"
+                              />
+                              <button onClick={() => removeReflectionPrompt(act.id, p.id)} className="text-xs text-red-600 hover:underline shrink-0 mt-1.5">Remove</button>
+                            </li>
+                          ))}
                         </ul>
                       )}
                     </div>

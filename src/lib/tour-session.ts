@@ -7,7 +7,7 @@
  * a single group visit.
  */
 
-import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry, ActContextItem, ContextMediaItem, ContextQuestion } from './types';
+import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry, ActContextItem, ContextMediaItem, ContextQuestion, ReflectionPrompt } from './types';
 import { getActiveStops, getTourMode } from './tours-store';
 
 export type { TourPhase };
@@ -370,6 +370,16 @@ function addContextQuestion(
  *  `closingQuestion` for tours authored before the redesign. */
 export function reflectionPromptOf(act: Act | null): string {
   return (act?.reflectionQuestion?.prompt ?? act?.closingQuestion?.prompt ?? '').trim();
+}
+
+/** End-of-act reflection prompts to offer the learner ("Share Your Thoughts"):
+ *  the new `reflectionPrompts`, else the single legacy prompt wrapped as one.
+ *  May be empty — the learner can always write their own. */
+export function reflectionPromptsOf(act: Act | null): ReflectionPrompt[] {
+  const list = (act?.reflectionPrompts ?? []).filter((p) => p.prompt.trim());
+  if (list.length) return list;
+  const legacy = reflectionPromptOf(act);
+  return legacy ? [{ id: 'legacy', prompt: legacy }] : [];
 }
 
 /** Rich "Add Context" items for an act, migrating a legacy `act.context` into a
@@ -860,10 +870,28 @@ export function completeContextIntro(session: TourSession): TourSession {
  *  go straight to the next act (or the tour's close) — no per-stop context
  *  stepping (which used to loop), no separate questions screen, and no per-act
  *  community step. */
-export function completeActContext(session: TourSession, tour: Tour): TourSession {
-  const stop = getActiveStops(tour)[session.currentStopIndex];
-  const act = stop ? findActOfStop(tour, stop.id) : null;
-  return advanceToNextActOrClosing({ ...session, currentContextId: null }, tour, act);
+export function completeActContext(session: TourSession): TourSession {
+  // The Context step now leads into the end-of-act reflection ("Share Your
+  // Thoughts"): a fade intro, then the prompt picker. The learner can always
+  // write their own, so we always route here (the picker handles zero prompts).
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'act_reflection_intro',
+    currentRound: 0,
+    currentContextId: null,
+  };
+}
+
+/** Context mode: the "Reflection" fade intro finished → the "Share Your Thoughts"
+ *  prompt picker. */
+export function completeReflectionIntro(session: TourSession): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'act_reflection',
+    currentRound: 0,
+  };
 }
 
 /** Context mode: explorer is done asking context questions → reflection (if
