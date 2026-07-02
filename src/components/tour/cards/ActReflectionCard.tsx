@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { findActOfStop, reflectionPromptsOf, getActContexts } from '@/lib/tour-session';
 import { ActReflectionResponse } from '@/lib/types';
@@ -69,59 +69,68 @@ export default function ActReflectionCard({ onComplete }: Props) {
     });
   };
 
-  // ── Prompt picker ──
-  if (!selected) {
-    return (
-      <div className="animate-fade-in">
-        <h2 className="font-display font-bold leading-tight" style={{ fontSize: 34, color: 'var(--th-primary)' }}>Share Your Thoughts</h2>
-        <p className="mt-1 font-serif italic" style={{ fontSize: 16, color: 'var(--text-secondary)' }}>Choose a prompt or create your own:</p>
-
-        <div className="mt-5 -mx-4 px-4 flex gap-3 overflow-x-auto cj-hscroll pb-2" style={{ scrollSnapType: 'x mandatory' }}>
-          {prompts.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setSelected({ id: p.id, text: p.prompt, isCustom: false })}
-              className="shrink-0 w-[78%] rounded-2xl p-5 text-left shadow-md flex flex-col"
-              style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)', minHeight: 190 }}
-            >
-              <span className="text-[11px] uppercase tracking-[0.16em] font-semibold" style={{ color: 'var(--th-primary)' }}>Prompt</span>
-              <p className="mt-3 font-serif leading-relaxed" style={{ fontSize: 21, color: 'var(--text-primary)' }}><FormattedText text={p.prompt} /></p>
-              <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-semibold" style={{ color: 'var(--th-primary)' }}>
-                Respond
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M9 6l6 6-6 6" /></svg>
-              </span>
-            </button>
-          ))}
-
-          {/* create your own — distinct dark card */}
-          <button
-            onClick={() => setSelected({ id: null, text: CUSTOM_PROMPT, isCustom: true })}
-            className="shrink-0 w-[78%] rounded-2xl p-5 text-left shadow-md flex flex-col"
-            style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-journal)', minHeight: 190 }}
-          >
-            <p className="font-serif italic leading-snug" style={{ fontSize: 20, color: 'var(--th-surface)' }}>{CUSTOM_PROMPT}</p>
-            <span className="mt-auto pt-4 inline-flex items-center gap-2 font-semibold" style={{ color: 'var(--th-secondary)' }}>
-              <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--th-secondary)', color: 'var(--th-journal)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-              </span>
-              Create your own
-            </span>
-          </button>
-        </div>
-        <p className="mt-2 text-center text-xs text-text-muted">Swipe to see more →</p>
-      </div>
-    );
-  }
-
-  // ── Response (card flips over) ──
+  // Picker and response are two faces of a flip: selecting a prompt rotates the
+  // picker out and the response in (AnimatePresence, mode="wait").
   return (
-    <motion.div
-      className="animate-fade-in"
-      initial={{ rotateY: 90, opacity: 0 }}
-      animate={{ rotateY: 0, opacity: 1 }}
-      transition={{ duration: 0.4 }}
-      style={{ transformPerspective: 1000 }}
-    >
+    <div style={{ perspective: 1400 }}>
+      <AnimatePresence mode="wait" initial={false}>
+        {!selected ? (
+          <motion.div
+            key="picker"
+            className="animate-fade-in"
+            initial={{ rotateY: 0, opacity: 1 }}
+            exit={{ rotateY: -90, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeIn' }}
+            style={{ transformOrigin: 'center' }}
+          >
+            <h2 className="font-display font-bold leading-tight" style={{ fontSize: 34, color: 'var(--th-primary)' }}>Share Your Thoughts</h2>
+            <p className="mt-1 font-serif italic" style={{ fontSize: 16, color: 'var(--text-secondary)' }}>Choose a prompt or create your own:</p>
+
+            <div className="mt-5 -mx-4 px-4 flex gap-3 overflow-x-auto cj-hscroll pb-2" style={{ scrollSnapType: 'x mandatory' }}>
+              {prompts.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setSelected({ id: p.id, text: p.prompt, isCustom: false })}
+                  className="shrink-0 w-[85%] rounded-2xl px-6 py-8 text-center shadow-md flex flex-col items-center justify-center"
+                  style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)', minHeight: '54vh' }}
+                >
+                  {p.photoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.photoUrl} alt="" className="w-full max-h-44 object-cover rounded-xl mb-6" />
+                  )}
+                  <p className="font-serif leading-relaxed" style={{ fontSize: 26, color: 'var(--text-primary)' }}><FormattedText text={p.prompt} /></p>
+                  <span className="mt-8 inline-flex items-center gap-1.5 px-6 py-3 rounded-full text-base font-semibold text-white" style={{ backgroundColor: 'var(--th-primary)' }}>
+                    Respond
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><path d="M9 6l6 6-6 6" /></svg>
+                  </span>
+                </button>
+              ))}
+
+              {/* create your own — distinct dark card */}
+              <button
+                onClick={() => setSelected({ id: null, text: CUSTOM_PROMPT, isCustom: true })}
+                className="shrink-0 w-[85%] rounded-2xl px-6 py-8 text-center shadow-md flex flex-col items-center justify-center"
+                style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-journal)', minHeight: '54vh' }}
+              >
+                <p className="font-serif italic leading-relaxed" style={{ fontSize: 23, color: 'var(--th-surface)' }}>{CUSTOM_PROMPT}</p>
+                <span className="mt-8 inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold" style={{ backgroundColor: 'var(--th-secondary)', color: 'var(--th-journal)' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                  Create your own
+                </span>
+              </button>
+            </div>
+            <p className="mt-2 text-center text-xs text-text-muted">Swipe to see more →</p>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="respond"
+            className="animate-fade-in"
+            initial={{ rotateY: 90, opacity: 0 }}
+            animate={{ rotateY: 0, opacity: 1 }}
+            exit={{ rotateY: 90, opacity: 0 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            style={{ transformOrigin: 'center' }}
+          >
       <button onClick={() => setSelected(null)} className="mb-3 inline-flex items-center gap-1 text-sm font-semibold" style={{ color: 'var(--th-primary)' }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M15 18l-6-6 6-6" /></svg>
         Choose another
@@ -176,7 +185,10 @@ export default function ActReflectionCard({ onComplete }: Props) {
       >
         {busy ? 'Saving…' : 'Save and see what others think'}
       </button>
-    </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 

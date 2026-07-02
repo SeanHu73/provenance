@@ -216,6 +216,8 @@ export interface ActQuestion {
 export interface ReflectionPrompt {
   id: string;
   prompt: string;
+  /** Optional image shown on the prompt card. */
+  photoUrl?: string | null;
 }
 
 /** A read-only "Context" section shown at the end of an Act (no map pin):

@@ -72,21 +72,32 @@ export default function ReflectionIntroCard({ onComplete }: Props) {
           Reflection
         </div>
 
-        <div className="mt-5" style={{ maxWidth: '26ch' }}>
+        <div className="mt-5" style={{ maxWidth: '30ch' }}>
           <p
             className="font-serif leading-snug"
             style={{
               ...lineStyle,
               opacity: mounted ? 0.92 : 0,
               transform: mounted ? 'translateY(0)' : 'translateY(14px)',
-              transition: 'opacity 900ms ease-out 700ms, transform 900ms ease-out 700ms',
+              transition: 'opacity 900ms ease-out 600ms, transform 900ms ease-out 600ms',
             }}
           >
-            Now that you have explored{' '}
-            <span className="font-display" style={{ color: CONTEXT_ACCENT, fontSize: '1.4em', display: 'inline-block' }}>CONTEXT</span>&hellip;
+            Now that you have explored
           </p>
           <p
-            className="font-serif leading-snug mt-2"
+            className="font-display leading-none mt-1"
+            style={{
+              fontSize: 'clamp(40px, 12vw, 72px)',
+              color: CONTEXT_ACCENT,
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? 'translateY(0)' : 'translateY(14px)',
+              transition: 'opacity 900ms ease-out 950ms, transform 900ms ease-out 950ms',
+            }}
+          >
+            CONTEXT&hellip;
+          </p>
+          <p
+            className="font-serif leading-snug mt-[1.1em]"
             style={{
               ...lineStyle,
               opacity: line2 ? 0.92 : 0,

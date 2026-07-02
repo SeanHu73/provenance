@@ -362,6 +362,15 @@ export default function TourEditorPage() {
     const act = (tour?.acts || []).find((a) => a.id === actId);
     updateAct(actId, { reflectionPrompts: (act?.reflectionPrompts ?? []).filter((p) => p.id !== promptId) });
   };
+  const setReflectionPromptPhoto = async (actId: string, promptId: string, file: File) => {
+    const url = await uploadPhoto(file, `memorial-church/photos/tours/${tourId}/reflection_${promptId}_${file.name}`);
+    const act = (tour?.acts || []).find((a) => a.id === actId);
+    updateAct(actId, { reflectionPrompts: (act?.reflectionPrompts ?? []).map((p) => (p.id === promptId ? { ...p, photoUrl: url } : p)) });
+  };
+  const clearReflectionPromptPhoto = (actId: string, promptId: string) => {
+    const act = (tour?.acts || []).find((a) => a.id === actId);
+    updateAct(actId, { reflectionPrompts: (act?.reflectionPrompts ?? []).map((p) => (p.id === promptId ? { ...p, photoUrl: null } : p)) });
+  };
   /** Clear the legacy end-of-act `act.context` (still shown to learners via the
    *  getActContexts migration, but with no other admin UI to remove it). */
   const removeLegacyContext = (actId: string) => updateAct(actId, { context: null });
@@ -1912,13 +1921,29 @@ export default function TourEditorPage() {
                           {(act.reflectionPrompts ?? []).map((p, pi) => (
                             <li key={p.id} className="flex items-start gap-2">
                               <span className="text-[10px] font-mono text-stone-400 mt-2">{pi + 1}</span>
-                              <textarea
-                                value={p.prompt}
-                                onChange={(e) => updateReflectionPrompt(act.id, p.id, e.target.value)}
-                                placeholder="e.g. What surprised you most about this place?"
-                                rows={2}
-                                className="flex-1 px-2 py-1 border border-stone-300 rounded text-sm bg-white"
-                              />
+                              <div className="flex-1 space-y-1.5">
+                                <textarea
+                                  value={p.prompt}
+                                  onChange={(e) => updateReflectionPrompt(act.id, p.id, e.target.value)}
+                                  placeholder="e.g. What surprised you most about this place?"
+                                  rows={2}
+                                  className="w-full px-2 py-1 border border-stone-300 rounded text-sm bg-white"
+                                />
+                                <div className="flex items-center gap-2">
+                                  {p.photoUrl ? (
+                                    <>
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={p.photoUrl} alt="" className="w-12 h-12 rounded object-cover border border-stone-200" />
+                                      <button onClick={() => clearReflectionPromptPhoto(act.id, p.id)} className="text-xs text-red-600 hover:underline">Remove photo</button>
+                                    </>
+                                  ) : (
+                                    <label className="text-xs text-blue-700 hover:underline cursor-pointer">
+                                      + Add photo (optional)
+                                      <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void setReflectionPromptPhoto(act.id, p.id, f); e.target.value = ''; }} />
+                                    </label>
+                                  )}
+                                </div>
+                              </div>
                               <button onClick={() => removeReflectionPrompt(act.id, p.id)} className="text-xs text-red-600 hover:underline shrink-0 mt-1.5">Remove</button>
                             </li>
                           ))}
