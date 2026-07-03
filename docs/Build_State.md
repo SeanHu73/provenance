@@ -1,19 +1,29 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-07-02
-(latest: **end-of-act Reflection + Community share flow, context-intro polish, and
-Act guiding questions** (§15 **pt.28**). The Context step now leads Context journal
-→ **REFLECTION** fade → **"Share Your Thoughts"** (swipeable prompt cards that
-**flip** to a record/type response with tag-contexts + photos incl. **online image
-search**) → **"Hear from the Community"** (Share your thoughts / Continue Tour /
-End Tour, with a share-or-not prompt + name/alias). Acts carry a **guiding
-question** (admin) shown on the act intro (now a **"Ready to explore?"** button, no
-auto-advance), the **footer** (small "Act N" + big marquee question), and atop the
-act's Context Journal. Context intro plays **once per tour** (short "explore the
-P.A.S.T. again" return after); continue is gated on **asking/tapping a question**.
-New `ReflectionIntroCard` / `/api/image-search` (Wikimedia Commons). *Open:*
-AI/self-asked answers (item #3), community **forum visual redesign** (compact card →
-overlay), map self-filtering by zoom.
+*Handoff document for the next Claude Code session. Last updated 2026-07-03
+(latest: the **"Set Up + Instructions" onboarding wizard**, the **P.A.S.T.
+framework redesign**, the **LEARN → DISCOVER** rename, and an optional
+**Opening-Frame starting-point pin** (§15 **pt.29**). Onboarding moved OUT of the
+in-tour flow into a 5-step **`QuickSetUp`** shown after **"Enter →"** (the opening
+"Enter Provenance" button): **Audio** (auto-play choice + a mock footer showing
+where the **Auto** toggle lives) → **Explore·Contextualise·Reflect** → a **sample
+pin on a real locked Google map** with diagonal step-through instructions →
+**Find/Discover** → **Ready to Begin?**. The P.A.S.T. **"A" is now Affairs**
+(Society absorbs cultural values); onboarding lenses are **per-lens cards** — big
+initial only, the rest **unblurs on tap** — and open a shared **`PastLensCard`**
+(icons + sample questions); the journal lens pops the same card from a
+dotted-underlined name. **FIND icon → binoculars**; the learner **DISCOVER** page
+(renamed from LEARN) and **FIND** page show the **stop title** as an italic
+subtitle. ⚠️ The Affairs lens keeps the stored **`attitudes`** key, so old
+"Attitudes" contexts now show under Affairs (semantic shift — §7). *Open:*
+AI/self-asked answers, community **forum visual redesign**, map self-filtering by
+zoom.
+Prior: **end-of-act Reflection + Community share flow + Act guiding questions**
+(§15 **pt.28**) — Context journal → **REFLECTION** fade → **"Share Your Thoughts"**
+(flip prompt cards, record/type, tag-contexts, online image search) → **"Hear from
+the Community"**; Acts carry a **guiding question** shown on the act intro, footer
+marquee, and atop the Context Journal. New `ReflectionIntroCard` /
+`/api/image-search` (Wikimedia Commons).
 Prior: **Context Journal Slice 2 + follow-ups** (§15 **pt.26–pt.27**) — the
 immersive learner **overlay** + **thumbnail select-levels**, timeline-follows-
 context, **cited sources**, **guest-local saving**, and **edit-on-added**. New
@@ -446,6 +456,7 @@ Tailwind CSS 4, TypeScript 5, @vis.gl/react-google-maps 1.8.3.
 ## 7. Known Issues / Watch Out For
 
 - **AI question routing disabled** — all questions bank immediately. To re-enable, uncomment the Step 2 block in `tour-question-router.ts`.
+- **P.A.S.T. "A" = Affairs but the stored key is still `attitudes`** (pt.29). The lens was relabeled Attitudes→**Affairs** and its content changed, but `pastCategory: 'attitudes'` is kept so existing contexts don't break. Consequence: any context previously tagged **Attitudes** (≈ cultural values) now renders under **Affairs** — a semantic shift, since cultural values conceptually moved to **Society**. Don't "fix" this by renaming the key without migrating tagged contexts. See §15 pt.29.
 - **Background photo override**: old stops may have `backgroundPhotoUrl` (legacy field name). The code checks both `backgroundPhotoOverride` and legacy. When `backgroundPhotoOverride` is `undefined` (never set) it falls back to legacy; when `null` (explicitly cleared) it respects the null.
 - **Firestore field migrations**: stops created before various features were added may be missing fields. The admin StopEditor has defensive defaults that normalize on load.
 - **No authentication** on admin routes.
@@ -3050,6 +3061,79 @@ sharing reuses `memorial-church-community-shares` — no new collections. Wikime
 image URLs are hotlinked (not re-hosted). Still open: the **community forum visual
 redesign** (compact card → full-response overlay, for long reflections) — this
 session did the share *flow*, not the forum's look; and AI/self-asked answers.*
+
+---
+
+### "Set Up + Instructions" wizard, P.A.S.T. redesign, DISCOVER rename, Opening-Frame pin (2026-07-02 → 07-03 pt.29)
+
+A long multi-part UI session (17 commits, `6081427` → `8d7502f`); all green
+(`tsc`/`eslint`). Learner-side tuned by eye on-device, not exhaustively tested.
+
+**P.A.S.T. framework redesign — "A" is now Affairs.** `LENSES` in
+`src/features/context-journal/constants.ts` reworded: **Place** (Geography ·
+Natural resources), **Affairs** (Relevant events of the time · Natural disasters —
+the old "A"), **Society** (Cultural values · Social class · Political system ·
+Economy — absorbs the old cultural-values), **Technology** (Useful tools ·
+Infrastructure · Key inventions). Each lens gained `categories[]` + `questions[]`.
+⚠️ The stored **`pastCategory` key is still `attitudes`** for the Affairs lens (so
+existing contexts don't break) — old contexts tagged `attitudes` (previously
+"Attitudes" ≈ cultural values) now render under **Affairs**, a semantic shift
+(cultural values conceptually moved to Society). **Society purple lightened** to
+`#9B6FC9` (`--onb-society`). New shared **`PastLensCard`** overlay (portaled to
+`body`): lens title + per-category **icons** + **"Sample context questions"** —
+replaces the old slide-to-reveal. **Onboarding** P.A.S.T. slide
+(`PastFramework.tsx`): each lens is its **own raised white card** (fixes the old
+cream-on-cream illegibility — descriptors are now dark `--th-text`), showing just
+the big coloured **initial**; the rest of the word + sub-topics + magnifier stay
+**blurred until that lens is tapped**; the magnifier opens its card. **Journal**
+lens (`PastLens.tsx`): the definition is **always shown**, and tapping the
+**dotted-underlined name + info sign** (not a magnifier) pops the card; copy
+"…to **contextualise**…", "N **context questions**", lens-open label
+**"Look through"**. Place sample question → "What resources **were** important?".
+
+**Onboarding → "Set Up + Instructions" wizard.** The in-tour onboarding
+(`IntroScreens.tsx`, ~865 lines) was **removed**; onboarding now runs as
+**`QuickSetUp`** (`src/components/onboarding/QuickSetUp.tsx`) at the **end of the
+opening flow**, after **"Enter →"** (the opening "Enter Provenance" button,
+relabeled from "Begin" so it no longer collides with the wizard's final "Begin").
+Five steps: **Audio** (auto-play / tap-to-play choice → then a mock **bottom
+footer bar** — the real journal icon, a "Set Up + Instructions" title area, and
+the **Auto** pill bottom-right with a bounce arrow — *showing where to toggle
+narration later*; non-interactive, Next enables on the choice) →
+**Explore → Contextualise → Reflect** (staggered reveal + centered tagline
+"…to learn to **think like a historian** in the world around you.") → **sample pin
+on a real locked Google satellite map** of the church (`@vis.gl/react-google-maps`,
+`gestureHandling:none` + `disableDefaultUI`), with three **diagonal, sequentially
+revealed** instructions ("You will find pins on a map." → "Walk to the pin." →
+"Tap the pin.", right-anchored so their ends step rightward; middle pill a maroon
+black→red midpoint) → tap the pin → **Sample Stop** card (the
+`memorial_court_post1906_arch` archival thumbnail) → **Find / Discover** (big
+staggered pair with a bold upright **"and"** between) → **Ready to Begin?**.
+`ContextOnboarding` shows `QuickSetUp` after "Enter →"; the old in-tour
+`SpotlightOverlay` onboarding is gone.
+
+**Context intro — "find a place to sit down" beat.** After the P·A·S·T screen
+(`ContextIntroCard.tsx`) a new screen invites the learner to find a place to sit
+while "we reconstruct the world around us"; also added to the truncated per-act
+return intro.
+
+**LEARN → DISCOVER + binoculars + stop-title subtitles.** The `ActionTitle`
+action **`LEARN` was renamed `DISCOVER`** everywhere (all stop cards + admin copy);
+the **FIND** action icon is now a **binoculars** (the magnifier belongs to the
+P.A.S.T. lens cards). The learner **FIND** (`SeedCard`) and **DISCOVER**
+(`RevealCard`) pages now show the **stop title as a small italic subtitle** (22px)
+beneath the action header.
+
+**Opening Frame — optional starting-point pin.** `OpeningFrame.location?` added;
+the admin Opening-Frame editor gained a **map-pin picker** (reusing
+`StopMapPicker`). The learner's Opening Frame shows a **"Find pin"** button (like
+the stop FIND pages) when a location is set; `page.tsx` renders a lone **synthetic
+pin** (`{ id:'__opening_frame__', … } as Stop`) during an `opening_frame` map peek
+and enables the peek handler when the frame has a location. Off by default per tour.
+
+⚠️ *No new Firestore collections. The `attitudes`→Affairs key reuse is the one data
+caveat (§7). `QuickSetUp` centers its sample map on the church constant `FIRST_STOP`
+since it runs before a tour is chosen — not a real per-tour first-stop pin.*
 
 ## NEXT STEPS — Context Journal (maintained list; prune each as it ships)
 
