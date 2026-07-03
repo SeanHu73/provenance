@@ -31,7 +31,7 @@ export default function QuickSetUp({ onDone }: { onDone: () => void }) {
       </div>
 
       <p className="shrink-0 text-center mt-4 text-[13px] uppercase tracking-[0.22em] font-semibold" style={{ color: 'var(--th-primary)' }}>
-        Quick Set Up
+        Set Up + Instructions
       </p>
 
       <div className="flex-1 min-h-0 relative">
@@ -64,9 +64,10 @@ function PrimaryButton({ children, onClick, disabled }: { children: React.ReactN
 
 /* ── 0 · Audio ─────────────────────────────────────────────────── */
 function AudioStep({ onNext }: { onNext: () => void }) {
-  const [, setAutoplayPref] = useAudioAutoplay();
+  const [autoplayPref, setAutoplayPref] = useAudioAutoplay();
   const [choice, setChoice] = useState<'on' | 'off' | null>(null);
   const pick = (c: 'on' | 'off') => { setChoice(c); setAutoplayPref(c === 'on'); };
+  const toggleAuto = () => { const nv = !autoplayPref; setAutoplayPref(nv); setChoice(nv ? 'on' : 'off'); };
 
   return (
     <StepShell>
@@ -101,6 +102,34 @@ function AudioStep({ onNext }: { onNext: () => void }) {
           <p className="text-[17px] leading-relaxed text-text-primary text-left">
             This experience is best with <strong>earphones</strong> — or read aloud to each other.
           </p>
+        </div>
+      )}
+
+      {/* Where the setting lives afterwards — a live mock of the tour's bottom
+          toolbar with the real Auto toggle, so they know how to change it. */}
+      {choice !== null && (
+        <div className="mt-7 animate-fade-in">
+          <p className="text-[15px] text-text-secondary text-center leading-relaxed px-3">
+            You can turn narration on or off anytime with the <strong>Auto</strong> button in the toolbar at the bottom of the tour — try it:
+          </p>
+          <div className="mt-3 mx-auto w-fit flex items-center gap-2 px-3 py-2.5 rounded-full shadow-lg" style={{ backgroundColor: 'var(--th-primary)' }}>
+            {/* faded stand-in footer buttons for context */}
+            <span className="px-3 py-2 rounded-full text-[11px] uppercase tracking-wider font-semibold text-warm-white/55 border border-white/20">Journal</span>
+            <span className="w-8 h-8 rounded-full flex items-center justify-center text-warm-white/55 border border-white/20 text-sm font-bold">?</span>
+            {/* the real Auto toggle */}
+            <button
+              onClick={toggleAuto}
+              aria-pressed={autoplayPref}
+              className={`relative flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] uppercase tracking-wider font-semibold border transition-colors ${autoplayPref ? 'bg-warm-white text-journal border-warm-white shadow' : 'text-warm-white/85 bg-black/15 border-white/20'}`}
+            >
+              Auto
+              <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" fill={autoplayPref ? 'currentColor' : 'none'}><polygon points="6,4 20,12 6,20" /></svg>
+              <span className="absolute left-1/2 bottom-full mb-1 -translate-x-1/2 pointer-events-none">
+                <svg className="animate-bounce" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--th-secondary)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))' }}><line x1="12" y1="3" x2="12" y2="17" /><polyline points="5 11 12 18 19 11" /></svg>
+              </span>
+            </button>
+          </div>
+          <p className="mt-2 text-[13px] italic text-text-secondary text-center">Auto-play is currently {autoplayPref ? 'on' : 'off'}.</p>
         </div>
       )}
 
@@ -183,7 +212,7 @@ function MapStep({ onNext }: { onNext: () => void }) {
           it reads like a screenshot. The wrapper is shifted so the map centre
           (where the pin sits) lands a little below the middle, leaving room for
           the diagonal instructions above it. */}
-      <div className="absolute left-0 right-0" style={{ top: '-24%', bottom: 0 }}>
+      <div className="absolute left-0 right-0" style={{ top: '-8%', bottom: 0 }}>
         {MAPS_API_KEY ? (
           <APIProvider apiKey={MAPS_API_KEY}>
             <GoogleMap
@@ -208,7 +237,7 @@ function MapStep({ onNext }: { onNext: () => void }) {
       {pinActive && (
         <div
           className="absolute inset-0 pointer-events-none animate-fade-in"
-          style={{ background: 'radial-gradient(circle at 50% 38%, transparent 15%, rgba(0,0,0,0.55) 60%)' }}
+          style={{ background: 'radial-gradient(circle at 50% 46%, transparent 15%, rgba(0,0,0,0.55) 60%)' }}
         />
       )}
 
@@ -218,10 +247,10 @@ function MapStep({ onNext }: { onNext: () => void }) {
           <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '3%', left: '4%', backgroundColor: 'rgba(0,0,0,0.62)', ...pillReveal(1) }}>
             <p className="text-[21px] font-serif font-semibold text-warm-white leading-snug">You will find <strong>pins</strong> on a map.</p>
           </div>
-          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '13%', left: '22%', backgroundColor: 'color-mix(in srgb, var(--th-primary) 50%, #000)', ...pillReveal(2) }}>
+          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '13%', right: '16%', backgroundColor: 'color-mix(in srgb, var(--th-primary) 50%, #000)', ...pillReveal(2) }}>
             <p className="text-[21px] font-serif font-semibold text-warm-white leading-snug">Walk to the pin.</p>
           </div>
-          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '23%', left: '40%', backgroundColor: 'var(--th-primary)', ...pillReveal(3) }}>
+          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '23%', right: '4%', backgroundColor: 'var(--th-primary)', ...pillReveal(3) }}>
             <p className="text-[21px] font-serif font-semibold text-warm-white leading-snug">Tap the pin.</p>
           </div>
         </>
@@ -233,7 +262,7 @@ function MapStep({ onNext }: { onNext: () => void }) {
         disabled={!pinActive}
         aria-label="Sample pin"
         className="absolute left-1/2 z-20"
-        style={{ top: '38%', transform: 'translate(-50%, -50%)' }}
+        style={{ top: '46%', transform: 'translate(-50%, -50%)' }}
       >
         <span className="relative flex items-center justify-center">
           {pinActive && <span className="absolute w-16 h-16 rounded-full animate-ping" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.4 }} />}
