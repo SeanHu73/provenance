@@ -15,8 +15,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { thumbnailPhotoUrl, type LensDef } from '../constants';
-import type { ContextEntry, PastCategory } from '../types';
+import type { ContextEntry } from '../types';
 import BookmarkButton from './BookmarkButton';
+import PastLensCard from './PastLensCard';
 
 /** The comic ink used for every button border + its hard offset shadow. */
 const INK = '#241f1b';
@@ -34,7 +35,7 @@ interface Props {
   entries: ContextEntry[];
   savedIds: Set<string>;
   focusedId: string | null;
-  /** When the map panel is open, all lens banners slim to emblem + name. */
+  /** When the map panel is open, all lens banners slim to just the name. */
   compact?: boolean;
   /** Act sequence + this lens still has unopened questions → run the tap-cue loop. */
   prompt?: boolean;
@@ -43,24 +44,30 @@ interface Props {
   onOpenFull: (entry: ContextEntry) => void;
 }
 
-/** Per-lens emblem — a simple line glyph that hints at what the lens looks at. */
-function LensEmblem({ kind, size = 30 }: { kind: PastCategory; size?: number }) {
-  const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-  switch (kind) {
-    case 'place': // mountains / terrain
-      return <svg {...common}><path d="M3 19l5.5-8 3.5 4.5L15 11l6 8z" /><circle cx="7" cy="6.5" r="1.6" /></svg>;
-    case 'attitudes': // Affairs — events of the time / disasters (a calendar)
-      return <svg {...common}><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></svg>;
-    case 'society': // people
-      return <svg {...common}><circle cx="9" cy="8" r="2.6" /><circle cx="16.5" cy="9.5" r="2" /><path d="M4 19c0-2.8 2.2-4.6 5-4.6s5 1.8 5 4.6M15 19c0-1.9.9-3.3 2.5-3.9" /></svg>;
-    case 'technology': // gear (Feather "settings")
-      return <svg {...common}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>;
-  }
+/** The name with an oversized leading initial, e.g. a big "P" + "lace". */
+function LensName({ label, first, rest }: { label: string; first: number; rest: number }) {
+  return (
+    <span className="font-display leading-none text-warm-white">
+      <span style={{ fontSize: first }}>{label[0]}</span>
+      <span style={{ fontSize: rest }}>{label.slice(1)}</span>
+    </span>
+  );
+}
+
+/** The small "see details" info sign shown beside the pressable lens name. */
+function InfoSign({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-70 shrink-0">
+      <circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
+    </svg>
+  );
 }
 
 export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, prompt = false, onFocus, onToggleSave, onOpenFull }: Props) {
   const [open, setOpen] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
   const colour = lens.colour;
+  const count = entries.length;
   // Slim banner when the lens is open, or when the map panel is up.
   const slim = open || compact;
   // Run the tap-cue loop only on a closed, full-size lens (not under the map).
@@ -110,21 +117,12 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
   return (
     // extra right/bottom room so the offset shadow + accent burst aren't clipped
     <div ref={rootRef} className="relative scroll-mt-2 pr-1.5 pb-1.5">
-      {/* comic accent burst — a slice bleeding out behind the top-left corner */}
-      {!slim && (
-        <span
-          aria-hidden
-          className="absolute -top-1.5 -left-1.5 pointer-events-none rounded-md"
-          style={{ width: 42, height: 42, backgroundColor: `color-mix(in srgb, ${colour} 42%, #fff)`, border: `3px solid ${INK}`, transform: 'rotate(14deg)' }}
-        />
-      )}
-
       {/* the lens "door" — a chunky, pressable comic button */}
       <motion.button
         onClick={toggleOpen}
         aria-expanded={open}
-        className={`relative w-full text-left flex overflow-hidden ${slim ? 'flex-row items-center gap-3 px-4 py-2.5' : 'flex-col gap-2 px-4 pt-3.5 pb-3'}`}
-        style={{ backgroundColor: colour, border: `3px solid ${INK}`, borderRadius: 18, minHeight: slim ? 50 : 92 }}
+        className={`relative w-full text-left flex overflow-hidden ${slim ? 'flex-row items-center gap-2.5 px-4 py-2.5' : 'flex-col gap-2 px-4 pt-3.5 pb-3'}`}
+        style={{ backgroundColor: colour, border: `3px solid ${INK}`, borderRadius: 18, minHeight: slim ? 50 : 96 }}
         animate={showPrompt ? promptAnim : rest}
         whileTap={pressed}
         transition={showPrompt
@@ -133,21 +131,48 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
       >
         {/* depth wash */}
         <span className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-black/25 pointer-events-none" />
+        {/* big faded initial watermark on the right */}
+        {!slim && (
+          <span aria-hidden className="absolute right-2 -bottom-8 font-display leading-none text-white/[0.16] select-none pointer-events-none" style={{ fontSize: 150 }}>{lens.label[0]}</span>
+        )}
 
         {slim ? (
           <>
-            <span className="relative text-warm-white/90 shrink-0"><LensEmblem kind={lens.key} size={22} /></span>
-            <span className="relative font-display text-xl text-warm-white leading-none">{lens.label}</span>
+            <span
+              role="button" tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); haptic(6); setCardOpen(true); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setCardOpen(true); } }}
+              aria-label={`See ${lens.label} details`}
+              className="relative inline-flex items-center gap-1.5 text-warm-white"
+            >
+              <span className="border-b border-dotted border-white/45 pb-0.5"><LensName label={lens.label} first={26} rest={20} /></span>
+              <InfoSign size={14} />
+            </span>
+            {count > 0 && (
+              <span className="relative ml-auto inline-flex items-center rounded-full bg-white/25 px-2 py-0.5 text-[12px] font-semibold tabular-nums text-warm-white">{count}</span>
+            )}
           </>
         ) : (
           <>
-            {/* descriptor emblem (kept) */}
-            <span className="absolute top-3 right-3 text-white/85 pointer-events-none"><LensEmblem kind={lens.key} /></span>
-            <span className="relative font-display text-[28px] text-warm-white leading-none">{lens.label}</span>
+            {/* pressable name — bigger leading initial + info sign opens the card */}
+            <span
+              role="button" tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); haptic(6); setCardOpen(true); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setCardOpen(true); } }}
+              aria-label={`See ${lens.label} details`}
+              className="relative self-start inline-flex items-end gap-1.5 text-warm-white"
+            >
+              <span className="border-b border-dotted border-white/45 pb-0.5"><LensName label={lens.label} first={40} rest={28} /></span>
+              <span className="mb-1.5"><InfoSign size={16} /></span>
+            </span>
             {/* definition always visible in the journal */}
-            <p className="relative font-serif italic text-warm-white/90 text-[15px] leading-snug max-w-[88%]">
+            <p className="relative font-serif italic text-warm-white/90 text-[15px] leading-snug max-w-[72%]">
               {lens.definition}
             </p>
+            {/* number of questions in this lens */}
+            <span className="absolute bottom-3 right-3 inline-flex items-center rounded-full bg-white/25 px-2.5 py-1 text-[12px] font-semibold text-warm-white">
+              {count > 0 ? `${count} question${count === 1 ? '' : 's'}` : 'No questions yet'}
+            </span>
           </>
         )}
       </motion.button>
@@ -197,6 +222,11 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
             })()}
           </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* pressing the lens name pops its details card (sample questions) */}
+      <AnimatePresence>
+        {cardOpen && <PastLensCard lens={lens} onClose={() => setCardOpen(false)} />}
       </AnimatePresence>
     </div>
   );
