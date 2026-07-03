@@ -13,6 +13,7 @@ import FullscreenPhoto from './FullscreenPhoto';
 import FormattedText from './FormattedText';
 import ActionTitle, { SectionSubtitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { useReadMode } from '@/lib/read-mode';
 
 /** The scene fields this card renders. Both `Tour.essentialQuestion` and
  *  `Tour.openingFrame` (Context-Prototype) satisfy this shape. */
@@ -53,7 +54,8 @@ export default function EqSceneCard({
 }: Props) {
   const eq: SceneData | null = scene ?? tour?.essentialQuestion ?? null;
   const [autoplayPref] = useAudioAutoplay();
-  const [framingOpen, setFramingOpen] = useState(false);
+  const [readMode] = useReadMode();
+  const [framingOpen, setFramingOpen] = useState(readMode);
   const [fullscreen, setFullscreen] = useState(false);
   if (!eq) return null;
   const shouldAutoplay = autoplayPref && !eq.sceneAudioAutoplayDisabled;

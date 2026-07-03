@@ -21,6 +21,7 @@ import BookmarkButton from './BookmarkButton';
 import ContextMapLoader from './ContextMapLoader';
 import ContextTimeline from './ContextTimeline';
 import { useReadAloud } from './useReadAloud';
+import { useReadMode } from '@/lib/read-mode';
 
 interface Props {
   entry: ContextEntry;
@@ -49,7 +50,8 @@ export default function ContextOverlay({
   const related = entry.taggedQuestions ?? [];
 
   const [confirmDel, setConfirmDel] = useState(false);
-  const [readAlong, setReadAlong] = useState(false);
+  const [readModePref] = useReadMode();
+  const [readAlong, setReadAlong] = useState(readModePref);
 
   // The overlay's map/timeline are contextual to this entry: the timeline opens
   // on the entry's own span, the map focuses its geometry. Both stay interactive

@@ -12,6 +12,7 @@ import { guidePhotoStyle } from '@/lib/guide-photo';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { useReadMode } from '@/lib/read-mode';
 
 interface Props {
   tour: Tour;
@@ -21,8 +22,9 @@ interface Props {
 export default function MeetGuideCard({ tour, onContinue }: Props) {
   const g = tour.guide;
   const [autoplayPref] = useAudioAutoplay();
+  const [readMode] = useReadMode();
   const shouldAutoplay = autoplayPref && !g.introAudioAutoplayDisabled;
-  const [readAlong, setReadAlong] = useState(false);
+  const [readAlong, setReadAlong] = useState(readMode);
 
   return (
     <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">

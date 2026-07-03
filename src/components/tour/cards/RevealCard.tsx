@@ -10,6 +10,7 @@ import BackButton from './BackButton';
 import InquiryReminder from './InquiryReminder';
 import ActionTitle, { SectionSubtitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { useReadMode } from '@/lib/read-mode';
 import { useTour } from '@/context/TourContext';
 import { getTourMode } from '@/lib/tours-store';
 
@@ -41,8 +42,10 @@ interface Props {
 export default function RevealCard({ stop, onContinue, isFinalInStop = false }: Props) {
   const hasAudio = !!stop.reveal.audioUrl;
   const [autoplayPref] = useAudioAutoplay();
+  const [readMode] = useReadMode();
   const shouldAutoplay = autoplayPref && !stop.reveal.audioAutoplayDisabled;
-  const [textExpanded, setTextExpanded] = useState(!hasAudio);
+  // Expanded by default when there's no audio, or when the learner chose "Read".
+  const [textExpanded, setTextExpanded] = useState(!hasAudio || readMode);
   const [fullscreen, setFullscreen] = useState<{ url: string; caption: string | null } | null>(null);
 
   // Audio-synced photo highlight (the cued photo glows until the next cue).

@@ -18,6 +18,7 @@ import BackButton from './BackButton';
 import NoticeMapDisplay from './NoticeMapDisplay';
 import ActionTitle, { SectionSubtitle } from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import { useReadMode } from '@/lib/read-mode';
 import { usePhotoCues } from '../usePhotoCues';
 
 interface Props {
@@ -40,8 +41,10 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   const seedCues = usePhotoCues(stop.seed.photoCues, stop.seed.photos || [], stop.seed.photoCuesHoldLast);
   const noticeCues = usePhotoCues(stop.notice.photoCues, stop.notice.photos || [], stop.notice.photoCuesHoldLast);
   // Background reading is collapsed behind "Read Along" (open by default when
-  // there's no audio, so a text-only Background still shows).
-  const [bgReadAlong, setBgReadAlong] = useState(!stop.seed.audioUrl);
+  // there's no audio, so a text-only Background still shows — or when the learner
+  // chose "Read" in setup, which expands all read-along text).
+  const [readMode] = useReadMode();
+  const [bgReadAlong, setBgReadAlong] = useState(!stop.seed.audioUrl || readMode);
 
   const hasNoticeSection = !!(
     stop.notice.prompt
