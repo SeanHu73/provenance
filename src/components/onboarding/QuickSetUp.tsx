@@ -9,9 +9,13 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { APIProvider, Map as GoogleMap } from '@vis.gl/react-google-maps';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 const TOTAL = 5;
+const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+const MAP_ID = 'b8f339c02d8c7d5bd3f12d1b';
+const FIRST_STOP = { lat: 37.42700, lng: -122.17015 }; // Stanford Memorial Church (first stop)
 
 export default function QuickSetUp({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
@@ -159,9 +163,28 @@ function MapStep({ onNext }: { onNext: () => void }) {
 
   return (
     <div className="absolute inset-0 overflow-hidden animate-fade-in">
-      {/* mock map backdrop */}
-      <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 40%, #4a5d43 0%, #37432f 55%, #2a3325 100%)' }} />
-      <div className="absolute inset-0 opacity-[0.12]" style={{ backgroundImage: 'linear-gradient(var(--th-surface) 1px, transparent 1px), linear-gradient(90deg, var(--th-surface) 1px, transparent 1px)', backgroundSize: '44px 44px' }} />
+      {/* Real (locked) Google Maps view of the first stop — non-interactive so
+          it reads like a screenshot but is the live satellite map. */}
+      <div className="absolute inset-0">
+        {MAPS_API_KEY ? (
+          <APIProvider apiKey={MAPS_API_KEY}>
+            <GoogleMap
+              mapId={MAP_ID}
+              defaultCenter={FIRST_STOP}
+              defaultZoom={18}
+              defaultTilt={0}
+              mapTypeId="satellite"
+              gestureHandling="none"
+              disableDefaultUI
+              clickableIcons={false}
+              className="w-full h-full"
+              style={{ width: '100%', height: '100%' }}
+            />
+          </APIProvider>
+        ) : (
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 40%, #4a5d43 0%, #37432f 55%, #2a3325 100%)' }} />
+        )}
+      </div>
 
       {/* dim once we spotlight the pin (pointer-events-none so the pin stays tappable) */}
       {phase === 'spotlight' && <div className="absolute inset-0 bg-black/45 pointer-events-none animate-fade-in" />}
@@ -216,37 +239,55 @@ function MapStep({ onNext }: { onNext: () => void }) {
   );
 }
 
-/* ── 3 · Find / Learn ──────────────────────────────────────────── */
+/* ── 3 · Find / Discover ───────────────────────────────────────── */
+const STOP_ACTIONS = [
+  {
+    label: 'FIND',
+    desc: 'Look for something in the area.',
+    glyph: (<><path d="M4 9.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2V15a2.5 2 0 0 1-5 0z" /><path d="M15 9.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2V15a2.5 2 0 0 1-5 0z" /><path d="M9 11h6" /><path d="M5 7.5v-1a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1" /><path d="M16 7.5v-1a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1" /></>),
+  },
+  {
+    label: 'DISCOVER',
+    desc: 'Read or listen to discover history about this site.',
+    glyph: (<><path d="M9 18h6" /><path d="M10 22h4" /><path d="M12 2a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2z" /></>),
+  },
+];
+
 function FindLearnStep({ onNext }: { onNext: () => void }) {
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    const timers = STOP_ACTIONS.map((_, i) => setTimeout(() => setShown((n) => Math.max(n, i + 1)), 500 + i * 900));
+    return () => timers.forEach(clearTimeout);
+  }, []);
+  const allShown = shown >= STOP_ACTIONS.length;
+
   return (
     <StepShell>
-      <p className="text-[19px] font-serif italic text-text-secondary text-center">On each stop, you will</p>
-      <div className="mt-6 space-y-6">
-        <ActionRow
-          label="FIND"
-          desc="Look for something in the area."
-          glyph={<><path d="M4 9.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2V15a2.5 2 0 0 1-5 0z" /><path d="M15 9.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2V15a2.5 2 0 0 1-5 0z" /><path d="M9 11h6" /><path d="M5 7.5v-1a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1" /><path d="M16 7.5v-1a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1" /></>}
-        />
-        <ActionRow
-          label="DISCOVER"
-          desc="Read or listen to discover history about this site."
-          glyph={<><path d="M9 18h6" /><path d="M10 22h4" /><path d="M12 2a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2z" /></>}
-        />
+      <p className="text-[24px] font-serif italic text-text-secondary text-center">On each stop, you will</p>
+      <div className="mt-8 flex flex-col items-center gap-5">
+        {STOP_ACTIONS.map((a, i) => (
+          <div
+            key={a.label}
+            className="flex flex-col items-center w-full"
+            style={{
+              opacity: i < shown ? 1 : 0,
+              transform: i < shown ? 'translateY(0)' : 'translateY(14px)',
+              transition: 'opacity 500ms ease-out, transform 500ms ease-out',
+            }}
+          >
+            {i > 0 && (
+              <span className="font-serif italic text-text-secondary mb-4" style={{ fontSize: 22 }}>and</span>
+            )}
+            <div className="flex flex-col items-center text-center" style={{ color: 'var(--th-accent-dark)' }}>
+              <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{a.glyph}</svg>
+              <h3 className="uppercase tracking-[0.1em] font-display font-bold leading-none mt-2" style={{ fontSize: 'clamp(42px, 13vw, 66px)' }}>{a.label}</h3>
+              <p className="mt-2 font-serif italic text-text-secondary" style={{ fontSize: 19 }}>{a.desc}</p>
+            </div>
+          </div>
+        ))}
       </div>
-      <div className="mt-10"><PrimaryButton onClick={onNext}>Next</PrimaryButton></div>
+      <div className="mt-10"><PrimaryButton onClick={onNext} disabled={!allShown}>Next</PrimaryButton></div>
     </StepShell>
-  );
-}
-
-function ActionRow({ label, desc, glyph }: { label: string; desc: string; glyph: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-4" style={{ color: 'var(--th-accent-dark)' }}>
-      <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">{glyph}</svg>
-      <div className="min-w-0">
-        <h3 className="uppercase tracking-[0.12em] font-display font-bold leading-none" style={{ fontSize: 34 }}>{label}</h3>
-        <p className="mt-1 text-[16px] font-serif italic text-text-secondary">{desc}</p>
-      </div>
-    </div>
   );
 }
 

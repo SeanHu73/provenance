@@ -67,7 +67,7 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
       {/* Title */}
       <div>
         <ActionTitle action="DISCOVER" />
-        {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[15px] leading-snug">{stop.title}</p>}
+        {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[19px] leading-snug">{stop.title}</p>}
       </div>
 
       {/* Audio player */}
