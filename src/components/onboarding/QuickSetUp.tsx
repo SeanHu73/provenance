@@ -164,8 +164,10 @@ function MapStep({ onNext }: { onNext: () => void }) {
   return (
     <div className="absolute inset-0 overflow-hidden animate-fade-in">
       {/* Real (locked) Google Maps view of the first stop — non-interactive so
-          it reads like a screenshot but is the live satellite map. */}
-      <div className="absolute inset-0">
+          it reads like a screenshot but is the live satellite map. The wrapper is
+          shifted up so the map's centre (where the pin sits) lands in the top
+          third of the screen. */}
+      <div className="absolute left-0 right-0" style={{ top: '-34%', bottom: 0 }}>
         {MAPS_API_KEY ? (
           <APIProvider apiKey={MAPS_API_KEY}>
             <GoogleMap
@@ -186,27 +188,29 @@ function MapStep({ onNext }: { onNext: () => void }) {
         )}
       </div>
 
-      {/* dim once we spotlight the pin (pointer-events-none so the pin stays tappable) */}
-      {phase === 'spotlight' && <div className="absolute inset-0 bg-black/45 pointer-events-none animate-fade-in" />}
+      {/* Spotlight vignette on the pin (top third) once it's tappable — keeps the
+          pin bright while darkening the surroundings. */}
+      {phase === 'spotlight' && (
+        <div
+          className="absolute inset-0 pointer-events-none animate-fade-in"
+          style={{ background: 'radial-gradient(circle at 50% 33%, transparent 14%, rgba(0,0,0,0.55) 56%)' }}
+        />
+      )}
 
-      {/* top + bottom instructions */}
-      <div className="absolute top-14 left-0 right-0 px-5 flex justify-center pointer-events-none">
-        <div className="px-5 py-3 rounded-2xl" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
+      {/* Top instruction */}
+      <div className="absolute top-8 left-0 right-0 px-5 flex justify-center pointer-events-none">
+        <div className="px-5 py-3 rounded-2xl" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
           <p className="text-[21px] font-serif text-warm-white leading-snug text-center">You will find <strong>pins</strong> on a map.</p>
         </div>
       </div>
-      {phase !== 'card' && (
-        <div className="absolute bottom-10 left-0 right-0 px-5 flex justify-center pointer-events-none">
-          <p className="text-[16px] font-serif italic text-warm-white/90 text-center">You will walk to the pin.</p>
-        </div>
-      )}
 
-      {/* the sample pin */}
+      {/* the sample pin — anchored to the map centre (top third) */}
       <button
         onClick={() => { if (phase === 'spotlight') setPhase('card'); }}
         disabled={phase !== 'spotlight'}
         aria-label="Sample pin"
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
+        className="absolute left-1/2 z-20"
+        style={{ top: '33%', transform: 'translate(-50%, -50%)' }}
       >
         <span className="relative flex items-center justify-center">
           {phase === 'spotlight' && <span className="absolute w-16 h-16 rounded-full animate-ping" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.4 }} />}
@@ -215,10 +219,19 @@ function MapStep({ onNext }: { onNext: () => void }) {
           </span>
         </span>
       </button>
-      {phase === 'spotlight' && (
-        <p className="absolute left-1/2 top-1/2 -translate-x-1/2 mt-10 z-20 text-[15px] font-semibold text-warm-white text-center w-48" style={{ transform: 'translate(-50%, 40px)' }}>
-          Tap the pin
-        </p>
+
+      {/* Instructions below the pin: "Walk to the pin." first, then "Tap the pin." */}
+      {phase !== 'card' && (
+        <div className="absolute left-0 right-0 flex flex-col items-center gap-3 px-5 pointer-events-none" style={{ top: '48%' }}>
+          <div className="px-6 py-2.5 rounded-full shadow-lg" style={{ backgroundColor: 'rgba(0,0,0,0.62)' }}>
+            <p className="text-[22px] font-serif font-semibold text-warm-white text-center">Walk to the pin.</p>
+          </div>
+          {phase === 'spotlight' && (
+            <div className="px-6 py-2.5 rounded-full shadow-lg animate-fade-in" style={{ backgroundColor: 'var(--th-primary)' }}>
+              <p className="text-[22px] font-serif font-semibold text-warm-white text-center">Tap the pin.</p>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Sample Stop card */}
@@ -248,7 +261,7 @@ const STOP_ACTIONS = [
   },
   {
     label: 'DISCOVER',
-    desc: 'Read or listen to discover history about this site.',
+    desc: 'Listen or read to discover the history of a site.',
     glyph: (<><path d="M9 18h6" /><path d="M10 22h4" /><path d="M12 2a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2z" /></>),
   },
 ];

@@ -157,7 +157,7 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
               className="onb-r mt-9 px-9 py-4 rounded-full text-[16px] font-semibold"
               style={{ '--d': '0.5s', backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' } as React.CSSProperties}
             >
-              Begin →
+              Enter →
             </button>
           </section>
         </div>
