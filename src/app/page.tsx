@@ -194,6 +194,16 @@ function HomeInner() {
   // out so the user can't tap into anything else by accident.
   const tourStopMarkersForRender = (() => {
     if (!mapPeek || !session || !activeTour) return tourStopMarkers;
+    // Opening Frame peek: the tour hasn't entered a stop yet, so show a single
+    // pin at the starting point rather than the first stop's pin.
+    if (session.currentPhase === 'opening_frame' && activeTour.openingFrame?.location) {
+      return [{
+        stop: { id: '__opening_frame__', title: activeTour.title, location: activeTour.openingFrame.location } as unknown as Stop,
+        index: 0,
+        isActive: true,
+        isCompleted: false,
+      }];
+    }
     const currentId = getActiveStops(activeTour)[session.currentStopIndex]?.id;
     if (!currentId) return tourStopMarkers;
     return tourStopMarkers.filter((m) => m.stop.id === currentId);
@@ -235,6 +245,7 @@ function HomeInner() {
     ? getActiveStops(activeTour)[session.currentStopIndex] ?? null
     : null;
   const currentStopHasLocation = currentStop?.location !== null && currentStop?.location !== undefined;
+  const openingFrameHasLocation = !!activeTour?.openingFrame?.location;
 
   return (
     <div className="relative h-full w-full flex flex-col bg-cream">
@@ -384,7 +395,7 @@ function HomeInner() {
           the map, in midway check-in, or running the closing flow. */}
       {isActive && !mapPeek && !isOnTourMap && !isMidwayCheckin && !isUnstructuredClosing && (
         <Journal
-          onMapPeek={currentStopHasLocation ? () => setMapPeek(true) : undefined}
+          onMapPeek={currentStopHasLocation || openingFrameHasLocation ? () => setMapPeek(true) : undefined}
         />
       )}
 

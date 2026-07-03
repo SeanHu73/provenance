@@ -292,6 +292,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
             subtitle="Setting the Scene"
             buttonLabel="Begin the tour"
             openingVariant
+            onPeekMap={onMapPeek}
             onContinue={completeOpeningFrame}
           />
         )}

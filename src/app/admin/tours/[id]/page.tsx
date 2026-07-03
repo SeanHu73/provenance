@@ -2075,6 +2075,42 @@ function OpeningFrameEditor({
         rows={3}
         placeholder="Before we begin, take a moment..."
       />
+
+      {/* ── Map pin (starting point) — drives the "Find pin" button ── */}
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-semibold text-stone-700 uppercase tracking-wide flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-[#B8694A] inline-block" />
+          Starting-point pin (optional)
+        </legend>
+        <p className="text-[10px] text-stone-400 italic">Drop a pin where the tour begins. Explorers get a &ldquo;Find pin&rdquo; button that shows it on the map.</p>
+        <div className="rounded border border-stone-300 overflow-hidden" style={{ height: 220 }}>
+          {MAPS_API_KEY ? (
+            <APIProvider apiKey={MAPS_API_KEY}>
+              <StopMapPicker
+                location={frame.location ?? null}
+                onLocationChange={(loc) => onChange({ ...frame, location: loc })}
+              />
+            </APIProvider>
+          ) : (
+            <div className="h-full flex items-center justify-center bg-stone-100 text-xs text-stone-400">
+              Maps API key not configured
+            </div>
+          )}
+        </div>
+        {frame.location && (
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] text-stone-500 font-mono">
+              {frame.location.lat.toFixed(6)}, {frame.location.lng.toFixed(6)}
+            </span>
+            <button
+              onClick={() => onChange({ ...frame, location: null })}
+              className="text-[10px] text-red-600 hover:underline"
+            >
+              Remove pin
+            </button>
+          </div>
+        )}
+      </fieldset>
     </section>
   );
 }

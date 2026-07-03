@@ -201,6 +201,9 @@ export interface OpeningFrame {
   sceneAudioTitle: string | null;
   sceneAudioAutoplayDisabled?: boolean;
   openingFraming: string;            // Collapsible "tap to read along" text below the scene
+  /** Optional map pin for the starting point — drives the "Find pin" button on
+   *  the Opening Frame and a single pin on the map peek. */
+  location?: { lat: number; lng: number } | null;
 }
 
 /** An authored question shown at the start or end of an Act. The explorer
