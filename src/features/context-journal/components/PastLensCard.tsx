@@ -61,6 +61,21 @@ export default function PastLensCard({ lens, onClose }: { lens: LensDef; onClose
                 </li>
               ))}
             </ul>
+
+            {/* specific, worked-example questions — a sub-section under the samples */}
+            {lens.specificQuestions.length > 0 && (
+              <div className="mt-5 pl-3 border-l-2" style={{ borderColor: `${lens.colour}55` }}>
+                <p className="text-[10.5px] uppercase tracking-[0.14em] font-semibold text-text-secondary">Specific question samples</p>
+                <ul className="mt-2.5 space-y-2.5">
+                  {lens.specificQuestions.map((q, i) => (
+                    <li key={i} className="flex items-start gap-2.5 rounded-xl px-4 py-3" style={{ backgroundColor: `${lens.colour}0D` }}>
+                      <span className="mt-1.5 w-2 h-2 rounded-full shrink-0 ring-1" style={{ backgroundColor: 'transparent', borderColor: lens.colour, boxShadow: `inset 0 0 0 1.5px ${lens.colour}` }} />
+                      <span className="font-serif text-[15px] text-text-primary leading-snug italic">{q}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
@@ -77,6 +92,8 @@ function CategoryIcon({ name }: { name: string }) {
       return <svg {...p}><path d="M3 19l5.5-8 3.5 4.5L15 12l6 7z" /><circle cx="7" cy="6.5" r="1.5" /></svg>;
     case 'Natural resources':
       return <svg {...p}><path d="M12 3s6 5.5 6 10a6 6 0 0 1-12 0c0-4.5 6-10 6-10z" /></svg>;
+    case 'Climate':
+      return <svg {...p}><path d="M7 18a4 4 0 1 1 .8-7.94A5 5 0 0 1 17.5 11 3.5 3.5 0 0 1 17 18z" /><path d="M8 21l-1 1.5M12 21l-1 1.5M16 21l-1 1.5" /></svg>;
     case 'Relevant events of the time':
       return <svg {...p}><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></svg>;
     case 'Natural disasters':

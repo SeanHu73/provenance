@@ -96,6 +96,8 @@ export interface LensDef {
   categories: string[];
   /** Sample context questions shown on the lens card. */
   questions: string[];
+  /** More specific, worked-example questions shown in a sub-section of the card. */
+  specificQuestions: string[];
   colour: string;
 }
 
@@ -104,27 +106,31 @@ export interface LensDef {
 export const LENSES: LensDef[] = [
   {
     key: 'place', label: 'Place', colour: '#347C4A',
-    categories: ['Geography', 'Natural resources'],
-    definition: 'Geography | Natural resources',
-    questions: ['What resources were important?', 'How did the climate affect events?'],
+    categories: ['Geography', 'Natural resources', 'Climate'],
+    definition: 'Geography | Natural resources | Climate',
+    questions: ['What resources were important in the area?', 'Why did a river change where people settled?'],
+    specificQuestions: ['How did changes in seasonal rainfall affect trade patterns around the year?'],
   },
   {
     key: 'attitudes', label: 'Affairs', colour: '#B8752B',
     categories: ['Relevant events of the time', 'Natural disasters'],
     definition: 'Relevant events of the time | Natural disasters',
-    questions: ['How did an election affect decisions?', 'What were the consequences of new diseases?'],
+    questions: ['How did an election affect policy decisions?'],
+    specificQuestions: ['How did COVID-19 change public opinion?'],
   },
   {
     key: 'society', label: 'Society', colour: '#9B6FC9',
     categories: ['Cultural values', 'Social class', 'Political system', 'Economy'],
     definition: 'Cultural values | Social class | Political system | Economy',
-    questions: ['Who held power?', 'What religion did the society have?', 'Were there changing ideas?', 'How was the economy?'],
+    questions: ['Who held power?', 'Were there changing ideologies?', 'What were the economic conditions of the time?'],
+    specificQuestions: ['How did Christianity influence social class in colonial New England?', 'How did Darwin’s theory of evolution expand the scientific community?'],
   },
   {
     key: 'technology', label: 'Technology', colour: '#2C6488',
     categories: ['Useful tools', 'Infrastructure', 'Key inventions'],
     definition: 'Useful tools | Infrastructure | Key inventions',
-    questions: ['Were there important new inventions?', 'How did it change daily life?'],
+    questions: ['Were there important new inventions?', 'How did a new invention change daily life?'],
+    specificQuestions: ['How did the railroads affect migration?'],
   },
 ];
 
