@@ -146,28 +146,44 @@ function FlowStep({ onNext }: { onNext: () => void }) {
           </div>
         ))}
       </div>
+      {allShown && (
+        <p className="mt-8 px-2 text-[19px] font-serif text-text-secondary text-center leading-relaxed animate-fade-in">
+          &hellip;to learn to think like a historian with the world around you.
+        </p>
+      )}
       <div className="mt-10"><PrimaryButton onClick={onNext} disabled={!allShown}>Next</PrimaryButton></div>
     </StepShell>
   );
 }
 
 /* ── 2 · Sample pin on a mock map ──────────────────────────────── */
-type MapPhase = 'intro' | 'spotlight' | 'card';
 function MapStep({ onNext }: { onNext: () => void }) {
-  const [phase, setPhase] = useState<MapPhase>('intro');
+  const [reveal, setReveal] = useState(0); // number of instruction lines shown (0–3)
+  const [tapped, setTapped] = useState(false);
   useEffect(() => {
-    if (phase !== 'intro') return;
-    const t = setTimeout(() => setPhase('spotlight'), 1100); // shorter delay before it's tappable
-    return () => clearTimeout(t);
-  }, [phase]);
+    const timers = [
+      setTimeout(() => setReveal(1), 400),
+      setTimeout(() => setReveal(2), 1600),
+      setTimeout(() => setReveal(3), 2800),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+  const pinActive = reveal >= 3 && !tapped;
+
+  // Shared fade+rise for each diagonal instruction pill.
+  const pillReveal = (n: number) => ({
+    opacity: reveal >= n ? 1 : 0,
+    transform: reveal >= n ? 'translateY(0)' : 'translateY(12px)',
+    transition: 'opacity 450ms ease-out, transform 450ms ease-out',
+  });
 
   return (
     <div className="absolute inset-0 overflow-hidden animate-fade-in">
       {/* Real (locked) Google Maps view of the first stop — non-interactive so
-          it reads like a screenshot but is the live satellite map. The wrapper is
-          shifted up so the map's centre (where the pin sits) lands in the top
-          third of the screen. */}
-      <div className="absolute left-0 right-0" style={{ top: '-34%', bottom: 0 }}>
+          it reads like a screenshot. The wrapper is shifted so the map centre
+          (where the pin sits) lands a little below the middle, leaving room for
+          the diagonal instructions above it. */}
+      <div className="absolute left-0 right-0" style={{ top: 0, bottom: '-16%' }}>
         {MAPS_API_KEY ? (
           <APIProvider apiKey={MAPS_API_KEY}>
             <GoogleMap
@@ -188,54 +204,47 @@ function MapStep({ onNext }: { onNext: () => void }) {
         )}
       </div>
 
-      {/* Spotlight vignette on the pin (top third) once it's tappable — keeps the
-          pin bright while darkening the surroundings. */}
-      {phase === 'spotlight' && (
+      {/* Spotlight vignette on the pin once it's tappable. */}
+      {pinActive && (
         <div
           className="absolute inset-0 pointer-events-none animate-fade-in"
-          style={{ background: 'radial-gradient(circle at 50% 33%, transparent 14%, rgba(0,0,0,0.55) 56%)' }}
+          style={{ background: 'radial-gradient(circle at 50% 58%, transparent 15%, rgba(0,0,0,0.55) 60%)' }}
         />
       )}
 
-      {/* Top instruction */}
-      <div className="absolute top-8 left-0 right-0 px-5 flex justify-center pointer-events-none">
-        <div className="px-5 py-3 rounded-2xl" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <p className="text-[21px] font-serif text-warm-white leading-snug text-center">You will find <strong>pins</strong> on a map.</p>
-        </div>
-      </div>
+      {/* Diagonal instructions, cascading left→right and revealed one after another. */}
+      {!tapped && (
+        <>
+          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '7%', left: '4%', backgroundColor: 'rgba(0,0,0,0.62)', ...pillReveal(1) }}>
+            <p className="text-[21px] font-serif font-semibold text-warm-white leading-snug">You will find <strong>pins</strong> on a map.</p>
+          </div>
+          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '25%', left: '24%', backgroundColor: 'rgba(0,0,0,0.62)', ...pillReveal(2) }}>
+            <p className="text-[21px] font-serif font-semibold text-warm-white leading-snug">Walk to the pin.</p>
+          </div>
+          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '42%', right: '4%', backgroundColor: 'var(--th-primary)', ...pillReveal(3) }}>
+            <p className="text-[21px] font-serif font-semibold text-warm-white leading-snug">Tap the pin.</p>
+          </div>
+        </>
+      )}
 
-      {/* the sample pin — anchored to the map centre (top third) */}
+      {/* the sample pin — anchored to the map centre, a bit below the middle */}
       <button
-        onClick={() => { if (phase === 'spotlight') setPhase('card'); }}
-        disabled={phase !== 'spotlight'}
+        onClick={() => { if (pinActive) setTapped(true); }}
+        disabled={!pinActive}
         aria-label="Sample pin"
         className="absolute left-1/2 z-20"
-        style={{ top: '33%', transform: 'translate(-50%, -50%)' }}
+        style={{ top: '58%', transform: 'translate(-50%, -50%)' }}
       >
         <span className="relative flex items-center justify-center">
-          {phase === 'spotlight' && <span className="absolute w-16 h-16 rounded-full animate-ping" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.4 }} />}
+          {pinActive && <span className="absolute w-16 h-16 rounded-full animate-ping" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.4 }} />}
           <span className="relative w-12 h-12 rounded-full flex items-center justify-center border-2 border-white shadow-lg" style={{ backgroundColor: 'var(--th-primary)' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-7.5-7-13a7 7 0 0 1 14 0c0 5.5-7 13-7 13z" /><circle cx="12" cy="9" r="2" fill="#fff" stroke="none" /></svg>
           </span>
         </span>
       </button>
 
-      {/* Instructions below the pin: "Walk to the pin." first, then "Tap the pin." */}
-      {phase !== 'card' && (
-        <div className="absolute left-0 right-0 flex flex-col items-center gap-3 px-5 pointer-events-none" style={{ top: '48%' }}>
-          <div className="px-6 py-2.5 rounded-full shadow-lg" style={{ backgroundColor: 'rgba(0,0,0,0.62)' }}>
-            <p className="text-[22px] font-serif font-semibold text-warm-white text-center">Walk to the pin.</p>
-          </div>
-          {phase === 'spotlight' && (
-            <div className="px-6 py-2.5 rounded-full shadow-lg animate-fade-in" style={{ backgroundColor: 'var(--th-primary)' }}>
-              <p className="text-[22px] font-serif font-semibold text-warm-white text-center">Tap the pin.</p>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Sample Stop card */}
-      {phase === 'card' && (
+      {tapped && (
         <div className="absolute inset-x-0 bottom-0 z-30 px-3 pb-3 animate-slide-up">
           <div className="rounded-2xl shadow-lg overflow-hidden text-left" style={{ backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -289,7 +298,7 @@ function FindLearnStep({ onNext }: { onNext: () => void }) {
             }}
           >
             {i > 0 && (
-              <span className="font-serif italic text-text-secondary mb-4" style={{ fontSize: 22 }}>and</span>
+              <span className="font-serif font-bold text-text-secondary mb-4" style={{ fontSize: 30 }}>and</span>
             )}
             <div className="flex flex-col items-center text-center" style={{ color: 'var(--th-accent-dark)' }}>
               <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{a.glyph}</svg>
