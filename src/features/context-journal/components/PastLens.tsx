@@ -1,14 +1,15 @@
 'use client';
 
 /**
- * A single P.A.S.T. lens — an immersive "door" the learner enters.
+ * A single P.A.S.T. lens — a chunky, comic-panel "door" the learner taps.
  *
- * Collapsed, each lens is a colour-washed panel with its emblem, a bold initial
- * watermark, the lens name, and a count of what's inside. Two things slim the
- * banner down to just the title + icon: opening the lens, or opening the map at
- * the top of the page (`compact`) — so the framework stays scannable. Tapping the
- * panel toggles it open; the definition is always shown, and tapping the **name**
- * (dotted underline + info sign) pops the lens card with its sample questions.
+ * Each lens is a rounded, thick-bordered button sitting on a hard offset shadow
+ * (a solid, zero-blur block down-and-right) with a small accent burst bleeding
+ * out behind one corner — so it reads as a sticker-like button begging to be
+ * pressed. Tapping toggles it open (revealing the authored *questions* inside)
+ * and gives a push-down + haptic response. The map panel slims every banner to
+ * just its emblem + name (`compact`). In the act sequence, a lens still holding
+ * unopened questions runs a slow press-and-release loop (`prompt`) as a tap cue.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -16,15 +17,27 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { thumbnailPhotoUrl, type LensDef } from '../constants';
 import type { ContextEntry, PastCategory } from '../types';
 import BookmarkButton from './BookmarkButton';
-import PastLensCard from './PastLensCard';
+
+/** The comic ink used for every button border + its hard offset shadow. */
+const INK = '#241f1b';
+const SHADOW = 'rgba(26,20,14,0.9)';
+/** How far down-and-right the cut-out shadow (and the push-down) travels. */
+const OFFSET = 5;
+
+/** Match the established repo pattern for an optional light haptic tick. */
+function haptic(ms = 8) {
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(ms);
+}
 
 interface Props {
   lens: LensDef;
   entries: ContextEntry[];
   savedIds: Set<string>;
   focusedId: string | null;
-  /** When the map panel is open, all lens banners slim to title + icon. */
+  /** When the map panel is open, all lens banners slim to emblem + name. */
   compact?: boolean;
+  /** Act sequence + this lens still has unopened questions → run the tap-cue loop. */
+  prompt?: boolean;
   onFocus: (entry: ContextEntry | null) => void;
   onToggleSave: (id: string) => void;
   onOpenFull: (entry: ContextEntry) => void;
@@ -45,12 +58,26 @@ function LensEmblem({ kind, size = 30 }: { kind: PastCategory; size?: number }) 
   }
 }
 
-export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, onFocus, onToggleSave, onOpenFull }: Props) {
+export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, prompt = false, onFocus, onToggleSave, onOpenFull }: Props) {
   const [open, setOpen] = useState(false);
-  const [cardOpen, setCardOpen] = useState(false);
   const colour = lens.colour;
   // Slim banner when the lens is open, or when the map panel is up.
   const slim = open || compact;
+  // Run the tap-cue loop only on a closed, full-size lens (not under the map).
+  const showPrompt = prompt && !open && !compact;
+
+  // Neubrutalist rest / pressed states, animated by framer-motion. Open = pressed
+  // *in* (sits on its shadow) so the active lens reads as depressed.
+  const rest = open
+    ? { x: OFFSET, y: OFFSET, boxShadow: `0px 0px 0 ${SHADOW}` }
+    : { x: 0, y: 0, boxShadow: `${OFFSET}px ${OFFSET}px 0 ${SHADOW}` };
+  const pressed = { x: OFFSET, y: OFFSET, boxShadow: `0px 0px 0 ${SHADOW}` };
+  // A slow "someone is pressing this" loop: ride down onto the shadow and back.
+  const promptAnim = {
+    x: [0, OFFSET, 0],
+    y: [0, OFFSET, 0],
+    boxShadow: [`${OFFSET}px ${OFFSET}px 0 ${SHADOW}`, `0px 0px 0 ${SHADOW}`, `${OFFSET}px ${OFFSET}px 0 ${SHADOW}`],
+  };
 
   // When a thumbnail in this lens is selected (tap 1), the map/timeline expand
   // above the fold — bring this lens up to the top of the scrollable lower half
@@ -67,6 +94,7 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
   }, [ownsFocus, focusedId]);
 
   const toggleOpen = () => {
+    haptic(open ? 6 : 12);
     setOpen((o) => {
       const next = !o;
       if (!next && entries.some((e) => e.id === focusedId)) onFocus(null);
@@ -80,128 +108,95 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
   };
 
   return (
-    <div ref={rootRef} className="scroll-mt-2 rounded-3xl overflow-hidden shadow-md">
-      {/* the immersive lens "door" */}
-      <button
+    // extra right/bottom room so the offset shadow + accent burst aren't clipped
+    <div ref={rootRef} className="relative scroll-mt-2 pr-1.5 pb-1.5">
+      {/* comic accent burst — a slice bleeding out behind the top-left corner */}
+      {!slim && (
+        <span
+          aria-hidden
+          className="absolute -top-1.5 -left-1.5 pointer-events-none rounded-md"
+          style={{ width: 42, height: 42, backgroundColor: `color-mix(in srgb, ${colour} 42%, #fff)`, border: `3px solid ${INK}`, transform: 'rotate(14deg)' }}
+        />
+      )}
+
+      {/* the lens "door" — a chunky, pressable comic button */}
+      <motion.button
         onClick={toggleOpen}
         aria-expanded={open}
-        className={`relative w-full text-left flex transition-all ${slim ? 'flex-row items-center gap-3 px-5 py-3' : 'flex-col gap-3 px-5 pt-4 pb-3.5'}`}
-        style={{ backgroundColor: colour, minHeight: slim ? 56 : 120 }}
+        className={`relative w-full text-left flex overflow-hidden ${slim ? 'flex-row items-center gap-3 px-4 py-2.5' : 'flex-col gap-2 px-4 pt-3.5 pb-3'}`}
+        style={{ backgroundColor: colour, border: `3px solid ${INK}`, borderRadius: 18, minHeight: slim ? 50 : 92 }}
+        animate={showPrompt ? promptAnim : rest}
+        whileTap={pressed}
+        transition={showPrompt
+          ? { duration: 1.5, times: [0, 0.5, 1], repeat: Infinity, repeatDelay: 1.1, ease: 'easeInOut' }
+          : { type: 'spring', stiffness: 600, damping: 32 }}
       >
         {/* depth wash */}
-        <span className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-black/30 pointer-events-none" />
-        {/* big initial watermark (bolder) */}
-        {!slim && (
-          <span className="absolute right-2 -bottom-8 font-display leading-none text-white/20 select-none pointer-events-none"
-            style={{ fontSize: 160 }}>{lens.label[0]}</span>
-        )}
+        <span className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-black/25 pointer-events-none" />
 
         {slim ? (
           <>
             <span className="relative text-warm-white/90 shrink-0"><LensEmblem kind={lens.key} size={22} /></span>
-            <span
-              role="button" tabIndex={0}
-              onClick={(e) => { e.stopPropagation(); setCardOpen(true); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setCardOpen(true); } }}
-              aria-label={`See ${lens.label} questions`}
-              className="relative inline-flex items-center gap-1.5 font-display text-xl text-warm-white leading-none"
-            >
-              <span className="border-b border-dotted border-white/45 pb-0.5">{lens.label}</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-70">
-                <circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
-              </svg>
-            </span>
-            {entries.length > 0 && (
-              <span className="relative ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold tabular-nums bg-white/20 text-warm-white">{entries.length}</span>
-            )}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
-              className={`relative ml-auto text-warm-white transition-transform ${open ? 'rotate-180' : ''}`}>
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
+            <span className="relative font-display text-xl text-warm-white leading-none">{lens.label}</span>
           </>
         ) : (
           <>
-            {/* emblem */}
-            <span className="absolute top-4 right-4 text-white/85 pointer-events-none"><LensEmblem kind={lens.key} /></span>
-            <div className="relative">
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={(e) => { e.stopPropagation(); setCardOpen(true); }}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setCardOpen(true); } }}
-                aria-label={`See ${lens.label} questions`}
-                className="inline-flex items-center gap-1.5 font-display text-3xl text-warm-white leading-none"
-              >
-                <span className="border-b border-dotted border-white/45 pb-0.5">{lens.label}</span>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-70">
-                  <circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
-                </svg>
-              </span>
-              {/* definition always visible in the journal */}
-              <p className="font-serif italic text-warm-white/90 text-[15px] leading-snug mt-1.5 max-w-[92%]">
-                {lens.definition}
-              </p>
-            </div>
-            <div className="relative mt-auto flex items-center justify-between">
-              <span className="text-warm-white/90 text-sm font-semibold">
-                {entries.length > 0 ? `${entries.length} context question${entries.length === 1 ? '' : 's'}` : 'No context questions yet'}
-              </span>
-              <span className="inline-flex items-center gap-1 text-warm-white text-sm font-semibold">
-                Look through
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </span>
-            </div>
+            {/* descriptor emblem (kept) */}
+            <span className="absolute top-3 right-3 text-white/85 pointer-events-none"><LensEmblem kind={lens.key} /></span>
+            <span className="relative font-display text-[28px] text-warm-white leading-none">{lens.label}</span>
+            {/* definition always visible in the journal */}
+            <p className="relative font-serif italic text-warm-white/90 text-[15px] leading-snug max-w-[88%]">
+              {lens.definition}
+            </p>
           </>
         )}
-      </button>
+      </motion.button>
 
-      {/* contents */}
+      {/* contents — a separate bordered card that drops below the pressed door */}
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
             initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.26 }}
-            className="overflow-hidden bg-warm-white"
+            transition={{ duration: 0.24 }}
+            className="overflow-hidden"
           >
             {(() => {
               const questions = entries.filter((e) => e.origin === 'authored');
               const added = entries.filter((e) => e.origin !== 'authored');
+              const card = 'mt-2 rounded-2xl bg-warm-white';
+              const cardStyle = { border: `3px solid ${INK}` };
               if (questions.length === 0 && added.length === 0) {
-                return <p className="px-5 py-4 text-sm text-text-muted">No context here yet.</p>;
+                return <div className={card} style={cardStyle}><p className="px-5 py-4 text-sm text-text-muted">No context here yet.</p></div>;
               }
               return (
-                <div className="px-5 py-4 space-y-3">
-                  {/* unanswered questions to explore */}
-                  {questions.map((entry) => (
-                    <QuestionRow key={entry.id} entry={entry} colour={colour} onTap={() => onOpenFull(entry)} />
-                  ))}
-                  {/* contexts already added (thumbnails) */}
-                  {added.length > 0 && (
-                    <div data-cj-keep className="flex gap-3 overflow-x-auto cj-hscroll -mx-1 px-1 py-0.5">
-                      {added.map((entry) => (
-                        <ContextCard
-                          key={entry.id}
-                          entry={entry}
-                          colour={colour}
-                          active={focusedId === entry.id}
-                          saved={savedIds.has(entry.id)}
-                          onTap={() => handleThumb(entry)}
-                          onToggleSave={() => onToggleSave(entry.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
+                <div className={card} style={cardStyle}>
+                  <div className="px-4 py-3.5 space-y-3">
+                    {/* unanswered questions to explore */}
+                    {questions.map((entry) => (
+                      <QuestionRow key={entry.id} entry={entry} colour={colour} onTap={() => onOpenFull(entry)} />
+                    ))}
+                    {/* contexts already added (thumbnails) */}
+                    {added.length > 0 && (
+                      <div data-cj-keep className="flex gap-3 overflow-x-auto cj-hscroll -mx-1 px-1 py-0.5">
+                        {added.map((entry) => (
+                          <ContextCard
+                            key={entry.id}
+                            entry={entry}
+                            colour={colour}
+                            active={focusedId === entry.id}
+                            saved={savedIds.has(entry.id)}
+                            onTap={() => handleThumb(entry)}
+                            onToggleSave={() => onToggleSave(entry.id)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })()}
           </motion.div>
         )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {cardOpen && <PastLensCard lens={lens} onClose={() => setCardOpen(false)} />}
       </AnimatePresence>
     </div>
   );

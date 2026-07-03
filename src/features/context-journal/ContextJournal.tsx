@@ -17,7 +17,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange, LENS_BY_KEY } from './constants';
 import type { ContextEntry, MapType, NewContextEntry, TimeRange } from './types';
 import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds, getPlaceConfig, addContextEntry, updateContextEntry, deleteContextEntry } from './store';
@@ -27,6 +27,16 @@ import ContextTimeline from './components/ContextTimeline';
 import PastPanel from './components/PastPanel';
 import ContextOverlay from './components/ContextOverlay';
 import AddContextFlow from './components/AddContextFlow';
+
+/** Comic ink shared with the P.A.S.T. lens buttons, for the "Ask" CTA's border
+ *  + hard offset shadow (see PastLens). */
+const INK = '#241f1b';
+const INK_SHADOW = 'rgba(26,20,14,0.9)';
+
+/** Optional light haptic tick (matches the repo pattern). */
+function haptic(ms = 8) {
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(ms);
+}
 
 interface Props {
   /** When opened from a tour, the journal scopes its config + contexts to it.
@@ -342,8 +352,8 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
           ) : (
             <h2 className="font-display text-[26px] leading-tight text-text-primary">Look through the P.A.S.T.</h2>
           )}
-          <p className="mt-2 font-serif italic text-[15px] text-text-secondary leading-snug">
-            Tap a lens to find a question worth asking — or add one of your own.
+          <p className="mt-2 font-serif italic text-[17px] text-text-secondary leading-snug">
+            Tap a lens to find a question you want to ask — or ask one of your own!
           </p>
         </div>
         <PastPanel
@@ -352,27 +362,35 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
           savedIds={savedIds}
           focusedId={focused?.id ?? null}
           compact={showMapPanel}
+          promptUnopened={!!inTour}
           onFocus={handleFocus}
           onToggleSave={toggleSave}
           onOpenFull={openFull}
         />
 
-        {/* Ask your own question (AI flow lands later; opens the add form for now) */}
-        <div className="px-5 pb-8 pt-1">
-          <button
-            onClick={() => setAddOpen(true)}
-            className="w-full py-3.5 rounded-2xl border-2 border-dashed flex items-center justify-center gap-2 font-semibold text-text-secondary hover:bg-black/[0.02]"
-            style={{ borderColor: 'var(--th-border)' }}
+        {/* Ask your own question — a bold, distinct *choice*. It floats over the
+            scroll pinned near the bottom (an overlay CTA), then un-sticks and
+            docks in flow just above the Continue button as you reach the end, so
+            the two never overlap. (AI flow lands later; opens the add form.) */}
+        <div className="sticky bottom-4 z-30 px-5 pt-3">
+          <motion.button
+            onClick={() => { haptic(10); setAddOpen(true); }}
+            whileTap={{ x: 4, y: 4, boxShadow: `0px 0px 0 ${INK_SHADOW}` }}
+            transition={{ type: 'spring', stiffness: 600, damping: 32 }}
+            className="w-full flex items-center justify-center gap-2.5 rounded-2xl py-3.5 bg-warm-white font-display font-bold text-[17px]"
+            style={{ color: 'var(--th-primary)', border: `3px solid ${INK}`, boxShadow: `4px 4px 0 ${INK_SHADOW}` }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
+            <span className="flex items-center justify-center w-7 h-7 rounded-full text-warm-white shrink-0" style={{ backgroundColor: 'var(--th-primary)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </span>
             Ask your own question
-          </button>
+          </motion.button>
         </div>
 
-        {inTour && (
-          <div className="px-5 pb-8 pt-1">
+        {inTour ? (
+          <div className="px-5 pb-8 pt-2">
             <button
               onClick={onExit}
               disabled={!explored}
@@ -385,6 +403,8 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
               <p className="mt-2 text-center text-xs text-text-muted">Ask a question — or tap one to explore — before continuing.</p>
             )}
           </div>
+        ) : (
+          <div className="pb-8" />
         )}
       </div>
 

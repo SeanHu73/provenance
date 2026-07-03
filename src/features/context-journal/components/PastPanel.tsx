@@ -22,12 +22,14 @@ interface Props {
   focusedId: string | null;
   /** When the map panel is open, lens banners slim down. */
   compact?: boolean;
+  /** Act sequence: cue lenses that still hold unopened questions with a tap loop. */
+  promptUnopened?: boolean;
   onFocus: (entry: ContextEntry | null) => void;
   onToggleSave: (id: string) => void;
   onOpenFull: (entry: ContextEntry) => void;
 }
 
-export default function PastPanel({ entries, selectedRange, savedIds, focusedId, compact, onFocus, onToggleSave, onOpenFull }: Props) {
+export default function PastPanel({ entries, selectedRange, savedIds, focusedId, compact, promptUnopened, onFocus, onToggleSave, onOpenFull }: Props) {
   const byLens = useMemo(() => {
     const inRange = entries.filter((e) =>
       overlapsRange({ start: e.timeRange.start, end: e.timeRange.end }, selectedRange),
@@ -48,6 +50,7 @@ export default function PastPanel({ entries, selectedRange, savedIds, focusedId,
           savedIds={savedIds}
           focusedId={focusedId}
           compact={compact}
+          prompt={!!promptUnopened && items.some((e) => e.origin === 'authored')}
           onFocus={onFocus}
           onToggleSave={onToggleSave}
           onOpenFull={onOpenFull}
