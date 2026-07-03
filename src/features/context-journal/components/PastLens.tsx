@@ -15,6 +15,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { thumbnailPhotoUrl, type LensDef } from '../constants';
 import type { ContextEntry, PastCategory } from '../types';
 import BookmarkButton from './BookmarkButton';
+import PastLensCard from './PastLensCard';
 
 interface Props {
   lens: LensDef;
@@ -34,8 +35,8 @@ function LensEmblem({ kind, size = 30 }: { kind: PastCategory; size?: number }) 
   switch (kind) {
     case 'place': // mountains / terrain
       return <svg {...common}><path d="M3 19l5.5-8 3.5 4.5L15 11l6 8z" /><circle cx="7" cy="6.5" r="1.6" /></svg>;
-    case 'attitudes': // ideas / values — a lightbulb
-      return <svg {...common}><path d="M9.5 18h5M10.5 21h3" /><path d="M15.2 14c.2-1 .7-1.8 1.45-2.55A4.8 4.8 0 0 0 18 8 6 6 0 1 0 6.8 11.45C7.55 12.2 8.05 13 8.25 14" /></svg>;
+    case 'attitudes': // Affairs — events of the time / disasters (a calendar)
+      return <svg {...common}><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></svg>;
     case 'society': // people
       return <svg {...common}><circle cx="9" cy="8" r="2.6" /><circle cx="16.5" cy="9.5" r="2" /><path d="M4 19c0-2.8 2.2-4.6 5-4.6s5 1.8 5 4.6M15 19c0-1.9.9-3.3 2.5-3.9" /></svg>;
     case 'technology': // gear (Feather "settings")
@@ -45,7 +46,7 @@ function LensEmblem({ kind, size = 30 }: { kind: PastCategory; size?: number }) 
 
 export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, onFocus, onToggleSave, onOpenFull }: Props) {
   const [open, setOpen] = useState(false);
-  const [showDef, setShowDef] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
   const colour = lens.colour;
   // Slim banner when the lens is open, or when the map panel is up.
   const slim = open || compact;
@@ -101,8 +102,17 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
             {entries.length > 0 && (
               <span className="relative ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold tabular-nums bg-white/20 text-warm-white">{entries.length}</span>
             )}
+            <span
+              role="button" tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); setCardOpen(true); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setCardOpen(true); } }}
+              aria-label={`See ${lens.label} questions`}
+              className="relative ml-auto w-7 h-7 rounded-full flex items-center justify-center bg-white/20 text-warm-white"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+            </span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
-              className={`relative ml-auto text-warm-white transition-transform ${open ? 'rotate-180' : ''}`}>
+              className={`relative text-warm-white transition-transform ${open ? 'rotate-180' : ''}`}>
               <polyline points="6 9 12 15 18 9" />
             </svg>
           </>
@@ -114,27 +124,20 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
               <span
                 role="button"
                 tabIndex={0}
-                onClick={(e) => { e.stopPropagation(); setShowDef((d) => !d); }}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setShowDef((d) => !d); } }}
-                aria-pressed={showDef}
-                className="inline-flex items-center gap-1.5 font-display text-3xl text-warm-white leading-none"
+                onClick={(e) => { e.stopPropagation(); setCardOpen(true); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setCardOpen(true); } }}
+                aria-label={`See ${lens.label} questions`}
+                className="inline-flex items-center gap-2 font-display text-3xl text-warm-white leading-none"
               >
-                <span className="border-b border-dotted border-white/45 pb-0.5">{lens.label}</span>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-70">
-                  <circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
-                </svg>
+                <span>{lens.label}</span>
+                <span className="w-7 h-7 rounded-full flex items-center justify-center bg-white/20">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+                </span>
               </span>
-              <AnimatePresence initial={false}>
-                {showDef && (
-                  <motion.p
-                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden font-serif italic text-warm-white/90 text-[15px] leading-snug mt-1.5 max-w-[88%]"
-                  >
-                    {lens.definition}
-                  </motion.p>
-                )}
-              </AnimatePresence>
+              {/* definition always visible in the journal */}
+              <p className="font-serif italic text-warm-white/90 text-[15px] leading-snug mt-1.5 max-w-[92%]">
+                {lens.definition}
+              </p>
             </div>
             <div className="relative mt-auto flex items-center justify-between">
               <span className="text-warm-white/90 text-sm font-semibold">
@@ -192,6 +195,10 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
             })()}
           </motion.div>
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {cardOpen && <PastLensCard lens={lens} onClose={() => setCardOpen(false)} />}
       </AnimatePresence>
     </div>
   );

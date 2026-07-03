@@ -221,7 +221,7 @@ function FindLearnStep({ onNext }: { onNext: () => void }) {
         <ActionRow
           label="FIND"
           desc="Look for something in the area."
-          glyph={<><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>}
+          glyph={<><circle cx="6" cy="15" r="4" /><circle cx="18" cy="15" r="4" /><path d="M10 15a2 2 0 0 1 4 0" /><path d="M6 11V6a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v5" /><path d="M18 11V6a2 2 0 0 0-2-2h0a2 2 0 0 0-2 2v5" /></>}
         />
         <ActionRow
           label="LEARN"

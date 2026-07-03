@@ -217,7 +217,7 @@ body {
 .onb-screen {
   --onb-place:   #347C4A;   /* green  */
   --onb-time:    #2C6488;   /* blue   */
-  --onb-society: #7B4EA3;   /* plum — distinct from the cranberry CONTEXT chip */
+  --onb-society: #9B6FC9;   /* lighter plum — easier to read on the dark onboarding */
 }
 
 .onb-panel {

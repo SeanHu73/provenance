@@ -90,16 +90,42 @@ export function clampRange(range: TimeRange, domain: { start: number; end: numbe
 export interface LensDef {
   key: PastCategory;
   label: string;
+  /** The lens's sub-topics joined for display, e.g. "Geography | Natural resources". */
   definition: string;
+  /** Individual sub-topics — drive the per-category icons on the lens card. */
+  categories: string[];
+  /** Sample context questions shown on the lens card. */
+  questions: string[];
   colour: string;
 }
 
-/** The four lenses, in canonical P.A.S.T. order. */
+/** The four lenses, in canonical P.A.S.T. order. NB: the `attitudes` key is kept
+ *  (stored on existing contexts) but the "A" now reads **Affairs**. */
 export const LENSES: LensDef[] = [
-  { key: 'place',      label: 'Place',      colour: '#347C4A', definition: 'Geography, resources, natural disasters' },
-  { key: 'attitudes',  label: 'Attitudes',  colour: '#B8752B', definition: 'Cultural values, important ideas' },
-  { key: 'society',    label: 'Society',    colour: '#7B4EA3', definition: 'Social class, politics, economy' },
-  { key: 'technology', label: 'Technology', colour: '#2C6488', definition: 'Useful tools, infrastructure, key inventions' },
+  {
+    key: 'place', label: 'Place', colour: '#347C4A',
+    categories: ['Geography', 'Natural resources'],
+    definition: 'Geography | Natural resources',
+    questions: ['What resources are important?', 'How did the climate affect events?'],
+  },
+  {
+    key: 'attitudes', label: 'Affairs', colour: '#B8752B',
+    categories: ['Relevant events of the time', 'Natural disasters'],
+    definition: 'Relevant events of the time | Natural disasters',
+    questions: ['How did an election affect decisions?', 'What were the consequences of new diseases?'],
+  },
+  {
+    key: 'society', label: 'Society', colour: '#9B6FC9',
+    categories: ['Cultural values', 'Social class', 'Political system', 'Economy'],
+    definition: 'Cultural values | Social class | Political system | Economy',
+    questions: ['Who held power?', 'What religion did the society have?', 'Were there changing ideas?', 'How was the economy?'],
+  },
+  {
+    key: 'technology', label: 'Technology', colour: '#2C6488',
+    categories: ['Useful tools', 'Infrastructure', 'Key inventions'],
+    definition: 'Useful tools | Infrastructure | Key inventions',
+    questions: ['Were there important new inventions?', 'How did it change daily life?'],
+  },
 ];
 
 export const LENS_BY_KEY: Record<PastCategory, LensDef> = LENSES.reduce(
