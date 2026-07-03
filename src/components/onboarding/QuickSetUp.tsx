@@ -67,74 +67,83 @@ function AudioStep({ onNext }: { onNext: () => void }) {
   const [autoplayPref, setAutoplayPref] = useAudioAutoplay();
   const [choice, setChoice] = useState<'on' | 'off' | null>(null);
   const pick = (c: 'on' | 'off') => { setChoice(c); setAutoplayPref(c === 'on'); };
-  const toggleAuto = () => { const nv = !autoplayPref; setAutoplayPref(nv); setChoice(nv ? 'on' : 'off'); };
 
   return (
-    <StepShell>
-      <h2 className="font-display text-[30px] font-bold text-text-primary text-center">Audio</h2>
-      <p className="mt-3 text-[19px] font-serif text-text-secondary text-center leading-relaxed">
-        Some screens have narration. Should it play automatically?
-      </p>
-      <div className="mt-6 flex gap-3 justify-center">
-        {(['on', 'off'] as const).map((opt) => {
-          const selected = choice === opt;
-          return (
-            <button
-              key={opt}
-              onClick={() => pick(opt)}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg text-[17px] font-semibold border-2 transition-colors"
-              style={selected
-                ? { background: 'var(--th-primary)', color: 'var(--th-surface)', borderColor: 'var(--th-primary)' }
-                : { background: 'transparent', color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
-            >
-              {opt === 'on' ? 'Auto-play' : 'Tap to play'}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill={opt === 'on' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"><polygon points="6,4 20,12 6,20" /></svg>
-            </button>
-          );
-        })}
+    <div className="absolute inset-0 flex flex-col animate-fade-in">
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col justify-center px-7 py-8">
+        <h2 className="font-display text-[30px] font-bold text-text-primary text-center">Audio</h2>
+        <p className="mt-3 text-[19px] font-serif text-text-secondary text-center leading-relaxed">
+          Some screens have narration. Should it play automatically?
+        </p>
+        <div className="mt-6 flex gap-3 justify-center">
+          {(['on', 'off'] as const).map((opt) => {
+            const selected = choice === opt;
+            return (
+              <button
+                key={opt}
+                onClick={() => pick(opt)}
+                className="flex items-center gap-2 px-6 py-3 rounded-lg text-[17px] font-semibold border-2 transition-colors"
+                style={selected
+                  ? { background: 'var(--th-primary)', color: 'var(--th-surface)', borderColor: 'var(--th-primary)' }
+                  : { background: 'transparent', color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
+              >
+                {opt === 'on' ? 'Auto-play' : 'Tap to play'}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill={opt === 'on' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"><polygon points="6,4 20,12 6,20" /></svg>
+              </button>
+            );
+          })}
+        </div>
+
+        {choice !== null && (
+          <div className="mt-6 flex items-start justify-center gap-3 px-2 animate-fade-in">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--th-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden="true">
+              <path d="M3 14v-3a9 9 0 0 1 18 0v3" /><path d="M21 17a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2v2z" /><path d="M3 17a2 2 0 0 0 2 2h1v-6H5a2 2 0 0 0-2 2v2z" />
+            </svg>
+            <p className="text-[17px] leading-relaxed text-text-primary text-left">
+              This experience is best with <strong>earphones</strong> — or read aloud to each other.
+            </p>
+          </div>
+        )}
+
+        {choice !== null && (
+          <p className="mt-6 text-[14px] text-text-secondary text-center px-3 animate-fade-in">
+            Change narration anytime with the <strong>Auto</strong> button below.
+          </p>
+        )}
+
+        <div className="mt-8"><PrimaryButton onClick={onNext} disabled={choice === null}>Next</PrimaryButton></div>
       </div>
 
+      {/* Mock tour footer — points to where the Auto toggle lives (bottom-right). */}
       {choice !== null && (
-        <div className="mt-6 flex items-start justify-center gap-3 px-2 animate-fade-in">
-          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--th-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden="true">
-            <path d="M3 14v-3a9 9 0 0 1 18 0v3" /><path d="M21 17a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2v2z" /><path d="M3 17a2 2 0 0 0 2 2h1v-6H5a2 2 0 0 0-2 2v2z" />
-          </svg>
-          <p className="text-[17px] leading-relaxed text-text-primary text-left">
-            This experience is best with <strong>earphones</strong> — or read aloud to each other.
-          </p>
-        </div>
-      )}
-
-      {/* Where the setting lives afterwards — a live mock of the tour's bottom
-          toolbar with the real Auto toggle, so they know how to change it. */}
-      {choice !== null && (
-        <div className="mt-7 animate-fade-in">
-          <p className="text-[15px] text-text-secondary text-center leading-relaxed px-3">
-            You can turn narration on or off anytime with the <strong>Auto</strong> button in the toolbar at the bottom of the tour — try it:
-          </p>
-          <div className="mt-3 mx-auto w-fit flex items-center gap-2 px-3 py-2.5 rounded-full shadow-lg" style={{ backgroundColor: 'var(--th-primary)' }}>
-            {/* faded stand-in footer buttons for context */}
-            <span className="px-3 py-2 rounded-full text-[11px] uppercase tracking-wider font-semibold text-warm-white/55 border border-white/20">Journal</span>
-            <span className="w-8 h-8 rounded-full flex items-center justify-center text-warm-white/55 border border-white/20 text-sm font-bold">?</span>
-            {/* the real Auto toggle */}
-            <button
-              onClick={toggleAuto}
-              aria-pressed={autoplayPref}
-              className={`relative flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] uppercase tracking-wider font-semibold border transition-colors ${autoplayPref ? 'bg-warm-white text-journal border-warm-white shadow' : 'text-warm-white/85 bg-black/15 border-white/20'}`}
-            >
+        <div className="shrink-0 px-4 py-3 border-t flex items-center gap-3 justify-between animate-fade-in" style={{ backgroundColor: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
+          <span
+            className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-warm-white bg-white/25 border border-white/50"
+            style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' }}
+            aria-hidden="true"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+            </svg>
+          </span>
+          <div className="flex-1 min-w-0 text-center leading-tight text-warm-white uppercase tracking-[0.14em] opacity-85" style={{ fontSize: 11 }}>
+            Set Up + Instructions
+          </div>
+          <div className="relative shrink-0">
+            <span className="absolute left-1/2 bottom-full mb-1 -translate-x-1/2 pointer-events-none">
+              <svg className="animate-bounce" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--th-secondary)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))' }}>
+                <line x1="12" y1="3" x2="12" y2="17" /><polyline points="5 11 12 18 19 11" />
+              </svg>
+            </span>
+            <div className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] uppercase tracking-wider font-semibold border ${autoplayPref ? 'bg-warm-white text-journal border-warm-white shadow' : 'text-warm-white/85 bg-black/15 border-white/20'}`}>
               Auto
               <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" fill={autoplayPref ? 'currentColor' : 'none'}><polygon points="6,4 20,12 6,20" /></svg>
-              <span className="absolute left-1/2 bottom-full mb-1 -translate-x-1/2 pointer-events-none">
-                <svg className="animate-bounce" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--th-secondary)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))' }}><line x1="12" y1="3" x2="12" y2="17" /><polyline points="5 11 12 18 19 11" /></svg>
-              </span>
-            </button>
+            </div>
           </div>
-          <p className="mt-2 text-[13px] italic text-text-secondary text-center">Auto-play is currently {autoplayPref ? 'on' : 'off'}.</p>
         </div>
       )}
-
-      <div className="mt-8"><PrimaryButton onClick={onNext} disabled={choice === null}>Next</PrimaryButton></div>
-    </StepShell>
+    </div>
   );
 }
 
@@ -244,13 +253,13 @@ function MapStep({ onNext }: { onNext: () => void }) {
       {/* Diagonal instructions, cascading left→right and revealed one after another. */}
       {!tapped && (
         <>
-          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '3%', left: '4%', backgroundColor: 'rgba(0,0,0,0.62)', ...pillReveal(1) }}>
+          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '8%', left: '4%', backgroundColor: 'rgba(0,0,0,0.62)', ...pillReveal(1) }}>
             <p className="text-[21px] font-serif font-semibold text-warm-white leading-snug">You will find <strong>pins</strong> on a map.</p>
           </div>
-          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '13%', right: '16%', backgroundColor: 'color-mix(in srgb, var(--th-primary) 50%, #000)', ...pillReveal(2) }}>
+          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '18%', right: '16%', backgroundColor: 'color-mix(in srgb, var(--th-primary) 50%, #000)', ...pillReveal(2) }}>
             <p className="text-[21px] font-serif font-semibold text-warm-white leading-snug">Walk to the pin.</p>
           </div>
-          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '23%', right: '4%', backgroundColor: 'var(--th-primary)', ...pillReveal(3) }}>
+          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '28%', right: '4%', backgroundColor: 'var(--th-primary)', ...pillReveal(3) }}>
             <p className="text-[21px] font-serif font-semibold text-warm-white leading-snug">Tap the pin.</p>
           </div>
         </>
