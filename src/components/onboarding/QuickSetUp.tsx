@@ -148,7 +148,7 @@ function FlowStep({ onNext }: { onNext: () => void }) {
       </div>
       {allShown && (
         <p className="mt-8 px-2 text-[23px] font-serif text-text-secondary text-center leading-relaxed animate-fade-in">
-          &hellip;to learn to <strong>think like a historian</strong> with the world around you.
+          &hellip;to learn to <strong>think like a historian</strong> in the world around you.
         </p>
       )}
       <div className="mt-10"><PrimaryButton onClick={onNext} disabled={!allShown}>Next</PrimaryButton></div>
@@ -183,7 +183,7 @@ function MapStep({ onNext }: { onNext: () => void }) {
           it reads like a screenshot. The wrapper is shifted so the map centre
           (where the pin sits) lands a little below the middle, leaving room for
           the diagonal instructions above it. */}
-      <div className="absolute left-0 right-0" style={{ top: '-40%', bottom: 0 }}>
+      <div className="absolute left-0 right-0" style={{ top: '-24%', bottom: 0 }}>
         {MAPS_API_KEY ? (
           <APIProvider apiKey={MAPS_API_KEY}>
             <GoogleMap
@@ -208,7 +208,7 @@ function MapStep({ onNext }: { onNext: () => void }) {
       {pinActive && (
         <div
           className="absolute inset-0 pointer-events-none animate-fade-in"
-          style={{ background: 'radial-gradient(circle at 50% 30%, transparent 15%, rgba(0,0,0,0.55) 60%)' }}
+          style={{ background: 'radial-gradient(circle at 50% 38%, transparent 15%, rgba(0,0,0,0.55) 60%)' }}
         />
       )}
 
@@ -218,10 +218,10 @@ function MapStep({ onNext }: { onNext: () => void }) {
           <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '3%', left: '4%', backgroundColor: 'rgba(0,0,0,0.62)', ...pillReveal(1) }}>
             <p className="text-[21px] font-serif font-semibold text-warm-white leading-snug">You will find <strong>pins</strong> on a map.</p>
           </div>
-          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '13%', left: '24%', backgroundColor: 'color-mix(in srgb, var(--th-primary) 50%, #000)', ...pillReveal(2) }}>
+          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '13%', left: '22%', backgroundColor: 'color-mix(in srgb, var(--th-primary) 50%, #000)', ...pillReveal(2) }}>
             <p className="text-[21px] font-serif font-semibold text-warm-white leading-snug">Walk to the pin.</p>
           </div>
-          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '23%', right: '4%', backgroundColor: 'var(--th-primary)', ...pillReveal(3) }}>
+          <div className="absolute pointer-events-none px-5 py-2.5 rounded-full shadow-lg" style={{ top: '23%', left: '40%', backgroundColor: 'var(--th-primary)', ...pillReveal(3) }}>
             <p className="text-[21px] font-serif font-semibold text-warm-white leading-snug">Tap the pin.</p>
           </div>
         </>
@@ -233,7 +233,7 @@ function MapStep({ onNext }: { onNext: () => void }) {
         disabled={!pinActive}
         aria-label="Sample pin"
         className="absolute left-1/2 z-20"
-        style={{ top: '30%', transform: 'translate(-50%, -50%)' }}
+        style={{ top: '38%', transform: 'translate(-50%, -50%)' }}
       >
         <span className="relative flex items-center justify-center">
           {pinActive && <span className="absolute w-16 h-16 rounded-full animate-ping" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.4 }} />}
