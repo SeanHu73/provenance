@@ -4,8 +4,8 @@
  * Shared "action" page-title used across every learner card.
  *
  *   DISCUSS  → speech / sound-waves icon (with optional "Opinion" pill)
- *   LEARN    → lightbulb icon
- *   FIND     → magnifying-glass icon
+ *   DISCOVER → lightbulb icon
+ *   FIND     → binoculars icon
  *   RESPOND  → pen-on-paper icon
  *
  * Layout: the action label sits on the LEFT, the matching icon on the
@@ -23,7 +23,7 @@
  * introduces instead of being attached to the action header.
  */
 
-type Action = 'DISCUSS' | 'LEARN' | 'FIND' | 'RESPOND';
+type Action = 'DISCUSS' | 'DISCOVER' | 'FIND' | 'RESPOND';
 
 interface Props {
   action: Action;
@@ -104,7 +104,7 @@ function ActionIcon({ action, size }: { action: Action; size: number }) {
           <path d="M18.5 6a6 6 0 0 1 0 12" />
         </svg>
       );
-    case 'LEARN':
+    case 'DISCOVER':
       return (
         <svg {...common}>
           <path d="M9 18h6" />
@@ -116,10 +116,11 @@ function ActionIcon({ action, size }: { action: Action; size: number }) {
       // Binoculars (the magnifier now belongs to the P.A.S.T. lens cards).
       return (
         <svg {...common}>
-          <circle cx="6" cy="15" r="4" /><circle cx="18" cy="15" r="4" />
-          <path d="M10 15a2 2 0 0 1 4 0" />
-          <path d="M6 11V6a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v5" />
-          <path d="M18 11V6a2 2 0 0 0-2-2h0a2 2 0 0 0-2 2v5" />
+          <path d="M4 9.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2V15a2.5 2 0 0 1-5 0z" />
+          <path d="M15 9.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2V15a2.5 2 0 0 1-5 0z" />
+          <path d="M9 11h6" />
+          <path d="M5 7.5v-1a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1" />
+          <path d="M16 7.5v-1a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1" />
         </svg>
       );
     case 'RESPOND':

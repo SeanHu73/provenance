@@ -7,7 +7,7 @@
  * photo) sit at the top, with the Background reading below. No snap-scroll —
  * it's a single continuous scroll; the Journal's "Keep scrolling" indicator
  * cues that there's more below. When the stop has no notice content the page
- * falls back to a Background-only ("LEARN") layout.
+ * falls back to a Background-only ("DISCOVER") layout.
  */
 
 import { useState, useEffect } from 'react';
@@ -195,7 +195,10 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   if (!hasNoticeSection) {
     return (
       <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
-        <ActionTitle action="LEARN" />
+        <div>
+          <ActionTitle action="DISCOVER" />
+          {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[15px] leading-snug">{stop.title}</p>}
+        </div>
         {backgroundContent}
         {footerBlock}
       </div>
@@ -208,7 +211,10 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   return (
     <div className="animate-fade-in space-y-6">
       <div className="space-y-5">
-        <ActionTitle action="FIND" />
+        <div>
+          <ActionTitle action="FIND" />
+          {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[15px] leading-snug">{stop.title}</p>}
+        </div>
         {findInstructions}
       </div>
 

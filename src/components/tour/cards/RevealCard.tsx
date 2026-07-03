@@ -65,7 +65,10 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
   return (
     <div className="animate-fade-in space-y-4 min-h-full flex flex-col justify-center">
       {/* Title */}
-      <ActionTitle action="LEARN" />
+      <div>
+        <ActionTitle action="DISCOVER" />
+        {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[15px] leading-snug">{stop.title}</p>}
+      </div>
 
       {/* Audio player */}
       {hasAudio && <AudioButton audioUrl={stop.reveal.audioUrl!} title={stop.reveal.audioTitle} autoplay={shouldAutoplay} onTimeUpdate={onTimeUpdate} onEnded={onEnded} />}

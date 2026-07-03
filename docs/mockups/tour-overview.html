@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Provenance — Tour Overview (NPS-style)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&display=swap" rel="stylesheet" />
+<style>
+  /* Red theme tokens (matches the live app) */
+  :root{
+    --th-primary:#8B2538; --th-secondary:#B8752B; --th-surface:#FBF8F2;
+    --th-bg:#E9E4E2; --th-border:#E0D6C8;
+    --text-primary:#2C2418; --text-secondary:#6B5D4F;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  body{background:#1c1c1c;font-family:'Newsreader',Georgia,serif;display:flex;justify-content:center;min-height:100vh}
+  .device{width:min(420px,100vw);min-height:100vh;background:var(--th-surface);display:flex;flex-direction:column;position:relative;box-shadow:0 0 60px rgba(0,0,0,.5)}
+  .body{flex:1;overflow-y:auto}
+
+  /* hero */
+  .hero{position:relative;width:100%;height:208px;overflow:hidden}
+  .hero img{width:100%;height:100%;object-fit:cover}
+  .hero .scrim{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,.2) 55%,rgba(0,0,0,.25))}
+  .back{position:absolute;top:12px;left:12px;width:36px;height:36px;border-radius:999px;background:rgba(0,0,0,.35);color:#fff;border:0;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);cursor:pointer}
+  .hero .titlewrap{position:absolute;left:0;right:0;bottom:0;padding:0 20px 16px}
+  .hero .kick{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.85);margin-bottom:4px}
+  .hero h1{font-family:'DM Serif Display',serif;font-weight:400;font-size:30px;line-height:1.05;color:#fff}
+
+  .content{padding:16px 20px 24px;display:flex;flex-direction:column;gap:16px}
+
+  /* guide + meta */
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .guide{display:flex;align-items:center;gap:10px;min-width:0}
+  .avatar{width:36px;height:36px;border-radius:999px;background:var(--th-primary);color:var(--th-surface);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;overflow:hidden;flex-shrink:0}
+  .avatar img{width:100%;height:100%;object-fit:cover}
+  .gname{font-size:14px;font-weight:600;color:var(--text-primary)}
+  .grole{font-size:12px;color:var(--text-secondary)}
+  .meta{display:flex;align-items:center;gap:6px;color:var(--th-primary);flex-shrink:0}
+  .meta span{font-size:13px;font-weight:600;white-space:nowrap}
+
+  .desc{font-size:15px;line-height:1.55;color:var(--text-secondary)}
+  .desc .more{font-weight:600;color:var(--th-primary);background:none;border:0;cursor:pointer;font-size:15px;font-family:inherit}
+
+  .audio{border-radius:8px;overflow:hidden;background:rgba(0,0,0,.05)}
+  .audio p{font-size:12px;font-weight:600;padding:8px 12px 0;color:var(--text-primary)}
+  .audio audio{width:100%;height:36px}
+
+  .listlabel{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--th-primary);margin-bottom:4px}
+  .list{border-top:1px solid var(--th-border)}
+  .stop{border-bottom:1px solid var(--th-border)}
+  .stopbtn{width:100%;display:flex;align-items:center;gap:12px;padding:12px 0;text-align:left;background:none;border:0;cursor:pointer}
+  .badge{width:28px;height:28px;border-radius:999px;background:var(--th-primary);color:var(--th-surface);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+  .thumb{width:56px;height:56px;border-radius:8px;overflow:hidden;background:var(--th-border);flex-shrink:0}
+  .thumb img{width:100%;height:100%;object-fit:cover}
+  .stoptitle{flex:1;min-width:0}
+  .stoptitle p{font-size:15px;font-weight:600;line-height:1.25;color:var(--text-primary)}
+  .stoptitle .tag{font-size:12px;font-style:italic;color:var(--text-secondary);margin-top:2px}
+  .chev{flex-shrink:0;color:var(--text-secondary);transition:transform .2s}
+  .stop.open .chev{transform:rotate(90deg)}
+  .teaser{padding:0 8px 12px 68px;margin-top:-4px;font-size:14px;line-height:1.5;color:var(--text-secondary);display:none}
+  .stop.open .teaser{display:block}
+
+  .bottom{flex-shrink:0;padding:12px 20px;border-top:1px solid var(--th-border);background:var(--th-surface)}
+  .begin{width:100%;padding:14px;border-radius:999px;background:var(--th-primary);color:var(--th-surface);font-size:15px;font-weight:600;border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit}
+</style>
+</head>
+<body>
+<div class="device">
+  <div class="body">
+    <div class="hero">
+      <img src="https://images.unsplash.com/photo-1438032005730-c779502df39b?q=80&w=900&auto=format&fit=crop" alt=""/>
+      <div class="scrim"></div>
+      <button class="back" title="Back to map"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="titlewrap">
+        <p class="kick">Stanford University · Main Quad</p>
+        <h1>Memorial Church</h1>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="row">
+        <div class="guide">
+          <div class="avatar">ER</div>
+          <div>
+            <p class="gname">Prof. Elena Ruiz</p>
+            <p class="grole">Art History · Stanford</p>
+          </div>
+        </div>
+        <div class="meta">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>6 stops · ~30 min</span>
+        </div>
+      </div>
+
+      <p class="desc" id="desc"></p>
+
+      <div class="audio">
+        <p>A word before you begin</p>
+        <audio controls src=""></audio>
+      </div>
+
+      <div>
+        <p class="listlabel">6 stops on this tour</p>
+        <div class="list" id="list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <button class="begin"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg> Begin tour</button>
+  </div>
+</div>
+
+<script>
+  const DESC = "Memorial Church has stood at the heart of the Stanford campus since 1903 — built by Jane Stanford as a memorial to her husband, and rebuilt twice after earthquakes. On this walk we'll read the building like a document: its mosaics, its memorial inscriptions, and the choices behind every restoration.";
+  const desc = document.getElementById('desc');
+  let expanded = false;
+  function renderDesc(){
+    if (expanded || DESC.length <= 180){ desc.innerHTML = DESC + (DESC.length>180?' <button class="more">Read less</button>':''); }
+    else { desc.innerHTML = DESC.slice(0,180).trim() + '… <button class="more">Read more</button>'; }
+    const b = desc.querySelector('.more');
+    if (b) b.onclick = ()=>{ expanded=!expanded; renderDesc(); };
+  }
+  renderDesc();
+
+  const STOPS = [
+    {t:"The Facade Mosaic", tag:null, img:"1473177104440-ffee2f376098", teaser:"The mosaic above the entrance was assembled in Venice and shipped in numbered crates — a hundred thousand pieces of glass arriving as a flat-packed sermon."},
+    {t:"Jane Stanford's Inscription", tag:null, img:"1507692049790-de58290a4334", teaser:"Carved above the arch, the dedication speaks in Jane Stanford's own voice. The wording was hers, and it tells you what she wanted the building to mean."},
+    {t:"The Nave & Pendentive Angels", tag:"Interior", img:"1545987796-200677ee1011", teaser:"Step inside and look up. The four angels in the pendentives were among the first elements rebuilt after the 1906 quake brought the original tower down."},
+    {t:"Memorial Tablets", tag:"Interior", img:"1551038247-3d9af20df552", teaser:"Along the side aisle, names are set into the stone — a quieter kind of memorial than the church itself."},
+    {t:"The Organ Loft", tag:"Interior", img:"1459749411175-04bf5292ceea", teaser:"The Murray Harris organ has been rebuilt and expanded several times; its pipes are a layered record of a century of taste."},
+    {t:"The Rear Garden", tag:null, img:"1438032005730-c779502df39b", teaser:"Walk around to the rear for the last stop, where the building meets the older landscape of the Quad."},
+  ];
+  const list = document.getElementById('list');
+  STOPS.forEach((s,i)=>{
+    const el = document.createElement('div');
+    el.className = 'stop';
+    el.innerHTML = `
+      <button class="stopbtn">
+        <div class="badge">${i+1}</div>
+        <div class="thumb"><img src="https://images.unsplash.com/photo-${s.img}?q=80&w=200&auto=format&fit=crop" alt=""></div>
+        <div class="stoptitle"><p>${s.t}</p>${s.tag?`<p class="tag">${s.tag}</p>`:''}</div>
+        <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <p class="teaser">${s.teaser}</p>`;
+    el.querySelector('.stopbtn').onclick = ()=> el.classList.toggle('open');
+    list.appendChild(el);
+  });
+</script>
+</body>
+</html>

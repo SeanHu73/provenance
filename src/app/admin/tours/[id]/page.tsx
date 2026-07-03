@@ -1124,7 +1124,7 @@ export default function TourEditorPage() {
                   onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, questionBackgroundAsInstructions: e.target.checked })}
                   className="rounded"
                 />
-                <span>Show this as <em>Instructions</em> (italic title, no LEARN label)</span>
+                <span>Show this as <em>Instructions</em> (italic title, no DISCOVER label)</span>
               </label>
               <div className="block">
                 <RichTextarea
@@ -1282,7 +1282,7 @@ export default function TourEditorPage() {
                         onChange={(e) => updateField('essentialQuestion', { ...tour.essentialQuestion!, additionalQuestion: { ...tour.essentialQuestion!.additionalQuestion!, questionBackgroundAsInstructions: e.target.checked } })}
                         className="rounded"
                       />
-                      <span>Show this as <em>Instructions</em> (italic title, no LEARN label)</span>
+                      <span>Show this as <em>Instructions</em> (italic title, no DISCOVER label)</span>
                     </label>
                     <RichTextarea
                       label="The question"
@@ -1487,7 +1487,7 @@ export default function TourEditorPage() {
                             }}
                             className="rounded"
                           />
-                          <span>Show this as <em>Instructions</em> (italic title, no LEARN label)</span>
+                          <span>Show this as <em>Instructions</em> (italic title, no DISCOVER label)</span>
                         </label>
                         <RichTextarea
                           label="The question"
@@ -1764,7 +1764,7 @@ export default function TourEditorPage() {
                     onChange={(e) => updateField('midwayQuestionBackgroundAsInstructions', e.target.checked)}
                     className="rounded"
                   />
-                  <span>Show this as <em>Instructions</em> (italic title, no LEARN label)</span>
+                  <span>Show this as <em>Instructions</em> (italic title, no DISCOVER label)</span>
                 </label>
                 <RichTextarea
                   label="Midway check-in question"
@@ -2419,7 +2419,7 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
                 onChange={(e) => onChange({ wonder: { ...stop.wonder!, questionBackgroundAsInstructions: e.target.checked } })}
                 className="rounded"
               />
-              <span>Show this as <em>Instructions</em> (italic title, no LEARN label)</span>
+              <span>Show this as <em>Instructions</em> (italic title, no DISCOVER label)</span>
             </label>
             <RichTextarea
               label="Question (prompts group conversation)"
@@ -2636,7 +2636,7 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
                           }}
                           className="rounded"
                         />
-                        <span>Show this as <em>Instructions</em> (italic title, no LEARN label)</span>
+                        <span>Show this as <em>Instructions</em> (italic title, no DISCOVER label)</span>
                       </label>
                       <RichTextarea
                         label="Discussion question"

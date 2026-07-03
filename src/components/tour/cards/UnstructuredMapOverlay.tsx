@@ -806,7 +806,7 @@ export function MidwayCheckinCard({
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <div>
-          <ActionTitle action="LEARN" investigation />
+          <ActionTitle action="DISCOVER" investigation />
           <div className="mt-5">
             <SectionSubtitle className="mb-2">Mid point check-in</SectionSubtitle>
             <p className="text-[18px] font-serif text-text-primary leading-relaxed">
@@ -835,7 +835,7 @@ export function MidwayCheckinCard({
           {tour.midwayQuestionBackgroundAsInstructions ? (
             <InstructionsTitle />
           ) : (
-            <ActionTitle action="LEARN" />
+            <ActionTitle action="DISCOVER" />
           )}
           {tour.midwayQuestionBackgroundAudioUrl && (
             <AudioButton

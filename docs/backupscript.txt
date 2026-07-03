@@ -1,0 +1,70 @@
+function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sheet1');
+  
+  if (sheet.getLastRow() === 0 || sheet.getRange(1, 1).getValue() === '') {
+    addHeaders();
+  }
+  
+  var data = JSON.parse(e.postData.contents);
+  var source = data.source || 'ask';
+  
+  if (source === 'tour') {
+    sheet.appendRow([
+      new Date(),
+      data.timestamp || '',
+      data.sessionId || '',
+      'tour',
+      data.event || '',
+      data.tourTitle || '',
+      data.stopTitle || '',
+      data.stopIndex != null ? data.stopIndex + 1 : '',
+      data.reflectionScore != null ? data.reflectionScore : '',
+      data.followUpResponse || '',
+      data.questionText || '',
+      data.questionRouting || '',
+      data.stopsCompleted || '',
+      data.durationMinutes || '',
+      data.eqTheory || '',
+      data.eqReasoning || '',
+      data.eqFinalReflection || '',
+      data.eqFinalReasoning || '',
+      data.eqCognitiveSlider != null ? data.eqCognitiveSlider : '',
+      data.eqPerceptualSlider != null ? data.eqPerceptualSlider : '',
+      data.eqWhatChanged || '',
+      data.eqWhyChanged || '',
+      '',
+      ''
+    ]);
+  } else {
+    sheet.appendRow([
+      new Date(),
+      data.timestamp || '',
+      '',
+      'ask',
+      data.type || '',
+      '', '', '', '', '', 
+      data.question || '',
+      '', '', '', '', '', '', '', '', '', '', '',
+      data.observation || '',
+      data.answer || ''
+    ]);
+  }
+  
+  return ContentService.createTextOutput('OK');
+}
+
+function addHeaders() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sheet1');
+  sheet.getRange(1, 1, 1, 24).setValues([[
+    'Logged At', 'Timestamp', 'Session ID', 'Source', 'Event/Type',
+    'Tour Title', 'Stop Title', 'Stop #',
+    'Reflection Score', 'Follow-Up Response',
+    'Question', 'Question Routing',
+    'Stops Completed', 'Duration (min)',
+    'EQ Initial Theory', 'EQ Initial Reasoning',
+    'EQ Final Reflection', 'EQ Final Reasoning',
+    'EQ Cognitive Slider', 'EQ Perceptual Slider',
+    'EQ What Changed', 'EQ Why Changed',
+    'Observation', 'Answer'
+  ]]);
+}

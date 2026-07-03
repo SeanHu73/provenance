@@ -157,7 +157,7 @@ export default function EqAdditionalCard({ tour, onContinue }: Props) {
         {asInstructions ? (
           <InstructionsTitle />
         ) : (
-          <ActionTitle action="LEARN" investigation />
+          <ActionTitle action="DISCOVER" investigation />
         )}
         {aq.questionBackgroundAudioUrl && (
           <AudioButton

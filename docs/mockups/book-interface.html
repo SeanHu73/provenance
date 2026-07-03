@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Provenance — Book Interface Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&family=Montserrat:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --cream: #FBF8F2;          /* page paper */
+    --desk: #241b16;           /* table behind the book */
+    --primary: #8B2538;        /* cranberry */
+    --secondary: #B8752B;      /* amber */
+    --bronze: #7E5320;         /* accent-dark */
+    --ink: #2C2418;            /* body text */
+    --ink-soft: #6B5D4F;       /* secondary text */
+    --hair: rgba(44,36,24,0.14);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background:
+      radial-gradient(120% 80% at 50% 0%, #2f241d 0%, var(--desk) 60%, #190f0b 100%);
+    font-family: 'Newsreader', Georgia, serif;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* Phone-sized reading frame */
+  .device {
+    position: relative;
+    width: min(430px, 100vw);
+    height: min(900px, 100vh);
+    overflow: hidden;            /* clip pages waiting off-screen right */
+  }
+
+  /* ---- Simplified chrome ---- */
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 60;
+    display: flex; align-items: center; justify-content: center;
+    padding: 14px 18px 8px;
+    pointer-events: none;
+  }
+  .topbar .kicker {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(251,248,242,0.55);
+  }
+  /* hairline reading progress */
+  .progress {
+    position: absolute; top: 0; left: 0; height: 2px; z-index: 61;
+    background: var(--secondary);
+    transition: width .8s cubic-bezier(.22,.61,.36,1);
+  }
+
+  .bottombar {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 60;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 8px 8px;
+    pointer-events: none;
+  }
+  .nav {
+    pointer-events: auto;
+    width: 64px; height: 56px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: 0; cursor: pointer;
+    color: rgba(251,248,242,0.7);
+    transition: opacity .3s, color .2s;
+  }
+  .nav:active { color: #fff; }
+  .nav[disabled] { opacity: 0.18; pointer-events: none; }
+  .nav svg { width: 26px; height: 26px; }
+  .folio {
+    pointer-events: none;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px; letter-spacing: 0.18em;
+    color: rgba(251,248,242,0.5);
+  }
+  /* lone, quiet inquiry affordance — replaces the old footer cluster */
+  .inquire {
+    position: absolute; bottom: 70px; right: 14px; z-index: 60;
+    pointer-events: auto;
+    width: 38px; height: 38px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(251,248,242,0.10);
+    border: 1px solid rgba(251,248,242,0.22);
+    color: rgba(251,248,242,0.8);
+    font-family: 'Newsreader', serif; font-style: italic; font-size: 20px;
+    cursor: pointer;
+  }
+
+  /* ---- The book ---- */
+  .book { position: absolute; inset: 0; transform-style: preserve-3d; }
+
+  .leaf {
+    position: absolute;
+    inset: 18px 14px 62px 14px;          /* generous margins = reading page */
+    background: var(--cream);
+    border-radius: 8px;
+    /* Leading-edge shadow: as a page slides across it casts a soft shadow
+       to its left onto the page beneath — the e-reader "sheet glides over"
+       cue. Flat 2D slide, no physical curl or spine. */
+    box-shadow: -16px 0 30px rgba(0,0,0,0.20), 0 14px 40px rgba(0,0,0,0.32);
+    transition: transform .34s cubic-bezier(.33, 0, .12, 1);
+    overflow: hidden;
+    will-change: transform;
+  }
+  /* e-reader slide has no binding gradient and no curl shade */
+  .leaf::before { display: none; }
+  .leaf .shade { display: none; }
+
+  /* scroll surface inside a page (snap scroll preserved) */
+  .page-scroll {
+    position: absolute; inset: 0;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .page-scroll::-webkit-scrollbar { display: none; }
+
+  .section {
+    position: relative;
+    min-height: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    padding: 40px 34px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+
+  /* vertical "where am I within this page" indicator for multi-section
+     (snap-scroll) pages — distinct from the horizontal page number. */
+  .snapdots {
+    position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
+    z-index: 7; display: flex; flex-direction: column; gap: 8px;
+    pointer-events: none;
+  }
+  .snapdots span {
+    width: 6px; height: 6px; border-radius: 999px;
+    background: rgba(44,36,24,0.18); transition: all .3s ease;
+  }
+  .snapdots span.on { background: var(--primary); height: 16px; }
+
+  /* ---- Typography (simplified, print-like) ---- */
+  .label {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600; font-size: 11px;
+    letter-spacing: 0.26em; text-transform: uppercase;
+    color: var(--bronze);
+    margin-bottom: 18px;
+  }
+  h1.display {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400; line-height: 1.05;
+    font-size: 44px; color: var(--ink);
+    margin: 0 0 14px;
+  }
+  h2.heading {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400; font-size: 30px; line-height: 1.1;
+    color: var(--ink); margin: 0 0 16px;
+  }
+  p.body {
+    font-size: 20px; line-height: 1.62; color: var(--ink);
+    margin: 0 0 18px; font-weight: 350;
+  }
+  p.body.drop::first-letter {
+    font-family: 'DM Serif Display', serif;
+    font-size: 58px; float: left; line-height: 0.78;
+    padding: 6px 10px 0 0; color: var(--primary);
+  }
+  .lede { font-size: 21px; color: var(--ink-soft); font-style: italic; line-height: 1.5; }
+  .rule { width: 46px; height: 2px; background: var(--secondary); margin: 4px 0 22px; border: 0; }
+
+  .question {
+    font-family: 'Newsreader', serif;
+    font-size: 28px; line-height: 1.32; color: var(--primary);
+    font-weight: 400;
+  }
+
+  .photo {
+    width: 100%; height: 190px; border-radius: 6px; margin: 6px 0 22px;
+    background-size: cover; background-position: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  }
+  .pull {
+    border-left: 3px solid var(--secondary);
+    padding: 4px 0 4px 18px; margin: 6px 0 20px;
+    font-family: 'DM Serif Display', serif; font-size: 24px; line-height: 1.25;
+    color: var(--bronze);
+  }
+  .wordmark {
+    font-family: 'Montserrat', sans-serif; font-weight: 600;
+    font-size: 13px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--primary); margin-bottom: 30px;
+  }
+  .byline { font-size: 15px; color: var(--ink-soft); font-style: italic; margin-top: 26px; }
+
+  /* snap hint pill */
+  .scrollhint {
+    position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%);
+    z-index: 7; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    pointer-events: none; animation: breathe 2.4s ease-in-out infinite;
+  }
+  .scrollhint .pill {
+    font-family: 'Montserrat', sans-serif; font-size: 9px; font-weight: 600;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--cream); background: var(--primary);
+    padding: 4px 11px; border-radius: 999px;
+  }
+  .scrollhint svg { width: 22px; height: 22px; stroke: var(--primary); }
+  @keyframes breathe { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  /* reveal-on-snap section */
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .5s ease, transform .5s ease; }
+  .reveal.shown { opacity: 1; transform: none; }
+
+  .hint-tap {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    z-index: 60; color: rgba(251,248,242,0.4);
+    font-family: 'Montserrat', sans-serif; font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase; pointer-events: none;
+    animation: breathe 3s ease-in-out infinite;
+  }
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="progress" id="progress"></div>
+    <div class="topbar"><span class="kicker" id="kicker">Memorial Church · Act I</span></div>
+
+    <div class="book" id="book"><!-- leaves injected --></div>
+
+    <button class="inquire" title="Inquiries (mock)">?</button>
+
+    <div class="bottombar">
+      <button class="nav" id="prev" aria-label="Previous page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="folio" id="folio">1 / 6</span>
+      <button class="nav" id="next" aria-label="Next page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+    <div class="hint-tap">tap a page edge or use ‹ › to turn</div>
+  </div>
+
+<script>
+  // Each "page" is a tour phase, simplified to a single quiet reading surface.
+  const PHOTO_A = "https://images.unsplash.com/photo-1438032005730-c779502df39b?q=80&w=800&auto=format&fit=crop";
+  const PHOTO_B = "https://images.unsplash.com/photo-1473177104440-ffee2f376098?q=80&w=800&auto=format&fit=crop";
+
+  const pages = [
+    // 1. Title page (book-cover feel)
+    { kicker: "Memorial Church", html: `
+      <div class="section" style="justify-content:flex-end">
+        <div class="wordmark">Provenance</div>
+        <h1 class="display">The Stones<br/>Remember</h1>
+        <hr class="rule"/>
+        <p class="lede">A walking tour of Memorial Church, told in three acts.</p>
+        <p class="byline">Turn the page to begin.</p>
+      </div>` },
+
+    // 2. Setting the Scene (Opening Frame)
+    { kicker: "Memorial Church · Act I", html: `
+      <div class="section">
+        <div class="label">Setting the Scene</div>
+        <div class="photo" style="background-image:url('${PHOTO_A}')"></div>
+        <p class="body">You're standing where the quad opens onto the church facade. Before you walk in, take a breath and look at the whole of it — the arch, the mosaic, the way the building answers the open sky.</p>
+        <p class="body">For the next hour, every stop asks you to notice something, learn its story, and talk it through.</p>
+      </div>` },
+
+    // 3. A stop — three stacked SNAP sections inside ONE page
+    { kicker: "Stop 1 · The Facade", snap: true, html: `
+      <div class="section">
+        <div class="label">Background</div>
+        <p class="body drop">The mosaic above the entrance was assembled in Venice and shipped in numbered crates, a hundred thousand pieces of glass arriving as a flat-packed sermon.</p>
+        <p class="body">It depicts a moment its donors chose with care — and the choosing is its own small history.</p>
+        <div class="scrollhint"><span class="pill">Keep reading</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+      <div class="section">
+        <div class="reveal">
+          <div class="label">Look Around</div>
+          <h2 class="heading">Find the seam.</h2>
+          <p class="body">Somewhere across the mosaic the tilework shifts by a hair — a repair from a century of weather. Can the group find where the old glass meets the new?</p>
+          <div class="scrollhint"><span class="pill">One more</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="reveal">
+          <div class="label">Closer</div>
+          <div class="photo" style="background-image:url('${PHOTO_B}')"></div>
+          <p class="body">Up close, the new glass runs a half-shade cooler than the old. The restorers didn't hide the mend — they signed it.</p>
+          <p class="lede" style="font-size:16px; font-style:italic; color:var(--bronze)">Found it? Turn the page to learn why &rsaquo;</p>
+        </div>
+      </div>` },
+
+    // 4. Context (reveal)
+    { kicker: "Stop 1 · The Facade", html: `
+      <div class="section">
+        <div class="label">Context</div>
+        <p class="body">When the original mosaic was damaged, the restorers faced a quiet question: match the old glass exactly, or let the repair show?</p>
+        <div class="pull">They chose to let it show. The seam is the point.</div>
+        <p class="body">A visible mend tells the truth about time. It says the building has been cared for — that someone, generations on, decided it was worth keeping.</p>
+      </div>` },
+
+    // 5. A question (stripped to almost nothing)
+    { kicker: "Stop 1 · Discuss", html: `
+      <div class="section" style="justify-content:center">
+        <div class="label">Discuss</div>
+        <p class="question">When we repair something old, what do we owe to the way it used to look — and what do we owe to the truth of its age?</p>
+      </div>` },
+
+    // 6. Community Forum (simplified)
+    { kicker: "Act I · Community", html: `
+      <div class="section">
+        <div class="label">Community Forum</div>
+        <p class="lede" style="margin-bottom:24px">What others have been asking here.</p>
+        <p class="body" style="font-size:19px">“Who paid for the restoration, and did they get a say in what it looked like?”<br/><span style="font-size:13px;color:var(--ink-soft)">— Mara · ♥ 4 · 2 responses</span></p>
+        <hr class="rule" style="margin:18px 0"/>
+        <p class="body" style="font-size:19px">“Is the seam ever pointed out on the official tour?”<br/><span style="font-size:13px;color:var(--ink-soft)">— Devin · ♥ 1 · tap to respond</span></p>
+      </div>` },
+  ];
+
+  const book = document.getElementById('book');
+  const folio = document.getElementById('folio');
+  const kicker = document.getElementById('kicker');
+  const progress = document.getElementById('progress');
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+
+  let current = 0;
+  let animating = false;
+
+  // Build leaves. Higher index = higher z, so a later page slides in ON TOP
+  // of the current one (the e-reader cover-slide). Pages ahead of the current
+  // one wait just off-screen to the right.
+  const leaves = pages.map((p, i) => {
+    const leaf = document.createElement('div');
+    leaf.className = 'leaf';
+    leaf.style.zIndex = String(i);
+    leaf.innerHTML = `<div class="shade"></div><div class="page-scroll">${p.html}</div>`;
+    book.appendChild(leaf);
+    return leaf;
+  });
+
+  function applyTransforms() {
+    // Current page and everything before it rest at 0; later pages wait
+    // off-screen right. Going forward, the next page slides left to cover;
+    // going back, the current page slides right to reveal the one beneath.
+    leaves.forEach((leaf, i) => {
+      leaf.style.transform = (i <= current) ? 'translateX(0)' : 'translateX(108%)';
+    });
+  }
+
+  function setChrome() {
+    folio.textContent = `${current + 1} / ${pages.length}`;
+    kicker.textContent = pages[current].kicker;
+    progress.style.width = ((current) / (pages.length - 1) * 100) + '%';
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = current === pages.length - 1;
+  }
+
+  function go(dir) {
+    if (animating) return;
+    const target = current + dir;
+    if (target < 0 || target >= pages.length) return;
+    animating = true;
+
+    current = target;
+    applyTransforms();
+    setChrome();
+
+    setTimeout(() => { animating = false; }, 360);
+  }
+
+  applyTransforms();
+  setChrome();
+
+  nextBtn.addEventListener('click', () => go(1));
+  prevBtn.addEventListener('click', () => go(-1));
+
+  // Tap the left/right edge of a page to turn (kept to edges so reading &
+  // snap-scrolling in the middle never trigger a flip).
+  book.addEventListener('click', (e) => {
+    const rect = book.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x > rect.width * 0.72) go(1);
+    else if (x < rect.width * 0.28) go(-1);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') go(1);
+    if (e.key === 'ArrowLeft') go(-1);
+  });
+
+  // Snap-scroll behaviour, per page:
+  //  • fade each reveal section in as it snaps into view (+ haptic)
+  //  • show a vertical section indicator on multi-section pages so the
+  //    reader can tell "scroll down" (within page) from "turn page".
+  leaves.forEach((leaf) => {
+    const scroll = leaf.querySelector('.page-scroll');
+    const sections = [...leaf.querySelectorAll('.section')];
+
+    leaf.querySelectorAll('.reveal').forEach((reveal) => {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((en) => {
+          if (en.isIntersecting) {
+            if (navigator.vibrate) navigator.vibrate(10);
+            reveal.classList.add('shown');
+          }
+        });
+      }, { root: scroll, threshold: 0.4 });
+      io.observe(reveal);
+    });
+
+    if (sections.length > 1) {
+      const dots = document.createElement('div');
+      dots.className = 'snapdots';
+      dots.innerHTML = sections.map(() => '<span></span>').join('');
+      leaf.appendChild(dots);
+      const setActive = () => {
+        const idx = Math.round(scroll.scrollTop / scroll.clientHeight);
+        [...dots.children].forEach((d, i) => d.classList.toggle('on', i === idx));
+      };
+      scroll.addEventListener('scroll', setActive, { passive: true });
+      setActive();
+    }
+  });
+</script>
+</body>
+</html>

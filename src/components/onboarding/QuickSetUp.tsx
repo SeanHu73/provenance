@@ -121,8 +121,8 @@ function FlowStep({ onNext }: { onNext: () => void }) {
 
   return (
     <StepShell>
-      <p className="text-[19px] font-serif italic text-text-secondary text-center">In this experience, you will</p>
-      <div className="mt-6 flex flex-col items-center gap-3">
+      <p className="text-[24px] font-serif italic text-text-secondary text-center">In this experience, you will</p>
+      <div className="mt-8 flex flex-col items-center gap-6">
         {FLOW.map((f, i) => (
           <div
             key={f.word}
@@ -134,11 +134,11 @@ function FlowStep({ onNext }: { onNext: () => void }) {
             }}
           >
             {i > 0 && (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--th-border)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="mb-1">
+              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--th-border)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
                 <path d="M12 5v14M6 13l6 6 6-6" />
               </svg>
             )}
-            <span className="font-display font-bold leading-none" style={{ fontSize: 'clamp(34px, 10vw, 54px)', color: f.colour }}>{f.word}</span>
+            <span className="font-display font-bold leading-none" style={{ fontSize: 'clamp(42px, 13vw, 66px)', color: f.colour }}>{f.word}</span>
           </div>
         ))}
       </div>
@@ -201,10 +201,14 @@ function MapStep({ onNext }: { onNext: () => void }) {
       {/* Sample Stop card */}
       {phase === 'card' && (
         <div className="absolute inset-x-0 bottom-0 z-30 px-3 pb-3 animate-slide-up">
-          <div className="rounded-2xl shadow-lg p-5 space-y-4 text-left" style={{ backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)' }}>
-            <p className="text-[14px] uppercase tracking-[0.18em] font-display font-semibold" style={{ color: 'var(--th-primary)' }}>Sample Stop</p>
-            <p className="text-[15px] font-serif text-text-secondary leading-relaxed">This is where a real stop&rsquo;s details would appear once you walk to it.</p>
-            <PrimaryButton onClick={onNext}>I&rsquo;m here — explore this stop</PrimaryButton>
+          <div className="rounded-2xl shadow-lg overflow-hidden text-left" style={{ backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/photos/archival/memorial_court_post1906_arch.jpg" alt="" className="w-full h-40 object-cover" />
+            <div className="p-5 space-y-4">
+              <p className="text-[14px] uppercase tracking-[0.18em] font-display font-semibold" style={{ color: 'var(--th-primary)' }}>Sample Stop</p>
+              <p className="text-[15px] font-serif text-text-secondary leading-relaxed">This is where a real stop&rsquo;s details would appear once you walk to it.</p>
+              <PrimaryButton onClick={onNext}>I&rsquo;m here — explore this stop</PrimaryButton>
+            </div>
           </div>
         </div>
       )}
@@ -221,11 +225,11 @@ function FindLearnStep({ onNext }: { onNext: () => void }) {
         <ActionRow
           label="FIND"
           desc="Look for something in the area."
-          glyph={<><circle cx="6" cy="15" r="4" /><circle cx="18" cy="15" r="4" /><path d="M10 15a2 2 0 0 1 4 0" /><path d="M6 11V6a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v5" /><path d="M18 11V6a2 2 0 0 0-2-2h0a2 2 0 0 0-2 2v5" /></>}
+          glyph={<><path d="M4 9.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2V15a2.5 2 0 0 1-5 0z" /><path d="M15 9.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2V15a2.5 2 0 0 1-5 0z" /><path d="M9 11h6" /><path d="M5 7.5v-1a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1" /><path d="M16 7.5v-1a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1" /></>}
         />
         <ActionRow
-          label="LEARN"
-          desc="Read or listen to learn about the site."
+          label="DISCOVER"
+          desc="Read or listen to discover history about this site."
           glyph={<><path d="M9 18h6" /><path d="M10 22h4" /><path d="M12 2a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2z" /></>}
         />
       </div>

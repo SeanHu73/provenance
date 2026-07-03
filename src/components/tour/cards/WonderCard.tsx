@@ -305,7 +305,7 @@ export default function WonderCard({ stop, onContinue, hasContext = true, isFina
         className="relative min-h-full flex flex-col justify-center space-y-5 px-5 pt-10 pb-6"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        {asInstructions ? <InstructionsTitle /> : <ActionTitle action="LEARN" />}
+        {asInstructions ? <InstructionsTitle /> : <ActionTitle action="DISCOVER" />}
         {wonder.questionBackgroundAudioUrl && (
           <AudioButton
             audioUrl={wonder.questionBackgroundAudioUrl}

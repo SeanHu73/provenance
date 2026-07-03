@@ -132,7 +132,7 @@ export default function EqClosingCard({ tour, session, onComplete }: Props) {
           className="relative min-h-full flex flex-col justify-center space-y-6 px-5 pt-10 pb-6"
           style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
         >
-          <ActionTitle action="LEARN" investigation />
+          <ActionTitle action="DISCOVER" investigation />
           <div>
             <SectionSubtitle className="mb-2">Tour complete</SectionSubtitle>
             {eq.closingFraming && (

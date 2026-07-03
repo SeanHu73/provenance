@@ -405,7 +405,7 @@ export interface Tour {
     questionBackgroundAudioAutoplayDisabled?: boolean;
     questionBackgroundPhotos?: StopPhoto[];
     /** When true, explorer renders the background block as italic
-     *  "Instructions" instead of the LEARN + "Background" treatment. */
+     *  "Instructions" instead of the DISCOVER + "Background" treatment. */
     questionBackgroundAsInstructions?: boolean;
     // Scene-setting screen
     scenePhotoUrl: string | null;      // Photo of where to find the starting point

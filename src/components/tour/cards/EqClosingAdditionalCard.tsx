@@ -175,7 +175,7 @@ export default function EqClosingAdditionalCard({ tour, session, onContinue }: P
         {asInstructions ? (
           <InstructionsTitle />
         ) : (
-          <ActionTitle action="LEARN" investigation />
+          <ActionTitle action="DISCOVER" investigation />
         )}
         {item.questionBackgroundAudioUrl && (
           <AudioButton
