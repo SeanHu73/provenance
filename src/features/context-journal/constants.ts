@@ -106,7 +106,7 @@ export const LENSES: LensDef[] = [
     key: 'place', label: 'Place', colour: '#347C4A',
     categories: ['Geography', 'Natural resources'],
     definition: 'Geography | Natural resources',
-    questions: ['What resources are important?', 'How did the climate affect events?'],
+    questions: ['What resources were important?', 'How did the climate affect events?'],
   },
   {
     key: 'attitudes', label: 'Affairs', colour: '#B8752B',

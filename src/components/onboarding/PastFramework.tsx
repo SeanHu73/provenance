@@ -29,11 +29,8 @@ export default function PastFramework() {
     });
 
   return (
-    <div
-      className="rounded-2xl px-4 py-5 shadow-xl"
-      style={{ backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)' }}
-    >
-      <div className="flex flex-col gap-5">
+    <div>
+      <div className="flex flex-col gap-4">
         {LENSES.map((lens) => {
           const isRevealed = revealed.has(lens.key);
           return (
@@ -44,8 +41,8 @@ export default function PastFramework() {
               onClick={() => reveal(lens.key)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); reveal(lens.key); } }}
               aria-label={isRevealed ? lens.label : `Reveal the ${lens.label[0]} lens`}
-              className="w-full text-left flex items-center gap-3 pl-3.5"
-              style={{ borderLeft: `3px solid ${lens.colour}`, cursor: isRevealed ? 'default' : 'pointer' }}
+              className="w-full text-left flex items-center gap-3 rounded-2xl pl-4 pr-4 py-4 shadow-lg"
+              style={{ backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)', borderLeft: `4px solid ${lens.colour}`, cursor: isRevealed ? 'default' : 'pointer' }}
             >
               <div className="flex-1 min-w-0">
                 {/* The big initial always shows; the rest of the word unblurs on tap. */}

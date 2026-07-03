@@ -30,22 +30,22 @@ export default function PastLensCard({ lens, onClose }: { lens: LensDef; onClose
         transition={{ type: 'spring', stiffness: 320, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* header — coloured band with the lens title + definition */}
-        <div className="px-6 pt-6 pb-5" style={{ backgroundColor: lens.colour }}>
+        {/* header — coloured band with just the (enlarged) lens title; the
+            sub-topics are shown once below, beside their icons. */}
+        <div className="px-6 pt-6 pb-6" style={{ backgroundColor: lens.colour }}>
           <div className="flex items-start justify-between gap-3">
-            <h2 className="font-display font-bold text-warm-white leading-none" style={{ fontSize: 'clamp(30px, 8vw, 42px)' }}>{lens.label}</h2>
+            <h2 className="font-display font-bold text-warm-white leading-none" style={{ fontSize: 'clamp(40px, 11vw, 56px)' }}>{lens.label}</h2>
             <button onClick={onClose} aria-label="Close" className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-warm-white bg-white/20 hover:bg-white/30 text-2xl leading-none">&times;</button>
           </div>
-          <p className="mt-2 font-serif text-warm-white/95 text-[16px] leading-snug">{lens.definition}</p>
         </div>
 
         <div className="overflow-y-auto px-6 py-5" style={{ maxHeight: 'calc(86vh - 120px)' }}>
-          {/* category icons */}
-          <div className="flex flex-wrap gap-x-5 gap-y-3">
+          {/* category icons + sub-topics (the definition, shown once, larger) */}
+          <div className="flex flex-wrap gap-x-6 gap-y-4">
             {lens.categories.map((c) => (
-              <div key={c} className="flex items-center gap-2" style={{ color: lens.colour }}>
+              <div key={c} className="flex items-center gap-2.5" style={{ color: lens.colour }}>
                 <CategoryIcon name={c} />
-                <span className="text-[13px] font-semibold text-text-primary">{c}</span>
+                <span className="text-[16px] font-semibold text-text-primary">{c}</span>
               </div>
             ))}
           </div>
@@ -71,7 +71,7 @@ export default function PastLensCard({ lens, onClose }: { lens: LensDef; onClose
 
 /** A small line icon for each P.A.S.T. sub-topic. */
 function CategoryIcon({ name }: { name: string }) {
-  const p = { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none' as const, stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  const p = { width: 28, height: 28, viewBox: '0 0 24 24', fill: 'none' as const, stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
   switch (name) {
     case 'Geography':
       return <svg {...p}><path d="M3 19l5.5-8 3.5 4.5L15 12l6 7z" /><circle cx="7" cy="6.5" r="1.5" /></svg>;
