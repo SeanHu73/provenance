@@ -16,14 +16,17 @@ export default function PastFramework() {
   const [openLens, setOpenLens] = useState<LensDef | null>(null);
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="flex flex-col gap-6">
       {LENSES.map((lens) => (
         <div key={lens.key} className="flex items-center gap-3 pl-3.5" style={{ borderLeft: `3px solid ${lens.colour}` }}>
           <div className="flex-1 min-w-0">
-            <div className="font-display leading-none" style={{ color: lens.colour, fontSize: 'clamp(24px, 7vw, 34px)' }}>
-              {lens.label}
+            {/* Enlarged initial makes the P·A·S·T acronym obvious; the rest of the
+                word stays a smaller, uniform size across all four lenses. */}
+            <div className="font-display leading-none flex items-baseline" style={{ color: lens.colour }}>
+              <span style={{ fontSize: 'clamp(40px, 12vw, 56px)' }}>{lens.label[0]}</span>
+              <span style={{ fontSize: 'clamp(22px, 6.5vw, 30px)' }}>{lens.label.slice(1)}</span>
             </div>
-            <div className="font-serif mt-1.5 leading-snug" style={{ color: 'var(--th-surface)', opacity: 0.88, fontSize: 14 }}>
+            <div className="font-serif mt-1.5 leading-snug" style={{ color: 'var(--th-surface)', opacity: 0.95, fontSize: 15 }}>
               {lens.definition}
             </div>
           </div>
