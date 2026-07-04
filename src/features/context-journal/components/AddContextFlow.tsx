@@ -55,6 +55,9 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
   const [geometry, setGeometry] = useState(initial?.geometry ?? null);
   const [camera, setCamera] = useState(initial?.camera ?? null);
   const [mapType, setMapType] = useState<MapType>(initial?.mapType ?? 'default');
+  // Opt-in to showing place/time on the reader page. Old entries with geometry
+  // default to shown; new entries start off.
+  const [includePlaceTime, setIncludePlaceTime] = useState(initial?.includePlaceTime ?? !!initial?.geometry);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Step 1 asks only for the framing question; step 2 is the full form (with the
@@ -185,6 +188,7 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
         geometry,
         camera,
         mapType,
+        includePlaceTime,
         media: uploaded,
         thumbnailMediaId,
         sources: uploadedSources,
@@ -411,6 +415,14 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
 
             {showPlaceTime && (
             <div className="px-3 pb-3 space-y-5 border-t pt-3" style={{ borderColor: 'var(--th-border)' }}>
+          {/* opt-in: whether place & time appear on the reader page */}
+          <div>
+            <label className="flex items-center gap-2 text-[13px] cursor-pointer" style={{ color: 'var(--text-primary)' }}>
+              <input type="checkbox" checked={includePlaceTime} onChange={(e) => setIncludePlaceTime(e.target.checked)} />
+              <span className="font-semibold">Show the map &amp; timeline on the context page</span>
+            </label>
+            <p className="mt-1 text-[11px] text-text-muted">If unticked, place &amp; time stay editable here but don&apos;t appear when reading the context.</p>
+          </div>
           {/* time range */}
           <Field label="Time range (years)">
             <div className="flex items-center gap-3">

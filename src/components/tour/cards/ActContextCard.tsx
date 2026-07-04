@@ -165,8 +165,8 @@ export default function ActContextCard({ onComplete, aiResponse = false }: Props
           </div>
         )}
 
-        {/* map + timeline (when the context has a location) */}
-        {ctx.geometry && (
+        {/* map + timeline — only when the editor opted in (old items: if a location was set) */}
+        {(ctx.includePlaceTime ?? !!ctx.geometry) && ctx.geometry && (
           <div className="space-y-3">
             <div className="h-64 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
               <ContextMapLoader

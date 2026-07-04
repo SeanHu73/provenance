@@ -379,6 +379,9 @@ export interface ActContextItem {
   geometry: Geometry | null;
   camera: { center: [number, number]; zoom: number } | null;
   mapType: 'default' | 'satellite';
+  /** Whether the map + timeline show on the reader context page. `undefined` on
+   *  older items → falls back to "show when geometry is set". */
+  includePlaceTime?: boolean;
   media: ContextMediaItem[];
   thumbnailMediaId: string | null;
   /** An uploaded voiceover for this context's narration. When present it's the

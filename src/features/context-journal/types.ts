@@ -77,6 +77,10 @@ export interface ContextEntry {
   camera: Camera | null;
   /** Basemap the context was authored on; the viewer's map switches to it on focus. */
   mapType: MapType;
+  /** Whether the map + timeline appear on the reader context page. `undefined` on
+   *  older entries → falls back to "show when a location was set". Editors opt in
+   *  with a tick; the editor always keeps the collapsible place/time controls. */
+  includePlaceTime?: boolean;
   /** Photos + audio. The thumbnail photo is chosen by `thumbnailMediaId`. */
   media: ContextMedia[];
   thumbnailMediaId: string | null;

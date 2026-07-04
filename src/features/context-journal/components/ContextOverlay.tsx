@@ -125,18 +125,22 @@ export default function ContextOverlay({
 
         {/* scroll body — map/timeline pinned at the top, scrolls away as you read */}
         <div className="flex-1 overflow-y-auto">
-          {/* 1 — the context's map + timeline */}
-          <div style={{ height: '34vh', minHeight: 220 }}>
-            <ContextMapLoader
-              mode="browse"
-              defaultView={defaultView}
-              mapType={entry.mapType}
-              focus={{ geometry: entry.geometry, camera: entry.camera, colour }}
-            />
-          </div>
-          <div className="border-t border-b" style={{ borderColor: 'var(--th-border)' }}>
-            <ContextTimeline value={range} onChange={setRange} domain={localDomain} onDomainChange={changeDomain} />
-          </div>
+          {/* 1 — the context's map + timeline (only when the editor opted in) */}
+          {(entry.includePlaceTime ?? !!entry.geometry) && (
+            <>
+              <div style={{ height: '34vh', minHeight: 220 }}>
+                <ContextMapLoader
+                  mode="browse"
+                  defaultView={defaultView}
+                  mapType={entry.mapType}
+                  focus={{ geometry: entry.geometry, camera: entry.camera, colour }}
+                />
+              </div>
+              <div className="border-t border-b" style={{ borderColor: 'var(--th-border)' }}>
+                <ContextTimeline value={range} onChange={setRange} domain={localDomain} onDomainChange={changeDomain} />
+              </div>
+            </>
+          )}
 
           {/* 2 — title, question, quick answer */}
           <div className="px-5 pt-4">
