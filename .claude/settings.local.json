@@ -102,7 +102,12 @@
       "Skill(claude-api)",
       "Bash(xargs echo \"lines:\")",
       "Bash(awk '/export interface ActContextItem/,/^}/' src/lib/types.ts)",
-      "PowerShell($p = \\(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue\\).OwningProcess; if \\($p\\) { Stop-Process -Id $p -Force; Write-Output \"stopped dev server \\(pid $p\\)\" } else { Write-Output \"no listener on 3000\" })"
+      "PowerShell($p = \\(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue\\).OwningProcess; if \\($p\\) { Stop-Process -Id $p -Force; Write-Output \"stopped dev server \\(pid $p\\)\" } else { Write-Output \"no listener on 3000\" })",
+      "Bash(awk '/export interface Act /,/^}/' src/lib/types.ts)",
+      "Bash(awk '/export interface ViewedContext/,/^}/' src/lib/types.ts)",
+      "Bash(awk '/export interface ContextSource/,/^}/' src/features/context-journal/types.ts)",
+      "Bash(awk '/export interface ContextMedia /,/^}/' src/features/context-journal/types.ts)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)"
     ]
   }
 }
