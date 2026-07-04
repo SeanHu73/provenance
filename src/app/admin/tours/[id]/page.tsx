@@ -22,6 +22,7 @@ import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-goo
 import { Tour, Stop, Detour, StopPhoto, Act, ActContextItem, TourMode } from '@/lib/types';
 import { ttsSanitize, hashText } from '@/lib/tts-text';
 import { fetchTtsBlob } from '@/lib/tts-client';
+import { deleteStorageFileByUrl } from '@/lib/storage-utils';
 import { getTour, saveTour, deleteTour, blankStop, blankDetour, getActiveStops, setActiveStops, duplicateStops, getTourMode, blankAct, blankOpeningFrame } from '@/lib/tours-store';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -454,7 +455,7 @@ export default function TourEditorPage() {
     const stops = getActiveStops(tour);
     // Limit to the chosen stop, or every stop when none is selected.
     const targetStops = narrStopId ? stops.filter((s) => s.id === narrStopId) : stops;
-    type Task = { stopId: string; section: 'seed' | 'reveal'; clean: string; hash: string };
+    type Task = { stopId: string; section: 'seed' | 'reveal'; clean: string; hash: string; oldUrl: string | null };
     const tasks: Task[] = [];
     for (const stop of targetStops) {
       const sections: { section: 'seed' | 'reveal'; sec: Stop['seed'] | Stop['reveal']; source: string }[] = [
@@ -467,7 +468,7 @@ export default function TourEditorPage() {
         if (sec.audioUrl && sec.audioIsVoiceover === true) continue; // uploaded voiceover
         const hash = hashText(clean);
         if (sec.ttsAudioUrl && sec.ttsAudioHash === hash) continue;  // already fresh
-        tasks.push({ stopId: stop.id, section, clean, hash });
+        tasks.push({ stopId: stop.id, section, clean, hash, oldUrl: sec.ttsAudioUrl ?? null });
       }
     }
     if (tasks.length === 0) {
@@ -489,6 +490,8 @@ export default function TourEditorPage() {
           if (t.section === 'seed') s.seed = { ...s.seed, ttsAudioUrl: url, ttsAudioHash: t.hash };
           else s.reveal = { ...s.reveal, ttsAudioUrl: url, ttsAudioHash: t.hash };
         }
+        // Remove the now-orphaned previous clip (the text changed → new hash).
+        if (t.oldUrl && t.oldUrl !== url) void deleteStorageFileByUrl(t.oldUrl);
       } catch (err) {
         errors++;
         console.error('[narration] generate failed:', err);

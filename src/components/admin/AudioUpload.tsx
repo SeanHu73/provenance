@@ -5,6 +5,8 @@
  * Shows URL input + upload button + title field + preview player.
  */
 
+import { deleteStorageFileByUrl } from '@/lib/storage-utils';
+
 interface Props {
   audioUrl: string | null;
   audioTitle?: string | null;
@@ -59,7 +61,9 @@ export default function AudioUpload({ audioUrl, audioTitle, onChange, onTitleCha
             // that re-reads the same stale parent snapshot and clobbers this
             // one — restoring the old URL (the "Remove does nothing" bug).
             // With no URL the title input is hidden, so the stale title is inert.
-            onClick={() => onChange(null)}
+            // Also delete the underlying Storage blob (audio isn't shared like
+            // library photos are) so removal doesn't leave a zombie file.
+            onClick={() => { const old = audioUrl; onChange(null); void deleteStorageFileByUrl(old); }}
             className="text-xs text-red-600 hover:underline shrink-0"
           >
             Remove

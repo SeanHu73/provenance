@@ -19,6 +19,7 @@ import {
   deleteDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { deleteStorageFileByUrl } from './storage-utils';
 import { Photo } from './types';
 
 const PHOTOS_COLLECTION = 'memorial-church-photos';
@@ -72,5 +73,15 @@ export async function savePhoto(photo: Photo): Promise<Photo> {
 }
 
 export async function deletePhoto(id: string): Promise<void> {
+  // The photo library is the source of truth for photos, so deleting here also
+  // removes the underlying Storage blob (best-effort; external URLs are left).
+  // NOTE: this frees the file for good — any tour still referencing it will show
+  // a broken image, which is the intended meaning of deleting from the library.
+  try {
+    const snap = await getDoc(doc(db, PHOTOS_COLLECTION, id));
+    if (snap.exists()) await deleteStorageFileByUrl((snap.data() as Photo).url);
+  } catch (err) {
+    console.error('[photos-store] blob delete failed:', err);
+  }
   await deleteDoc(doc(db, PHOTOS_COLLECTION, id));
 }
