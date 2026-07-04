@@ -32,6 +32,7 @@ import AudioUpload from '@/components/admin/AudioUpload';
 import PhotoOverlayEditor from '@/components/admin/PhotoOverlayEditor';
 import PhotoCueEditor from '@/components/admin/PhotoCueEditor';
 import ContextJournalConfig from '@/features/context-journal/admin/ContextJournalConfig';
+import KnowledgeBaseEditor from '@/components/admin/KnowledgeBaseEditor';
 import AddContextFlow from '@/features/context-journal/components/AddContextFlow';
 import type { ContextDraft } from '@/features/context-journal/types';
 import { LENS_BY_KEY } from '@/features/context-journal/constants';
@@ -1122,6 +1123,12 @@ export default function TourEditorPage() {
         <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-3">
           <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Context Journal</h2>
           <ContextJournalConfig tourId={tour.id} />
+        </section>
+
+        {/* Knowledge base — the Context Detective's verified base for this tour */}
+        <section className="mb-8 p-4 rounded border-2 border-indigo-300 bg-indigo-50/40 space-y-3">
+          <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Knowledge base (Context Detective)</h2>
+          <KnowledgeBaseEditor tourId={tour.id} />
         </section>
 
         {/* Background photo */}

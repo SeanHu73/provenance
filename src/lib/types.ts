@@ -238,6 +238,31 @@ export interface ActContext {
 /** A P.A.S.T. lens key (shared with the Context Journal's PastCategory). */
 export type PastLens = 'place' | 'attitudes' | 'society' | 'technology';
 
+/** A curator-authored knowledge-base entry for the Context Detective. Stored in a
+ *  `knowledge-entries` subcollection **under the tour** (not a global collection),
+ *  so each tour carries its own verified base. The Detective retrieves these by
+ *  embedding cosine as its top-of-ladder, verified sources. */
+export interface KnowledgeEntry {
+  id: string;
+  title: string;
+  shortSummary: string;
+  longExplanation: string;
+  /** Trusted source links the curator attached — these steer the Detective's
+   *  live research (prioritised domains) and become the entry's citations. */
+  sourceLinks: { label: string; url: string }[];
+  lens: PastLens;
+  /** OpenAI text-embedding-3-small vector of (short summary + long explanation),
+   *  generated on save; drives in-code cosine retrieval. Omitted if embedding
+   *  failed on save (the entry still saves; retrieval just skips it). */
+  embedding?: number[];
+  embeddingModel?: string;
+  /** Hash of the text the embedding was generated from — lets a re-save skip
+   *  re-embedding when the text is unchanged. */
+  embeddingHash?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** A photo/audio clip on an Add-Context item (mirrors the journal's ContextMedia
  *  so an item can be cloned into a learner's Context Journal). */
 export interface ContextMediaItem {
