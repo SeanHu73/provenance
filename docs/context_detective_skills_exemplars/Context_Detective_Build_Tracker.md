@@ -48,9 +48,9 @@
 
 | Item | Status | Notes |
 |---|---|---|
-| Entry form | ✅ | Fields: title, short summary, long explanation, trusted source links, P.A.S.T. lens tag (one tap). Same shape as existing stop editor. Source field required — no entry without provenance. |
+| Entry form | ✅ **BUILT** (2026-07-04) | Fields: title, short summary, long explanation, trusted source links, P.A.S.T. lens tag (one tap). Source link required. `KnowledgeBaseEditor` in the tour admin view; entries live in a `knowledge-entries` subcollection under the tour doc (`memorial-church-tours/{tourId}/knowledge-entries/{id}`) — attached to the tour, not global. **Firestore rule needed** for the subcollection. |
 | Recommended-resources plumbing | ❓ | **New (from Research skill):** route must collect source links of every retrieved entry and inject them into search instructions as prioritised domains for that call. |
-| Embedding on save | ✅ | One API call per save; vector stored beside entry in Firestore. Embed summary + explanation together. |
+| Embedding on save | ✅ **BUILT** (2026-07-04) | `/api/embed` (OpenAI `text-embedding-3-small`, server-side key); embeds summary + explanation; vector + model + text-hash stored on the entry; re-embeds only when the text changes. In-code cosine (`cosineSimilarity` in `knowledge-store`). |
 | Approved Q&A → answer bank (retrieval rung 2) | 🔧 | Loop one: approved question/answer pairs from the review queue are embedded and retrieved alongside knowledge entries, treated as verified. **Decide:** same collection as entries or parallel collection merged at query time. |
 | Priority domain list | ❓ | Search is now open; approved domains are *prioritised*, not enforced. Per-site priority list still worth curating, but no longer blocks live search. |
 | Stop-by-stop content map | ❓ | What each tour stop covers, in project knowledge / Firestore — required for spoiler checks (Grounding + Gate). Proposed in the editing session (Round 28); not yet built. |
@@ -77,8 +77,8 @@
 
 ## 7. Suggested build order
 
-1. Knowledge base form + embedding on save (everything retrieval-shaped depends on it)
-2. `/api/ask` pipeline: retrieval → fit → draft → voice pass, with logging (testable end-to-end with just the P.A.S.T. skill + exemplars + a stub voice spec)
+1. ✅ **BUILT** (2026-07-04) — Knowledge base form + embedding on save (everything retrieval-shaped depends on it)
+2. 🔨 **IN PROGRESS** — `/api/ask` pipeline: retrieval → fit → draft → voice pass, with logging (testable end-to-end with just the P.A.S.T. skill + exemplars + a stub voice spec). Design agreed: embed question → cosine over the tour's `knowledge-entries` → research+draft (Opus 4.8, web search, "prioritise not enforce" domains) → voice (Opus 4.8) → parse (Haiku 4.5, structured JSON) → payload + Firestore log. Exemplars + skills in the cached system block, loaded from `docs/`. Needs `ANTHROPIC_API_KEY`.
 3. Visited-stops array + grounding inputs
 4. Fields decision → Parse skill → pass 3
 5. Deterministic lint + style ledger + permission tokens
