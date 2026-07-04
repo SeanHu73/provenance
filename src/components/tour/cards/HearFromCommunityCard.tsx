@@ -21,6 +21,7 @@ import {
   getUpvotedShareIds,
   saveUpvotedShareIds,
   submitShare,
+  promoteUnsharedShare,
   getForumIdentity,
   saveForumIdentity,
 } from '@/lib/community-store';
@@ -88,11 +89,23 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
         saveForumIdentity(identity);
       }
       try {
-        const shareId = await submitShare({
-          tourId: tour.id, actId: act.id, text: reflection.text,
-          photos: reflection.photos || [], pin: reflection.pin ?? null,
-          sessionId: session?.id || 'unknown', name: identity?.name, about: identity?.about,
-        });
+        // Every reflection was already recorded as an unshared community doc;
+        // sharing promotes that same doc (no duplicate). Fall back to a fresh
+        // submit if the record is missing (e.g. it failed to record earlier).
+        let shareId: string;
+        if (reflection.unsharedRecordId) {
+          shareId = reflection.unsharedRecordId;
+          await promoteUnsharedShare(shareId, {
+            text: reflection.text, photos: reflection.photos || [], pin: reflection.pin ?? null,
+            name: identity?.name, about: identity?.about,
+          });
+        } else {
+          shareId = await submitShare({
+            tourId: tour.id, actId: act.id, text: reflection.text,
+            photos: reflection.photos || [], pin: reflection.pin ?? null,
+            sessionId: session?.id || 'unknown', name: identity?.name, about: identity?.about,
+          });
+        }
         markReflectionShared(shareId);
         setShares((prev) => [{
           id: shareId, tourId: tour.id, actId: act.id, text: reflection.text,

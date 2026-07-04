@@ -366,6 +366,55 @@ export async function submitShare(input: {
   return id;
 }
 
+/** Record a reflection to the community as *unshared* — hidden from other
+ *  explorers, but kept so the admin can see every response. Anonymous (no name).
+ *  Returns the new doc id; if the explorer later shares, `promoteUnsharedShare`
+ *  flips this same doc to a normal share. */
+export async function recordUnsharedResponse(input: {
+  tourId: string;
+  actId: string;
+  text: string;
+  photos: string[];
+  pin?: { lat: number; lng: number; title?: string; note?: string } | null;
+  sessionId: string;
+}): Promise<string> {
+  const id = newId('cs');
+  const data = cleanUndefined({
+    tourId: input.tourId,
+    actId: input.actId,
+    text: input.text,
+    photos: input.photos,
+    pin: input.pin ? cleanUndefined(input.pin) : null,
+    sessionId: input.sessionId,
+    upvotes: 0,
+    status: 'approved' as ModerationStatus,
+    unshared: true,
+    createdAt: new Date().toISOString(),
+  });
+  await setDoc(doc(db, SHARES, id), data);
+  return id;
+}
+
+/** Promote a previously-unshared response to a published share: clear the
+ *  `unshared` flag and refresh its content (the reflection may have gained a
+ *  name, pin, or photos since it was first recorded). */
+export async function promoteUnsharedShare(id: string, patch: {
+  text: string;
+  photos: string[];
+  pin?: { lat: number; lng: number; title?: string; note?: string } | null;
+  name?: string;
+  about?: string;
+}): Promise<void> {
+  await updateDoc(doc(db, SHARES, id), cleanUndefined({
+    text: patch.text,
+    photos: patch.photos,
+    pin: patch.pin ? cleanUndefined(patch.pin) : null,
+    name: patch.name,
+    about: patch.about,
+    unshared: false,
+  }));
+}
+
 export async function submitComment(
   shareId: string,
   tourId: string,
@@ -389,7 +438,9 @@ export async function getShares(tourId: string, actId: string): Promise<Communit
   try {
     const snap = await getDocs(query(collection(db, SHARES), where('tourId', '==', tourId), where('actId', '==', actId), where('status', '==', 'approved')));
     const out: CommunityShare[] = [];
-    snap.forEach((d) => out.push({ id: d.id, ...d.data() } as CommunityShare));
+    // Unshared records are recorded for the admin only — never surface them to
+    // other explorers.
+    snap.forEach((d) => { const s = { id: d.id, ...d.data() } as CommunityShare; if (!s.unshared) out.push(s); });
     // Most upvoted first, then most recent.
     out.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0) || (b.createdAt || '').localeCompare(a.createdAt || ''));
     return out;

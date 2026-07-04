@@ -343,6 +343,10 @@ export interface ActReflectionResponse {
   pin?: { lat: number; lng: number; title?: string; note?: string } | null;
   sharedToCommunity?: boolean;
   shareId?: string;                  // CommunityShare doc id if shared
+  /** Every reflection is recorded to the community as an `unshared` CommunityShare
+   *  the moment it's saved (so the admin can see all responses). This is that
+   *  doc's id; if the explorer later shares, the same doc is promoted. */
+  unsharedRecordId?: string;
   /** Which prompt the learner answered — its id + text snapshot, or a custom one
    *  they wrote themselves (`isCustom`). */
   promptId?: string | null;
@@ -868,6 +872,11 @@ export interface CommunityShare {
   about?: string;
   upvotes?: number;          // per-device toggle in the explorer view
   status: ModerationStatus;  // created `approved` (immediate); admin can hide
+  /** True while the reflection was recorded but NOT published by the explorer.
+   *  Unshared records are hidden from other explorers (excluded in `getShares`)
+   *  but visible to admins under an "Unshared" category. Cleared when the
+   *  explorer chooses to share (the same doc is promoted). */
+  unshared?: boolean;
   createdAt: string;
 }
 

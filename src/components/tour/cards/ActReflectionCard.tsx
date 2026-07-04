@@ -16,7 +16,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { findActOfStop, reflectionPromptsOf, getActContexts } from '@/lib/tour-session';
 import { ActReflectionResponse } from '@/lib/types';
-import { uploadSharePhoto } from '@/lib/community-store';
+import { uploadSharePhoto, recordUnsharedResponse } from '@/lib/community-store';
 import { subscribeGuestContexts } from '@/features/context-journal/guest-contexts';
 import FormattedText from './FormattedText';
 
@@ -33,7 +33,7 @@ interface Props {
 type Selected = { id: string | null; text: string; isCustom: boolean };
 
 export default function ActReflectionCard({ onComplete }: Props) {
-  const { tour, currentStop } = useTour();
+  const { tour, session, currentStop } = useTour();
   const act = tour && currentStop ? findActOfStop(tour, currentStop.id) : null;
   const prompts = reflectionPromptsOf(act);
 
@@ -56,17 +56,33 @@ export default function ActReflectionCard({ onComplete }: Props) {
 
   const canSave = !!text.trim() && !busy;
 
-  const save = () => {
+  const save = async () => {
     if (!canSave || !selected) return;
     setBusy(true);
-    onComplete({
+    const response: ActReflectionResponse = {
       text: text.trim(),
       photos,
       taggedContexts: tagged.map((id) => ({ id, title: taggable.find((c) => c.id === id)?.title ?? '' })),
       promptId: selected.isCustom ? null : selected.id,
       promptText: selected.isCustom ? CUSTOM_PROMPT : selected.text,
       isCustom: selected.isCustom,
-    });
+    };
+    // Record every response to the community as "unshared" (hidden from other
+    // explorers; visible to the admin). If they later choose to share, this
+    // same record is promoted rather than duplicated. Best-effort — a failure
+    // here must not block the reflection from saving.
+    if (tour && act) {
+      try {
+        response.unsharedRecordId = await recordUnsharedResponse({
+          tourId: tour.id, actId: act.id, text: response.text,
+          photos: response.photos || [], pin: response.pin ?? null,
+          sessionId: session?.id || 'unknown',
+        });
+      } catch (err) {
+        console.error('[reflection] recording response failed:', err);
+      }
+    }
+    onComplete(response);
   };
 
   // Picker and response are two faces of a flip: selecting a prompt rotates the

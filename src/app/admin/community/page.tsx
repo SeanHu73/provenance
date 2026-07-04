@@ -186,56 +186,80 @@ function SharesSection() {
   const hideShare = async (id: string, hidden: boolean) => { await setShareStatus(id, hidden ? 'pending' : 'approved'); reload(); };
   const removeComment = async (id: string) => { if (confirm('Remove this comment?')) { await deleteComment(id); reload(); } };
 
+  const renderShare = (s: CommunityShare) => {
+    const sComments = comments.filter((c) => c.shareId === s.id);
+    const hidden = s.status !== 'approved';
+    return (
+      <div key={s.id} className={`border rounded bg-white p-4 space-y-2 ${hidden ? 'border-amber-300 opacity-70' : 'border-stone-300'}`}>
+        <div className="flex items-start gap-3">
+          <div className="flex-1 min-w-0">
+            {s.name && <p className="text-xs font-semibold text-stone-700">{s.name}</p>}
+            <p className="text-sm text-stone-900">{s.text}</p>
+            <p className="text-[10px] text-stone-400 mt-1 font-mono">
+              {s.unshared ? 'unshared' : s.status} · ▲ {s.upvotes || 0} · {s.photos?.length || 0} photo(s){s.pin ? ' · 📍 pin' : ''} · {new Date(s.createdAt).toLocaleString()} · tour {s.tourId.slice(0, 8)}
+            </p>
+          </div>
+          <div className="flex gap-1.5 shrink-0">
+            {!s.unshared && (
+              <button onClick={() => hideShare(s.id, !hidden)} className="px-2 py-1 text-xs rounded bg-stone-200 text-stone-700 hover:bg-stone-300">{hidden ? 'Unhide' : 'Hide'}</button>
+            )}
+            <button onClick={() => removeShare(s.id)} className="px-2 py-1 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200">Remove</button>
+          </div>
+        </div>
+
+        {s.photos && s.photos.length > 0 && (
+          <div className="flex gap-2 flex-wrap">
+            {s.photos.map((url, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={i} src={url} alt="" className="w-16 h-16 object-cover rounded border border-stone-200" />
+            ))}
+          </div>
+        )}
+
+        {s.pin && (
+          <p className="text-xs text-stone-600">📍 <span className="font-semibold">{s.pin.title || 'Their spot'}</span>{s.pin.note ? ` — ${s.pin.note}` : ''}</p>
+        )}
+
+        {sComments.length > 0 && (
+          <div className="pl-3 border-l-2 border-stone-200 space-y-1.5">
+            {sComments.map((c) => (
+              <div key={c.id} className="flex items-start gap-3">
+                <p className="flex-1 text-xs text-stone-700">{c.name ? <span className="font-semibold">{c.name}: </span> : null}{c.text}</p>
+                <button onClick={() => removeComment(c.id)} className="px-2 py-0.5 text-[11px] rounded bg-red-100 text-red-700 hover:bg-red-200 shrink-0">Remove</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) return <p className="text-stone-600 text-sm">Loading…</p>;
-  if (shares.length === 0) return <p className="text-stone-500 text-sm italic">No reflections shared yet.</p>;
+  if (shares.length === 0) return <p className="text-stone-500 text-sm italic">No reflections recorded yet.</p>;
+
+  const sharedList = shares.filter((s) => !s.unshared);
+  const unsharedList = shares.filter((s) => s.unshared);
 
   return (
-    <div className="space-y-3">
-      {shares.map((s) => {
-        const sComments = comments.filter((c) => c.shareId === s.id);
-        const hidden = s.status !== 'approved';
-        return (
-          <div key={s.id} className={`border rounded bg-white p-4 space-y-2 ${hidden ? 'border-amber-300 opacity-70' : 'border-stone-300'}`}>
-            <div className="flex items-start gap-3">
-              <div className="flex-1 min-w-0">
-                {s.name && <p className="text-xs font-semibold text-stone-700">{s.name}</p>}
-                <p className="text-sm text-stone-900">{s.text}</p>
-                <p className="text-[10px] text-stone-400 mt-1 font-mono">
-                  {s.status} · ▲ {s.upvotes || 0} · {s.photos?.length || 0} photo(s){s.pin ? ' · 📍 pin' : ''} · {new Date(s.createdAt).toLocaleString()} · tour {s.tourId.slice(0, 8)}
-                </p>
-              </div>
-              <div className="flex gap-1.5 shrink-0">
-                <button onClick={() => hideShare(s.id, !hidden)} className="px-2 py-1 text-xs rounded bg-stone-200 text-stone-700 hover:bg-stone-300">{hidden ? 'Unhide' : 'Hide'}</button>
-                <button onClick={() => removeShare(s.id)} className="px-2 py-1 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200">Remove</button>
-              </div>
-            </div>
+    <div className="space-y-8">
+      <section>
+        <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide mb-3">Shared ({sharedList.length})</h2>
+        {sharedList.length === 0 ? (
+          <p className="text-stone-400 text-xs italic">No one has shared a reflection publicly yet.</p>
+        ) : (
+          <div className="space-y-3">{sharedList.map(renderShare)}</div>
+        )}
+      </section>
 
-            {s.photos && s.photos.length > 0 && (
-              <div className="flex gap-2 flex-wrap">
-                {s.photos.map((url, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={i} src={url} alt="" className="w-16 h-16 object-cover rounded border border-stone-200" />
-                ))}
-              </div>
-            )}
-
-            {s.pin && (
-              <p className="text-xs text-stone-600">📍 <span className="font-semibold">{s.pin.title || 'Their spot'}</span>{s.pin.note ? ` — ${s.pin.note}` : ''}</p>
-            )}
-
-            {sComments.length > 0 && (
-              <div className="pl-3 border-l-2 border-stone-200 space-y-1.5">
-                {sComments.map((c) => (
-                  <div key={c.id} className="flex items-start gap-3">
-                    <p className="flex-1 text-xs text-stone-700">{c.name ? <span className="font-semibold">{c.name}: </span> : null}{c.text}</p>
-                    <button onClick={() => removeComment(c.id)} className="px-2 py-0.5 text-[11px] rounded bg-red-100 text-red-700 hover:bg-red-200 shrink-0">Remove</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
+      <section>
+        <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide mb-3">Unshared ({unsharedList.length})</h2>
+        <p className="text-[11px] text-stone-400 mb-3">Reflections explorers wrote but chose not to publish. Recorded for your reference; not visible to other explorers.</p>
+        {unsharedList.length === 0 ? (
+          <p className="text-stone-400 text-xs italic">No unshared responses.</p>
+        ) : (
+          <div className="space-y-3">{unsharedList.map(renderShare)}</div>
+        )}
+      </section>
     </div>
   );
 }
