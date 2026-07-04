@@ -14,6 +14,15 @@ import RoomMenu from '@/components/room/RoomMenu';
 import ContextJournal from '@/features/context-journal/ContextJournal';
 import { authoredToEntry } from '@/features/context-journal/adapters';
 
+/**
+ * Phases at or after an act's Context step. Used by the base (revisit) journal to
+ * decide whether the *current* act's authored questions have been "gone through"
+ * yet — earlier phases (act_intro, seed, stop_map, act_opening…) keep them hidden.
+ */
+const CONTEXT_DONE_PHASES = new Set([
+  'act_context', 'act_reflection_intro', 'act_context_questions', 'act_reflection', 'community_share',
+]);
+
 interface Props {
   tour: Tour;
   session: TourSession;
@@ -58,7 +67,17 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
   const [showJournal, setShowJournal] = useState(false);
   const journalStop = getActiveStops(tour)[session.currentStopIndex] ?? null;
   const journalAct = journalStop ? findActOfStop(tour, journalStop.id) : null;
-  const journalAuthored = journalAct ? getActContexts(journalAct).map((c) => authoredToEntry(c, tour.id)) : [];
+  // The base (revisit) journal only reveals an act's authored questions once the
+  // learner has actually gone through that act's context step. Past acts
+  // accumulate; future acts stay hidden. The current act unlocks when its
+  // context step is reached (CONTEXT_DONE_PHASES).
+  const journalActs = getActs(tour);
+  const currentActIndex = journalAct ? journalActs.findIndex((a) => a.id === journalAct.id) : -1;
+  const currentActContextReached = CONTEXT_DONE_PHASES.has(session.currentPhase);
+  const journalAuthored = currentActIndex < 0 ? [] : journalActs.flatMap((a, i) => {
+    const goneThrough = i < currentActIndex || (i === currentActIndex && currentActContextReached);
+    return goneThrough ? getActContexts(a).map((c) => authoredToEntry(c, tour.id)) : [];
+  });
   const journalResponses = Object.entries(session.actResponses ?? {}).flatMap(([aid, r]) => {
     const refl = r?.reflection;
     if (!refl) return [];
@@ -272,18 +291,18 @@ function RevisitTip({ onDismiss }: { onDismiss: () => void }) {
       initial={{ opacity: 0, y: 6, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 400, damping: 26 }}
-      className="absolute left-0 bottom-full mb-3 z-10 w-60 text-left rounded-2xl bg-warm-white px-4 py-3 shadow-2xl"
+      className="absolute left-0 bottom-full mb-3 z-10 w-[19rem] max-w-[80vw] text-left rounded-2xl bg-warm-white px-5 py-4 shadow-2xl"
       style={{ border: '1px solid var(--th-border)' }}
     >
-      <span className="block text-[13px] font-semibold leading-snug text-text-primary">
+      <span className="block text-[16px] font-bold leading-snug text-text-primary">
         Revisit the Context Journal anytime
       </span>
-      <span className="mt-0.5 block text-[12px] leading-snug text-text-secondary">
+      <span className="mt-1 block text-[14px] leading-snug text-text-secondary">
         Everything you add stays here for the rest of the tour. Tap to dismiss.
       </span>
       {/* little arrow pointing down at the button */}
       <span
-        className="absolute left-5 top-full -mt-1.5 w-3 h-3 rotate-45 bg-warm-white"
+        className="absolute left-6 top-full -mt-2 w-3.5 h-3.5 rotate-45 bg-warm-white"
         style={{ borderRight: '1px solid var(--th-border)', borderBottom: '1px solid var(--th-border)' }}
       />
     </motion.button>
