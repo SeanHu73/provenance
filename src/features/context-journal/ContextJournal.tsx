@@ -27,6 +27,7 @@ import ContextTimeline from './components/ContextTimeline';
 import PastPanel from './components/PastPanel';
 import ContextOverlay from './components/ContextOverlay';
 import AddContextFlow from './components/AddContextFlow';
+import ContextAskFlow from './components/ContextAskFlow';
 
 /** Comic ink shared with the P.A.S.T. lens buttons, for the "Ask" CTA's border
  *  + hard offset shadow (see PastLens). */
@@ -93,6 +94,7 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
   // P.A.S.T. framework gets most of the space — the focus is choosing a question.
   const [showMapPanel, setShowMapPanel] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // A prior response opened full-screen from the menu (previews are clamped, so
   // long reflections don't blow out the dropdown).
@@ -398,7 +400,7 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
             the two never overlap. (AI flow lands later; opens the add form.) */}
         <div className="sticky bottom-4 z-30 px-5 pt-3">
           <motion.button
-            onClick={() => { haptic(10); setAddOpen(true); }}
+            onClick={() => { haptic(10); setAskOpen(true); }}
             whileTap={{ x: 4, y: 4, boxShadow: `0px 0px 0 ${INK_SHADOW}` }}
             transition={{ type: 'spring', stiffness: 600, damping: 32 }}
             className="w-full flex items-center justify-center gap-2.5 rounded-2xl py-3.5 bg-warm-white font-display font-bold text-[17px]"
@@ -431,6 +433,15 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
           <div className="pb-8" />
         )}
       </div>
+
+      {/* Ask the Context Detective (lens → dictate/type → AI answer → add). */}
+      {askOpen && (
+        <ContextAskFlow
+          tourId={scopeId}
+          onClose={() => setAskOpen(false)}
+          onAdd={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); setExplored(true); }}
+        />
+      )}
 
       <AnimatePresence>
         {addOpen && (
