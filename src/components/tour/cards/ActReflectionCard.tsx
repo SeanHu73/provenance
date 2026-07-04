@@ -168,30 +168,35 @@ export default function ActReflectionCard({ onComplete }: Props) {
         style={{ borderColor: 'var(--th-border)' }}
       />
 
-      {taggable.length > 0 && (
-        <div className="mt-4">
-          <p className="text-[11px] uppercase tracking-[0.14em] font-semibold text-text-secondary mb-1.5">Contexts you referred to</p>
-          <div className="flex flex-wrap gap-2">
-            {taggable.map((c) => {
-              const on = tagged.includes(c.id);
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setTagged((prev) => (on ? prev.filter((x) => x !== c.id) : [...prev, c.id]))}
-                  className="px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-colors"
-                  style={on
-                    ? { backgroundColor: 'var(--th-primary)', color: '#fff', borderColor: 'var(--th-primary)' }
-                    : { color: 'var(--th-primary)', borderColor: 'var(--th-border)' }}
-                >
-                  {c.title}
-                </button>
-              );
-            })}
-          </div>
+      {/* Contexts + photos appear once they've written their response — respond first, then add. */}
+      {text.trim() && (
+        <div className="animate-fade-in">
+          {taggable.length > 0 && (
+            <div className="mt-5">
+              <p className="text-[11px] uppercase tracking-[0.14em] font-semibold text-text-secondary mb-1.5">Contexts you referred to</p>
+              <div className="flex flex-wrap gap-2">
+                {taggable.map((c) => {
+                  const on = tagged.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setTagged((prev) => (on ? prev.filter((x) => x !== c.id) : [...prev, c.id]))}
+                      className="px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-colors"
+                      style={on
+                        ? { backgroundColor: 'var(--th-primary)', color: '#fff', borderColor: 'var(--th-primary)' }
+                        : { color: 'var(--th-primary)', borderColor: 'var(--th-border)' }}
+                    >
+                      {c.title}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <PhotoPicker photos={photos} setPhotos={setPhotos} />
         </div>
       )}
-
-      <PhotoPicker photos={photos} setPhotos={setPhotos} />
 
       <button
         onClick={save}

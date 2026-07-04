@@ -286,26 +286,34 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
  */
 function RevisitTip({ onDismiss }: { onDismiss: () => void }) {
   return (
-    <motion.button
-      onClick={onDismiss}
+    <motion.div
       initial={{ opacity: 0, y: 6, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 400, damping: 26 }}
       className="absolute left-0 bottom-full mb-3 z-10 w-[19rem] max-w-[80vw] text-left rounded-2xl bg-warm-white px-5 py-4 shadow-2xl"
       style={{ border: '1px solid var(--th-border)' }}
     >
-      <span className="block text-[16px] font-bold leading-snug text-text-primary">
+      <button
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full text-text-secondary hover:bg-black/5"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+          <path d="M18 6L6 18M6 6l12 12" />
+        </svg>
+      </button>
+      <span className="block text-[16px] font-bold leading-snug text-text-primary pr-7">
         Revisit the Context Journal anytime
       </span>
       <span className="mt-1 block text-[14px] leading-snug text-text-secondary">
-        Everything you add stays here for the rest of the tour. Tap to dismiss.
+        Everything you add stays here for the rest of the tour.
       </span>
       {/* little arrow pointing down at the button */}
       <span
         className="absolute left-6 top-full -mt-2 w-3.5 h-3.5 rotate-45 bg-warm-white"
         style={{ borderRight: '1px solid var(--th-border)', borderBottom: '1px solid var(--th-border)' }}
       />
-    </motion.button>
+    </motion.div>
   );
 }
 
