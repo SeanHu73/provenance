@@ -41,9 +41,6 @@ interface Props {
   compact?: boolean;
   /** Act sequence + this lens still has unopened questions → run the tap-cue loop. */
   prompt?: boolean;
-  /** Called the first time this lens is opened — the parent uses it to stop the
-   *  tap-cue animation across every lens once the learner has engaged. */
-  onEngage?: () => void;
   onFocus: (entry: ContextEntry | null) => void;
   onToggleSave: (id: string) => void;
   onOpenFull: (entry: ContextEntry) => void;
@@ -68,15 +65,18 @@ function InfoSign({ size = 16 }: { size?: number }) {
   );
 }
 
-export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, prompt = false, onEngage, onFocus, onToggleSave, onOpenFull }: Props) {
+export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, prompt = false, onFocus, onToggleSave, onOpenFull }: Props) {
   const [open, setOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
+  // Once THIS lens has been opened, its tap-cue is done — but the others keep
+  // animating until each is tapped.
+  const [engaged, setEngaged] = useState(false);
   const colour = lens.colour;
   const count = entries.length;
   // Slim banner when the lens is open, or when the map panel is up.
   const slim = open || compact;
-  // Run the tap-cue loop only on a closed, full-size lens (not under the map).
-  const showPrompt = prompt && !open && !compact;
+  // Run the tap-cue loop only on a closed, full-size, not-yet-opened lens.
+  const showPrompt = prompt && !open && !compact && !engaged;
 
   // Neubrutalist rest / pressed states, animated by framer-motion. Open = pressed
   // *in* (sits on its shadow) so the active lens reads as depressed.
@@ -109,7 +109,7 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
     haptic(open ? 6 : 12);
     setOpen((o) => {
       const next = !o;
-      if (next) onEngage?.();
+      if (next) setEngaged(true);
       if (!next && entries.some((e) => e.id === focusedId)) onFocus(null);
       return next;
     });
