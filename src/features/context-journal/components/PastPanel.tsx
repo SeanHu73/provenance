@@ -24,12 +24,14 @@ interface Props {
   compact?: boolean;
   /** Act sequence: cue lenses that still hold unopened questions with a tap loop. */
   promptUnopened?: boolean;
+  /** Locked authored questions → the lens each must be unlocked by exploring. */
+  lockInfoById?: Map<string, { lensLabel: string; lensColour: string }>;
   onFocus: (entry: ContextEntry | null) => void;
   onToggleSave: (id: string) => void;
   onOpenFull: (entry: ContextEntry) => void;
 }
 
-export default function PastPanel({ entries, selectedRange, savedIds, focusedId, compact, promptUnopened, onFocus, onToggleSave, onOpenFull }: Props) {
+export default function PastPanel({ entries, selectedRange, savedIds, focusedId, compact, promptUnopened, lockInfoById, onFocus, onToggleSave, onOpenFull }: Props) {
   const byLens = useMemo(() => {
     const inRange = entries.filter((e) =>
       overlapsRange({ start: e.timeRange.start, end: e.timeRange.end }, selectedRange),
@@ -51,6 +53,7 @@ export default function PastPanel({ entries, selectedRange, savedIds, focusedId,
           focusedId={focusedId}
           compact={compact}
           prompt={!!promptUnopened && items.some((e) => e.origin === 'authored')}
+          lockInfoById={lockInfoById}
           onFocus={onFocus}
           onToggleSave={onToggleSave}
           onOpenFull={onOpenFull}

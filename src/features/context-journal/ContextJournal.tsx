@@ -226,13 +226,29 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
   // as thumbnails (distinguished by `origin`).
   const displayEntries = useMemo(() => {
     const addedSources = new Set(entries.map((e) => e.sourceId).filter(Boolean));
-    const viewed = new Set(viewedContextIds);
-    // Hide an authored question until its unlock prerequisite has been listened to.
-    const questions = (authored ?? []).filter(
-      (a) => !addedSources.has(a.id) && (!a.unlockAfterContextId || viewed.has(a.unlockAfterContextId)),
-    );
+    // Authored questions still to ask (already-added ones drop out). Locked ones
+    // are *kept* now — they show as a locked row (see `lockInfo`) rather than
+    // being hidden, so the red count + lens cue still advertise them.
+    const questions = (authored ?? []).filter((a) => !addedSources.has(a.id));
     return [...questions, ...entries];
-  }, [authored, entries, viewedContextIds]);
+  }, [authored, entries]);
+
+  // Which authored questions are still locked, and the lens the learner must
+  // explore to unlock each. The prerequisite always points to another context in
+  // the same act, so we can name its lens for the "explore … first" hint.
+  const lockInfo = useMemo(() => {
+    const viewed = new Set(viewedContextIds);
+    const byId = new Map((authored ?? []).map((a) => [a.id, a] as const));
+    const m = new Map<string, { lensLabel: string; lensColour: string }>();
+    for (const a of authored ?? []) {
+      if (a.unlockAfterContextId && !viewed.has(a.unlockAfterContextId)) {
+        const req = byId.get(a.unlockAfterContextId);
+        const lens = req ? LENS_BY_KEY[req.pastCategory] : null;
+        m.set(a.id, { lensLabel: lens?.label ?? 'another lens', lensColour: lens?.colour ?? 'var(--th-primary)' });
+      }
+    }
+    return m;
+  }, [authored, viewedContextIds]);
 
   // Import a learner copy of an authored context (carries its sourceId so the
   // authored question hides once added).
@@ -244,6 +260,11 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
         timeRange: entry.timeRange, geometry: entry.geometry, camera: entry.camera,
         mapType: entry.mapType, media: entry.media, thumbnailMediaId: entry.thumbnailMediaId,
         sources: entry.sources, taggedQuestions: entry.taggedQuestions,
+        // Preserve the author's place/time opt-in and cached narration on the
+        // copy — otherwise the added context loses `includePlaceTime` (falls back
+        // to "show map when geometry exists") and its OpenAI narration cache.
+        includePlaceTime: entry.includePlaceTime,
+        ttsAudioUrl: entry.ttsAudioUrl, ttsAudioHash: entry.ttsAudioHash,
         sourceId: entry.id, origin: 'added', placeId: scopeId,
       });
       setFullEntry(null);
@@ -391,6 +412,7 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
           focusedId={focused?.id ?? null}
           compact={showMapPanel}
           promptUnopened={!!inTour}
+          lockInfoById={lockInfo}
           onFocus={handleFocus}
           onToggleSave={toggleSave}
           onOpenFull={openFull}

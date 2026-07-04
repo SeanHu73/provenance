@@ -44,6 +44,8 @@ interface Props {
   compact?: boolean;
   /** Act sequence + this lens still has unopened questions → run the tap-cue loop. */
   prompt?: boolean;
+  /** Locked authored questions → the lens each must be unlocked by exploring. */
+  lockInfoById?: Map<string, { lensLabel: string; lensColour: string }>;
   onFocus: (entry: ContextEntry | null) => void;
   onToggleSave: (id: string) => void;
   onOpenFull: (entry: ContextEntry) => void;
@@ -89,7 +91,7 @@ function CountBubbles({ present, questions, big = false }: { present: number; qu
   );
 }
 
-export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, prompt = false, onFocus, onToggleSave, onOpenFull }: Props) {
+export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, prompt = false, lockInfoById, onFocus, onToggleSave, onOpenFull }: Props) {
   const [open, setOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
   // Once THIS lens has been opened, its tap-cue is done — but the others keep
@@ -228,9 +230,9 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
               return (
                 <div className={card} style={cardStyle}>
                   <div className="px-4 py-3.5 space-y-3">
-                    {/* unanswered questions to explore */}
+                    {/* unanswered questions to explore (locked ones show a hint) */}
                     {questions.map((entry) => (
-                      <QuestionRow key={entry.id} entry={entry} colour={colour} onTap={() => onOpenFull(entry)} />
+                      <QuestionRow key={entry.id} entry={entry} colour={colour} lock={lockInfoById?.get(entry.id) ?? null} onTap={() => onOpenFull(entry)} />
                     ))}
                     {/* contexts already added (thumbnails) */}
                     {added.length > 0 && (
@@ -264,9 +266,58 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
   );
 }
 
-/** An unexplored authored context, shown as its *question* — tap to open it. */
-function QuestionRow({ entry, colour, onTap }: { entry: ContextEntry; colour: string; onTap: () => void }) {
+/**
+ * An unexplored authored context, shown as its *question*.
+ *
+ * Open questions: tap to read the context. **Locked** questions (a designer
+ * unlock dependency not yet met) still show here — dimmed, with a lock icon —
+ * so the red count + lens tap-cue keep advertising them. Tapping a locked one
+ * doesn't open it; it toggles an inline hint naming the lens to explore first.
+ */
+function QuestionRow({ entry, colour, lock, onTap }: {
+  entry: ContextEntry; colour: string;
+  lock: { lensLabel: string; lensColour: string } | null;
+  onTap: () => void;
+}) {
+  const [showHint, setShowHint] = useState(false);
   const label = entry.question?.trim() || entry.title?.trim() || 'Explore this context';
+
+  if (lock) {
+    return (
+      <div>
+        <button
+          onClick={() => { haptic(6); setShowHint((v) => !v); }}
+          aria-expanded={showHint}
+          className="w-full flex items-center gap-3 text-left rounded-xl border bg-black/[0.02] px-4 py-3"
+          style={{ borderColor: 'var(--th-border)' }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-text-muted">
+            <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          <span className="flex-1 min-w-0 font-serif text-[16px] text-text-muted leading-snug">{label}</span>
+        </button>
+        <AnimatePresence initial={false}>
+          {showHint && (
+            <motion.p
+              initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden px-4 pt-1.5 text-[13px] text-text-secondary leading-snug"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                Explore the
+                <span className="inline-flex items-center gap-1 font-semibold" style={{ color: lock.lensColour }}>
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: lock.lensColour }} />
+                  {lock.lensLabel}
+                </span>
+                lens first to unlock this question.
+              </span>
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
   return (
     <button
       onClick={onTap}
