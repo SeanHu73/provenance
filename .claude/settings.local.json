@@ -97,7 +97,12 @@
       "Bash(unzip -p docs/contextualization-onboarding-instructions.docx word/document.xml)",
       "Bash(echo \"=== lint exit: $? ===\")",
       "Bash(sed -i 's/Background-only \\(\"LEARN\"\\)/Background-only \\(\"DISCOVER\"\\)/g' src/components/tour/cards/SeedCard.tsx)",
-      "Bash(sed -i 's/no LEARN label/no DISCOVER label/g' \"src/app/admin/tours/[id]/page.tsx\")"
+      "Bash(sed -i 's/no LEARN label/no DISCOVER label/g' \"src/app/admin/tours/[id]/page.tsx\")",
+      "Read(//tmp/**)",
+      "Skill(claude-api)",
+      "Bash(xargs echo \"lines:\")",
+      "Bash(awk '/export interface ActContextItem/,/^}/' src/lib/types.ts)",
+      "PowerShell($p = \\(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue\\).OwningProcess; if \\($p\\) { Stop-Process -Id $p -Force; Write-Output \"stopped dev server \\(pid $p\\)\" } else { Write-Output \"no listener on 3000\" })"
     ]
   }
 }

@@ -44,12 +44,12 @@ export default function ContextQuestionsCard({ onComplete }: Props) {
         body: JSON.stringify({ question, tourId: tour?.id, actId: act?.id }),
       });
       if (res.ok) {
-        const data = (await res.json()) as { answer?: string | null; status?: 'answered' | 'banked' };
-        entry = {
-          question,
-          answer: data.answer ?? null,
-          status: data.status === 'answered' && data.answer ? 'answered' : 'banked',
-        };
+        // The Context Detective returns the full payload; for this card we show
+        // the voiced narrative. (Handout/sources are logged + surfaced in the
+        // admin review console; richer in-tour rendering comes later.)
+        const data = (await res.json()) as { narrative?: string; status?: 'answered' | 'banked' | 'declined' };
+        const narrative = (data.narrative || '').trim();
+        entry = { question, answer: narrative || null, status: narrative ? 'answered' : 'banked' };
       }
     } catch {
       /* keep the banked fallback */
