@@ -14,6 +14,7 @@ import type { ContextDraft, ContextSource, PastCategory } from '../types';
 import RecordButton from '@/components/tour/cards/RecordButton';
 import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
 import ContextAskLoading from '@/components/tour/cards/ContextAskLoading';
+import { contextNarrationText } from '@/lib/tts-narration';
 
 interface RespSource { kind?: string; url?: string; name?: string; author?: string; date?: string; verified?: boolean }
 interface RespCard { lens?: PastCategory; title?: string; summary?: string; explanation?: string }
@@ -150,7 +151,8 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
             {/* on-demand audio */}
             <div>
               <p className="text-[12px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>Tap to hear this read aloud — it may take a moment to generate.</p>
-              <OpenAiSpeechBar text={answer} title={title} autoplay={false} />
+              {/* Narration reads the context's Title + Full Explanation. */}
+              <OpenAiSpeechBar text={contextNarrationText({ title, longExplanation: answer })} title={title} autoplay={false} />
             </div>
             {/* the answer */}
             <p className="text-[16px] leading-relaxed whitespace-pre-line" style={{ color: 'var(--text-primary)' }}>{answer}</p>
