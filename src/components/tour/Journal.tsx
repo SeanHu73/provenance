@@ -362,7 +362,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
             });
             return (
               <div className="fixed inset-0 z-[55]">
-                <ContextJournal tourId={tour.id} authored={authored} inTour onExit={completeActContext} continueLabel="Continue to Share Your Thoughts…" responses={responses} guidingQuestion={act?.guidingQuestion?.trim() || undefined} />
+                <ContextJournal tourId={tour.id} authored={authored} inTour onExit={completeActContext} continueLabel="Continue" responses={responses} guidingQuestion={act?.guidingQuestion?.trim() || undefined} />
               </div>
             );
           })(),

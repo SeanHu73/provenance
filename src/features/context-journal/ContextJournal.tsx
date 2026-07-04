@@ -88,6 +88,9 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
   const [fullEntry, setFullEntry] = useState<ContextEntry | null>(null);
   // In-tour gate: the learner must open at least one context before continuing.
   const [explored, setExplored] = useState(false);
+  // The lens tap-cue animation runs until the learner first opens any lens —
+  // it's only there to get them started.
+  const [cueDismissed, setCueDismissed] = useState(false);
   // The continue gate is engagement with a *question*: tapping an authored
   // question (or asking your own — set on submit below), NOT just re-opening a
   // context that's already been added.
@@ -362,7 +365,8 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
           savedIds={savedIds}
           focusedId={focused?.id ?? null}
           compact={showMapPanel}
-          promptUnopened={!!inTour}
+          promptUnopened={!!inTour && !cueDismissed}
+          onEngage={() => setCueDismissed(true)}
           onFocus={handleFocus}
           onToggleSave={toggleSave}
           onOpenFull={openFull}
@@ -390,7 +394,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
         </div>
 
         {inTour ? (
-          <div className="px-5 pb-8 pt-2">
+          <div className="px-5 pb-8 pt-4">
             <button
               onClick={onExit}
               disabled={!explored}

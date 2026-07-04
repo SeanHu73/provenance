@@ -24,6 +24,8 @@ const INK = '#241f1b';
 const SHADOW = 'rgba(26,20,14,0.9)';
 /** How far down-and-right the cut-out shadow (and the push-down) travels. */
 const OFFSET = 5;
+/** Very translucent red for the question-count pill. */
+const COUNT_BG = 'rgba(200,30,30,0.33)';
 
 /** Match the established repo pattern for an optional light haptic tick. */
 function haptic(ms = 8) {
@@ -39,6 +41,9 @@ interface Props {
   compact?: boolean;
   /** Act sequence + this lens still has unopened questions → run the tap-cue loop. */
   prompt?: boolean;
+  /** Called the first time this lens is opened — the parent uses it to stop the
+   *  tap-cue animation across every lens once the learner has engaged. */
+  onEngage?: () => void;
   onFocus: (entry: ContextEntry | null) => void;
   onToggleSave: (id: string) => void;
   onOpenFull: (entry: ContextEntry) => void;
@@ -63,7 +68,7 @@ function InfoSign({ size = 16 }: { size?: number }) {
   );
 }
 
-export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, prompt = false, onFocus, onToggleSave, onOpenFull }: Props) {
+export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, prompt = false, onEngage, onFocus, onToggleSave, onOpenFull }: Props) {
   const [open, setOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
   const colour = lens.colour;
@@ -104,6 +109,7 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
     haptic(open ? 6 : 12);
     setOpen((o) => {
       const next = !o;
+      if (next) onEngage?.();
       if (!next && entries.some((e) => e.id === focusedId)) onFocus(null);
       return next;
     });
@@ -149,7 +155,7 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
               <InfoSign size={14} />
             </span>
             {count > 0 && (
-              <span className="relative ml-auto inline-flex items-center rounded-full bg-white/25 px-2 py-0.5 text-[12px] font-semibold tabular-nums text-warm-white">{count}</span>
+              <span className="relative ml-auto inline-flex items-center justify-center min-w-[24px] rounded-full px-2 py-0.5 text-[12px] font-bold tabular-nums text-warm-white" style={{ backgroundColor: COUNT_BG }}>{count}</span>
             )}
           </>
         ) : (
@@ -169,10 +175,12 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
             <p className="relative font-serif italic text-warm-white/90 text-[15px] leading-snug max-w-[72%]">
               {lens.definition}
             </p>
-            {/* number of questions in this lens */}
-            <span className="absolute bottom-3 right-3 inline-flex items-center rounded-full bg-white/25 px-2.5 py-1 text-[12px] font-semibold text-warm-white">
-              {count > 0 ? `${count} question${count === 1 ? '' : 's'}` : 'No questions yet'}
-            </span>
+            {/* number of questions in this lens (hidden when there are none) */}
+            {count > 0 && (
+              <span className="absolute bottom-3 right-3 inline-flex items-center justify-center min-w-[28px] rounded-full px-2.5 py-1 text-[13px] font-bold tabular-nums text-warm-white" style={{ backgroundColor: COUNT_BG }}>
+                {count}
+              </span>
+            )}
           </>
         )}
       </motion.button>
