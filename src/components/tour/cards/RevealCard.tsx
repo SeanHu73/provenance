@@ -7,6 +7,7 @@ import PhotoContent, { PhotoCarousel } from './PhotoContent';
 import FullscreenPhoto from './FullscreenPhoto';
 import AudioButton from './AudioButton';
 import SpeechBar from './SpeechBar';
+import { resolveNarration } from '@/lib/tts-narration';
 import BackButton from './BackButton';
 import InquiryReminder from './InquiryReminder';
 import ActionTitle from './ActionTitle';
@@ -44,15 +45,11 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
   const hasAudio = !!stop.reveal.audioUrl;
   const [autoplayPref] = useAudioAutoplay();
   const [readMode] = useReadMode();
-  // A voiceover audio IS the narration → no auto TTS. Otherwise we read the Stop
-  // Info text. The narration (voiceover audio OR the TTS) takes autoplay
-  // priority; a non-voiceover clip never autoplays alongside the TTS.
-  const isVoiceover = hasAudio && stop.reveal.audioIsVoiceover === true;
-  const showTts = !isVoiceover && !!stop.reveal.text.trim();
-  const shouldAutoplay = autoplayPref && !stop.reveal.audioAutoplayDisabled && !showTts;
-  const ttsAutoplay = autoplayPref && showTts;
-  // Narration is either an uploaded voiceover or the auto text-to-speech.
-  const hasNarration = hasAudio || showTts;
+  // Narration source: uploaded voiceover → cached OpenAI narration of the Stop
+  // Info text → free browser voice. Only one autoplays; a non-voiceover clip
+  // never steals autoplay from the narration.
+  const nar = resolveNarration(stop.reveal, stop.reveal.text, autoplayPref);
+  const hasNarration = nar.hasNarration;
   // Collapsed by default when there's narration and the learner chose "Listen";
   // expanded when they chose "Read" or there's nothing to narrate.
   const [textExpanded, setTextExpanded] = useState(readMode || !hasNarration);
@@ -83,10 +80,12 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
         {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[22px] leading-snug">{stop.title}</p>}
       </div>
 
-      {/* Audio player */}
-      {hasAudio && <AudioButton audioUrl={stop.reveal.audioUrl!} title={stop.reveal.audioTitle} autoplay={shouldAutoplay} onTimeUpdate={onTimeUpdate} onEnded={onEnded} />}
-      {/* Auto text-to-speech of the Stop Info when there's no uploaded voiceover. */}
-      {showTts && <SpeechBar text={stop.reveal.text} title={stop.reveal.audioTitle || 'Stop Info'} autoplay={ttsAutoplay} />}
+      {/* Uploaded audio (voiceover, or an extra non-voiceover clip). */}
+      {hasAudio && <AudioButton audioUrl={stop.reveal.audioUrl!} title={stop.reveal.audioTitle} autoplay={nar.uploadedAutoplay} onTimeUpdate={onTimeUpdate} onEnded={onEnded} />}
+      {/* Cached OpenAI narration of the Stop Info (also drives the photo cues). */}
+      {nar.showCached && <AudioButton audioUrl={nar.cachedUrl!} title={stop.reveal.audioTitle || 'Stop Info'} autoplay={nar.cachedAutoplay} onTimeUpdate={onTimeUpdate} onEnded={onEnded} />}
+      {/* Free browser voice when nothing is cached yet. */}
+      {nar.showBrowser && <SpeechBar text={stop.reveal.text} title={stop.reveal.audioTitle || 'Stop Info'} autoplay={nar.browserAutoplay} />}
 
       {/* When text is hidden: "tap to read along" then photos */}
       {hasNarration && !textExpanded && (

@@ -15,7 +15,7 @@ import { ContextQuestionEntry } from '@/lib/types';
 import { logContextQuestion } from '@/lib/tour-logger';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import ResponseInput from './ResponseInput';
-import SpeechBar from './SpeechBar';
+import OpenAiSpeechBar from './OpenAiSpeechBar';
 import BackButton from './BackButton';
 
 interface Props {
@@ -87,10 +87,11 @@ export default function ContextQuestionsCard({ onComplete }: Props) {
               {e.status === 'answered' && e.answer ? (
                 <>
                   <p className="text-[16px] mt-1.5 leading-relaxed" style={{ color: 'var(--text-primary)' }}>{e.answer}</p>
-                  {/* Auto text-to-speech of the answer — reads on its own once the
-                      answer is ready when Autoplay is on (also for AI answers). */}
+                  {/* OpenAI narration of the answer, generated on demand — reads
+                      on its own once ready when Autoplay is on (also for AI
+                      answers); falls back to the free browser voice on failure. */}
                   <div className="mt-2">
-                    <SpeechBar text={e.answer} title="Answer" autoplay={autoplayPref} />
+                    <OpenAiSpeechBar text={e.answer} title="Answer" autoplay={autoplayPref} />
                   </div>
                 </>
               ) : (

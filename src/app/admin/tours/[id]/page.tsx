@@ -20,6 +20,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { Tour, Stop, Detour, StopPhoto, Act, ActContextItem, TourMode } from '@/lib/types';
+import { ttsSanitize, hashText } from '@/lib/tts-text';
+import { fetchTtsBlob } from '@/lib/tts-client';
 import { getTour, saveTour, deleteTour, blankStop, blankDetour, getActiveStops, setActiveStops, duplicateStops, getTourMode, blankAct, blankOpeningFrame } from '@/lib/tours-store';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -126,6 +128,7 @@ export default function TourEditorPage() {
   const [tour, setTour] = useState<Tour | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [narrGen, setNarrGen] = useState<{ running: boolean; done: number; total: number; msg: string }>({ running: false, done: 0, total: 0, msg: '' });
   const [expandedStopId, setExpandedStopId] = useState<string | null>(null);
   const [previewStopId, setPreviewStopId] = useState<string | null>(null);
   const [previewPhase, setPreviewPhase] = useState(0);
@@ -438,6 +441,63 @@ export default function TourEditorPage() {
     return url;
   };
 
+  // ── Narration: cache OpenAI TTS for stops without an uploaded voiceover ──
+  //
+  // Decoupled from autosave (which fires constantly): the author writes freely,
+  // uploads their own voiceovers whenever, then clicks this to fill only the
+  // gaps. Skips sections that have a voiceover or whose text is already cached
+  // (hash unchanged). Generates sequentially, then persists once.
+  const generateMissingNarration = async () => {
+    if (!tour || narrGen.running) return;
+    const stops = getActiveStops(tour);
+    type Task = { stopId: string; section: 'seed' | 'reveal'; clean: string; hash: string };
+    const tasks: Task[] = [];
+    for (const stop of stops) {
+      const sections: { section: 'seed' | 'reveal'; sec: Stop['seed'] | Stop['reveal']; source: string }[] = [
+        { section: 'seed', sec: stop.seed, source: stop.seed.ttsText || stop.seed.text },
+        { section: 'reveal', sec: stop.reveal, source: stop.reveal.text },
+      ];
+      for (const { section, sec, source } of sections) {
+        const clean = ttsSanitize(source);
+        if (!clean.trim()) continue;
+        if (sec.audioUrl && sec.audioIsVoiceover === true) continue; // uploaded voiceover
+        const hash = hashText(clean);
+        if (sec.ttsAudioUrl && sec.ttsAudioHash === hash) continue;  // already fresh
+        tasks.push({ stopId: stop.id, section, clean, hash });
+      }
+    }
+    if (tasks.length === 0) {
+      setNarrGen({ running: false, done: 0, total: 0, msg: 'All narration is up to date (or has an uploaded voiceover).' });
+      return;
+    }
+    setNarrGen({ running: true, done: 0, total: tasks.length, msg: 'Generating…' });
+    const working = stops.map((s) => ({ ...s }));
+    const findStop = (id: string) => working.find((s) => s.id === id);
+    let done = 0;
+    let errors = 0;
+    for (const t of tasks) {
+      try {
+        const blob = await fetchTtsBlob(t.clean);
+        const file = new File([blob], `tts_${t.section}_${t.stopId}.mp3`, { type: 'audio/mpeg' });
+        const url = await uploadPhoto(file, `memorial-church/audio/tts/${tourId}/${t.section}_${t.stopId}_${t.hash}.mp3`);
+        const s = findStop(t.stopId);
+        if (s) {
+          if (t.section === 'seed') s.seed = { ...s.seed, ttsAudioUrl: url, ttsAudioHash: t.hash };
+          else s.reveal = { ...s.reveal, ttsAudioUrl: url, ttsAudioHash: t.hash };
+        }
+      } catch (err) {
+        errors++;
+        console.error('[narration] generate failed:', err);
+      }
+      done++;
+      setNarrGen({ running: true, done, total: tasks.length, msg: 'Generating…' });
+    }
+    const next = setActiveStops(tour, working);
+    setTour(next);
+    await persist(next);
+    setNarrGen({ running: false, done, total: tasks.length, msg: `Done — ${done - errors} generated${errors ? `, ${errors} failed (see console)` : ''}.` });
+  };
+
   // ── Delete tour ──
 
   const handleDeleteTour = async () => {
@@ -595,6 +655,27 @@ export default function TourEditorPage() {
             </div>
           </div>
         </header>
+
+        {/* Narration — cache OpenAI text-to-speech for stops with no voiceover. */}
+        <section className="mb-8 p-4 rounded border-2 border-emerald-300 bg-emerald-50/40 space-y-2">
+          <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Narration</h2>
+          <p className="text-xs text-stone-500">
+            Generates spoken narration (OpenAI voice) for the Background and Stop Info of every stop
+            that has no uploaded voiceover and isn&apos;t already up to date. Uploaded voiceovers and
+            unchanged text are skipped. Edited some text? Just re-run — it refreshes only those.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={generateMissingNarration}
+              disabled={narrGen.running}
+              className="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-xs disabled:opacity-50"
+            >
+              {narrGen.running ? `Generating ${narrGen.done}/${narrGen.total}…` : 'Generate missing narration'}
+            </button>
+            {narrGen.msg && !narrGen.running && <span className="text-xs text-stone-600">{narrGen.msg}</span>}
+          </div>
+        </section>
 
         {/* Tour mode — the experience this tour delivers. */}
         <section className="mb-8 p-4 rounded border-2 border-blue-300 bg-blue-50/40 space-y-3">

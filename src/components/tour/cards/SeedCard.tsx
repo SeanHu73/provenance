@@ -15,6 +15,7 @@ import { Stop } from '@/lib/types';
 import PhotoContent from './PhotoContent';
 import AudioButton from './AudioButton';
 import SpeechBar from './SpeechBar';
+import { resolveNarration } from '@/lib/tts-narration';
 import BackButton from './BackButton';
 import NoticeMapDisplay from './NoticeMapDisplay';
 import ActionTitle, { SectionSubtitle } from './ActionTitle';
@@ -32,16 +33,12 @@ interface Props {
 
 export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   const [autoplayPref] = useAudioAutoplay();
-  // Background narration: a voiceover audio IS the narration → no auto TTS;
-  // otherwise the Background text is read by auto text-to-speech. The narration
-  // (voiceover audio OR TTS) takes autoplay priority — a non-voiceover clip and
-  // the notice audio never autoplay alongside it (never two streams at once).
-  const seedVoiceover = !!stop.seed.audioUrl && stop.seed.audioIsVoiceover === true;
+  // Background narration source: uploaded voiceover → cached OpenAI narration →
+  // free browser voice. The narration takes autoplay priority — a non-voiceover
+  // clip and the notice audio never autoplay alongside it (never two at once).
   const seedTtsSource = stop.seed.ttsText || stop.seed.text;
-  const showSeedTts = !seedVoiceover && !!seedTtsSource?.trim();
-  const seedAutoplay = autoplayPref && !stop.seed.audioAutoplayDisabled && !showSeedTts;
-  const seedTtsAutoplay = autoplayPref && showSeedTts;
-  const bgNarrationAutoplays = seedAutoplay || seedTtsAutoplay;
+  const seedNar = resolveNarration(stop.seed, seedTtsSource, autoplayPref);
+  const bgNarrationAutoplays = seedNar.uploadedAutoplay || seedNar.cachedAutoplay || seedNar.browserAutoplay;
   const noticeAutoplay = autoplayPref && !stop.notice.audioAutoplayDisabled && !bgNarrationAutoplays;
 
   // Audio-synced photo highlights for the Background (seed) and Find
@@ -53,7 +50,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   // It opens by default only when they chose "Read", or when there's no
   // narration at all (so a text-only Background still shows).
   const [readMode] = useReadMode();
-  const hasBgNarration = !!stop.seed.audioUrl || showSeedTts;
+  const hasBgNarration = seedNar.hasNarration;
   const [bgReadAlong, setBgReadAlong] = useState(readMode || !hasBgNarration);
 
   const hasNoticeSection = !!(
@@ -135,9 +132,12 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
       {(stop.seed.text || stop.seed.audioUrl) ? (
         <div>
           <SectionSubtitle className="mb-2">Background</SectionSubtitle>
-          {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedAutoplay} onTimeUpdate={seedCues.onTimeUpdate} onEnded={seedCues.onEnded} />}
-          {/* Auto text-to-speech of the Background when there's no uploaded voiceover. */}
-          {showSeedTts && <SpeechBar text={seedTtsSource} title={stop.seed.audioTitle || 'Background'} autoplay={seedTtsAutoplay} />}
+          {/* Uploaded audio (voiceover, or an extra non-voiceover clip). */}
+          {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedNar.uploadedAutoplay} onTimeUpdate={seedCues.onTimeUpdate} onEnded={seedCues.onEnded} />}
+          {/* Cached OpenAI narration of the Background (also drives the photo cues). */}
+          {seedNar.showCached && <AudioButton audioUrl={seedNar.cachedUrl!} title={stop.seed.audioTitle || 'Background'} autoplay={seedNar.cachedAutoplay} onTimeUpdate={seedCues.onTimeUpdate} onEnded={seedCues.onEnded} />}
+          {/* Free browser voice when nothing is cached yet. */}
+          {seedNar.showBrowser && <SpeechBar text={seedTtsSource} title={stop.seed.audioTitle || 'Background'} autoplay={seedNar.browserAutoplay} />}
           {stop.seed.text && (
             <>
               <button
