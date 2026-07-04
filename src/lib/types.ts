@@ -255,6 +255,8 @@ export interface ContextSourceItem {
   author: string;
   date: string;
   imageUrl: string | null;
+  /** Optional link — the source name is shown as a hyperlink to it in the app. */
+  url?: string | null;
 }
 
 /**

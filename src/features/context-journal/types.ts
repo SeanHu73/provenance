@@ -46,6 +46,8 @@ export interface ContextSource {
   author: string;
   date: string;
   imageUrl: string | null;
+  /** Optional link — the source name is shown as a hyperlink to it in the app. */
+  url?: string | null;
 }
 
 /** A snapshot of a question that led a learner to this context, stored on the

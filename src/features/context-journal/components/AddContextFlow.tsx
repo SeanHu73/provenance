@@ -27,7 +27,7 @@ interface Props {
 }
 
 type DraftMedia = { id: string; kind: 'photo' | 'audio'; title: string; previewUrl: string; file?: File; existingUrl?: string };
-type DraftSource = { id: string; name: string; author: string; date: string; previewUrl: string; file?: File; existingUrl?: string };
+type DraftSource = { id: string; name: string; author: string; date: string; url: string; previewUrl: string; file?: File; existingUrl?: string };
 
 const mkId = () =>
   (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
@@ -46,7 +46,7 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
   const [thumbId, setThumbId] = useState<string | null>(initial?.thumbnailMediaId ?? null);
   const [sources, setSources] = useState<DraftSource[]>(
     (initial?.sources ?? []).map((s) => ({
-      id: s.id, name: s.name, author: s.author, date: s.date,
+      id: s.id, name: s.name, author: s.author, date: s.date, url: s.url ?? '',
       previewUrl: s.imageUrl ?? '', existingUrl: s.imageUrl ?? undefined,
     })),
   );
@@ -137,13 +137,13 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
   const setMediaTitle = (id: string, t: string) =>
     setMedia((prev) => prev.map((m) => (m.id === id ? { ...m, title: t } : m)));
 
-  const addSource = () => setSources((prev) => [...prev, { id: mkId(), name: '', author: '', date: '', previewUrl: '' }]);
+  const addSource = () => setSources((prev) => [...prev, { id: mkId(), name: '', author: '', date: '', url: '', previewUrl: '' }]);
   const removeSource = (id: string) => setSources((prev) => {
     const s = prev.find((x) => x.id === id);
     if (s?.file && s.previewUrl) URL.revokeObjectURL(s.previewUrl);
     return prev.filter((x) => x.id !== id);
   });
-  const setSourceField = (id: string, field: 'name' | 'author' | 'date', val: string) =>
+  const setSourceField = (id: string, field: 'name' | 'author' | 'date' | 'url', val: string) =>
     setSources((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: val } : s)));
   const setSourceImage = (id: string, files: FileList | null) => {
     const file = files?.[0];
@@ -171,6 +171,7 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
       const uploadedSources: ContextSource[] = await Promise.all(
         sources.filter((s) => s.name.trim()).map(async (s) => ({
           id: s.id, name: s.name.trim(), author: s.author.trim(), date: s.date.trim(),
+          url: s.url.trim() || null,
           imageUrl: s.file ? await uploadContextMedia(s.file) : (s.existingUrl ?? null),
         })),
       );
@@ -374,6 +375,12 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
                       className="w-32 px-2 py-1.5 rounded border bg-white text-sm" style={{ borderColor: 'var(--th-border)' }}
                     />
                   </div>
+                  <input
+                    value={s.url} onChange={(e) => setSourceField(s.id, 'url', e.target.value)}
+                    placeholder="Link (optional) — https://…  (paste a URL; the source name links to it)"
+                    inputMode="url"
+                    className="w-full px-2 py-1.5 rounded border bg-white text-sm" style={{ borderColor: 'var(--th-border)' }}
+                  />
                 </div>
               ))}
             </div>

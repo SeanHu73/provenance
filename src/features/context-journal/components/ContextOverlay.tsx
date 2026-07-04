@@ -228,7 +228,19 @@ export default function ContextOverlay({
                     <img src={s.imageUrl} alt="" className="w-12 h-12 rounded object-cover shrink-0" />
                   )}
                   <div className="min-w-0">
-                    <p className="font-serif text-[15px] text-text-primary leading-snug">{s.name}</p>
+                    {s.url ? (
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-serif text-[15px] leading-snug underline break-words"
+                        style={{ color: colour }}
+                      >
+                        {s.name}
+                      </a>
+                    ) : (
+                      <p className="font-serif text-[15px] text-text-primary leading-snug">{s.name}</p>
+                    )}
                     {(s.author || s.date) && (
                       <p className="mt-0.5 text-xs text-text-muted">{[s.author, s.date].filter(Boolean).join(' · ')}</p>
                     )}
