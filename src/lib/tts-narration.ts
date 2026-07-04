@@ -1,5 +1,14 @@
 import { hashText, ttsSanitize } from './tts-text';
 
+/** The narration for a context page is only its Title + Full Explanation
+ *  (never the short summary, question, or other fields). Shared by the admin
+ *  generator and the runtime card so their cache keys match. */
+export function contextNarrationText(item: { title?: string; longExplanation?: string }): string {
+  const title = (item.title || '').trim();
+  const body = (item.longExplanation || '').trim();
+  return title ? `${title}. ${body}` : body;
+}
+
 /** The audio-bearing fields of a stop section (seed / reveal). */
 export interface NarrationSection {
   audioUrl?: string | null;

@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { Tour, Stop, Detour, StopPhoto, Act, ActContextItem, TourMode } from '@/lib/types';
 import { ttsSanitize, hashText } from '@/lib/tts-text';
+import { contextNarrationText } from '@/lib/tts-narration';
 import { fetchTtsBlob } from '@/lib/tts-client';
 import { deleteStorageFileByUrl } from '@/lib/storage-utils';
 import { getTour, saveTour, deleteTour, blankStop, blankDetour, getActiveStops, setActiveStops, duplicateStops, getTourMode, blankAct, blankOpeningFrame } from '@/lib/tours-store';
@@ -455,8 +456,12 @@ export default function TourEditorPage() {
     const stops = getActiveStops(tour);
     // Limit to the chosen stop, or every stop when none is selected.
     const targetStops = narrStopId ? stops.filter((s) => s.id === narrStopId) : stops;
-    type Task = { stopId: string; section: 'seed' | 'reveal'; clean: string; hash: string; oldUrl: string | null };
+    type Task =
+      | { kind: 'stop'; stopId: string; section: 'seed' | 'reveal'; clean: string; hash: string; oldUrl: string | null }
+      | { kind: 'context'; actId: string; contextId: string; clean: string; hash: string; oldUrl: string | null };
     const tasks: Task[] = [];
+
+    // Stops: Background (seed) + Stop Info (reveal).
     for (const stop of targetStops) {
       const sections: { section: 'seed' | 'reveal'; sec: Stop['seed'] | Stop['reveal']; source: string }[] = [
         { section: 'seed', sec: stop.seed, source: stop.seed.ttsText || stop.seed.text },
@@ -468,30 +473,52 @@ export default function TourEditorPage() {
         if (sec.audioUrl && sec.audioIsVoiceover === true) continue; // uploaded voiceover
         const hash = hashText(clean);
         if (sec.ttsAudioUrl && sec.ttsAudioHash === hash) continue;  // already fresh
-        tasks.push({ stopId: stop.id, section, clean, hash, oldUrl: sec.ttsAudioUrl ?? null });
+        tasks.push({ kind: 'stop', stopId: stop.id, section, clean, hash, oldUrl: sec.ttsAudioUrl ?? null });
       }
     }
+
+    // Context pages: Title + Full Explanation. Covered for the act(s) that
+    // contain the selected stop, or every act when no single stop is chosen.
+    for (const act of tour.acts || []) {
+      if (narrStopId && !act.stopIds.includes(narrStopId)) continue;
+      for (const ctx of act.contexts || []) {
+        const clean = ttsSanitize(contextNarrationText(ctx));
+        if (!clean.trim()) continue;
+        const hash = hashText(clean);
+        if (ctx.ttsAudioUrl && ctx.ttsAudioHash === hash) continue;  // already fresh
+        tasks.push({ kind: 'context', actId: act.id, contextId: ctx.id, clean, hash, oldUrl: ctx.ttsAudioUrl ?? null });
+      }
+    }
+
     if (tasks.length === 0) {
       setNarrGen({ running: false, done: 0, total: 0, msg: 'All narration is up to date (or has an uploaded voiceover).' });
       return;
     }
     setNarrGen({ running: true, done: 0, total: tasks.length, msg: 'Generating…' });
-    const working = stops.map((s) => ({ ...s }));
-    const findStop = (id: string) => working.find((s) => s.id === id);
+    const workingStops = stops.map((s) => ({ ...s }));
+    const workingActs = (tour.acts || []).map((a) => ({ ...a, contexts: (a.contexts || []).map((c) => ({ ...c })) }));
+    const findStop = (id: string) => workingStops.find((s) => s.id === id);
     let done = 0;
     let errors = 0;
     for (const t of tasks) {
       try {
         const blob = await fetchTtsBlob(t.clean);
-        const file = new File([blob], `tts_${t.section}_${t.stopId}.mp3`, { type: 'audio/mpeg' });
-        const url = await uploadPhoto(file, `memorial-church/audio/tts/${tourId}/${t.section}_${t.stopId}_${t.hash}.mp3`);
-        const s = findStop(t.stopId);
-        if (s) {
-          if (t.section === 'seed') s.seed = { ...s.seed, ttsAudioUrl: url, ttsAudioHash: t.hash };
-          else s.reveal = { ...s.reveal, ttsAudioUrl: url, ttsAudioHash: t.hash };
+        if (t.kind === 'stop') {
+          const file = new File([blob], `tts_${t.section}_${t.stopId}.mp3`, { type: 'audio/mpeg' });
+          const url = await uploadPhoto(file, `memorial-church/audio/tts/${tourId}/${t.section}_${t.stopId}_${t.hash}.mp3`);
+          const s = findStop(t.stopId);
+          if (s) {
+            if (t.section === 'seed') s.seed = { ...s.seed, ttsAudioUrl: url, ttsAudioHash: t.hash };
+            else s.reveal = { ...s.reveal, ttsAudioUrl: url, ttsAudioHash: t.hash };
+          }
+          if (t.oldUrl && t.oldUrl !== url) void deleteStorageFileByUrl(t.oldUrl);
+        } else {
+          const file = new File([blob], `tts_context_${t.contextId}.mp3`, { type: 'audio/mpeg' });
+          const url = await uploadPhoto(file, `memorial-church/audio/tts/${tourId}/context_${t.contextId}_${t.hash}.mp3`);
+          const ctx = workingActs.find((a) => a.id === t.actId)?.contexts?.find((c) => c.id === t.contextId);
+          if (ctx) { ctx.ttsAudioUrl = url; ctx.ttsAudioHash = t.hash; }
+          if (t.oldUrl && t.oldUrl !== url) void deleteStorageFileByUrl(t.oldUrl);
         }
-        // Remove the now-orphaned previous clip (the text changed → new hash).
-        if (t.oldUrl && t.oldUrl !== url) void deleteStorageFileByUrl(t.oldUrl);
       } catch (err) {
         errors++;
         console.error('[narration] generate failed:', err);
@@ -499,7 +526,8 @@ export default function TourEditorPage() {
       done++;
       setNarrGen({ running: true, done, total: tasks.length, msg: 'Generating…' });
     }
-    const next = setActiveStops(tour, working);
+    let next = setActiveStops(tour, workingStops);
+    if (tour.acts) next = { ...next, acts: workingActs };
     setTour(next);
     await persist(next);
     setNarrGen({ running: false, done, total: tasks.length, msg: `Done — ${done - errors} generated${errors ? `, ${errors} failed (see console)` : ''}.` });
@@ -667,9 +695,10 @@ export default function TourEditorPage() {
         <section className="mb-8 p-4 rounded border-2 border-emerald-300 bg-emerald-50/40 space-y-2">
           <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Narration</h2>
           <p className="text-xs text-stone-500">
-            Generates spoken narration (OpenAI voice) for the Background and Stop Info of a stop
-            that has no uploaded voiceover and isn&apos;t already up to date. Uploaded voiceovers and
-            unchanged text are skipped. Edited some text? Just re-run — it refreshes only those.
+            Generates spoken narration (OpenAI voice) for the Background, Stop Info, and context
+            pages (Title + Full Explanation) that have no uploaded voiceover and aren&apos;t already
+            up to date. Uploaded voiceovers and unchanged text are skipped. Edited some text? Just
+            re-run — it refreshes only those. (Context answers stay on-demand, since each is unique.)
           </p>
           <div className="flex items-center gap-3 flex-wrap">
             <select

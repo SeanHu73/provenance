@@ -20,9 +20,12 @@ interface Props {
   text: string;
   title?: string | null;
   autoplay?: boolean;
+  /** A pre-generated, saved narration file for this exact text (authored context
+   *  pages). When present it's played directly — no generation, no cost. */
+  cachedUrl?: string | null;
 }
 
-export default function OpenAiSpeechBar({ text, title, autoplay = false }: Props) {
+export default function OpenAiSpeechBar({ text, title, autoplay = false, cachedUrl }: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -43,10 +46,14 @@ export default function OpenAiSpeechBar({ text, title, autoplay = false }: Props
   };
 
   useEffect(() => {
-    if (autoplay) generate(true);
+    // Skip generation when a saved clip exists — it's played directly below.
+    if (autoplay && !cachedUrl) generate(true);
     // Only on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A saved clip for this exact text (authored context) → play it, no generation.
+  if (cachedUrl) return <AudioButton audioUrl={cachedUrl} title={title || 'Narration'} autoplay={autoplay} />;
 
   // Generation failed → free browser voice so the answer is still narrated.
   if (failed) return <SpeechBar text={text} title={title} autoplay={autoplay} />;
