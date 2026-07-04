@@ -129,6 +129,8 @@ export default function TourEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [narrGen, setNarrGen] = useState<{ running: boolean; done: number; total: number; msg: string }>({ running: false, done: 0, total: 0, msg: '' });
+  // Which stop to generate narration for — '' means every stop.
+  const [narrStopId, setNarrStopId] = useState<string>('');
   const [expandedStopId, setExpandedStopId] = useState<string | null>(null);
   const [previewStopId, setPreviewStopId] = useState<string | null>(null);
   const [previewPhase, setPreviewPhase] = useState(0);
@@ -450,9 +452,11 @@ export default function TourEditorPage() {
   const generateMissingNarration = async () => {
     if (!tour || narrGen.running) return;
     const stops = getActiveStops(tour);
+    // Limit to the chosen stop, or every stop when none is selected.
+    const targetStops = narrStopId ? stops.filter((s) => s.id === narrStopId) : stops;
     type Task = { stopId: string; section: 'seed' | 'reveal'; clean: string; hash: string };
     const tasks: Task[] = [];
-    for (const stop of stops) {
+    for (const stop of targetStops) {
       const sections: { section: 'seed' | 'reveal'; sec: Stop['seed'] | Stop['reveal']; source: string }[] = [
         { section: 'seed', sec: stop.seed, source: stop.seed.ttsText || stop.seed.text },
         { section: 'reveal', sec: stop.reveal, source: stop.reveal.text },
@@ -660,18 +664,31 @@ export default function TourEditorPage() {
         <section className="mb-8 p-4 rounded border-2 border-emerald-300 bg-emerald-50/40 space-y-2">
           <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Narration</h2>
           <p className="text-xs text-stone-500">
-            Generates spoken narration (OpenAI voice) for the Background and Stop Info of every stop
+            Generates spoken narration (OpenAI voice) for the Background and Stop Info of a stop
             that has no uploaded voiceover and isn&apos;t already up to date. Uploaded voiceovers and
             unchanged text are skipped. Edited some text? Just re-run — it refreshes only those.
           </p>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <select
+              value={narrStopId}
+              onChange={(e) => { setNarrStopId(e.target.value); setNarrGen((g) => ({ ...g, msg: '' })); }}
+              disabled={narrGen.running}
+              className="px-2 py-1.5 border border-stone-300 rounded text-xs bg-white disabled:opacity-50"
+            >
+              <option value="">All stops</option>
+              {activeStops.map((s, i) => (
+                <option key={s.id} value={s.id}>{`Stop ${i + 1}${s.title ? `: ${s.title}` : ''}`}</option>
+              ))}
+            </select>
             <button
               type="button"
               onClick={generateMissingNarration}
               disabled={narrGen.running}
               className="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-xs disabled:opacity-50"
             >
-              {narrGen.running ? `Generating ${narrGen.done}/${narrGen.total}…` : 'Generate missing narration'}
+              {narrGen.running
+                ? `Generating ${narrGen.done}/${narrGen.total}…`
+                : narrStopId ? 'Generate narration for this stop' : 'Generate missing narration (all)'}
             </button>
             {narrGen.msg && !narrGen.running && <span className="text-xs text-stone-600">{narrGen.msg}</span>}
           </div>
