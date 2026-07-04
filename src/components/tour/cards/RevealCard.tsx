@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Stop } from '@/lib/types';
 import { usePhotoCues } from '../usePhotoCues';
-import PhotoContent from './PhotoContent';
+import PhotoContent, { PhotoCarousel } from './PhotoContent';
 import FullscreenPhoto from './FullscreenPhoto';
 import AudioButton from './AudioButton';
 import BackButton from './BackButton';
@@ -88,22 +88,24 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
           </button>
 
           {/* Photos always visible below — ordered to match where their
-              [photo:N] markers appear in the (collapsed) context text. */}
-          {allPhotos.length > 0 && (
-            <div className="space-y-3">
-              {orderPhotosByText(stop.reveal.text, allPhotos).map((photo, i) => (
-                <button
-                  key={i}
-                  onClick={() => setFullscreen(photo)}
-                  className={`w-full rounded-lg overflow-hidden shadow-md border border-sandstone-light text-left cursor-pointer bg-sandstone ${highlightedUrl && photo.url === highlightedUrl ? 'photo-glow' : ''}`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.url} alt={photo.caption || ''} className="w-full max-h-72 object-contain" />
-                  {photo.caption && <p className="text-xs text-text-secondary px-3 py-1.5 bg-sandstone/50 italic">{photo.caption}</p>}
-                </button>
-              ))}
-            </div>
-          )}
+              [photo:N] markers appear in the (collapsed) context text. A
+              swipeable carousel when there are several, a single block otherwise. */}
+          {allPhotos.length > 1 ? (
+            <PhotoCarousel
+              photos={orderPhotosByText(stop.reveal.text, allPhotos)}
+              highlightedUrl={highlightedUrl}
+              onTapPhoto={setFullscreen}
+            />
+          ) : allPhotos.length === 1 ? (
+            <button
+              onClick={() => setFullscreen(allPhotos[0])}
+              className={`w-full rounded-lg overflow-hidden shadow-md border border-sandstone-light text-left cursor-pointer bg-sandstone ${highlightedUrl && allPhotos[0].url === highlightedUrl ? 'photo-glow' : ''}`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={allPhotos[0].url} alt={allPhotos[0].caption || ''} className="w-full max-h-72 object-contain" />
+              {allPhotos[0].caption && <p className="text-xs text-text-secondary px-3 py-1.5 bg-sandstone/50 italic">{allPhotos[0].caption}</p>}
+            </button>
+          ) : null}
         </>
       )}
 

@@ -26,10 +26,14 @@ export function usePhotoCues(cues: PhotoCue[] | undefined, photos: StopPhoto[] |
   const shown = (ended && !holdLast) ? undefined : active;
   const highlightedUrl = shown ? ((photos || [])[shown.photoIndex]?.url ?? null) : null;
 
+  // When the cue moves to a new photo, fire a short haptic. This is the same
+  // moment PhotoCarousel auto-slides to the cued photo, so the buzz reads as
+  // "the audio just moved you to this picture." One source of truth for the
+  // haptic (here) avoids a double-buzz from the carousel doing its own.
   const prev = useRef<string | null>(null);
   useEffect(() => {
     if (highlightedUrl && highlightedUrl !== prev.current) {
-      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(15);
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(25);
     }
     prev.current = highlightedUrl;
   }, [highlightedUrl]);

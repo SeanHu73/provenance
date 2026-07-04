@@ -84,7 +84,7 @@ function AudioStep({ onNext }: { onNext: () => void }) {
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col justify-center px-7 py-8">
         <h2 className="font-display text-[30px] font-bold text-text-primary text-center">Audio</h2>
         <p className="mt-3 text-[18px] font-serif text-text-secondary text-center leading-relaxed">
-          This experience is best with <strong>earphones</strong>. You will be able to listen and read along during the tour.
+          <strong>Earphones</strong> are recommended for the best experience.
         </p>
 
         {/* Level 1 — Listen or Read */}
