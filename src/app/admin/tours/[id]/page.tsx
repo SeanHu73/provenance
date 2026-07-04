@@ -2063,6 +2063,21 @@ export default function TourEditorPage() {
                                   uploadPath={`memorial-church/audio/tours/${tourId}/context_vo_${item.id}`}
                                   onUploadFile={uploadPhoto}
                                 />
+                                {/* Unlock dependency — hide this context's question in the
+                                    journal until another context here has been listened to. */}
+                                <label className="block text-[11px] text-stone-500">
+                                  Unlock after listening to:
+                                  <select
+                                    value={item.unlockAfterContextId ?? ''}
+                                    onChange={(e) => patchActContextItem(act.id, item.id, { unlockAfterContextId: e.target.value || undefined })}
+                                    className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs bg-white"
+                                  >
+                                    <option value="">Available from the start</option>
+                                    {(act.contexts ?? []).filter((c) => c.id !== item.id).map((c) => (
+                                      <option key={c.id} value={c.id}>{c.title || 'Untitled'}</option>
+                                    ))}
+                                  </select>
+                                </label>
                               </li>
                             );
                           })}

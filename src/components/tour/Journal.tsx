@@ -66,6 +66,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const {
     tour,
     session,
+    recordContextViewed,
     currentStop,
     isLastStop,
     goBack,
@@ -362,7 +363,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
             });
             return (
               <div className="fixed inset-0 z-[55]">
-                <ContextJournal tourId={tour.id} authored={authored} inTour onExit={completeActContext} continueLabel="Continue" responses={responses} guidingQuestion={act?.guidingQuestion?.trim() || undefined} />
+                <ContextJournal tourId={tour.id} authored={authored} inTour onExit={completeActContext} continueLabel="Continue" responses={responses} guidingQuestion={act?.guidingQuestion?.trim() || undefined} viewedContextIds={(session?.viewedContexts || []).map((v) => v.contextId)} onContextViewed={recordContextViewed} />
               </div>
             );
           })(),

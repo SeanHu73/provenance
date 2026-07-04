@@ -87,6 +87,9 @@ export interface ContextEntry {
   /** The question(s) that led to this context (snapshot), shown at the bottom of
    *  the context page; tap one to read its context info. */
   taggedQuestions?: TaggedQuestion[];
+  /** Designer unlock dependency (authored contexts): the question stays hidden in
+   *  the journal until this context id has been listened to. */
+  unlockAfterContextId?: string;
   /** Cited sources shown on the context page. */
   sources?: ContextSource[];
   /** When this is a learner's *added copy* of a designer-authored context, the id

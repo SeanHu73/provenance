@@ -60,9 +60,15 @@ interface Props {
   responses?: { actTitle: string; promptText: string; text: string }[];
   /** The act's guiding question, shown atop the P.A.S.T. section in a tour. */
   guidingQuestion?: string;
+  /** Context ids the learner has already listened to. An authored question with
+   *  an `unlockAfterContextId` stays hidden until that id appears here. */
+  viewedContextIds?: string[];
+  /** Called when the learner opens a context to read/listen — records it as
+   *  viewed so unlock dependencies can fire. */
+  onContextViewed?: (ctx: { contextId: string; title: string; lens: string; question?: string }) => void;
 }
 
-export default function ContextJournal({ tourId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion }: Props) {
+export default function ContextJournal({ tourId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
   // Both the in-tour flow and the revisit overlay read/write the learner's
   // guest-local contexts (sessionStorage); only a bare standalone visit uses
@@ -102,6 +108,7 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
   const openFull = (entry: ContextEntry) => {
     setFullEntry(entry);
     if (entry.origin === 'authored') setExplored(true);
+    onContextViewed?.({ contextId: entry.id, title: entry.title, lens: entry.pastCategory, question: entry.question });
   };
   // The context the viewer has tapped — drives the map (fly to its area); null
   // returns the map to the admin default view.
@@ -215,9 +222,13 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
   // as thumbnails (distinguished by `origin`).
   const displayEntries = useMemo(() => {
     const addedSources = new Set(entries.map((e) => e.sourceId).filter(Boolean));
-    const questions = (authored ?? []).filter((a) => !addedSources.has(a.id));
+    const viewed = new Set(viewedContextIds);
+    // Hide an authored question until its unlock prerequisite has been listened to.
+    const questions = (authored ?? []).filter(
+      (a) => !addedSources.has(a.id) && (!a.unlockAfterContextId || viewed.has(a.unlockAfterContextId)),
+    );
     return [...questions, ...entries];
-  }, [authored, entries]);
+  }, [authored, entries, viewedContextIds]);
 
   // Import a learner copy of an authored context (carries its sourceId so the
   // authored question hides once added).

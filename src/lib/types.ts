@@ -401,6 +401,10 @@ export interface ActContextItem {
    *  origin question; more can be tagged. Replaces the old per-context framing
    *  `question` + `afterStopId` positioning. */
   questionIds?: string[];
+  /** Designer-set unlock dependency: this context's question stays hidden in the
+   *  journal until the referenced context has been listened to (is in the
+   *  session's viewedContexts). Empty/undefined = available from the start. */
+  unlockAfterContextId?: string;
   /** @deprecated legacy: contexts used to be positioned after a stop and carry
    *  their own framing question. Read for old tours only. */
   afterStopId?: string;

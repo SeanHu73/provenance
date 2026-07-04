@@ -43,6 +43,7 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
   const [showRoomMenu, setShowRoomMenu] = useState(false);
   const [autoplayPref, setAutoplayPref] = useAudioAutoplay();
   const { room, isInRoom } = useRoom();
+  const { recordContextViewed } = useTour();
   // Context-Prototype hides the Inquiries (ask a question) affordance and
   // surfaces the current Act's title on the footer bar, next to Journal.
   const isContext = getTourMode(tour) === 'context';
@@ -272,6 +273,8 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
             onExit={() => setShowJournal(false)}
             responses={journalResponses}
             guidingQuestion={journalAct?.guidingQuestion?.trim() || undefined}
+            viewedContextIds={(session.viewedContexts || []).map((v) => v.contextId)}
+            onContextViewed={recordContextViewed}
           />
         </div>,
         document.body,
