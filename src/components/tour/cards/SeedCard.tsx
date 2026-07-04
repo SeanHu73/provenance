@@ -48,11 +48,13 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   // (notice) narrations.
   const seedCues = usePhotoCues(stop.seed.photoCues, stop.seed.photos || [], stop.seed.photoCuesHoldLast);
   const noticeCues = usePhotoCues(stop.notice.photoCues, stop.notice.photos || [], stop.notice.photoCuesHoldLast);
-  // Background reading is collapsed behind "Read Along" (open by default when
-  // there's no audio, so a text-only Background still shows — or when the learner
-  // chose "Read" in setup, which expands all read-along text).
+  // Background reading is collapsed behind "Read Along" when there's narration
+  // (uploaded audio OR the auto text-to-speech) and the learner chose "Listen".
+  // It opens by default only when they chose "Read", or when there's no
+  // narration at all (so a text-only Background still shows).
   const [readMode] = useReadMode();
-  const [bgReadAlong, setBgReadAlong] = useState(!stop.seed.audioUrl || readMode);
+  const hasBgNarration = !!stop.seed.audioUrl || showSeedTts;
+  const [bgReadAlong, setBgReadAlong] = useState(readMode || !hasBgNarration);
 
   const hasNoticeSection = !!(
     stop.notice.prompt

@@ -51,8 +51,11 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
   const showTts = !isVoiceover && !!stop.reveal.text.trim();
   const shouldAutoplay = autoplayPref && !stop.reveal.audioAutoplayDisabled && !showTts;
   const ttsAutoplay = autoplayPref && showTts;
-  // Expanded by default when there's no narration audio, or when "Read" was chosen.
-  const [textExpanded, setTextExpanded] = useState(!hasAudio || readMode);
+  // Narration is either an uploaded voiceover or the auto text-to-speech.
+  const hasNarration = hasAudio || showTts;
+  // Collapsed by default when there's narration and the learner chose "Listen";
+  // expanded when they chose "Read" or there's nothing to narrate.
+  const [textExpanded, setTextExpanded] = useState(readMode || !hasNarration);
   const [fullscreen, setFullscreen] = useState<{ url: string; caption: string | null } | null>(null);
 
   // Audio-synced photo highlight (the cued photo glows until the next cue).
@@ -86,7 +89,7 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
       {showTts && <SpeechBar text={stop.reveal.text} title={stop.reveal.audioTitle || 'Stop Info'} autoplay={ttsAutoplay} />}
 
       {/* When text is hidden: "tap to read along" then photos */}
-      {hasAudio && !textExpanded && (
+      {hasNarration && !textExpanded && (
         <>
           <button
             onClick={() => setTextExpanded(true)}
@@ -120,8 +123,8 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
 
       {/* When text is shown: full interleaved content */}
       {textExpanded && (
-        <div className={hasAudio ? 'animate-fade-in' : 'animate-blur-reveal'}>
-          {hasAudio && (
+        <div className={hasNarration ? 'animate-fade-in' : 'animate-blur-reveal'}>
+          {hasNarration && (
             <button
               onClick={() => setTextExpanded(false)}
               className="text-sm text-text-secondary/60 mb-3 flex items-center gap-1"

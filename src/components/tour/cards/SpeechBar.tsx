@@ -7,16 +7,21 @@
  * browser's free Web Speech API (`speechSynthesis`).
  *
  * The caller passes the raw authored text; we sanitize it (`ttsSanitize`) so the
- * [photo:N] markers and **bold** / {{#hex}} style markers are never read aloud.
+ * [photo:N] markers and **bold** / {{#hex}} style markers are never read aloud,
+ * and common abbreviations (Jr., Dr., …) are expanded so they don't sound like
+ * the end of a sentence.
  *
- * speechSynthesis has no real duration/seek, so the timeline is an estimate:
- * progress tracks the spoken word (`boundary` events) where the voice supports
- * it, falling back to an elapsed-time estimate. If the browser has no speech
- * support the bar renders nothing (the screen simply has no narration).
+ * Playback is chunked: the text is split into short sentence-sized utterances
+ * spoken back-to-back. This avoids the Chrome bug where one long utterance falls
+ * silent after ~15 seconds, and keeps precise control of progress. Reading runs
+ * a little slower than default (`RATE`) so it's easier to follow.
+ *
+ * If the browser has no speech support the bar renders nothing (the screen
+ * simply has no narration).
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ttsSanitize } from '@/lib/tts-text';
+import { ttsSanitize, ttsChunks } from '@/lib/tts-text';
 import { ScrollingTitle } from './AudioButton';
 
 interface Props {
@@ -27,10 +32,19 @@ interface Props {
   autoplay?: boolean;
 }
 
-const WORDS_PER_SEC = 2.6; // ~155 wpm, for the duration estimate only
+const RATE = 0.85;              // slower than default for easier listening
+const WORDS_PER_SEC = 2.6 * RATE; // rough estimate, for the duration readout only
 
 export default function SpeechBar({ text, title, autoplay = false }: Props) {
   const clean = useMemo(() => ttsSanitize(text), [text]);
+  const chunks = useMemo(() => ttsChunks(clean), [clean]);
+  // Char offset where each chunk starts, plus the total, to drive progress.
+  const { starts, total } = useMemo(() => {
+    const s: number[] = [];
+    let acc = 0;
+    for (const c of chunks) { s.push(acc); acc += c.length; }
+    return { starts: s, total: Math.max(1, acc) };
+  }, [chunks]);
   const estTotal = useMemo(
     () => Math.max(2, Math.round(clean.split(/\s+/).filter(Boolean).length / WORDS_PER_SEC)),
     [clean],
@@ -42,62 +56,67 @@ export default function SpeechBar({ text, title, autoplay = false }: Props) {
   const [progress, setProgress] = useState(0);
   const [elapsed, setElapsed] = useState(0);
 
+  const runIdRef = useRef(0);       // bumped on stop/unmount to orphan stale callbacks
+  const idxRef = useRef(0);         // current chunk
+  const boundaryRef = useRef(0);    // char offset within the current chunk
   const elapsedRef = useRef(0);
-  const boundaryProgRef = useRef(0);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const keepaliveRef = useRef(0);
 
   const clearTick = () => { if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; } };
 
-  const reset = () => {
+  const startTick = () => {
     clearTick();
+    tickRef.current = setInterval(() => {
+      elapsedRef.current += 0.2;
+      setElapsed(elapsedRef.current);
+      const spoken = (starts[idxRef.current] ?? 0) + boundaryRef.current;
+      setProgress(Math.min(0.999, spoken / total));
+    }, 200);
+  };
+
+  const resetState = () => {
+    clearTick();
+    idxRef.current = 0;
+    boundaryRef.current = 0;
     elapsedRef.current = 0;
-    boundaryProgRef.current = 0;
     setState('idle');
     setProgress(0);
     setElapsed(0);
   };
 
-  const startTick = () => {
-    clearTick();
-    keepaliveRef.current = 0;
-    tickRef.current = setInterval(() => {
-      elapsedRef.current += 0.2;
-      keepaliveRef.current += 0.2;
-      // Chrome cuts long utterances off after ~15s; a periodic resume keeps it going.
-      if (keepaliveRef.current >= 10) {
-        keepaliveRef.current = 0;
-        try { window.speechSynthesis.pause(); window.speechSynthesis.resume(); } catch { /* ignore */ }
-      }
-      const timeProg = Math.min(0.99, elapsedRef.current / estTotal);
-      setElapsed(elapsedRef.current);
-      setProgress(Math.max(timeProg, boundaryProgRef.current));
-    }, 200);
+  const speakChunk = (runId: number, i: number) => {
+    if (runId !== runIdRef.current) return;
+    if (i >= chunks.length) { resetState(); return; }
+    idxRef.current = i;
+    boundaryRef.current = 0;
+    const u = new SpeechSynthesisUtterance(chunks[i]);
+    u.rate = RATE;
+    // Flip to "playing" only once speech actually starts — so if a browser
+    // blocks autoplay without a gesture (mobile), the bar stays on its play
+    // button instead of a stuck pause button.
+    u.onstart = () => { if (runId === runIdRef.current) { setState('playing'); startTick(); } };
+    u.onboundary = (e) => { if (runId === runIdRef.current) boundaryRef.current = e.charIndex; };
+    u.onend = () => { if (runId === runIdRef.current) speakChunk(runId, i + 1); };
+    u.onerror = () => { if (runId === runIdRef.current) speakChunk(runId, i + 1); }; // skip a failed chunk
+    window.speechSynthesis.speak(u);
   };
 
   const play = () => {
-    if (!supported || !clean.trim()) return;
-    const synth = window.speechSynthesis;
-    synth.cancel();
+    if (!supported || chunks.length === 0) return;
+    window.speechSynthesis.cancel();
+    const runId = ++runIdRef.current;
+    idxRef.current = 0;
+    boundaryRef.current = 0;
     elapsedRef.current = 0;
-    boundaryProgRef.current = 0;
-    const u = new SpeechSynthesisUtterance(clean);
-    u.rate = 1;
-    u.onboundary = (e) => { if (clean.length) boundaryProgRef.current = e.charIndex / clean.length; };
-    u.onend = () => reset();
-    u.onerror = () => reset();
-    synth.speak(u);
-    setState('playing');
-    startTick();
+    speakChunk(runId, 0);
   };
 
   const toggle = () => {
     if (!supported) return;
-    const synth = window.speechSynthesis;
     if (state === 'idle') { play(); return; }
-    if (state === 'playing') { try { synth.pause(); } catch { /* ignore */ } clearTick(); setState('paused'); return; }
+    if (state === 'playing') { try { window.speechSynthesis.pause(); } catch { /* ignore */ } clearTick(); setState('paused'); return; }
     // paused → resume
-    try { synth.resume(); } catch { /* ignore */ }
+    try { window.speechSynthesis.resume(); } catch { /* ignore */ }
     setState('playing');
     startTick();
   };
@@ -105,7 +124,11 @@ export default function SpeechBar({ text, title, autoplay = false }: Props) {
   // Autoplay on mount (once). Cancel + clean up on unmount.
   useEffect(() => {
     if (autoplay) play();
-    return () => { clearTick(); if (supported) { try { window.speechSynthesis.cancel(); } catch { /* ignore */ } } };
+    return () => {
+      clearTick();
+      runIdRef.current++;
+      if (supported) { try { window.speechSynthesis.cancel(); } catch { /* ignore */ } }
+    };
     // Only on mount — toggling the preference mid-screen shouldn't retro-start.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -116,7 +139,7 @@ export default function SpeechBar({ text, title, autoplay = false }: Props) {
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
-  if (!supported || !clean.trim()) return null;
+  if (!supported || chunks.length === 0) return null;
   const playing = state === 'playing';
 
   return (
