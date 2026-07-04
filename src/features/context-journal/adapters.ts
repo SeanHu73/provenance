@@ -25,6 +25,8 @@ export function authoredToEntry(item: ActContextItem, placeId: string): ContextE
     mapType: item.mapType,
     includePlaceTime: item.includePlaceTime,
     unlockAfterContextId: item.unlockAfterContextId,
+    ttsAudioUrl: item.ttsAudioUrl,
+    ttsAudioHash: item.ttsAudioHash,
     media: item.media, // ContextMediaItem and ContextMedia share a shape
     thumbnailMediaId: item.thumbnailMediaId,
     sources: item.sources, // ContextSourceItem and ContextSource share a shape

@@ -15,6 +15,7 @@ import RecordButton from '@/components/tour/cards/RecordButton';
 import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
 import ContextAskLoading from '@/components/tour/cards/ContextAskLoading';
 import { contextNarrationText } from '@/lib/tts-narration';
+import { uploadSharePhoto } from '@/lib/community-store';
 
 interface RespSource { kind?: string; url?: string; name?: string; author?: string; date?: string; verified?: boolean }
 interface RespCard { lens?: PastCategory; title?: string; summary?: string; explanation?: string }
@@ -38,7 +39,21 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
   const [text, setText] = useState('');
   const [asked, setAsked] = useState('');
   const [resp, setResp] = useState<DetectiveResp | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [adding, setAdding] = useState(false);
+
+  const addPhotos = async (files: FileList | null) => {
+    if (!files || !files.length) return;
+    setUploading(true);
+    try {
+      const urls = await Promise.all(Array.from(files).map((f) => uploadSharePhoto(f)));
+      setPhotos((p) => [...p, ...urls]);
+    } catch (err) {
+      console.error('[ask] photo upload failed:', err);
+    }
+    setUploading(false);
+  };
 
   const ask = async () => {
     const question = text.trim();
@@ -77,8 +92,8 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
       camera: null,
       mapType: 'default',
       includePlaceTime: false,
-      media: [],
-      thumbnailMediaId: null,
+      media: photos.map((url, i) => ({ id: `ph_${i}`, kind: 'photo' as const, url, title: '' })),
+      thumbnailMediaId: photos.length ? 'ph_0' : null,
       sources,
     };
   };
@@ -169,6 +184,24 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
                 </ul>
               </div>
             )}
+            {/* optional photos — saved with the context when added */}
+            <div>
+              <p className="text-[12px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-secondary)' }}>Add photos (optional)</p>
+              <div className="flex flex-wrap gap-2">
+                {photos.map((url, i) => (
+                  <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    <button onClick={() => setPhotos((p) => p.filter((_, j) => j !== i))} aria-label="Remove photo" className="absolute top-0 right-0 w-5 h-5 bg-black/60 text-white text-xs flex items-center justify-center rounded-bl">×</button>
+                  </div>
+                ))}
+                <label className="w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer text-xl" style={{ borderColor: 'var(--th-border)', color: 'var(--text-secondary)' }}>
+                  {uploading ? '…' : '+'}
+                  <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addPhotos(e.target.files)} />
+                </label>
+              </div>
+            </div>
+
             <button onClick={add} disabled={adding} className="w-full py-3.5 rounded-xl text-base font-semibold text-white disabled:opacity-40" style={{ backgroundColor: 'var(--th-primary)' }}>
               {adding ? 'Adding…' : 'Add to my journal'}
             </button>

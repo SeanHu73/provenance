@@ -22,6 +22,9 @@ import ContextMapLoader from './ContextMapLoader';
 import ContextTimeline from './ContextTimeline';
 import { useReadAloud } from './useReadAloud';
 import { useReadMode } from '@/lib/read-mode';
+import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
+import { contextNarrationText } from '@/lib/tts-narration';
+import { hashText, ttsSanitize } from '@/lib/tts-text';
 
 interface Props {
   entry: ContextEntry;
@@ -140,6 +143,18 @@ export default function ContextOverlay({
             <h2 className="font-display text-[26px] leading-tight text-text-primary">{entry.title}</h2>
             {entry.question && (
               <p className="mt-1 font-serif italic text-[15px] text-text-secondary leading-snug">{entry.question}</p>
+            )}
+            {/* OpenAI narration (Title + Full Explanation). Reuses the cached
+                authored-context audio when the hash matches; otherwise generates
+                on demand. (The free browser voice stays disabled here.) */}
+            {entry.longExplanation.trim() && (
+              <div className="mt-3">
+                <OpenAiSpeechBar
+                  text={contextNarrationText(entry)}
+                  title={entry.title}
+                  cachedUrl={entry.ttsAudioHash && entry.ttsAudioHash === hashText(ttsSanitize(contextNarrationText(entry))) ? entry.ttsAudioUrl : null}
+                />
+              </div>
             )}
           </div>
 

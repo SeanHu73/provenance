@@ -90,6 +90,10 @@ export interface ContextEntry {
   /** Designer unlock dependency (authored contexts): the question stays hidden in
    *  the journal until this context id has been listened to. */
   unlockAfterContextId?: string;
+  /** Cached OpenAI narration (Title + Full Explanation) — reused on the reader
+   *  page when the hash still matches; otherwise the bar generates on demand. */
+  ttsAudioUrl?: string | null;
+  ttsAudioHash?: string | null;
   /** Cited sources shown on the context page. */
   sources?: ContextSource[];
   /** When this is a learner's *added copy* of a designer-authored context, the id
