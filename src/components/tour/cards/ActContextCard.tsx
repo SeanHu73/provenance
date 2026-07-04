@@ -16,6 +16,7 @@ import { addContextEntry } from '@/features/context-journal/store';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { hashText, ttsSanitize } from '@/lib/tts-text';
 import { contextNarrationText } from '@/lib/tts-narration';
+import AudioButton from './AudioButton';
 import OpenAiSpeechBar from './OpenAiSpeechBar';
 import BackButton from './BackButton';
 import FormattedText from './FormattedText';
@@ -90,12 +91,14 @@ export default function ActContextCard({ onComplete }: Props) {
           )}
         </div>
 
-        {/* Narration — reads only the Title + Full Explanation (never the short
-            summary, question, or markers). Uses the OpenAI voice: a saved clip
-            when this authored context was pre-generated, else generated on demand
-            (also covers a brand-new context), falling back to the browser voice.
-            Reads on its own only when Autoplay is on. */}
-        {ctx.longExplanation && (() => {
+        {/* Narration. Priority: an uploaded voiceover (authored contexts) →
+            a saved OpenAI clip when pre-generated → generated on demand (also
+            covers a brand-new context) → the free browser voice. Reads only the
+            Title + Full Explanation, and only on its own when Autoplay is on. */}
+        {(ctx.voiceoverUrl || ctx.longExplanation) && (() => {
+          if (ctx.voiceoverUrl) {
+            return <AudioButton audioUrl={ctx.voiceoverUrl} title={ctx.voiceoverTitle || ctx.title || 'Context'} autoplay={autoplayPref} />;
+          }
           const narration = contextNarrationText(ctx);
           const cached = ctx.ttsAudioUrl && ctx.ttsAudioHash === hashText(ttsSanitize(narration)) ? ctx.ttsAudioUrl : null;
           return <OpenAiSpeechBar text={narration} title={ctx.title || 'Context'} autoplay={autoplayPref} cachedUrl={cached} />;

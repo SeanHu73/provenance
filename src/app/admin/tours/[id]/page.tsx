@@ -357,6 +357,10 @@ export default function TourEditorPage() {
     const act = (tour?.acts || []).find((a) => a.id === actId);
     updateAct(actId, { contexts: (act?.contexts ?? []).filter((c) => c.id !== itemId) });
   };
+  const patchActContextItem = (actId: string, itemId: string, patch: Partial<ActContextItem>) => {
+    const act = (tour?.acts || []).find((a) => a.id === actId);
+    updateAct(actId, { contexts: (act?.contexts ?? []).map((c) => (c.id === itemId ? { ...c, ...patch } : c)) });
+  };
   const addReflectionPrompt = (actId: string) => {
     const act = (tour?.acts || []).find((a) => a.id === actId);
     updateAct(actId, { reflectionPrompts: [...(act?.reflectionPrompts ?? []), { id: makeCtxId(), prompt: '' }] });
@@ -482,6 +486,7 @@ export default function TourEditorPage() {
     for (const act of tour.acts || []) {
       if (narrStopId && !act.stopIds.includes(narrStopId)) continue;
       for (const ctx of act.contexts || []) {
+        if (ctx.voiceoverUrl) continue;                              // uploaded voiceover
         const clean = ttsSanitize(contextNarrationText(ctx));
         if (!clean.trim()) continue;
         const hash = hashText(clean);
@@ -2027,17 +2032,30 @@ export default function TourEditorPage() {
                           {(act.contexts ?? []).map((item) => {
                             const lens = LENS_BY_KEY[item.pastCategory];
                             return (
-                              <li key={item.id} className="rounded border-l-4 border border-stone-200 p-2 flex items-start gap-2" style={{ borderLeftColor: lens?.colour ?? '#bbb' }}>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: lens?.colour ?? '#bbb' }} />
-                                    <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: lens?.colour ?? '#777' }}>{lens?.label ?? item.pastCategory}</span>
+                              <li key={item.id} className="rounded border-l-4 border border-stone-200 p-2 space-y-2" style={{ borderLeftColor: lens?.colour ?? '#bbb' }}>
+                                <div className="flex items-start gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: lens?.colour ?? '#bbb' }} />
+                                      <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: lens?.colour ?? '#777' }}>{lens?.label ?? item.pastCategory}</span>
+                                    </div>
+                                    {item.question && <div className="text-xs italic text-stone-500 truncate mt-0.5">{item.question}</div>}
+                                    <div className="text-sm font-semibold text-stone-800 truncate">{item.title || <span className="text-stone-400 italic">Untitled</span>}</div>
                                   </div>
-                                  {item.question && <div className="text-xs italic text-stone-500 truncate mt-0.5">{item.question}</div>}
-                                  <div className="text-sm font-semibold text-stone-800 truncate">{item.title || <span className="text-stone-400 italic">Untitled</span>}</div>
+                                  <button onClick={() => setCtxEditor({ actId: act.id, itemId: item.id })} className="text-xs text-blue-700 hover:underline shrink-0">Edit</button>
+                                  <button onClick={() => removeActContextItem(act.id, item.id)} className="text-xs text-red-600 hover:underline shrink-0">Remove</button>
                                 </div>
-                                <button onClick={() => setCtxEditor({ actId: act.id, itemId: item.id })} className="text-xs text-blue-700 hover:underline shrink-0">Edit</button>
-                                <button onClick={() => removeActContextItem(act.id, item.id)} className="text-xs text-red-600 hover:underline shrink-0">Remove</button>
+                                {/* Voiceover for this context's narration (Title + Full
+                                    Explanation). If uploaded, it's used instead of the auto
+                                    text-to-speech. */}
+                                <AudioUpload
+                                  audioUrl={item.voiceoverUrl ?? null}
+                                  audioTitle={item.voiceoverTitle ?? null}
+                                  onChange={(url) => patchActContextItem(act.id, item.id, { voiceoverUrl: url })}
+                                  onTitleChange={(t) => patchActContextItem(act.id, item.id, { voiceoverTitle: t })}
+                                  uploadPath={`memorial-church/audio/tours/${tourId}/context_vo_${item.id}`}
+                                  onUploadFile={uploadPhoto}
+                                />
                               </li>
                             );
                           })}
