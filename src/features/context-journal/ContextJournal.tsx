@@ -48,6 +48,10 @@ interface Props {
   /** In-tour: the back control continues the tour (via onExit) instead of going
    *  home, and a footer "Continue" appears. */
   inTour?: boolean;
+  /** Revisit: opened mid-tour from the footer to browse. Reads the same
+   *  guest-local contexts as the in-tour flow, but is a plain *closeable*
+   *  overlay — no Continue gate; the header shows a close button (→ onExit). */
+  revisit?: boolean;
   onExit?: () => void;
   /** Label for the in-tour continue button (defaults to "Continue tour"). */
   continueLabel?: string;
@@ -58,8 +62,12 @@ interface Props {
   guidingQuestion?: string;
 }
 
-export default function ContextJournal({ tourId, authored, inTour, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion }: Props) {
+export default function ContextJournal({ tourId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
+  // Both the in-tour flow and the revisit overlay read/write the learner's
+  // guest-local contexts (sessionStorage); only a bare standalone visit uses
+  // Firestore.
+  const guestLocal = !!inTour || !!revisit;
 
   const [entries, setEntries] = useState<ContextEntry[]>([]);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -123,17 +131,17 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
   // reset at tour end) — not persisted to Firestore. Standalone, they live in
   // Firestore. Both surface the same ContextEntry shape.
   useEffect(() => {
-    return inTour
+    return guestLocal
       ? subscribeGuestContexts(scopeId, setEntries)
       : subscribeContextEntries(scopeId, setEntries);
-  }, [scopeId, inTour]);
+  }, [scopeId, guestLocal]);
 
   const persistAdd = (entry: NewContextEntry): Promise<string> =>
-    inTour ? Promise.resolve(addGuestContext(scopeId, entry)) : addContextEntry(entry);
+    guestLocal ? Promise.resolve(addGuestContext(scopeId, entry)) : addContextEntry(entry);
   const persistUpdate = (id: string, patch: Partial<NewContextEntry>): Promise<void> =>
-    inTour ? Promise.resolve(updateGuestContext(scopeId, id, patch)) : updateContextEntry(id, patch);
+    guestLocal ? Promise.resolve(updateGuestContext(scopeId, id, patch)) : updateContextEntry(id, patch);
   const persistDelete = (id: string): Promise<void> =>
-    inTour ? Promise.resolve(deleteGuestContext(scopeId, id)) : deleteContextEntry(id);
+    guestLocal ? Promise.resolve(deleteGuestContext(scopeId, id)) : deleteContextEntry(id);
 
   // Load the per-tour config: timeline domain + default map view.
   useEffect(() => {
@@ -238,9 +246,14 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
     <div className="flex flex-col" style={{ height: '100dvh', backgroundColor: 'var(--th-bg)' }}>
       {/* top bar */}
       <header className="relative shrink-0 flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: 'var(--th-primary)' }}>
-        {inTour ? (
-          // No back affordance in-tour: the only way onward is the gated
-          // "Continue tour" button, so a stray tap can't skip into later phases.
+        {revisit ? (
+          // Revisit overlay: a plain close button returns to the tour.
+          <button onClick={onExit} aria-label="Close" className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15 text-2xl leading-none">
+            &times;
+          </button>
+        ) : inTour ? (
+          // No back affordance in the gated in-tour flow: the only way onward is
+          // the "Continue" button, so a stray tap can't skip into later phases.
           <span className="w-9 h-9 flex items-center justify-center text-warm-white/80" aria-hidden>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
@@ -389,7 +402,7 @@ export default function ContextJournal({ tourId, authored, inTour, onExit, conti
           </motion.button>
         </div>
 
-        {inTour ? (
+        {inTour && !revisit ? (
           <div className="px-5 pb-8 pt-4">
             <button
               onClick={onExit}

@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, useAnimationControls } from 'framer-motion';
-import Link from 'next/link';
 import { Tour, TourSession } from '@/lib/types';
 import { getTourMode, getActiveStops } from '@/lib/tours-store';
-import { findActOfStop, getActs } from '@/lib/tour-session';
+import { findActOfStop, getActs, getActContexts } from '@/lib/tour-session';
 import { useTour } from '@/context/TourContext';
 import MicButton from './MicButton';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoom } from '@/context/RoomContext';
 import RoomMenu from '@/components/room/RoomMenu';
+import ContextJournal from '@/features/context-journal/ContextJournal';
+import { authoredToEntry } from '@/features/context-journal/adapters';
 
 interface Props {
   tour: Tour;
@@ -49,25 +51,61 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
     }
   }
 
+  // Context Journal revisit overlay — the footer button opens the *same*
+  // guest-local journal the learner added to, so their saved contexts show up
+  // (the old footer Link went to the standalone Firestore route, which never
+  // sees the sessionStorage adds).
+  const [showJournal, setShowJournal] = useState(false);
+  const journalStop = getActiveStops(tour)[session.currentStopIndex] ?? null;
+  const journalAct = journalStop ? findActOfStop(tour, journalStop.id) : null;
+  const journalAuthored = journalAct ? getActContexts(journalAct).map((c) => authoredToEntry(c, tour.id)) : [];
+  const journalResponses = Object.entries(session.actResponses ?? {}).flatMap(([aid, r]) => {
+    const refl = r?.reflection;
+    if (!refl) return [];
+    const a = getActs(tour).find((x) => x.id === aid);
+    return [{ actTitle: a?.title ?? '', promptText: refl.promptText ?? '', text: refl.text }];
+  });
+
+  // One-time nudge: the first time the learner reaches a reflection, point out
+  // that the Context Journal can be revisited anytime. Seen-state is per tour in
+  // sessionStorage (matches the guest-contexts lifecycle).
+  const [showJournalTip, setShowJournalTip] = useState(false);
+  useEffect(() => {
+    if (session.currentPhase !== 'act_reflection') return;
+    const key = `provenance-revisit-tip:${tour.id}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+    } catch { /* storage unavailable — just show it */ }
+    const raf = requestAnimationFrame(() => setShowJournalTip(true));
+    const t = setTimeout(() => setShowJournalTip(false), 9000);
+    return () => { cancelAnimationFrame(raf); clearTimeout(t); };
+  }, [session.currentPhase, tour.id]);
+
+  const openJournal = () => { setShowJournalTip(false); setShowJournal(true); };
+
   return (
     <>
       <div
         className={`shrink-0 px-4 py-3 border-t flex items-center gap-3 ${isContext ? 'justify-between' : 'justify-center'}`}
         style={{ backgroundColor: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
       >
-        <Link
-          href={`/context-journal?tour=${encodeURIComponent(tour.id)}`}
-          aria-label="Context Journal"
-          title="Context Journal"
-          className={`shrink-0 flex items-center justify-center rounded-xl text-warm-white bg-white/25 hover:bg-white/35 transition-colors border border-white/50 ${isContext ? 'w-11 h-11' : 'gap-2 px-5 py-3.5 text-base font-semibold'}`}
-          style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-          </svg>
-          {!isContext && 'Context Journal'}
-        </Link>
+        <div className="relative shrink-0">
+          <button
+            onClick={openJournal}
+            aria-label="Context Journal"
+            title="Context Journal"
+            className={`flex items-center justify-center rounded-xl text-warm-white bg-white/25 hover:bg-white/35 transition-colors border border-white/50 ${isContext ? 'w-11 h-11' : 'gap-2 px-5 py-3.5 text-base font-semibold'}`}
+            style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+            </svg>
+            {!isContext && 'Context Journal'}
+          </button>
+          {showJournalTip && <RevisitTip onDismiss={() => setShowJournalTip(false)} />}
+        </div>
 
         {/* Current Act (context mode) — sits next to Journal: number on top,
             title in italics below, truncated so it always fits. */}
@@ -204,7 +242,51 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
       )}
 
       {showRoomMenu && <RoomMenu onDismiss={() => setShowRoomMenu(false)} />}
+
+      {/* Context Journal revisit overlay — guest-backed, closeable, no gate. */}
+      {showJournal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[60]">
+          <ContextJournal
+            tourId={tour.id}
+            authored={journalAuthored}
+            revisit
+            onExit={() => setShowJournal(false)}
+            responses={journalResponses}
+            guidingQuestion={journalAct?.guidingQuestion?.trim() || undefined}
+          />
+        </div>,
+        document.body,
+      )}
     </>
+  );
+}
+
+/**
+ * A one-time speech bubble above the Context Journal button, nudging the learner
+ * that they can reopen it anytime. Tap to dismiss (also auto-dismisses).
+ */
+function RevisitTip({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <motion.button
+      onClick={onDismiss}
+      initial={{ opacity: 0, y: 6, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 26 }}
+      className="absolute left-0 bottom-full mb-3 z-10 w-60 text-left rounded-2xl bg-warm-white px-4 py-3 shadow-2xl"
+      style={{ border: '1px solid var(--th-border)' }}
+    >
+      <span className="block text-[13px] font-semibold leading-snug text-text-primary">
+        Revisit the Context Journal anytime
+      </span>
+      <span className="mt-0.5 block text-[12px] leading-snug text-text-secondary">
+        Everything you add stays here for the rest of the tour. Tap to dismiss.
+      </span>
+      {/* little arrow pointing down at the button */}
+      <span
+        className="absolute left-5 top-full -mt-1.5 w-3 h-3 rotate-45 bg-warm-white"
+        style={{ borderRight: '1px solid var(--th-border)', borderBottom: '1px solid var(--th-border)' }}
+      />
+    </motion.button>
   );
 }
 
