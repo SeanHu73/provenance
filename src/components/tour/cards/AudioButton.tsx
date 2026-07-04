@@ -135,7 +135,7 @@ export default function AudioButton({ audioUrl, title, autoplay = false, onTimeU
  * Audio title that stays fully visible: if it overflows its row it slides
  * (ping-pong) to reveal the end, then slides back, instead of truncating.
  */
-function ScrollingTitle({ text }: { text: string }) {
+export function ScrollingTitle({ text }: { text: string }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
   const [shift, setShift] = useState(0);

@@ -14,6 +14,7 @@ import { useState, useEffect } from 'react';
 import { Stop } from '@/lib/types';
 import PhotoContent from './PhotoContent';
 import AudioButton from './AudioButton';
+import SpeechBar from './SpeechBar';
 import BackButton from './BackButton';
 import NoticeMapDisplay from './NoticeMapDisplay';
 import ActionTitle, { SectionSubtitle } from './ActionTitle';
@@ -31,10 +32,17 @@ interface Props {
 
 export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
   const [autoplayPref] = useAudioAutoplay();
-  const seedAutoplay = autoplayPref && !stop.seed.audioAutoplayDisabled;
-  // When both seed and notice audio are present on this combined screen,
-  // suppress notice autoplay so the two streams don't play in parallel.
-  const noticeAutoplay = autoplayPref && !stop.notice.audioAutoplayDisabled && !stop.seed.audioUrl;
+  // Background narration: a voiceover audio IS the narration → no auto TTS;
+  // otherwise the Background text is read by auto text-to-speech. The narration
+  // (voiceover audio OR TTS) takes autoplay priority — a non-voiceover clip and
+  // the notice audio never autoplay alongside it (never two streams at once).
+  const seedVoiceover = !!stop.seed.audioUrl && stop.seed.audioIsVoiceover === true;
+  const seedTtsSource = stop.seed.ttsText || stop.seed.text;
+  const showSeedTts = !seedVoiceover && !!seedTtsSource?.trim();
+  const seedAutoplay = autoplayPref && !stop.seed.audioAutoplayDisabled && !showSeedTts;
+  const seedTtsAutoplay = autoplayPref && showSeedTts;
+  const bgNarrationAutoplays = seedAutoplay || seedTtsAutoplay;
+  const noticeAutoplay = autoplayPref && !stop.notice.audioAutoplayDisabled && !bgNarrationAutoplays;
 
   // Audio-synced photo highlights for the Background (seed) and Find
   // (notice) narrations.
@@ -126,6 +134,8 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
         <div>
           <SectionSubtitle className="mb-2">Background</SectionSubtitle>
           {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedAutoplay} onTimeUpdate={seedCues.onTimeUpdate} onEnded={seedCues.onEnded} />}
+          {/* Auto text-to-speech of the Background when there's no uploaded voiceover. */}
+          {showSeedTts && <SpeechBar text={seedTtsSource} title={stop.seed.audioTitle || 'Background'} autoplay={seedTtsAutoplay} />}
           {stop.seed.text && (
             <>
               <button

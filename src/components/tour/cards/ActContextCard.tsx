@@ -13,7 +13,8 @@ import { useTour } from '@/context/TourContext';
 import { currentContextItem, findActOfStop } from '@/lib/tour-session';
 import { LENS_BY_KEY } from '@/features/context-journal/constants';
 import { addContextEntry } from '@/features/context-journal/store';
-import ReadAloud from '@/features/context-journal/components/ReadAloud';
+import { useAudioAutoplay } from '@/lib/audio-autoplay';
+import SpeechBar from './SpeechBar';
 import BackButton from './BackButton';
 import FormattedText from './FormattedText';
 
@@ -23,6 +24,7 @@ interface Props {
 
 export default function ActContextCard({ onComplete }: Props) {
   const { tour, session, currentStop, recordContextViewed } = useTour();
+  const [autoplayPref] = useAudioAutoplay();
   const ctx = currentContextItem(tour, session);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
@@ -86,6 +88,17 @@ export default function ActContextCard({ onComplete }: Props) {
           )}
         </div>
 
+        {/* Auto text-to-speech narration — reads only the Title + Full
+            Explanation (never the short summary, question, or markers). Reads on
+            its own only when Autoplay is on; otherwise the learner taps play. */}
+        {ctx.longExplanation && (
+          <SpeechBar
+            text={`${ctx.title ? `${ctx.title}. ` : ''}${ctx.longExplanation}`}
+            title={ctx.title || 'Context'}
+            autoplay={autoplayPref}
+          />
+        )}
+
         {/* photo gallery */}
         {photos.length > 0 && (
           <div className={photos.length > 1 ? 'flex gap-3 overflow-x-auto -mx-1 px-1' : ''}>
@@ -103,8 +116,12 @@ export default function ActContextCard({ onComplete }: Props) {
           <p className="font-display text-lg leading-snug" style={{ color: 'var(--th-text)' }}>{ctx.shortSummary}</p>
         )}
 
-        {/* full explanation, read aloud */}
-        {ctx.longExplanation && <ReadAloud text={ctx.longExplanation} colour={lens.colour} />}
+        {/* full explanation */}
+        {ctx.longExplanation && (
+          <div className="text-[17px] font-serif text-text-primary leading-relaxed">
+            <FormattedText text={ctx.longExplanation} />
+          </div>
+        )}
 
         {/* audio clips */}
         {audio.length > 0 && (

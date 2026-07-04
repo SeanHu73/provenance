@@ -6,9 +6,10 @@ import { usePhotoCues } from '../usePhotoCues';
 import PhotoContent, { PhotoCarousel } from './PhotoContent';
 import FullscreenPhoto from './FullscreenPhoto';
 import AudioButton from './AudioButton';
+import SpeechBar from './SpeechBar';
 import BackButton from './BackButton';
 import InquiryReminder from './InquiryReminder';
-import ActionTitle, { SectionSubtitle } from './ActionTitle';
+import ActionTitle from './ActionTitle';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useReadMode } from '@/lib/read-mode';
 import { useTour } from '@/context/TourContext';
@@ -43,8 +44,14 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
   const hasAudio = !!stop.reveal.audioUrl;
   const [autoplayPref] = useAudioAutoplay();
   const [readMode] = useReadMode();
-  const shouldAutoplay = autoplayPref && !stop.reveal.audioAutoplayDisabled;
-  // Expanded by default when there's no audio, or when the learner chose "Read".
+  // A voiceover audio IS the narration → no auto TTS. Otherwise we read the Stop
+  // Info text. The narration (voiceover audio OR the TTS) takes autoplay
+  // priority; a non-voiceover clip never autoplays alongside the TTS.
+  const isVoiceover = hasAudio && stop.reveal.audioIsVoiceover === true;
+  const showTts = !isVoiceover && !!stop.reveal.text.trim();
+  const shouldAutoplay = autoplayPref && !stop.reveal.audioAutoplayDisabled && !showTts;
+  const ttsAutoplay = autoplayPref && showTts;
+  // Expanded by default when there's no narration audio, or when "Read" was chosen.
   const [textExpanded, setTextExpanded] = useState(!hasAudio || readMode);
   const [fullscreen, setFullscreen] = useState<{ url: string; caption: string | null } | null>(null);
 
@@ -75,6 +82,8 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
 
       {/* Audio player */}
       {hasAudio && <AudioButton audioUrl={stop.reveal.audioUrl!} title={stop.reveal.audioTitle} autoplay={shouldAutoplay} onTimeUpdate={onTimeUpdate} onEnded={onEnded} />}
+      {/* Auto text-to-speech of the Stop Info when there's no uploaded voiceover. */}
+      {showTts && <SpeechBar text={stop.reveal.text} title={stop.reveal.audioTitle || 'Stop Info'} autoplay={ttsAutoplay} />}
 
       {/* When text is hidden: "tap to read along" then photos */}
       {hasAudio && !textExpanded && (
@@ -121,7 +130,6 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
               Hide text
             </button>
           )}
-          <SectionSubtitle className="mb-2">Context</SectionSubtitle>
           <PhotoContent
             text={stop.reveal.text}
             photos={stop.reveal.photos || []}

@@ -13,7 +13,9 @@ import { useTour } from '@/context/TourContext';
 import { findActOfStop } from '@/lib/tour-session';
 import { ContextQuestionEntry } from '@/lib/types';
 import { logContextQuestion } from '@/lib/tour-logger';
+import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import ResponseInput from './ResponseInput';
+import SpeechBar from './SpeechBar';
 import BackButton from './BackButton';
 
 interface Props {
@@ -23,6 +25,7 @@ interface Props {
 export default function ContextQuestionsCard({ onComplete }: Props) {
   const { tour, session, currentStop } = useTour();
   const act = tour && currentStop ? findActOfStop(tour, currentStop.id) : null;
+  const [autoplayPref] = useAudioAutoplay();
 
   const [entries, setEntries] = useState<ContextQuestionEntry[]>([]);
   const [draft, setDraft] = useState('');
@@ -82,7 +85,14 @@ export default function ContextQuestionsCard({ onComplete }: Props) {
                 &ldquo;{e.question}&rdquo;
               </p>
               {e.status === 'answered' && e.answer ? (
-                <p className="text-[16px] mt-1.5 leading-relaxed" style={{ color: 'var(--text-primary)' }}>{e.answer}</p>
+                <>
+                  <p className="text-[16px] mt-1.5 leading-relaxed" style={{ color: 'var(--text-primary)' }}>{e.answer}</p>
+                  {/* Auto text-to-speech of the answer — reads on its own once the
+                      answer is ready when Autoplay is on (also for AI answers). */}
+                  <div className="mt-2">
+                    <SpeechBar text={e.answer} title="Answer" autoplay={autoplayPref} />
+                  </div>
+                </>
               ) : (
                 <p className="text-[14px] mt-1.5 italic" style={{ color: 'var(--text-secondary)' }}>
                   Saved — I&apos;ll help you find this.

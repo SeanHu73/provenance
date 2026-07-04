@@ -2310,6 +2310,8 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
           onUploadFile={onUploadPhoto}
           autoplayDisabled={stop.seed.audioAutoplayDisabled}
           onAutoplayDisabledChange={(v) => onChange({ seed: { ...stop.seed, audioAutoplayDisabled: v } })}
+          isVoiceover={stop.seed.audioIsVoiceover}
+          onIsVoiceoverChange={(v) => onChange({ seed: { ...stop.seed, audioIsVoiceover: v } })}
         />
         {stop.seed.audioUrl && (
           <PhotoCueEditor
@@ -2372,6 +2374,8 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
           onUploadFile={onUploadPhoto}
           autoplayDisabled={stop.notice.audioAutoplayDisabled}
           onAutoplayDisabledChange={(v) => onChange({ notice: { ...stop.notice, audioAutoplayDisabled: v } })}
+          isVoiceover={stop.notice.audioIsVoiceover}
+          onIsVoiceoverChange={(v) => onChange({ notice: { ...stop.notice, audioIsVoiceover: v } })}
         />
         {stop.notice.audioUrl && (
           <PhotoCueEditor
@@ -2522,7 +2526,7 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
       <fieldset className="space-y-2">
         <legend className="text-xs font-semibold text-stone-700 uppercase tracking-wide flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#C4923A] inline-block" />
-          Context (reveal)
+          Stop Info (reveal)
         </legend>
         <RichTextarea
           label="Text (the authored insight) — use [photo:1], [photo:2] etc. to place photos within the text"
@@ -2546,6 +2550,8 @@ function StopEditor({ stop: rawStop, tourId, tourCategories, onChange, onUploadP
           onUploadFile={onUploadPhoto}
           autoplayDisabled={stop.reveal.audioAutoplayDisabled}
           onAutoplayDisabledChange={(v) => onChange({ reveal: { ...stop.reveal, audioAutoplayDisabled: v } })}
+          isVoiceover={stop.reveal.audioIsVoiceover}
+          onIsVoiceoverChange={(v) => onChange({ reveal: { ...stop.reveal, audioIsVoiceover: v } })}
         />
 
         {/* Audio-synced photo highlights */}

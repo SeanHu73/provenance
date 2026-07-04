@@ -594,6 +594,10 @@ export interface Stop {
     audioUrl: string | null;         // Optional audio narration
     audioTitle: string | null;       // Display title for audio
     audioAutoplayDisabled?: boolean;
+    /** When true, this uploaded audio IS the stop's voiceover, so no auto
+     *  text-to-speech is generated over the background text. Defaults false
+     *  (existing audio isn't assumed to be a voiceover). */
+    audioIsVoiceover?: boolean;
     photoCues?: PhotoCue[];          // Audio-synced photo highlights
     photoCuesHoldLast?: boolean;     // Keep the last cued photo highlighted after audio ends
   };
@@ -608,6 +612,7 @@ export interface Stop {
     audioUrl: string | null;
     audioTitle: string | null;
     audioAutoplayDisabled?: boolean;
+    audioIsVoiceover?: boolean;      // This audio is the voiceover (skip auto TTS)
     photoCues?: PhotoCue[];          // Audio-synced photo highlights
     photoCuesHoldLast?: boolean;     // Keep the last cued photo highlighted after audio ends
     /** Optional indoor "where to go" map shown above the prompt. Used
@@ -662,6 +667,7 @@ export interface Stop {
     audioUrl: string | null;
     audioTitle: string | null;
     audioAutoplayDisabled?: boolean;
+    audioIsVoiceover?: boolean;      // This audio is the voiceover (skip auto TTS)
     /** Audio-synced photo highlights: at each cue's `time` (seconds into the
      *  reveal audio) the photo at `photoIndex` in `photos` gets a gentle
      *  glow + a one-shot haptic, replacing any previously highlighted photo.

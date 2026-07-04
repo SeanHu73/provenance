@@ -18,9 +18,15 @@ interface Props {
    *  explorers should read first before audio joins in). */
   autoplayDisabled?: boolean;
   onAutoplayDisabledChange?: (v: boolean) => void;
+  /** When provided, renders a "This audio is the voiceover" checkbox. When
+   *  ticked, the screen uses this audio as its narration and skips the auto
+   *  text-to-speech fallback. Left unticked, the auto TTS narration still runs
+   *  (this clip is treated as extra, non-narration audio). */
+  isVoiceover?: boolean;
+  onIsVoiceoverChange?: (v: boolean) => void;
 }
 
-export default function AudioUpload({ audioUrl, audioTitle, onChange, onTitleChange, uploadPath, onUploadFile, autoplayDisabled, onAutoplayDisabledChange }: Props) {
+export default function AudioUpload({ audioUrl, audioTitle, onChange, onTitleChange, uploadPath, onUploadFile, autoplayDisabled, onAutoplayDisabledChange, isVoiceover, onIsVoiceoverChange }: Props) {
   return (
     <div className="space-y-1">
       <span className="text-xs text-stone-500">Audio narration (optional)</span>
@@ -70,6 +76,17 @@ export default function AudioUpload({ audioUrl, audioTitle, onChange, onTitleCha
       )}
       {audioUrl && (
         <audio controls src={audioUrl} className="w-full h-8 mt-1" style={{ maxHeight: 32 }} />
+      )}
+      {audioUrl && onIsVoiceoverChange && (
+        <label className="flex items-center gap-2 mt-1 text-[11px] text-stone-700 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={!!isVoiceover}
+            onChange={(e) => onIsVoiceoverChange(e.target.checked)}
+            className="w-3.5 h-3.5 accent-emerald-600"
+          />
+          This audio is the voiceover (skip auto text-to-speech for this screen)
+        </label>
       )}
       {audioUrl && onAutoplayDisabledChange && (
         <label className="flex items-center gap-2 mt-1 text-[11px] text-stone-600 cursor-pointer select-none">
