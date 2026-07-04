@@ -341,6 +341,29 @@ export default function TourEditorPage() {
 
   // ── Rich "Add Context" items (positioned after a stop within an act) ──
   const [ctxEditor, setCtxEditor] = useState<{ actId: string; itemId: string | null } | null>(null);
+  // Per-context OpenAI narration generation (Title + Full Explanation).
+  const [ctxNarrBusy, setCtxNarrBusy] = useState<string | null>(null);
+
+  const generateContextNarration = async (actId: string, ctx: ActContextItem) => {
+    if (ctxNarrBusy) return;
+    const clean = ttsSanitize(contextNarrationText(ctx));
+    if (!clean.trim()) { alert('This context has no Title / Full Explanation to narrate yet.'); return; }
+    const hash = hashText(clean);
+    setCtxNarrBusy(ctx.id);
+    try {
+      const blob = await fetchTtsBlob(clean);
+      const file = new File([blob], `tts_context_${ctx.id}.mp3`, { type: 'audio/mpeg' });
+      const url = await uploadPhoto(file, `memorial-church/audio/tts/${tourId}/context_${ctx.id}_${hash}.mp3`);
+      const old = ctx.ttsAudioUrl ?? null;
+      patchActContextItem(actId, ctx.id, { ttsAudioUrl: url, ttsAudioHash: hash });
+      if (old && old !== url) void deleteStorageFileByUrl(old);
+    } catch (err) {
+      console.error('[narration] context generate failed:', err);
+      alert('Narration failed — see console.');
+    } finally {
+      setCtxNarrBusy(null);
+    }
+  };
 
   const upsertActContextItem = (actId: string, draft: ContextDraft, itemId: string | null) => {
     const act = (tour?.acts || []).find((a) => a.id === actId);
@@ -2063,6 +2086,19 @@ export default function TourEditorPage() {
                                   uploadPath={`memorial-church/audio/tours/${tourId}/context_vo_${item.id}`}
                                   onUploadFile={uploadPhoto}
                                 />
+                                {/* Generate OpenAI narration (Title + Full Explanation) for this context. */}
+                                <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                                  <button
+                                    type="button"
+                                    onClick={() => generateContextNarration(act.id, item)}
+                                    disabled={ctxNarrBusy === item.id}
+                                    className="px-2 py-1 rounded bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-50"
+                                  >
+                                    {ctxNarrBusy === item.id ? 'Generating…' : item.ttsAudioUrl ? 'Regenerate OpenAI narration' : 'Generate OpenAI narration'}
+                                  </button>
+                                  {item.ttsAudioUrl && ctxNarrBusy !== item.id && <span className="text-emerald-700">✓ narration ready</span>}
+                                  <span className="text-stone-400">Reads Title + Full Explanation. An uploaded voiceover takes priority.</span>
+                                </div>
                                 {/* Unlock dependency — hide this context's question in the
                                     journal until another context here has been listened to. */}
                                 <label className="block text-[11px] text-stone-500">
