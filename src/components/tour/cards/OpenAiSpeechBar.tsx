@@ -23,9 +23,11 @@ interface Props {
   /** A pre-generated, saved narration file for this exact text (authored context
    *  pages). When present it's played directly — no generation, no cost. */
   cachedUrl?: string | null;
+  /** Fires when the narration finishes playing. */
+  onEnded?: () => void;
 }
 
-export default function OpenAiSpeechBar({ text, title, autoplay = false, cachedUrl }: Props) {
+export default function OpenAiSpeechBar({ text, title, autoplay = false, cachedUrl, onEnded }: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -53,13 +55,13 @@ export default function OpenAiSpeechBar({ text, title, autoplay = false, cachedU
   }, []);
 
   // A saved clip for this exact text (authored context) → play it, no generation.
-  if (cachedUrl) return <AudioButton audioUrl={cachedUrl} title={title || 'Narration'} autoplay={autoplay} />;
+  if (cachedUrl) return <AudioButton audioUrl={cachedUrl} title={title || 'Narration'} autoplay={autoplay} onEnded={onEnded} />;
 
   // Generation failed → free browser voice so the answer is still narrated.
-  if (failed) return <SpeechBar text={text} title={title} autoplay={autoplay} />;
+  if (failed) return <SpeechBar text={text} title={title} autoplay={autoplay} onEnded={onEnded} />;
 
   // Ready → play the real MP3 through the standard audio bar.
-  if (url) return <AudioButton audioUrl={url} title={title || 'Answer'} autoplay={playOnReady} />;
+  if (url) return <AudioButton audioUrl={url} title={title || 'Answer'} autoplay={playOnReady} onEnded={onEnded} />;
 
   // Not generated yet — a matching bar with a play button (or a spinner).
   return (

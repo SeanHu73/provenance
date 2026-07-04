@@ -22,6 +22,8 @@ interface Props {
   onSubmit: (draft: ContextDraft) => Promise<void>;
   initial?: Partial<ContextDraft>;
   heading?: string;
+  /** Label for the primary save button (defaults to "Save context"). */
+  submitLabel?: string;
 }
 
 type DraftMedia = { id: string; kind: 'photo' | 'audio'; title: string; previewUrl: string; file?: File; existingUrl?: string };
@@ -32,7 +34,7 @@ const mkId = () =>
     ? crypto.randomUUID()
     : `m_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 
-export default function AddContextFlow({ onClose, onSubmit, initial, heading = 'Add context' }: Props) {
+export default function AddContextFlow({ onClose, onSubmit, initial, heading = 'Add context', submitLabel = 'Save context' }: Props) {
   const [question, setQuestion] = useState(initial?.question ?? '');
   const [title, setTitle] = useState(initial?.title ?? '');
   const [shortSummary, setShortSummary] = useState(initial?.shortSummary ?? '');
@@ -465,7 +467,7 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
             className="flex-1 py-3 rounded-xl text-base font-semibold text-white disabled:opacity-30"
             style={{ backgroundColor: 'var(--th-primary)' }}
           >
-            {saving ? 'Saving…' : 'Save context'}
+            {saving ? 'Saving…' : submitLabel}
           </button>
         </div>
         </>

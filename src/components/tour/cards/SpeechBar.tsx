@@ -30,12 +30,16 @@ interface Props {
   title?: string | null;
   /** Speak on mount (browsers may still block without a gesture). Read once. */
   autoplay?: boolean;
+  /** Fires once the whole narration finishes (all chunks spoken). */
+  onEnded?: () => void;
 }
 
 const RATE = 0.85;              // slower than default for easier listening
 const WORDS_PER_SEC = 2.6 * RATE; // rough estimate, for the duration readout only
 
-export default function SpeechBar({ text, title, autoplay = false }: Props) {
+export default function SpeechBar({ text, title, autoplay = false, onEnded }: Props) {
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
   const clean = useMemo(() => ttsSanitize(text), [text]);
   const chunks = useMemo(() => ttsChunks(clean), [clean]);
   // Char offset where each chunk starts, plus the total, to drive progress.
@@ -86,7 +90,7 @@ export default function SpeechBar({ text, title, autoplay = false }: Props) {
 
   const speakChunk = (runId: number, i: number) => {
     if (runId !== runIdRef.current) return;
-    if (i >= chunks.length) { resetState(); return; }
+    if (i >= chunks.length) { resetState(); onEndedRef.current?.(); return; }
     idxRef.current = i;
     boundaryRef.current = 0;
     const u = new SpeechSynthesisUtterance(chunks[i]);
