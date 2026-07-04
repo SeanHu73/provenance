@@ -139,8 +139,9 @@ export default function Journal({ onMapPeek }: JournalProps) {
   // Context-Prototype mode skips per-stop discussion (wonder) and bridge
   // (whats_next); the per-stop loop is seed → reveal → [reflect] only.
   const isContext = getTourMode(tour) === 'context';
-  // The stop map fills the whole card area edge-to-edge (no white card chrome).
-  const isFullBleed = phase === 'stop_map';
+  // The stop map (and the post-tour additional-stops map) fill the whole card
+  // area edge-to-edge (no white card chrome).
+  const isFullBleed = phase === 'stop_map' || phase === 'additional_menu';
 
   const stopNum = session.currentStopIndex + 1;
 

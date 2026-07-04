@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTour } from '@/context/TourContext';
-import { findActOfStop, getActs } from '@/lib/tour-session';
+import { findActOfStop, getActs, getAdditionalStops } from '@/lib/tour-session';
 import { CommunityShare, CommunityComment, ForumIdentity } from '@/lib/types';
 import {
   getShares,
@@ -37,6 +37,10 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
   const reflection = (actId && session?.actResponses?.[actId]?.reflection) || null;
   const acts = tour ? getActs(tour) : [];
   const isLastAct = act ? acts.findIndex((a) => a.id === act.id) === acts.length - 1 : false;
+  // On the last act, if the tour has post-tour "additional" stops, the button
+  // leads into their map rather than ending — so it invites exploration.
+  const hasAdditional = tour ? getAdditionalStops(tour).length > 0 : false;
+  const lastActLabel = hasAdditional ? 'Explore related stops' : 'End Tour';
 
   const [shares, setShares] = useState<CommunityShare[]>([]);
   const [loading, setLoading] = useState(true);
@@ -165,7 +169,7 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
           </button>
         )}
         <button onClick={handleContinue} className="flex-1 py-3 rounded-lg text-base font-semibold bg-accent-dark text-white">
-          {isLastAct ? 'End Tour' : 'Continue Tour'}
+          {isLastAct ? lastActLabel : 'Continue Tour'}
         </button>
       </div>
 

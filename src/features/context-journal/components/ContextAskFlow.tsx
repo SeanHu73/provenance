@@ -14,6 +14,7 @@ import type { ContextDraft, ContextSource, PastCategory } from '../types';
 import RecordButton from '@/components/tour/cards/RecordButton';
 import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
 import ContextAskLoading from '@/components/tour/cards/ContextAskLoading';
+import ImageSearchModal from '@/components/ImageSearchModal';
 import { contextNarrationText } from '@/lib/tts-narration';
 import { uploadSharePhoto } from '@/lib/community-store';
 
@@ -41,6 +42,7 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
   const [resp, setResp] = useState<DetectiveResp | null>(null);
   const [photos, setPhotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [adding, setAdding] = useState(false);
 
   const addPhotos = async (files: FileList | null) => {
@@ -184,14 +186,17 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
                 </ul>
               </div>
             )}
-            {/* optional photos — saved with the context when added */}
+            {/* optional photos — saved with the context when added; the first
+                one becomes the journal thumbnail. Add from the device or search
+                online (same picker as Add Context). */}
             <div>
               <p className="text-[12px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-secondary)' }}>Add photos (optional)</p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 items-center">
                 {photos.map((url, i) => (
                   <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={url} alt="" className="w-full h-full object-cover" />
+                    {i === 0 && <span className="absolute bottom-0 inset-x-0 bg-black/55 text-white text-[9px] text-center leading-tight py-0.5">Thumbnail</span>}
                     <button onClick={() => setPhotos((p) => p.filter((_, j) => j !== i))} aria-label="Remove photo" className="absolute top-0 right-0 w-5 h-5 bg-black/60 text-white text-xs flex items-center justify-center rounded-bl">×</button>
                   </div>
                 ))}
@@ -199,6 +204,15 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
                   {uploading ? '…' : '+'}
                   <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addPhotos(e.target.files)} />
                 </label>
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 h-9 rounded-full text-[13px] font-semibold border-2"
+                  style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+                  Find online
+                </button>
               </div>
             </div>
 
@@ -215,6 +229,13 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
           </div>
         ))}
       </div>
+
+      {searchOpen && (
+        <ImageSearchModal
+          onClose={() => setSearchOpen(false)}
+          onPick={(url) => { setPhotos((p) => [...p, url]); setSearchOpen(false); }}
+        />
+      )}
     </div>
   );
 }

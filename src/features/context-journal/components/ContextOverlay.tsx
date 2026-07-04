@@ -14,7 +14,7 @@
  */
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LENS_BY_KEY, formatYear, contextPhotos, contextAudio, clampRange } from '../constants';
 import type { ContextEntry, TimeRange } from '../types';
 import BookmarkButton from './BookmarkButton';
@@ -25,6 +25,9 @@ import { useReadMode } from '@/lib/read-mode';
 import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
 import { contextNarrationText } from '@/lib/tts-narration';
 import { hashText, ttsSanitize } from '@/lib/tts-text';
+
+/** localStorage flag: the one-time "you can edit this context" nudge was seen. */
+const EDIT_HINT_KEY = 'cj-edit-hint-seen';
 
 interface Props {
   entry: ContextEntry;
@@ -55,6 +58,19 @@ export default function ContextOverlay({
   const [confirmDel, setConfirmDel] = useState(false);
   const [readModePref] = useReadMode();
   const [readAlong, setReadAlong] = useState(readModePref);
+
+  // First-time nudge that an added context can be edited — shown once, the first
+  // time the learner opens a full context page that has an edit control. The
+  // overlay only mounts on a client tap, so reading localStorage in the lazy
+  // initializer is safe (no SSR/hydration pass).
+  const [showEditHint, setShowEditHint] = useState(() => {
+    if (!onEdit) return false;
+    try { return !localStorage.getItem(EDIT_HINT_KEY); } catch { return false; }
+  });
+  const dismissEditHint = () => {
+    setShowEditHint(false);
+    try { localStorage.setItem(EDIT_HINT_KEY, '1'); } catch { /* ignore */ }
+  };
 
   // The overlay's map/timeline are contextual to this entry: the timeline opens
   // on the entry's own span, the map focuses its geometry. Both stay interactive
@@ -93,12 +109,38 @@ export default function ContextOverlay({
           </p>
           <BookmarkButton saved={saved} onToggle={onToggleSave} colour={colour} />
           {onEdit && (
-            <button onClick={onEdit} aria-label="Edit this context"
-              className="w-9 h-9 rounded-full flex items-center justify-center text-text-secondary hover:bg-black/5">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
-              </svg>
-            </button>
+            <div className="relative shrink-0">
+              <motion.button
+                onClick={() => { dismissEditHint(); onEdit(); }} aria-label="Edit this context"
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/5"
+                style={{ color: showEditHint ? colour : 'var(--text-secondary)' }}
+                animate={showEditHint ? { scale: [1, 1.18, 1] } : { scale: 1 }}
+                transition={showEditHint ? { duration: 1.2, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.2 }}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
+                </svg>
+              </motion.button>
+              <AnimatePresence>
+                {showEditHint && (
+                  <>
+                    {/* tap-away catcher so any tap dismisses the one-time hint */}
+                    <div className="fixed inset-0 z-[1250]" onClick={dismissEditHint} />
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute right-0 top-full mt-2 z-[1260] w-44 rounded-xl px-3 py-2.5 shadow-xl text-warm-white"
+                      style={{ backgroundColor: colour }}
+                    >
+                      {/* little pointer up toward the button */}
+                      <span className="absolute -top-1.5 right-3 w-3 h-3 rotate-45" style={{ backgroundColor: colour }} />
+                      <p className="relative text-[13px] font-semibold leading-snug">Tap here anytime to edit this context.</p>
+                      <button onClick={dismissEditHint} className="relative mt-1.5 text-[11px] font-semibold underline underline-offset-2 opacity-90">Got it</button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           )}
           {onDelete && (confirmDel ? (
             <span className="flex items-center gap-1 shrink-0">
