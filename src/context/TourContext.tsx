@@ -11,8 +11,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { Tour, Stop, TourSession, TourPhase, BankedQuestion, ContextQuestionEntry, ActReflectionResponse } from '@/lib/types';
 import { getTour, getActiveStops, getTourMode } from '@/lib/tours-store';
-import { persistTourSession } from '@/lib/tour-sessions-store';
-import { resetGuestContexts } from '@/features/context-journal/guest-contexts';
+import { persistTourSession, persistSessionContextEntries } from '@/lib/tour-sessions-store';
+import { resetGuestContexts, snapshotGuestContexts, subscribeGuestContexts } from '@/features/context-journal/guest-contexts';
 import { useRoom } from './RoomContext';
 import { logReflection, logQuestionRouted, logTourComplete, logEqOpening, logEqClosing, logEqFinalReflect, logStopEntered } from '@/lib/tour-logger';
 import {
@@ -100,6 +100,9 @@ interface TourContextValue {
   completeReflectionIntro: () => void;
   completeActContextQuestions: (asked?: ContextQuestionEntry[]) => void;
   completeActReflection: (response: ActReflectionResponse) => void;
+  /** Record that the explorer opened a designer-authored context item (deduped
+   *  by id) so the admin can see which contexts they chose to look at. */
+  recordContextViewed: (ctx: { contextId: string; title: string; lens: string; question?: string; actId?: string }) => void;
   markReflectionShared: (shareId: string) => void;
   completeCommunityShare: () => void;
   completeResources: () => void;
@@ -211,6 +214,23 @@ export function TourProvider({ children }: { children: ReactNode }) {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.started, session]);
+
+  // ─── Context Journal mirror ─────────────────────────────────────
+  //
+  // The contexts a learner adds/edits live in a guest-local store that's wiped
+  // at tour end. Mirror Firestore-safe snapshots onto the session backup as they
+  // change, so the admin can review what people built (incl. their map + timeline
+  // setup) and nothing is lost if they leave early. We write only non-empty sets
+  // so the tour-end reset (which emits []) doesn't wipe what we captured.
+  useEffect(() => {
+    const sid = session?.id;
+    const scopeId = tour?.id;
+    if (!sid || !scopeId) return;
+    return subscribeGuestContexts(scopeId, () => {
+      const snaps = snapshotGuestContexts(scopeId);
+      if (snaps.length) void persistSessionContextEntries(sid, snaps);
+    });
+  }, [tour?.id, session?.id]);
 
   // Closing-flow phases run per-device — never yank a member out of
   // their own closing once they've started writing.
@@ -675,6 +695,13 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(markActReflectionSharedImpl(session, tour, shareId));
   }, [session, tour, persist]);
 
+  const recordContextViewedFn = useCallback((ctx: { contextId: string; title: string; lens: string; question?: string; actId?: string }) => {
+    if (!session) return;
+    const existing = session.viewedContexts || [];
+    if (existing.some((v) => v.contextId === ctx.contextId)) return; // dedupe — first view only
+    persist({ ...session, viewedContexts: [...existing, { ...ctx, at: new Date().toISOString() }] });
+  }, [session, persist]);
+
   const endTour = useCallback(() => {
     setTour(null);
     setSession(null);
@@ -721,6 +748,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeReflectionIntro: completeReflectionIntroFn,
       completeActContextQuestions: completeActContextQuestionsFn,
       completeActReflection: completeActReflectionFn,
+      recordContextViewed: recordContextViewedFn,
       markReflectionShared: markReflectionSharedFn,
       completeCommunityShare: completeCommunityShareFn,
       completeResources: completeResourcesFn,

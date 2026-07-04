@@ -14,6 +14,7 @@
  * handles the nested coordinate arrays that Firestore rejects — no geo-serialize).
  */
 
+import type { ContextEntrySnapshot } from '@/lib/types';
 import type { ContextEntry, NewContextEntry } from './types';
 
 const keyFor = (scopeId: string) => `provenance-guest-contexts:${scopeId}`;
@@ -69,6 +70,34 @@ export function updateGuestContext(scopeId: string, id: string, patch: Partial<N
 /** Remove a guest context. */
 export function deleteGuestContext(scopeId: string, id: string): void {
   write(scopeId, read(scopeId).filter((e) => e.id !== id));
+}
+
+/** Read a scope's guest contexts as Firestore-safe snapshots (for the session
+ *  backup / admin review). Only the learner's own work is kept — designer
+ *  'authored' entries are excluded (those aren't something the explorer built). */
+export function snapshotGuestContexts(scopeId: string): ContextEntrySnapshot[] {
+  return read(scopeId)
+    .filter((e) => e.origin !== 'authored')
+    .map(toSnapshot);
+}
+
+/** Map one live ContextEntry to a Firestore-safe snapshot. Geometry is
+ *  JSON-stringified because Firestore rejects its nested coordinate arrays. */
+export function toSnapshot(e: ContextEntry): ContextEntrySnapshot {
+  return {
+    id: e.id,
+    title: e.title,
+    shortSummary: e.shortSummary || undefined,
+    lens: e.pastCategory,
+    origin: e.origin,
+    question: e.question || undefined,
+    timeRange: e.timeRange ? { start: e.timeRange.start, end: e.timeRange.end } : null,
+    camera: e.camera ? { center: e.camera.center, zoom: e.camera.zoom } : null,
+    mapType: e.mapType,
+    geometryType: e.geometry?.type ?? null,
+    geometryJson: e.geometry ? JSON.stringify(e.geometry) : null,
+    mediaCount: (e.media ?? []).length,
+  };
 }
 
 /** Clear all guest contexts for a scope — called at tour end. */

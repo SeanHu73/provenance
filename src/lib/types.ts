@@ -742,6 +742,47 @@ export interface WebNode {
 
 export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'act_intro' | 'act_opening' | 'act_closing' | 'act_questions' | 'stop_map' | 'community_forum' | 'resources' | 'act_context_intro' | 'act_context' | 'act_context_questions' | 'act_reflection_intro' | 'act_reflection' | 'community_share';
 
+/** A Firestore-safe snapshot of one Context-Journal entry the explorer added,
+ *  edited, or created during a tour. The live entries are guest-local (wiped at
+ *  tour end); we mirror these snapshots into the session backup so the admin can
+ *  review what people built — their contexts, and how they set up the map +
+ *  timeline — and so nothing is lost if they leave early.
+ *
+ *  Geometry is stored as a JSON string (`geometryJson`) because Firestore rejects
+ *  the nested coordinate arrays GeoJSON uses; `camera.center` is a flat 2-number
+ *  array, which Firestore accepts. */
+export interface ContextEntrySnapshot {
+  id: string;
+  title: string;
+  shortSummary?: string;
+  /** The P.A.S.T. lens ('place' | 'attitudes' | 'society' | 'technology'). */
+  lens: string;
+  /** authored = designer's, added = the learner's own copy, self = their own. */
+  origin?: 'authored' | 'added' | 'self';
+  /** The question they gave themselves (self-authored contexts). */
+  question?: string;
+  /** Timeline span they set, inclusive years. */
+  timeRange?: { start: number; end: number } | null;
+  /** Map camera they framed the geometry with. */
+  camera?: { center: [number, number]; zoom: number } | null;
+  mapType?: 'default' | 'satellite';
+  /** GeoJSON geometry type they drew ('Point' | 'Polygon' | …), if any. */
+  geometryType?: string | null;
+  /** Full geometry as a JSON string (nested arrays can't be stored raw). */
+  geometryJson?: string | null;
+  mediaCount?: number;
+}
+
+/** A designer-authored context item the explorer opened during the tour. */
+export interface ViewedContext {
+  contextId: string;
+  title: string;
+  lens: string;
+  question?: string;
+  actId?: string;
+  at: string;                          // ISO timestamp of first view
+}
+
 export interface TourSession {
   id: string;
   phaseHistory: Array<{ phase: TourPhase; round: number; stopIndex: number }>;
@@ -787,6 +828,12 @@ export interface TourSession {
     reflection?: ActReflectionResponse;
     contextQuestions?: ContextQuestionEntry[];
   }>;
+  /** Snapshots of the contexts the explorer added/edited/created in their
+   *  Context Journal, mirrored from the guest-local store so the admin can see
+   *  them (and their map + timeline setup) and they survive an early exit. */
+  contextEntries?: ContextEntrySnapshot[];
+  /** Designer-authored context items the explorer opened during the tour. */
+  viewedContexts?: ViewedContext[];
   startedAt: string;
   completedAt: string | null;
 }

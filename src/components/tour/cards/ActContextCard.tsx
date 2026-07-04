@@ -8,9 +8,9 @@
  * (auto-filled, editable later); admin-authored context is NOT auto-added.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTour } from '@/context/TourContext';
-import { currentContextItem } from '@/lib/tour-session';
+import { currentContextItem, findActOfStop } from '@/lib/tour-session';
 import { LENS_BY_KEY } from '@/features/context-journal/constants';
 import { addContextEntry } from '@/features/context-journal/store';
 import ReadAloud from '@/features/context-journal/components/ReadAloud';
@@ -22,10 +22,22 @@ interface Props {
 }
 
 export default function ActContextCard({ onComplete }: Props) {
-  const { tour, session } = useTour();
+  const { tour, session, currentStop, recordContextViewed } = useTour();
   const ctx = currentContextItem(tour, session);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+
+  // Record that the explorer opened this authored context (deduped in-session).
+  // Keyed on the context id so it fires once per context, not on every persist.
+  useEffect(() => {
+    if (!ctx || !tour) return;
+    const act = currentStop ? findActOfStop(tour, currentStop.id) : null;
+    recordContextViewed({
+      contextId: ctx.id, title: ctx.title, lens: ctx.pastCategory,
+      question: ctx.question || undefined, actId: act?.id,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx?.id, tour?.id]);
 
   if (!ctx || !tour) {
     return (

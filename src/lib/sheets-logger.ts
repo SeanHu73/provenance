@@ -41,25 +41,12 @@ export interface SheetLogEntry {
   timestamp: string;
 }
 
+/**
+ * RETIRED. The Google Sheets pipeline has been replaced by the durable Firestore
+ * session backup (`memorial-church-tour-sessions`), reviewable in /admin/sessions.
+ * This is now a no-op kept only so existing call sites compile; it sends nothing.
+ */
 export function logToSheet(entry: SheetLogEntry): void {
-  const url = process.env.SHEETS_WEBHOOK_URL;
-  if (!url) {
-    console.warn('[logToSheet] Skipped: SHEETS_WEBHOOK_URL is not set in this environment.');
-    return;
-  }
-
-  // Fire and forget with keepalive so the POST survives serverless termination.
-  // We intentionally don't await — this keeps the response fast and reliable.
-  fetch(url, {
-    method: 'POST',
-    // text/plain avoids a CORS preflight in browsers and is parsed by Apps
-    // Script the same way as application/json (it reads `e.postData.contents`
-    // as a raw string regardless).
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(entry),
-    keepalive: true,
-  }).catch((err) => {
-    // Surfaces in Vercel function logs. Doesn't affect user experience.
-    console.error('[logToSheet] Network error:', err);
-  });
+  // Intentionally does nothing — see /admin/sessions for explorer responses.
+  void entry;
 }

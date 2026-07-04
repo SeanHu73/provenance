@@ -11,7 +11,7 @@
 
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import { TourSession } from './types';
+import { TourSession, ContextEntrySnapshot } from './types';
 
 const COLLECTION = 'memorial-church-tour-sessions';
 
@@ -21,14 +21,32 @@ export type StoredTourSession = TourSession & { lastUpdated?: string };
 export async function persistTourSession(session: TourSession): Promise<void> {
   try {
     const { id, ...data } = session;
+    // Merge (not replace) so this composes with `persistSessionContextEntries`,
+    // which writes the `contextEntries` field on the same doc out-of-band. The
+    // session only ever accumulates fields, so merge loses nothing.
     await setDoc(doc(db, COLLECTION, id), {
       ...data,
       lastUpdated: new Date().toISOString(),
-    });
+    }, { merge: true });
   } catch (err) {
     // Non-fatal — sessionStorage is the primary store.
     // Firestore persistence is for analytics, not reliability.
     console.error('[tour-sessions-store] persist failed:', err);
+  }
+}
+
+/** Mirror the explorer's Context-Journal snapshots onto their session doc.
+ *  Merged (not overwritten) so it composes with the full-session persist, and
+ *  keyed by session id. Called as the guest contexts change during a tour. */
+export async function persistSessionContextEntries(sessionId: string, contextEntries: ContextEntrySnapshot[]): Promise<void> {
+  try {
+    await setDoc(
+      doc(db, COLLECTION, sessionId),
+      { contextEntries, lastUpdated: new Date().toISOString() },
+      { merge: true },
+    );
+  } catch (err) {
+    console.error('[tour-sessions-store] persist context entries failed:', err);
   }
 }
 
