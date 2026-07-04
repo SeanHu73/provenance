@@ -16,6 +16,7 @@ import { logContextQuestion } from '@/lib/tour-logger';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import ResponseInput from './ResponseInput';
 import OpenAiSpeechBar from './OpenAiSpeechBar';
+import ContextAskLoading from './ContextAskLoading';
 import BackButton from './BackButton';
 
 interface Props {
@@ -104,12 +105,9 @@ export default function ContextQuestionsCard({ onComplete }: Props) {
         </div>
       )}
 
-      {/* Composer */}
+      {/* Composer — replaced by the research loading screen while the Detective works */}
       {busy ? (
-        <div className="flex items-center justify-center gap-2 py-3" style={{ color: 'var(--text-secondary)' }}>
-          <span className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">Looking…</span>
-        </div>
+        <ContextAskLoading />
       ) : (
         <ResponseInput value={draft} onChange={setDraft} placeholder="Type your question…" />
       )}
