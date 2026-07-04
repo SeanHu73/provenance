@@ -52,6 +52,8 @@ import {
   completeActReflection as completeActReflectionImpl,
   markActReflectionShared as markActReflectionSharedImpl,
   completeCommunityShare as completeCommunityShareImpl,
+  startAdditionalStop as startAdditionalStopImpl,
+  finishAdditionalStops as finishAdditionalStopsImpl,
   completeStopMap as completeStopMapImpl,
   loadTourSession,
   saveTourSession,
@@ -105,6 +107,10 @@ interface TourContextValue {
   recordContextViewed: (ctx: { contextId: string; title: string; lens: string; question?: string; actId?: string }) => void;
   markReflectionShared: (shareId: string) => void;
   completeCommunityShare: () => void;
+  /** Post-tour additional stops: open one from the menu, or finish and go to the
+   *  tour's closing. */
+  startAdditionalStop: (stopId: string) => void;
+  finishAdditionalStops: () => void;
   completeResources: () => void;
   completeStopMap: () => void;
   // Unstructured exploration mode
@@ -695,6 +701,21 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(markActReflectionSharedImpl(session, tour, shareId));
   }, [session, tour, persist]);
 
+  const startAdditionalStopFn = useCallback((stopId: string) => {
+    if (!session || !tour) return;
+    const next = startAdditionalStopImpl(session, tour, stopId);
+    persist(next);
+    const stop = getActiveStops(tour)[next.currentStopIndex];
+    if (stop) {
+      logStopEntered({ tourId: tour.id, sessionId: session.id, tourTitle: tour.title, stopIndex: next.currentStopIndex, stopTitle: stop.mergeGroup || stop.title || `Stop ${next.currentStopIndex + 1}` });
+    }
+  }, [session, tour, persist]);
+
+  const finishAdditionalStopsFn = useCallback(() => {
+    if (!session || !tour) return;
+    persist(finishAdditionalStopsImpl(session, tour));
+  }, [session, tour, persist]);
+
   const recordContextViewedFn = useCallback((ctx: { contextId: string; title: string; lens: string; question?: string; actId?: string }) => {
     if (!session) return;
     const existing = session.viewedContexts || [];
@@ -751,6 +772,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
       recordContextViewed: recordContextViewedFn,
       markReflectionShared: markReflectionSharedFn,
       completeCommunityShare: completeCommunityShareFn,
+      startAdditionalStop: startAdditionalStopFn,
+      finishAdditionalStops: finishAdditionalStopsFn,
       completeResources: completeResourcesFn,
       completeStopMap: completeStopMapFn,
       enterUnstructuredStop: enterUnstructuredStopFn,

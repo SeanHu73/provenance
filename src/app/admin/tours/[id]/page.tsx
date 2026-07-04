@@ -19,7 +19,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-google-maps';
-import { Tour, Stop, Detour, StopPhoto, Act, ActContextItem, TourMode } from '@/lib/types';
+import { Tour, Stop, Detour, StopPhoto, Act, ActContextItem, AdditionalStop, TourMode } from '@/lib/types';
 import { ttsSanitize, hashText } from '@/lib/tts-text';
 import { contextNarrationText } from '@/lib/tts-narration';
 import { fetchTtsBlob } from '@/lib/tts-client';
@@ -36,6 +36,10 @@ import KnowledgeBaseEditor from '@/components/admin/KnowledgeBaseEditor';
 import AddContextFlow from '@/features/context-journal/components/AddContextFlow';
 import type { ContextDraft } from '@/features/context-journal/types';
 import { LENS_BY_KEY } from '@/features/context-journal/constants';
+
+/** Which container a Context item is authored into: a guided act, or a post-tour
+ *  additional stop. */
+type CtxTarget = { kind: 'act'; actId: string } | { kind: 'additional'; stopId: string };
 
 /** Stable id for a new Add-Context item (module-level: keeps render pure). */
 function makeCtxId(): string {
@@ -108,13 +112,16 @@ const KNOWN_ENTRIES: Array<{ id: string; title: string }> = [
  * appends any unassigned stops (in their array order) to the last act.
  * Enforces the "every stop in exactly one act" rule.
  */
-function ensureActsCoverStops(acts: Act[] | undefined, stops: Stop[]): Act[] {
+function ensureActsCoverStops(acts: Act[] | undefined, stops: Stop[], reservedStopIds?: Set<string>): Act[] {
   const validIds = new Set(stops.map((s) => s.id));
   let result: Act[] = (acts && acts.length > 0)
     ? acts.map((a) => ({ ...a, stopIds: (a.stopIds || []).filter((id) => validIds.has(id)) }))
     : [blankAct(0, [])];
   const assigned = new Set(result.flatMap((a) => a.stopIds));
-  const unassigned = stops.filter((s) => !assigned.has(s.id)).map((s) => s.id);
+  // Stops in the post-tour "additional" pool have a home already — don't adopt
+  // them back into an act.
+  const reserved = reservedStopIds ?? new Set<string>();
+  const unassigned = stops.filter((s) => !assigned.has(s.id) && !reserved.has(s.id)).map((s) => s.id);
   if (unassigned.length > 0) {
     result = result.map((a, i) =>
       i === result.length - 1 ? { ...a, stopIds: [...a.stopIds, ...unassigned] } : a,
@@ -193,10 +200,12 @@ export default function TourEditorPage() {
     if (!tour || getTourMode(tour) !== 'context') return;
     const stops = getActiveStops(tour);
     if (stops.length === 0) return;
-    const assigned = new Set((tour.acts || []).flatMap((a) => a.stopIds || []));
+    const additionalIds = new Set((tour.additionalStops || []).map((a) => a.stopId));
+    // A stop is "covered" if it's in an act OR in the post-tour additional pool.
+    const assigned = new Set([...(tour.acts || []).flatMap((a) => a.stopIds || []), ...additionalIds]);
     const covered = (tour.acts || []).length > 0 && stops.every((s) => assigned.has(s.id));
     if (!covered) {
-      const next = { ...tour, acts: ensureActsCoverStops(tour.acts, stops) };
+      const next = { ...tour, acts: ensureActsCoverStops(tour.acts, stops, additionalIds) };
       setTour(next);
       persist(next);
     }
@@ -264,8 +273,13 @@ export default function TourEditorPage() {
       .filter((s) => s.id !== stopId)
       .map((s, i) => ({ ...s, order: i }));
     let next = setActiveStops(tour, nextStops);
-    if (getTourMode(tour) === 'context' && next.acts) {
-      next = { ...next, acts: next.acts.map((a) => ({ ...a, stopIds: a.stopIds.filter((id) => id !== stopId) })) };
+    if (getTourMode(tour) === 'context') {
+      if (next.acts) {
+        next = { ...next, acts: next.acts.map((a) => ({ ...a, stopIds: a.stopIds.filter((id) => id !== stopId) })) };
+      }
+      if (next.additionalStops) {
+        next = { ...next, additionalStops: next.additionalStops.filter((a) => a.stopId !== stopId) };
+      }
     }
     setTour(next);
     if (expandedStopId === stopId) setExpandedStopId(null);
@@ -287,7 +301,7 @@ export default function TourEditorPage() {
         const src = (tour.unstructuredStops && tour.unstructuredStops.length > 0) ? tour.unstructuredStops : tour.stops;
         next.contextStops = duplicateStops(src);
       }
-      next.acts = ensureActsCoverStops(next.acts, next.contextStops || []);
+      next.acts = ensureActsCoverStops(next.acts, next.contextStops || [], new Set((next.additionalStops || []).map((a) => a.stopId)));
       if (!next.openingFrame) {
         const eq = tour.essentialQuestion;
         next.openingFrame = eq
@@ -339,12 +353,22 @@ export default function TourEditorPage() {
   };
 
 
-  // ── Rich "Add Context" items (positioned after a stop within an act) ──
-  const [ctxEditor, setCtxEditor] = useState<{ actId: string; itemId: string | null } | null>(null);
+  // ── Rich "Add Context" items — authored on an act OR on a post-tour additional
+  //    stop. A `CtxTarget` picks which container the item lives in. ──
+  const [ctxEditor, setCtxEditor] = useState<{ target: CtxTarget; itemId: string | null } | null>(null);
   // Per-context OpenAI narration generation (Title + Full Explanation).
   const [ctxNarrBusy, setCtxNarrBusy] = useState<string | null>(null);
 
-  const generateContextNarration = async (actId: string, ctx: ActContextItem) => {
+  const getTargetContexts = (t: CtxTarget): ActContextItem[] => {
+    if (t.kind === 'act') return (tour?.acts || []).find((a) => a.id === t.actId)?.contexts ?? [];
+    return (tour?.additionalStops || []).find((a) => a.stopId === t.stopId)?.contexts ?? [];
+  };
+  const setTargetContexts = (t: CtxTarget, contexts: ActContextItem[]) => {
+    if (t.kind === 'act') updateAct(t.actId, { contexts });
+    else updateAdditionalStop(t.stopId, { contexts });
+  };
+
+  const generateContextNarration = async (t: CtxTarget, ctx: ActContextItem) => {
     if (ctxNarrBusy) return;
     const clean = ttsSanitize(contextNarrationText(ctx));
     if (!clean.trim()) { alert('This context has no Title / Full Explanation to narrate yet.'); return; }
@@ -355,7 +379,7 @@ export default function TourEditorPage() {
       const file = new File([blob], `tts_context_${ctx.id}.mp3`, { type: 'audio/mpeg' });
       const url = await uploadPhoto(file, `memorial-church/audio/tts/${tourId}/context_${ctx.id}_${hash}.mp3`);
       const old = ctx.ttsAudioUrl ?? null;
-      patchActContextItem(actId, ctx.id, { ttsAudioUrl: url, ttsAudioHash: hash });
+      patchContextItem(t, ctx.id, { ttsAudioUrl: url, ttsAudioHash: hash });
       if (old && old !== url) void deleteStorageFileByUrl(old);
     } catch (err) {
       console.error('[narration] context generate failed:', err);
@@ -365,25 +389,25 @@ export default function TourEditorPage() {
     }
   };
 
-  const upsertActContextItem = (actId: string, draft: ContextDraft, itemId: string | null) => {
-    const act = (tour?.acts || []).find((a) => a.id === actId);
-    if (!act) return;
-    const items = act.contexts ?? [];
+  const upsertContextItem = (t: CtxTarget, draft: ContextDraft, itemId: string | null) => {
+    const items = getTargetContexts(t);
     if (itemId) {
-      updateAct(actId, { contexts: items.map((c) => (c.id === itemId ? { ...c, ...draft } : c)) });
+      setTargetContexts(t, items.map((c) => (c.id === itemId ? { ...c, ...draft } : c)));
     } else {
-      const afterStopId = act.stopIds[act.stopIds.length - 1] ?? '';
+      // afterStopId is a legacy positioning hint; for an act use its last stop,
+      // for an additional stop use the stop itself.
+      const afterStopId = t.kind === 'act'
+        ? ((tour?.acts || []).find((a) => a.id === t.actId)?.stopIds.slice(-1)[0] ?? '')
+        : t.stopId;
       const newItem: ActContextItem = { id: makeCtxId(), afterStopId, ...draft };
-      updateAct(actId, { contexts: [...items, newItem] });
+      setTargetContexts(t, [...items, newItem]);
     }
   };
-  const removeActContextItem = (actId: string, itemId: string) => {
-    const act = (tour?.acts || []).find((a) => a.id === actId);
-    updateAct(actId, { contexts: (act?.contexts ?? []).filter((c) => c.id !== itemId) });
+  const removeContextItem = (t: CtxTarget, itemId: string) => {
+    setTargetContexts(t, getTargetContexts(t).filter((c) => c.id !== itemId));
   };
-  const patchActContextItem = (actId: string, itemId: string, patch: Partial<ActContextItem>) => {
-    const act = (tour?.acts || []).find((a) => a.id === actId);
-    updateAct(actId, { contexts: (act?.contexts ?? []).map((c) => (c.id === itemId ? { ...c, ...patch } : c)) });
+  const patchContextItem = (t: CtxTarget, itemId: string, patch: Partial<ActContextItem>) => {
+    setTargetContexts(t, getTargetContexts(t).map((c) => (c.id === itemId ? { ...c, ...patch } : c)));
   };
   const addReflectionPrompt = (actId: string) => {
     const act = (tour?.acts || []).find((a) => a.id === actId);
@@ -419,19 +443,61 @@ export default function TourEditorPage() {
     updateActs(next);
   };
 
-  // Move a stop into a target act at a given index (append when undefined).
+  // Move a stop into a target act at a given index (append when undefined). Also
+  // pulls it out of the post-tour "additional" pool if it was there.
   const assignStopToAct = (stopId: string, targetActId: string, targetIndex?: number) => {
-    const acts = tour?.acts || [];
+    if (!tour) return;
+    const acts = tour.acts || [];
     const cleaned = acts.map((a) => ({ ...a, stopIds: a.stopIds.filter((id) => id !== stopId) }));
-    const next = cleaned.map((a) => {
+    const nextActs = cleaned.map((a) => {
       if (a.id !== targetActId) return a;
       const ids = [...a.stopIds];
       const i = targetIndex === undefined ? ids.length : Math.max(0, Math.min(targetIndex, ids.length));
       ids.splice(i, 0, stopId);
       return { ...a, stopIds: ids };
     });
-    updateActs(next);
+    const next = { ...tour, acts: nextActs, additionalStops: (tour.additionalStops || []).filter((a) => a.stopId !== stopId) };
+    setTour(next);
+    persist(next);
     setDragStopId(null);
+  };
+
+  // ── Additional (post-tour) stops ──
+  const updateAdditionalStops = (nextAdditional: AdditionalStop[]) => {
+    if (!tour) return;
+    const next = { ...tour, additionalStops: nextAdditional };
+    setTour(next);
+    persist(next);
+  };
+
+  // Move a stop into the post-tour additional pool (removing it from every act).
+  const assignStopToAdditional = (stopId: string, targetIndex?: number) => {
+    if (!tour) return;
+    const acts = (tour.acts || []).map((a) => ({ ...a, stopIds: a.stopIds.filter((id) => id !== stopId) }));
+    const existing = (tour.additionalStops || []).find((a) => a.stopId === stopId);
+    const without = (tour.additionalStops || []).filter((a) => a.stopId !== stopId);
+    const entry: AdditionalStop = existing ?? { stopId };
+    const i = targetIndex === undefined ? without.length : Math.max(0, Math.min(targetIndex, without.length));
+    const nextAdditional = [...without.slice(0, i), entry, ...without.slice(i)];
+    const next = { ...tour, acts, additionalStops: nextAdditional };
+    setTour(next);
+    persist(next);
+    setDragStopId(null);
+  };
+
+  const updateAdditionalStop = (stopId: string, patch: Partial<AdditionalStop>) => {
+    updateAdditionalStops((tour?.additionalStops || []).map((a) => (a.stopId === stopId ? { ...a, ...patch } : a)));
+  };
+
+  // Reorder a stop within the additional pool by one position.
+  const moveStopInAdditional = (stopId: string, direction: -1 | 1) => {
+    const list = tour?.additionalStops || [];
+    const idx = list.findIndex((a) => a.stopId === stopId);
+    const newIdx = idx + direction;
+    if (idx < 0 || newIdx < 0 || newIdx >= list.length) return;
+    const next = [...list];
+    [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+    updateAdditionalStops(next);
   };
 
   // Reorder a stop within its own act by one position.
@@ -591,6 +657,7 @@ export default function TourEditorPage() {
   const previewStop = previewStopId ? activeStops.find((s) => s.id === previewStopId) : null;
   const mode: TourMode = getTourMode(tour);
   const acts: Act[] = tour.acts || [];
+  const additionalStops: AdditionalStop[] = tour.additionalStops || [];
 
   // Shared stop-row renderer — used by both the flat (linear/unstructured)
   // list and the context-mode Acts organizer.
@@ -2023,13 +2090,14 @@ export default function TourEditorPage() {
                             actControl: (
                               <select
                                 value={act.id}
-                                onChange={(e) => assignStopToAct(sid, e.target.value)}
-                                className="text-[10px] border border-stone-300 rounded px-1 py-0.5 bg-white max-w-[90px]"
-                                title="Move to act"
+                                onChange={(e) => { if (e.target.value === '__additional__') assignStopToAdditional(sid); else assignStopToAct(sid, e.target.value); }}
+                                className="text-[10px] border border-stone-300 rounded px-1 py-0.5 bg-white max-w-[110px]"
+                                title="Move to act or the post-tour additional stops"
                               >
                                 {acts.map((a, i) => (
                                   <option key={a.id} value={a.id}>{a.title || `Act ${i + 1}`}</option>
                                 ))}
+                                <option value="__additional__">★ Additional (after tour)</option>
                               </select>
                             ),
                           });
@@ -2038,14 +2106,17 @@ export default function TourEditorPage() {
                     )}
 
                     {/* Add Context — each context carries its own question + details */}
-                    <div className="rounded border border-stone-300 bg-white p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-stone-600 uppercase tracking-wide">Add Context</p>
-                        <button onClick={() => setCtxEditor({ actId: act.id, itemId: null })} className="px-2.5 py-1 rounded bg-blue-700 text-white text-xs hover:bg-blue-800">+ Add context</button>
-                      </div>
-                      <p className="text-[10px] text-stone-400">Each context is a question the learner can ask plus the answer (title, explanation, map, timeline, photos). It appears under its P.A.S.T. lens in the Context Journal.</p>
-                      {/* Legacy end-of-act context — still shown to learners, no other UI to remove it */}
-                      {act.context && (act.context.question?.trim() || act.context.context?.trim() || act.context.audioUrl || (act.context.photos?.length ?? 0) > 0) && (
+                    <ContextItemsEditor
+                      contexts={act.contexts ?? []}
+                      tourId={tourId}
+                      ctxNarrBusy={ctxNarrBusy}
+                      uploadPhoto={uploadPhoto}
+                      onAdd={() => setCtxEditor({ target: { kind: 'act', actId: act.id }, itemId: null })}
+                      onEdit={(itemId) => setCtxEditor({ target: { kind: 'act', actId: act.id }, itemId })}
+                      onRemove={(itemId) => removeContextItem({ kind: 'act', actId: act.id }, itemId)}
+                      onPatch={(itemId, patch) => patchContextItem({ kind: 'act', actId: act.id }, itemId, patch)}
+                      onGenerate={(item) => generateContextNarration({ kind: 'act', actId: act.id }, item)}
+                      legacy={act.context && (act.context.question?.trim() || act.context.context?.trim() || act.context.audioUrl || (act.context.photos?.length ?? 0) > 0) ? (
                         <div className="rounded border border-amber-300 bg-amber-50 p-2 flex items-start gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Legacy context (still shown to learners)</div>
@@ -2054,72 +2125,8 @@ export default function TourEditorPage() {
                           </div>
                           <button onClick={() => removeLegacyContext(act.id)} className="text-xs text-red-600 hover:underline shrink-0">Remove</button>
                         </div>
-                      )}
-                      {(act.contexts ?? []).length === 0 ? (
-                        <p className="text-xs text-stone-400 italic">No contexts yet.</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {(act.contexts ?? []).map((item) => {
-                            const lens = LENS_BY_KEY[item.pastCategory];
-                            return (
-                              <li key={item.id} className="rounded border-l-4 border border-stone-200 p-2 space-y-2" style={{ borderLeftColor: lens?.colour ?? '#bbb' }}>
-                                <div className="flex items-start gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: lens?.colour ?? '#bbb' }} />
-                                      <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: lens?.colour ?? '#777' }}>{lens?.label ?? item.pastCategory}</span>
-                                    </div>
-                                    {item.question && <div className="text-xs italic text-stone-500 truncate mt-0.5">{item.question}</div>}
-                                    <div className="text-sm font-semibold text-stone-800 truncate">{item.title || <span className="text-stone-400 italic">Untitled</span>}</div>
-                                  </div>
-                                  <button onClick={() => setCtxEditor({ actId: act.id, itemId: item.id })} className="text-xs text-blue-700 hover:underline shrink-0">Edit</button>
-                                  <button onClick={() => removeActContextItem(act.id, item.id)} className="text-xs text-red-600 hover:underline shrink-0">Remove</button>
-                                </div>
-                                {/* Voiceover for this context's narration (Title + Full
-                                    Explanation). If uploaded, it's used instead of the auto
-                                    text-to-speech. */}
-                                <AudioUpload
-                                  audioUrl={item.voiceoverUrl ?? null}
-                                  audioTitle={item.voiceoverTitle ?? null}
-                                  onChange={(url) => patchActContextItem(act.id, item.id, { voiceoverUrl: url })}
-                                  onTitleChange={(t) => patchActContextItem(act.id, item.id, { voiceoverTitle: t })}
-                                  uploadPath={`memorial-church/audio/tours/${tourId}/context_vo_${item.id}`}
-                                  onUploadFile={uploadPhoto}
-                                />
-                                {/* Generate OpenAI narration (Title + Full Explanation) for this context. */}
-                                <div className="flex items-center gap-2 flex-wrap text-[11px]">
-                                  <button
-                                    type="button"
-                                    onClick={() => generateContextNarration(act.id, item)}
-                                    disabled={ctxNarrBusy === item.id}
-                                    className="px-2 py-1 rounded bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-50"
-                                  >
-                                    {ctxNarrBusy === item.id ? 'Generating…' : item.ttsAudioUrl ? 'Regenerate OpenAI narration' : 'Generate OpenAI narration'}
-                                  </button>
-                                  {item.ttsAudioUrl && ctxNarrBusy !== item.id && <span className="text-emerald-700">✓ narration ready</span>}
-                                  <span className="text-stone-400">Reads Title + Full Explanation. An uploaded voiceover takes priority.</span>
-                                </div>
-                                {/* Unlock dependency — hide this context's question in the
-                                    journal until another context here has been listened to. */}
-                                <label className="block text-[11px] text-stone-500">
-                                  Unlock after listening to:
-                                  <select
-                                    value={item.unlockAfterContextId ?? ''}
-                                    onChange={(e) => patchActContextItem(act.id, item.id, { unlockAfterContextId: e.target.value || undefined })}
-                                    className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs bg-white"
-                                  >
-                                    <option value="">Available from the start</option>
-                                    {(act.contexts ?? []).filter((c) => c.id !== item.id).map((c) => (
-                                      <option key={c.id} value={c.id}>{c.title || 'Untitled'}</option>
-                                    ))}
-                                  </select>
-                                </label>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
+                      ) : undefined}
+                    />
 
                     {/* Reflection prompts — the end-of-act "Share Your Thoughts" cards */}
                     <div className="rounded border border-stone-300 bg-white p-3 space-y-2">
@@ -2167,6 +2174,85 @@ export default function TourEditorPage() {
                   </div>
                 );
               })}
+
+              {/* ── Additional stops (played after the guided tour) ── */}
+              <div
+                className="border-2 border-dashed border-indigo-300 rounded bg-indigo-50/40 p-3 space-y-3"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); if (dragStopId) assignStopToAdditional(dragStopId); }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex-1 text-lg font-bold text-indigo-700">★ Additional stops</span>
+                  <span className="text-[10px] text-indigo-500 uppercase tracking-wide">after the tour</span>
+                </div>
+                <p className="text-[11px] text-stone-500">
+                  Optional stops explored freely after the last act. Learners see an &ldquo;end of the guided tour&rdquo; screen, then can open any of these — each plays its content and pops up its own (dismissible) Context Journal. Moving a stop here only unlinks it from its act; the stop and its data are untouched.
+                </p>
+
+                {additionalStops.length === 0 ? (
+                  <p className="text-[11px] text-stone-400 italic border border-dashed border-stone-300 rounded p-3 text-center">
+                    Drag a stop here, or use the dropdown on a stop and pick &ldquo;Additional (after tour).&rdquo;
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {additionalStops.map((entry, ei) => {
+                      const stop = activeStops.find((s) => s.id === entry.stopId);
+                      if (!stop) return null;
+                      return (
+                        <div key={entry.stopId} className="rounded border border-indigo-200 bg-white p-2 space-y-3">
+                          <ul className="space-y-2">
+                            {renderStopRow(stop, ei + 1, {
+                              onUp: () => moveStopInAdditional(entry.stopId, -1),
+                              onDown: () => moveStopInAdditional(entry.stopId, 1),
+                              upDisabled: ei === 0,
+                              downDisabled: ei === additionalStops.length - 1,
+                              draggable: true,
+                              actControl: (
+                                <select
+                                  value="__additional__"
+                                  onChange={(e) => { if (e.target.value !== '__additional__') assignStopToAct(entry.stopId, e.target.value); }}
+                                  className="text-[10px] border border-stone-300 rounded px-1 py-0.5 bg-white max-w-[110px]"
+                                  title="Move back into an act"
+                                >
+                                  <option value="__additional__">★ Additional</option>
+                                  {acts.map((a, i) => (
+                                    <option key={a.id} value={a.id}>→ {a.title || `Act ${i + 1}`}</option>
+                                  ))}
+                                </select>
+                              ),
+                            })}
+                          </ul>
+
+                          {/* Guiding question — shown atop this stop's Context Journal */}
+                          <label className="block px-1">
+                            <span className="text-[10px] font-semibold text-indigo-700 uppercase tracking-wide">Guiding question</span>
+                            <textarea
+                              value={entry.guidingQuestion || ''}
+                              onChange={(e) => updateAdditionalStop(entry.stopId, { guidingQuestion: e.target.value })}
+                              placeholder="e.g. What else shaped this place?"
+                              rows={2}
+                              className="mt-1 w-full px-2 py-1.5 border border-indigo-200 rounded text-sm bg-white"
+                            />
+                          </label>
+
+                          {/* This stop's own P.A.S.T. contexts */}
+                          <ContextItemsEditor
+                            contexts={entry.contexts ?? []}
+                            tourId={tourId}
+                            ctxNarrBusy={ctxNarrBusy}
+                            uploadPhoto={uploadPhoto}
+                            onAdd={() => setCtxEditor({ target: { kind: 'additional', stopId: entry.stopId }, itemId: null })}
+                            onEdit={(itemId) => setCtxEditor({ target: { kind: 'additional', stopId: entry.stopId }, itemId })}
+                            onRemove={(itemId) => removeContextItem({ kind: 'additional', stopId: entry.stopId }, itemId)}
+                            onPatch={(itemId, patch) => patchContextItem({ kind: 'additional', stopId: entry.stopId }, itemId, patch)}
+                            onGenerate={(item) => generateContextNarration({ kind: 'additional', stopId: entry.stopId }, item)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           ) : activeStops.length === 0 ? (
             <p className="text-stone-500 text-sm italic">No stops yet. Add one to start building the tour.</p>
@@ -2193,20 +2279,112 @@ export default function TourEditorPage() {
           />
         )}
 
-        {/* Add Context authoring modal (shared learner-style flow) */}
+        {/* Add Context authoring modal (shared learner-style flow) — targets an
+            act or a post-tour additional stop. */}
         {ctxEditor && (() => {
-          const a = (tour?.acts || []).find((x) => x.id === ctxEditor.actId);
-          const editing = ctxEditor.itemId ? (a?.contexts?.find((c) => c.id === ctxEditor.itemId) ?? null) : null;
+          const items = getTargetContexts(ctxEditor.target);
+          const editing = ctxEditor.itemId ? (items.find((c) => c.id === ctxEditor.itemId) ?? null) : null;
           return (
             <AddContextFlow
               heading={ctxEditor.itemId ? 'Edit context' : 'Add Context'}
               initial={editing ?? undefined}
               onClose={() => setCtxEditor(null)}
-              onSubmit={async (draft) => { upsertActContextItem(ctxEditor.actId, draft, ctxEditor.itemId); }}
+              onSubmit={async (draft) => { upsertContextItem(ctxEditor.target, draft, ctxEditor.itemId); }}
             />
           );
         })()}
       </div>
+    </div>
+  );
+}
+
+// ─── Context items editor (shared by acts + additional stops) ───────
+//
+// Renders the "Add Context" box: an add button, the list of authored contexts
+// (each with voiceover upload, OpenAI narration, and an unlock-after dependency),
+// and edit/remove controls. Used both inside an act and inside a post-tour
+// additional stop so the two never drift.
+
+function ContextItemsEditor({
+  contexts, tourId, ctxNarrBusy, uploadPhoto, onAdd, onEdit, onRemove, onPatch, onGenerate, legacy,
+}: {
+  contexts: ActContextItem[];
+  tourId: string;
+  ctxNarrBusy: string | null;
+  uploadPhoto: (file: File, path: string) => Promise<string>;
+  onAdd: () => void;
+  onEdit: (itemId: string) => void;
+  onRemove: (itemId: string) => void;
+  onPatch: (itemId: string, patch: Partial<ActContextItem>) => void;
+  onGenerate: (ctx: ActContextItem) => void;
+  legacy?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded border border-stone-300 bg-white p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-stone-600 uppercase tracking-wide">Add Context</p>
+        <button onClick={onAdd} className="px-2.5 py-1 rounded bg-blue-700 text-white text-xs hover:bg-blue-800">+ Add context</button>
+      </div>
+      <p className="text-[10px] text-stone-400">Each context is a question the learner can ask plus the answer (title, explanation, map, timeline, photos). It appears under its P.A.S.T. lens in the Context Journal.</p>
+      {legacy}
+      {contexts.length === 0 ? (
+        <p className="text-xs text-stone-400 italic">No contexts yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {contexts.map((item) => {
+            const lens = LENS_BY_KEY[item.pastCategory];
+            return (
+              <li key={item.id} className="rounded border-l-4 border border-stone-200 p-2 space-y-2" style={{ borderLeftColor: lens?.colour ?? '#bbb' }}>
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: lens?.colour ?? '#bbb' }} />
+                      <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: lens?.colour ?? '#777' }}>{lens?.label ?? item.pastCategory}</span>
+                    </div>
+                    {item.question && <div className="text-xs italic text-stone-500 truncate mt-0.5">{item.question}</div>}
+                    <div className="text-sm font-semibold text-stone-800 truncate">{item.title || <span className="text-stone-400 italic">Untitled</span>}</div>
+                  </div>
+                  <button onClick={() => onEdit(item.id)} className="text-xs text-blue-700 hover:underline shrink-0">Edit</button>
+                  <button onClick={() => onRemove(item.id)} className="text-xs text-red-600 hover:underline shrink-0">Remove</button>
+                </div>
+                <AudioUpload
+                  audioUrl={item.voiceoverUrl ?? null}
+                  audioTitle={item.voiceoverTitle ?? null}
+                  onChange={(url) => onPatch(item.id, { voiceoverUrl: url })}
+                  onTitleChange={(t) => onPatch(item.id, { voiceoverTitle: t })}
+                  uploadPath={`memorial-church/audio/tours/${tourId}/context_vo_${item.id}`}
+                  onUploadFile={uploadPhoto}
+                />
+                <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => onGenerate(item)}
+                    disabled={ctxNarrBusy === item.id}
+                    className="px-2 py-1 rounded bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-50"
+                  >
+                    {ctxNarrBusy === item.id ? 'Generating…' : item.ttsAudioUrl ? 'Regenerate OpenAI narration' : 'Generate OpenAI narration'}
+                  </button>
+                  {item.ttsAudioUrl && ctxNarrBusy !== item.id && <span className="text-emerald-700">✓ narration ready</span>}
+                  <span className="text-stone-400">Reads Title + Full Explanation. An uploaded voiceover takes priority.</span>
+                </div>
+                <label className="block text-[11px] text-stone-500">
+                  Unlock after listening to:
+                  <select
+                    value={item.unlockAfterContextId ?? ''}
+                    onChange={(e) => onPatch(item.id, { unlockAfterContextId: e.target.value || undefined })}
+                    className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs bg-white"
+                  >
+                    <option value="">Available from the start</option>
+                    {contexts.filter((c) => c.id !== item.id).map((c) => (
+                      <option key={c.id} value={c.id}>{c.title || 'Untitled'}</option>
+                    ))}
+                  </select>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

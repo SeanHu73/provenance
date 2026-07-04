@@ -412,6 +412,22 @@ export interface ActContextItem {
   question?: string;
 }
 
+/**
+ * A **post-tour "additional stop"** in Context-Prototype mode: an existing
+ * context stop pulled out of the guided Acts, offered for optional exploration
+ * after the last act ends. It references the Stop **by id only** (the Stop lives
+ * in `Tour.contextStops`, so moving a stop in or out of the additional pool never
+ * loses stop data), and carries its own P.A.S.T. contexts, shown in a dismissible
+ * Context Journal when the learner opens it.
+ */
+export interface AdditionalStop {
+  stopId: string;                    // into Tour.contextStops
+  /** Shown atop this stop's Context Journal (like an act's guiding question). */
+  guidingQuestion?: string;
+  /** This stop's P.A.S.T. contexts (same shape as an act's `contexts`). */
+  contexts?: ActContextItem[];
+}
+
 /** A group of stops in Context-Prototype mode. Stops play sequentially in
  *  `stopIds` order; acts play in array order. */
 export interface Act {
@@ -601,6 +617,10 @@ export interface Tour {
   contextStops?: Stop[];
   // Ordered Acts for context mode. Each references stop IDs in `contextStops`.
   acts?: Act[];
+  // Optional post-tour "additional stops" (context mode): stops pulled out of the
+  // guided acts, explored freely from a menu after the last act. Each references a
+  // stop in `contextStops` by id and carries its own P.A.S.T. contexts.
+  additionalStops?: AdditionalStop[];
   // Opening Frame shown at the start of a context-mode tour (in place of the
   // essential-question opening). Null/absent → no opening frame screen.
   openingFrame?: OpeningFrame | null;
@@ -860,7 +880,7 @@ export interface WebNode {
   y: number;
 }
 
-export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'act_intro' | 'act_opening' | 'act_closing' | 'act_questions' | 'stop_map' | 'community_forum' | 'resources' | 'act_context_intro' | 'act_context' | 'act_context_questions' | 'act_reflection_intro' | 'act_reflection' | 'community_share';
+export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'act_intro' | 'act_opening' | 'act_closing' | 'act_questions' | 'stop_map' | 'community_forum' | 'resources' | 'act_context_intro' | 'act_context' | 'act_context_questions' | 'act_reflection_intro' | 'act_reflection' | 'community_share' | 'additional_menu';
 
 /** A Firestore-safe snapshot of one Context-Journal entry the explorer added,
  *  edited, or created during a tour. The live entries are guest-local (wiped at
@@ -912,6 +932,12 @@ export interface TourSession {
   currentRound: number;               // 0 = main wonder+reveal, 1+ = extra rounds
   /** Which positioned Add-Context item is currently showing (act_context phases). */
   currentContextId?: string | null;
+  /** Context mode: true while the learner is exploring a post-tour *additional*
+   *  stop (its stop content + its own dismissible Context Journal), which routes
+   *  back to the additional-stops menu rather than into the act flow. */
+  additionalActive?: boolean;
+  /** The additional stop currently being explored (its `stopId`), or null. */
+  currentAdditionalStopId?: string | null;
   /** True once the full Context intro has played — later context steps show the
    *  shorter "let's explore the P.A.S.T. again" return intro instead. */
   contextIntroSeen?: boolean;

@@ -14,7 +14,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { getActiveStops, getTourMode } from '@/lib/tours-store';
-import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts } from '@/lib/tour-session';
+import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts, getAdditionalStops } from '@/lib/tour-session';
 import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
 import EqSceneCard from './cards/EqSceneCard';
@@ -49,6 +49,7 @@ import { authoredToEntry } from '@/features/context-journal/adapters';
 import ContextQuestionsCard from './cards/ContextQuestionsCard';
 import ActReflectionCard from './cards/ActReflectionCard';
 import HearFromCommunityCard from './cards/HearFromCommunityCard';
+import AdditionalStopsCard from './cards/AdditionalStopsCard';
 
 interface JournalProps {
   /** If provided, renders a "View on map" button (for stops at a different location). */
@@ -96,6 +97,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeActContextQuestions,
     completeActReflection,
     completeCommunityShare,
+    startAdditionalStop,
+    finishAdditionalStops,
     completeResources,
     completeStopMap,
   } = useTour();
@@ -142,7 +145,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const stopNum = session.currentStopIndex + 1;
 
   // Progress bar visibility — show during stops, hide on pre-tour/end screens
-  const showProgress = !['intro', 'meet_guide', 'guide_outro', 'end', 'act_intro', 'act_context_intro', 'act_reflection_intro', 'resources'].includes(phase);
+  const showProgress = !['intro', 'meet_guide', 'guide_outro', 'end', 'act_intro', 'act_context_intro', 'act_reflection_intro', 'resources', 'additional_menu'].includes(phase);
 
   // Determine transition type from the phase history.
   // Look at the previous entry — if it was in the same stop, slide. Otherwise fade.
@@ -353,17 +356,34 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
         {phase === 'act_context' && currentStop && typeof document !== 'undefined' && createPortal(
           (() => {
-            const act = findActOfStop(tour, currentStop.id);
-            const authored = getActContexts(act).map((c) => authoredToEntry(c, tour.id));
+            // Post-tour additional stop: show *its own* contexts in a dismissible
+            // journal (X out anytime, no continue gate) that returns to the menu.
+            const additional = session.additionalActive
+              ? getAdditionalStops(tour).find((a) => a.entry.stopId === session.currentAdditionalStopId)?.entry ?? null
+              : null;
+            const act = additional ? null : findActOfStop(tour, currentStop.id);
+            const authored = (additional ? (additional.contexts ?? []) : getActContexts(act)).map((c) => authoredToEntry(c, tour.id));
             const responses = Object.entries(session.actResponses ?? {}).flatMap(([aid, r]) => {
               const refl = r?.reflection;
               if (!refl) return [];
               const a = getActs(tour).find((x) => x.id === aid);
               return [{ actTitle: a?.title ?? '', promptText: refl.promptText ?? '', text: refl.text }];
             });
+            const guidingQuestion = (additional ? additional.guidingQuestion : act?.guidingQuestion)?.trim() || undefined;
             return (
               <div className="fixed inset-0 z-[55]">
-                <ContextJournal tourId={tour.id} authored={authored} inTour onExit={completeActContext} continueLabel="Continue" responses={responses} guidingQuestion={act?.guidingQuestion?.trim() || undefined} viewedContextIds={(session?.viewedContexts || []).map((v) => v.contextId)} onContextViewed={recordContextViewed} />
+                <ContextJournal
+                  tourId={tour.id}
+                  authored={authored}
+                  inTour={!additional}
+                  revisit={!!additional}
+                  onExit={completeActContext}
+                  continueLabel="Continue"
+                  responses={responses}
+                  guidingQuestion={guidingQuestion}
+                  viewedContextIds={(session?.viewedContexts || []).map((v) => v.contextId)}
+                  onContextViewed={recordContextViewed}
+                />
               </div>
             );
           })(),
@@ -384,6 +404,16 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
         {phase === 'community_share' && currentStop && (
           <HearFromCommunityCard onComplete={completeCommunityShare} />
+        )}
+
+        {/* Post-tour: the "end of the guided tour — explore these stops" menu */}
+        {phase === 'additional_menu' && (
+          <AdditionalStopsCard
+            tour={tour}
+            session={session}
+            onExplore={startAdditionalStop}
+            onFinish={finishAdditionalStops}
+          />
         )}
 
         {phase === 'notice' && currentStop && (

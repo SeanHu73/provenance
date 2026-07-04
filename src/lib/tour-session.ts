@@ -7,7 +7,7 @@
  * a single group visit.
  */
 
-import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry, ActContextItem, ContextMediaItem, ContextQuestion, ReflectionPrompt } from './types';
+import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry, ActContextItem, ContextMediaItem, ContextQuestion, ReflectionPrompt, AdditionalStop } from './types';
 import { getActiveStops, getTourMode } from './tours-store';
 
 export type { TourPhase };
@@ -230,17 +230,32 @@ export function getActs(tour: Tour): Act[] {
     .filter((a) => a.stopIds.length > 0);
   if (authored.length > 0) return authored;
   // Fallback: no usable acts authored — play every stop as one implicit act
-  // so the tour still runs (no opening/closing questions).
+  // so the tour still runs (no opening/closing questions). Additional (post-tour)
+  // stops are excluded — they play from their own menu, not as guided stops.
   if (activeStops.length > 0) {
-    return [{
-      id: '__implicit_act__',
-      title: '',
-      stopIds: activeStops.map((s) => s.id),
-      openingQuestion: null,
-      closingQuestion: null,
-    }];
+    const additionalIds = new Set((tour.additionalStops || []).map((a) => a.stopId));
+    const ids = activeStops.map((s) => s.id).filter((id) => !additionalIds.has(id));
+    if (ids.length > 0) {
+      return [{
+        id: '__implicit_act__',
+        title: '',
+        stopIds: ids,
+        openingQuestion: null,
+        closingQuestion: null,
+      }];
+    }
   }
   return [];
+}
+
+/** The tour's post-tour "additional" stops, resolved to their Stop objects (in
+ *  `additionalStops` order, skipping ids that no longer resolve). */
+export function getAdditionalStops(tour: Tour): { stop: Stop; entry: AdditionalStop }[] {
+  const byId = new Map(getActiveStops(tour).map((s) => [s.id, s] as const));
+  return (tour.additionalStops || []).flatMap((entry) => {
+    const stop = byId.get(entry.stopId);
+    return stop ? [{ stop, entry }] : [];
+  });
 }
 
 /** The flattened context playback order — each act's stops, in act order. */
@@ -291,10 +306,14 @@ function positionAtAct(session: TourSession, tour: Tour, act: Act): TourSession 
   };
 }
 
-/** Enter the first act of a context tour. No acts → straight to closing. */
+/** Enter the first act of a context tour. No acts → the additional-stops menu if
+ *  any exist, else straight to closing. */
 function enterFirstContextAct(session: TourSession, tour: Tour): TourSession {
   const acts = getActs(tour);
   if (acts.length === 0) {
+    if (getAdditionalStops(tour).length > 0) {
+      return { ...session, currentPhase: 'additional_menu', currentRound: 0, additionalActive: false, currentAdditionalStopId: null, completedAt: new Date().toISOString() };
+    }
     return { ...session, currentPhase: 'eq_questions', currentRound: 0, completedAt: new Date().toISOString() };
   }
   return positionAtAct(session, tour, acts[0]);
@@ -308,9 +327,46 @@ function advanceToNextActOrClosing(session: TourSession, tour: Tour, currentAct:
   if (nextAct) {
     return positionAtAct({ ...session, phaseHistory: pushHistory(session) }, tour, nextAct);
   }
+  // No more acts. If the tour has post-tour "additional" stops, land on their
+  // menu (the "end of the guided tour, explore these stops" screen) before the
+  // final closing. Otherwise end the tour directly.
+  if (getAdditionalStops(tour).length > 0) {
+    return {
+      ...session,
+      phaseHistory: pushHistory(session),
+      currentPhase: 'additional_menu',
+      currentRound: 0,
+      additionalActive: false,
+      currentAdditionalStopId: null,
+      // The guided tour is complete at this point even though optional stops remain.
+      completedAt: session.completedAt ?? new Date().toISOString(),
+    };
+  }
   // No more acts → end the tour (the per-act questions screens replace the
   // single tour-level "Any remaining questions" closing in context mode).
   return finishContextTour({ ...session, phaseHistory: pushHistory(session) }, tour);
+}
+
+/** Begin exploring a post-tour additional stop from the menu: park on its stop
+ *  and play its content (seed → reveal → [reflect]); `additionalActive` diverts
+ *  the end-of-stop flow into its Context Journal and back to the menu. */
+export function startAdditionalStop(session: TourSession, tour: Tour, stopId: string): TourSession {
+  const idx = indexOfStopId(tour, stopId);
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentStopIndex: idx >= 0 ? idx : session.currentStopIndex,
+    currentRound: 0,
+    currentPhase: 'seed',
+    additionalActive: true,
+    currentAdditionalStopId: stopId,
+    currentContextId: null,
+  };
+}
+
+/** Leave the additional-stops menu ("Finish") → the tour's final closing. */
+export function finishAdditionalStops(session: TourSession, tour: Tour): TourSession {
+  return finishContextTour({ ...session, phaseHistory: pushHistory(session), additionalActive: false, currentAdditionalStopId: null }, tour);
 }
 
 /** Final stretch of a context tour: the guide's closing message if present,
@@ -531,6 +587,18 @@ function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession
   const stops = getActiveStops(tour);
   const currentStop = stops[session.currentStopIndex];
   if (!currentStop) return session;
+
+  // Post-tour additional stop: its content is done → open its (dismissible)
+  // Context Journal. Closing the journal (completeActContext) returns to the menu.
+  if (session.additionalActive) {
+    return {
+      ...session,
+      phaseHistory: pushHistory(session),
+      currentPhase: 'act_context',
+      currentRound: 0,
+      currentContextId: null,
+    };
+  }
 
   const completedStops = session.completedStops.includes(currentStop.id)
     ? session.completedStops
@@ -871,6 +939,24 @@ export function completeContextIntro(session: TourSession): TourSession {
  *  stepping (which used to loop), no separate questions screen, and no per-act
  *  community step. */
 export function completeActContext(session: TourSession): TourSession {
+  // Post-tour additional stop: closing its journal marks the stop explored and
+  // returns to the additional-stops menu (no act reflection flow).
+  if (session.additionalActive) {
+    const stopId = session.currentAdditionalStopId;
+    const completedStops = stopId && !session.completedStops.includes(stopId)
+      ? [...session.completedStops, stopId]
+      : session.completedStops;
+    return {
+      ...session,
+      phaseHistory: pushHistory(session),
+      currentPhase: 'additional_menu',
+      currentRound: 0,
+      additionalActive: false,
+      currentAdditionalStopId: null,
+      currentContextId: null,
+      completedStops,
+    };
+  }
   // The Context step now leads into the end-of-act reflection ("Share Your
   // Thoughts"): a fade intro, then the prompt picker. The learner can always
   // write their own, so we always route here (the picker handles zero prompts).
