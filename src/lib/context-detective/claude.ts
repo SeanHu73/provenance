@@ -78,7 +78,7 @@ const RESEARCH_SCHEMA = {
 
 export async function researchDraft(system: string, userText: string): Promise<ResearchOutput | null> {
   const tools = [
-    { type: 'web_search_20260209', name: 'web_search', max_uses: 3 },
+    { type: 'web_search_20260209', name: 'web_search', max_uses: 2 },
     {
       name: 'submit_answer',
       description:
@@ -115,11 +115,12 @@ export async function researchDraft(system: string, userText: string): Promise<R
 // ── Voice rewrite (Opus 4.8, prose only) ──
 
 export async function voiceRewrite(system: string, userText: string): Promise<string> {
+  // Voice is a constrained rewrite (no new facts) — no thinking needed, and
+  // omitting it on Opus 4.8 shaves real latency off the pipeline.
   const resp = await callClaude({
     model: OPUS,
     max_tokens: 2000,
     system: cachedSystem(system),
-    thinking: { type: 'adaptive' },
     messages: [{ role: 'user', content: userText }],
   });
   return ((resp.content || []) as Json[])

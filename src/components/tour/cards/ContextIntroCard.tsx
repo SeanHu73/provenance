@@ -202,9 +202,11 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
             transition: 'opacity 700ms ease-out, transform 700ms ease-out',
           }}
         >
-          <path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3" />
-          <path d="M2 13a2 2 0 0 1 2-2 2 2 0 0 1 2 2v3h12v-3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z" />
-          <path d="M5 18v2M19 18v2" />
+          {/* Park bench */}
+          <path d="M4 7h16" />
+          <path d="M3 12h18" />
+          <path d="M6 7v5M10 7v5M14 7v5M18 7v5" />
+          <path d="M5 12v6M19 12v6" />
         </svg>
 
         <p
@@ -235,7 +237,9 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
             transition: 'opacity 800ms ease-out 750ms, transform 800ms ease-out 750ms',
           }}
         >
-          while we <span className="italic font-display" style={{ color: CONTEXT_ACCENT }}>reconstruct the world</span> around us.
+          while we
+          <span className="italic font-display block my-1" style={{ color: CONTEXT_ACCENT }}>reconstruct the world</span>
+          around us.
         </p>
 
         <div
