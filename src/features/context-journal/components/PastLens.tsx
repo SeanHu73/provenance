@@ -24,8 +24,11 @@ const INK = '#241f1b';
 const SHADOW = 'rgba(26,20,14,0.9)';
 /** How far down-and-right the cut-out shadow (and the push-down) travels. */
 const OFFSET = 5;
-/** Very translucent red for the question-count pill. */
+/** Very translucent red for the "questions to ask" pill. */
 const COUNT_BG = 'rgba(200,30,30,0.33)';
+/** Light grey for the "contexts present" pill (dark number on a pale bubble). */
+const PRESENT_BG = 'rgba(240,240,238,0.92)';
+const PRESENT_TEXT = '#3a3632';
 
 /** Match the established repo pattern for an optional light haptic tick. */
 function haptic(ms = 8) {
@@ -65,6 +68,27 @@ function InfoSign({ size = 16 }: { size?: number }) {
   );
 }
 
+/**
+ * The two count bubbles for a lens:
+ *  - grey `present` — contexts currently present in the lens (range-filtered)
+ *  - red `questions` — authored questions still left to ask; drops by one each
+ *    time a question is added as a context. Each bubble hides when its count
+ *    is zero.
+ */
+function CountBubbles({ present, questions, big = false }: { present: number; questions: number; big?: boolean }) {
+  const base = `inline-flex items-center justify-center rounded-full font-bold tabular-nums ${big ? 'min-w-[28px] px-2.5 py-1 text-[13px]' : 'min-w-[24px] px-2 py-0.5 text-[12px]'}`;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {present > 0 && (
+        <span className={base} style={{ backgroundColor: PRESENT_BG, color: PRESENT_TEXT }}>{present}</span>
+      )}
+      {questions > 0 && (
+        <span className={`${base} text-warm-white`} style={{ backgroundColor: COUNT_BG }}>{questions}</span>
+      )}
+    </span>
+  );
+}
+
 export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, prompt = false, onFocus, onToggleSave, onOpenFull }: Props) {
   const [open, setOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
@@ -72,7 +96,11 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
   // animating until each is tapped.
   const [engaged, setEngaged] = useState(false);
   const colour = lens.colour;
-  const count = entries.length;
+  // Red bubble = authored questions still to ask; grey bubble = contexts present
+  // in the lens (the added/self copies). The entries handed in are already
+  // range-filtered, so "present" tracks the current timeline view.
+  const questionCount = entries.filter((e) => e.origin === 'authored').length;
+  const presentCount = entries.filter((e) => e.origin !== 'authored').length;
   // Slim banner when the lens is open, or when the map panel is up.
   const slim = open || compact;
   // Run the tap-cue loop only on a closed, full-size, not-yet-opened lens.
@@ -154,9 +182,7 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
               <span className="border-b border-dotted border-white/45 pb-0.5"><LensName label={lens.label} first={26} rest={20} /></span>
               <InfoSign size={14} />
             </span>
-            {count > 0 && (
-              <span className="relative ml-auto inline-flex items-center justify-center min-w-[24px] rounded-full px-2 py-0.5 text-[12px] font-bold tabular-nums text-warm-white" style={{ backgroundColor: COUNT_BG }}>{count}</span>
-            )}
+            <span className="relative ml-auto"><CountBubbles present={presentCount} questions={questionCount} /></span>
           </>
         ) : (
           <>
@@ -175,12 +201,10 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
             <p className="relative font-serif italic text-warm-white/90 text-[15px] leading-snug max-w-[72%]">
               {lens.definition}
             </p>
-            {/* number of questions in this lens (hidden when there are none) */}
-            {count > 0 && (
-              <span className="absolute bottom-3 right-3 inline-flex items-center justify-center min-w-[28px] rounded-full px-2.5 py-1 text-[13px] font-bold tabular-nums text-warm-white" style={{ backgroundColor: COUNT_BG }}>
-                {count}
-              </span>
-            )}
+            {/* grey = contexts present · red = questions still to ask */}
+            <span className="absolute bottom-3 right-3">
+              <CountBubbles present={presentCount} questions={questionCount} big />
+            </span>
           </>
         )}
       </motion.button>
