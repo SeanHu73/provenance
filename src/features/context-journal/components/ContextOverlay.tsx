@@ -13,7 +13,7 @@
  *   • an already-added context's "tap 2" full page → pass `onDelete` (remove)
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { LENS_BY_KEY, formatYear, contextPhotos, contextAudio, clampRange } from '../constants';
 import type { ContextEntry, TimeRange } from '../types';
@@ -63,18 +63,11 @@ export default function ContextOverlay({
     setRange((r) => clampRange(r, next));
   };
 
-  const { supported, speaking, currentIdx, segments, play, stop } = useReadAloud({
+  // Browser (free) TTS is disabled on the context page — no autoplay, no "Read
+  // aloud" button. useReadAloud is kept only for the read-along text segments.
+  const { currentIdx, segments } = useReadAloud({
     lead: entry.title, body: entry.longExplanation, gapMs: 1000,
   });
-
-  // Attempt autoplay once when the overlay opens (it opened from a tap, so the
-  // gesture is usually still "warm" enough for speechSynthesis). If the browser
-  // blocks it, the play button starts it. Runs once per mounted entry.
-  useEffect(() => {
-    if (supported) play();
-    return stop;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entry.id]);
 
   return (
     <motion.div
@@ -147,24 +140,6 @@ export default function ContextOverlay({
             <h2 className="font-display text-[26px] leading-tight text-text-primary">{entry.title}</h2>
             {entry.question && (
               <p className="mt-1 font-serif italic text-[15px] text-text-secondary leading-snug">{entry.question}</p>
-            )}
-            {entry.shortSummary && (
-              <p className="mt-2.5 font-display text-lg text-text-primary leading-snug">{entry.shortSummary}</p>
-            )}
-
-            {/* read-aloud control (auto-plays on open) */}
-            {supported && entry.longExplanation.trim() && (
-              <button
-                onClick={speaking ? stop : play}
-                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold"
-                style={{ backgroundColor: speaking ? colour : `${colour}1f`, color: speaking ? '#fff' : colour }}
-              >
-                {speaking ? (
-                  <><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>Stop</>
-                ) : (
-                  <><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20" /></svg>Read aloud</>
-                )}
-              </button>
             )}
           </div>
 

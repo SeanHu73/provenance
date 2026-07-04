@@ -55,9 +55,9 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
   const [geometry, setGeometry] = useState(initial?.geometry ?? null);
   const [camera, setCamera] = useState(initial?.camera ?? null);
   const [mapType, setMapType] = useState<MapType>(initial?.mapType ?? 'default');
-  // Opt-in to showing place/time on the reader page. Old entries with geometry
-  // default to shown; new entries start off.
-  const [includePlaceTime, setIncludePlaceTime] = useState(initial?.includePlaceTime ?? !!initial?.geometry);
+  // Opt-in to showing place/time on the reader page — default off; the editor
+  // ticks it when they actually want the map/timeline shown.
+  const [includePlaceTime, setIncludePlaceTime] = useState(initial?.includePlaceTime ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Step 1 asks only for the framing question; step 2 is the full form (with the

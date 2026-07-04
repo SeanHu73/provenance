@@ -14,7 +14,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
-import { findActOfStop, reflectionPromptsOf, getActContexts } from '@/lib/tour-session';
+import { findActOfStop, reflectionPromptsOf } from '@/lib/tour-session';
 import { ActReflectionResponse } from '@/lib/types';
 import { uploadSharePhoto, recordUnsharedResponse } from '@/lib/community-store';
 import { subscribeGuestContexts } from '@/features/context-journal/guest-contexts';
@@ -37,14 +37,14 @@ export default function ActReflectionCard({ onComplete }: Props) {
   const act = tour && currentStop ? findActOfStop(tour, currentStop.id) : null;
   const prompts = reflectionPromptsOf(act);
 
-  // Taggable contexts: the act's authored contexts + the guest's added ones.
-  const authored = getActContexts(act).map((c) => ({ id: c.id, title: c.title }));
+  // Taggable contexts: only the contexts the learner has *added* (their own /
+  // Detective answers) — not the act's authored ones.
   const [guest, setGuest] = useState<{ id: string; title: string }[]>([]);
   useEffect(() => {
     if (!tour) return;
     return subscribeGuestContexts(tour.id, (entries) => setGuest(entries.map((e) => ({ id: e.id, title: e.title }))));
   }, [tour]);
-  const taggable = [...authored, ...guest].filter(
+  const taggable = guest.filter(
     (c, i, arr) => c.title.trim() && arr.findIndex((x) => x.id === c.id) === i,
   );
 

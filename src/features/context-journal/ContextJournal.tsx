@@ -129,7 +129,9 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
     // moves the timeline selection to the context's own span so the map + timeline
     // both reflect the tapped context. (The active filter changes as a result —
     // the timeline hint tells learners they can move it to browse other periods.)
-    if (entry) {
+    // Only pop the map open for a context that actually has a place/time to show
+    // (opted in, or a legacy one with geometry). Otherwise leave it as it was.
+    if (entry && (entry.includePlaceTime ?? !!entry.geometry)) {
       setMapType(entry.mapType ?? 'default');
       setShowMapPanel(true);
       setRange(clampRange(entry.timeRange, domain));
@@ -407,8 +409,10 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
             style={{ color: 'var(--th-primary)', border: `3px solid ${INK}`, boxShadow: `4px 4px 0 ${INK_SHADOW}` }}
           >
             <span className="flex items-center justify-center w-7 h-7 rounded-full text-warm-white shrink-0" style={{ backgroundColor: 'var(--th-primary)' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
-                <path d="M12 5v14M5 12h14" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z" />
+                <path d="M10 9a2.5 2.5 0 0 1 4.8.8c0 1.7-2.3 2.2-2.3 3.4" />
+                <line x1="12.4" y1="16" x2="12.41" y2="16" />
               </svg>
             </span>
             Ask your own question
