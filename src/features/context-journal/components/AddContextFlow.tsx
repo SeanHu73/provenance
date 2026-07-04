@@ -105,9 +105,12 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
     void runPlaceSearch(name);
   };
 
+  // Place + time are optional now — collapsed by default, expanded to edit.
+  const [showPlaceTime, setShowPlaceTime] = useState(false);
+
   const colour = LENS_BY_KEY[category].colour;
   const rangeValid = startYear <= endYear;
-  const canSave = title.trim().length > 0 && !!geometry && rangeValid && !saving;
+  const canSave = title.trim().length > 0 && rangeValid && !saving;
 
   const addFiles = (kind: 'photo' | 'audio', files: FileList | null) => {
     if (!files) return;
@@ -300,17 +303,6 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
             />
           </Field>
 
-          {/* time range */}
-          <Field label="Time range (years)">
-            <div className="flex items-center gap-3">
-              <YearInput value={startYear} onChange={setStartYear} />
-              <span className="text-text-muted">to</span>
-              <YearInput value={endYear} onChange={setEndYear} />
-            </div>
-            <p className="mt-1 text-xs text-text-muted">Use negative years for BC (e.g. −500 = 500 BC).</p>
-            {!rangeValid && <p className="mt-1 text-xs" style={{ color: 'var(--th-primary)' }}>Start year must be on or before the end year.</p>}
-          </Field>
-
           {/* media */}
           <Field label="Photos & audio (optional)">
             <div className="flex gap-2 mb-2">
@@ -390,8 +382,41 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
             </button>
           </Field>
 
+          {/* Place & time — optional, collapsed by default. */}
+          <div className="rounded-xl border" style={{ borderColor: 'var(--th-border)' }}>
+            <button
+              type="button"
+              onClick={() => setShowPlaceTime((v) => !v)}
+              className="w-full flex items-center justify-between px-3 py-2.5 text-left"
+            >
+              <span className="min-w-0">
+                <span className="block text-[13px] font-semibold text-text-primary">Place &amp; time <span className="font-normal text-text-muted">(optional)</span></span>
+                <span className="block text-[11px] text-text-muted leading-snug">
+                  You can pin where and when this context is relevant — a spot or region on the map, and a span on the timeline.
+                  {geometry ? ' ✓ Location set.' : ''}
+                </span>
+              </span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                className="shrink-0 transition-transform" style={{ color: 'var(--text-secondary)', transform: showPlaceTime ? 'rotate(90deg)' : 'none' }}>
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+
+            {showPlaceTime && (
+            <div className="px-3 pb-3 space-y-5 border-t pt-3" style={{ borderColor: 'var(--th-border)' }}>
+          {/* time range */}
+          <Field label="Time range (years)">
+            <div className="flex items-center gap-3">
+              <YearInput value={startYear} onChange={setStartYear} />
+              <span className="text-text-muted">to</span>
+              <YearInput value={endYear} onChange={setEndYear} />
+            </div>
+            <p className="mt-1 text-xs text-text-muted">Use negative years for BC (e.g. −500 = 500 BC).</p>
+            {!rangeValid && <p className="mt-1 text-xs" style={{ color: 'var(--th-primary)' }}>Start year must be on or before the end year.</p>}
+          </Field>
+
           {/* map step */}
-          <Field label="Place on the map (required)">
+          <Field label="Place on the map">
             {/* Place search lives ABOVE the map (it used to cover it). Type a
                name, or tap a place name on the map below. */}
             {mapTool === 'place' && (
@@ -450,9 +475,12 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
               />
             </div>
             <p className="mt-1.5 text-xs text-text-muted">
-              {geometry ? '✓ Location captured.' : 'Drop a pin, highlight a region, or pick a place to continue.'}
+              {geometry ? '✓ Location captured.' : 'Optional — drop a pin, highlight a region, or pick a place.'}
             </p>
           </Field>
+            </div>
+            )}
+          </div>
 
           {error && <p className="text-sm" style={{ color: 'var(--th-primary)' }}>{error}</p>}
         </div>
