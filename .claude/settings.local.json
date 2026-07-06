@@ -107,7 +107,8 @@
       "Bash(awk '/export interface ViewedContext/,/^}/' src/lib/types.ts)",
       "Bash(awk '/export interface ContextSource/,/^}/' src/features/context-journal/types.ts)",
       "Bash(awk '/export interface ContextMedia /,/^}/' src/features/context-journal/types.ts)",
-      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)"
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(grep -n \"uppercase tracking-wide\\\\\">\\\\|<section\\\\|</section>\\\\|{/\\\\* .* \\\\*/}\\\\|Preview modal\\\\|ctxEditor &&\" \"src/app/admin/tours/[id]/page.tsx\")"
     ]
   }
 }
