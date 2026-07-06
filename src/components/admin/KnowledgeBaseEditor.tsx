@@ -84,6 +84,9 @@ export default function KnowledgeBaseEditor({ tourId }: { tourId: string }) {
       embedding: existing?.embedding,
       embeddingModel: existing?.embeddingModel,
       embeddingHash: existing?.embeddingHash,
+      // A manually saved (or edited-then-saved) entry is curator-verified — this
+      // also promotes a candidate the admin opened in the form.
+      status: 'verified',
       createdAt: existing?.createdAt || '',
       updatedAt: '',
     };
@@ -120,6 +123,23 @@ export default function KnowledgeBaseEditor({ tourId }: { tourId: string }) {
     if (form.editingId === id) resetForm();
     reload();
   };
+
+  // Promote a learner-captured candidate into the verified base as-is (keeps its
+  // embedding — no re-embed). Editing first goes through the form + save().
+  const promote = async (e: KnowledgeEntry) => {
+    await saveKnowledgeEntry(tourId, { ...e, status: 'verified' });
+    if (form.editingId === e.id) resetForm();
+    reload();
+  };
+  const dismissCandidate = async (id: string) => {
+    if (!confirm('Dismiss this suggested entry? It won’t be added to the base.')) return;
+    await deleteKnowledgeEntry(tourId, id);
+    if (form.editingId === id) resetForm();
+    reload();
+  };
+
+  const candidates = entries.filter((e) => e.status === 'candidate');
+  const verified = entries.filter((e) => e.status !== 'candidate');
 
   const addLink = () => setForm((f) => ({ ...f, links: [...f.links, { label: '', url: '' }] }));
   const setLink = (i: number, patch: Partial<LinkDraft>) =>
@@ -219,18 +239,55 @@ export default function KnowledgeBaseEditor({ tourId }: { tourId: string }) {
         </div>
       </div>
 
+      {/* Suggested from learner questions — auto-captured candidates awaiting
+          review. Promote adds them to the verified base (then retrievable). */}
+      {candidates.length > 0 && (
+        <div className="rounded border-2 border-amber-300 bg-amber-50/50 p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 mb-1">
+            Suggested from learner questions ({candidates.length})
+          </p>
+          <p className="text-[11px] text-stone-500 mb-2 leading-snug">
+            These were answered from the web when a learner asked. They are NOT used by the Detective yet. Promote the
+            good ones to add them to the verified base — future similar questions will then answer from here (faster, no
+            web search). Edit first if you want to tidy the wording or sources.
+          </p>
+          <ul className="space-y-2">
+            {candidates.map((e) => {
+              const lens = LENS_BY_KEY[e.lens];
+              return (
+                <li key={e.id} className="rounded border-l-4 border border-amber-200 bg-white p-2.5" style={{ borderLeftColor: lens?.colour ?? '#bbb' }}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: lens?.colour ?? '#777' }}>{lens?.label ?? e.lens}</span>
+                    {!e.embedding && <span className="text-[10px] text-amber-600">⚠ no vector</span>}
+                  </div>
+                  <p className="text-sm font-semibold text-stone-800">{e.title || <span className="text-stone-400 italic">Untitled</span>}</p>
+                  {e.sourceQuestion && <p className="text-[11px] italic text-stone-500">Asked: &ldquo;{e.sourceQuestion}&rdquo;</p>}
+                  {e.shortSummary && <p className="text-xs text-stone-500 line-clamp-2 mt-0.5">{e.shortSummary}</p>}
+                  <p className="text-[10px] text-stone-400 mt-0.5">{e.sourceLinks?.length || 0} source(s)</p>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <button type="button" onClick={() => promote(e)} className="px-2.5 py-1 rounded bg-emerald-700 text-white text-xs hover:bg-emerald-800">Promote</button>
+                    <button type="button" onClick={() => editEntry(e)} className="text-xs text-blue-700 hover:underline">Edit first</button>
+                    <button type="button" onClick={() => dismissCandidate(e.id)} className="text-xs text-red-600 hover:underline">Dismiss</button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       {/* Existing entries */}
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500 mb-2">
-          Entries ({entries.length})
+          Entries ({verified.length})
         </p>
         {loading ? (
           <p className="text-xs text-stone-500">Loading…</p>
-        ) : entries.length === 0 ? (
+        ) : verified.length === 0 ? (
           <p className="text-xs text-stone-400 italic">No knowledge entries yet.</p>
         ) : (
           <ul className="space-y-2">
-            {entries.map((e) => {
+            {verified.map((e) => {
               const lens = LENS_BY_KEY[e.lens];
               return (
                 <li key={e.id} className="rounded border-l-4 border border-stone-200 p-2.5 flex items-start gap-2" style={{ borderLeftColor: lens?.colour ?? '#bbb' }}>

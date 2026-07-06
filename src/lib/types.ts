@@ -323,6 +323,12 @@ export interface KnowledgeEntry {
   /** Hash of the text the embedding was generated from — lets a re-save skip
    *  re-embedding when the text is unchanged. */
   embeddingHash?: string;
+  /** Curation state. `verified` (or undefined, for legacy curator-authored
+   *  entries) is retrieved by the Detective. `candidate` is auto-captured from a
+   *  learner's live (web) answer and is NOT retrieved until an admin promotes it. */
+  status?: 'candidate' | 'verified';
+  /** For candidates: the learner question that produced this answer (dedup + review). */
+  sourceQuestion?: string;
   createdAt: string;
   updatedAt: string;
 }

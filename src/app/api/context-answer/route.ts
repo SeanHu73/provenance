@@ -21,6 +21,7 @@ import {
 import { researchSystem, voiceSystem, parseSystem } from '@/lib/context-detective/prompts';
 import { researchDraft, voiceRewrite, parseHandout, ResearchSource } from '@/lib/context-detective/claude';
 import { embedTexts, cosine } from '@/lib/context-detective/embed';
+import { hashText } from '@/lib/tts-text';
 
 // The three-pass pipeline + web search can run a couple of minutes; allow it on
 // Vercel (Pro caps at 300s). The learner sees the "researching…" screen meanwhile.
@@ -67,6 +68,60 @@ function banked(question: string, tourId: string, actId: string | undefined, nar
   return { status: 'banked', narrative, handout: null, branch: 'banked', sources: [] };
 }
 
+/**
+ * Knowledge accretion: after a live (web) answer, write it back as a **candidate**
+ * knowledge entry for this tour — embedded, lens-tagged, carrying its web sources.
+ * Candidates are NOT retrieved (see loadCandidates) until an admin promotes them,
+ * so this can never degrade answers; it just pre-fills the review queue so the
+ * verified base grows and repeat questions stop needing web search.
+ */
+async function captureCandidate(input: {
+  tourId: string;
+  question: string;
+  lens: PastLens;
+  card: DetectiveHandout['cards'][number] | undefined;
+  narrative: string;
+  sources: DetectiveSource[];
+}): Promise<void> {
+  try {
+    const { tourId, question, lens, card, narrative, sources } = input;
+    const title = (card?.title || question).trim();
+    const shortSummary = (card?.summary || '').trim();
+    const longExplanation = (card?.explanation || narrative || '').trim();
+    if (!longExplanation) return;
+    // Provenance required (mirrors the curator rule) — keep only web source links.
+    const sourceLinks = sources
+      .filter((s) => s.kind === 'web' && s.url)
+      .map((s) => ({ label: (s.name || s.url || '').slice(0, 120), url: s.url as string }));
+    if (sourceLinks.length === 0) return;
+
+    const qKey = question.trim().toLowerCase();
+    const col = collection(db, 'memorial-church-tours', tourId, 'knowledge-entries');
+    const snap = await getDocs(col);
+    // Dedup: skip if a candidate for the same question already exists.
+    let dup = false;
+    snap.forEach((d) => {
+      const e = d.data() as KnowledgeEntry;
+      if (e.status === 'candidate' && (e.sourceQuestion || '').trim().toLowerCase() === qKey) dup = true;
+    });
+    if (dup) return;
+
+    const embedText = `${shortSummary}\n\n${longExplanation}`.trim();
+    const [embedding] = await embedTexts([embedText]);
+    const id = newId();
+    const now = new Date().toISOString();
+    const entry: Omit<KnowledgeEntry, 'id'> = {
+      title, shortSummary, longExplanation, sourceLinks, lens,
+      embedding, embeddingModel: 'text-embedding-3-small', embeddingHash: hashText(embedText),
+      status: 'candidate', sourceQuestion: question.trim(),
+      createdAt: now, updatedAt: now,
+    };
+    await setDoc(doc(col, id), JSON.parse(JSON.stringify(entry)));
+  } catch (err) {
+    console.error('[context-answer] candidate capture failed:', err);
+  }
+}
+
 async function loadCandidates(tourId: string): Promise<Candidate[]> {
   const out: Candidate[] = [];
   // Knowledge entries (already embedded)
@@ -74,6 +129,9 @@ async function loadCandidates(tourId: string): Promise<Candidate[]> {
     const snap = await getDocs(collection(db, 'memorial-church-tours', tourId, 'knowledge-entries'));
     snap.forEach((d) => {
       const e = { id: d.id, ...d.data() } as KnowledgeEntry;
+      // Candidates (auto-captured from learner answers) stay out of retrieval
+      // until an admin promotes them to the verified base.
+      if (e.status === 'candidate') return;
       out.push({
         kind: 'entry', id: e.id, title: e.title, summary: e.shortSummary, explanation: e.longExplanation,
         lens: e.lens, domains: (e.sourceLinks || []).map((l) => l.url).filter(Boolean),
@@ -205,6 +263,10 @@ export async function POST(req: Request) {
       relevanceNote: handout.relevanceNote,
     };
     void logResponse({ ...answer, question, originalQuestion, tourId, actId, retrievedIds: ranked.map((c) => c.id) });
+    // Grow the verified base over time: capture web-sourced answers as candidates.
+    if (research.branch === 'live') {
+      void captureCandidate({ tourId, question, lens: entryLens, card: handout.cards[0], narrative, sources });
+    }
     return NextResponse.json(answer);
   } catch (err) {
     console.error('[context-answer] pipeline error:', err);
