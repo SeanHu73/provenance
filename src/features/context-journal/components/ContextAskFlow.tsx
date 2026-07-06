@@ -51,11 +51,14 @@ type Phase = 'lens' | 'compose' | 'coaching' | 'reframe' | 'researching' | 'resu
 interface Props {
   tourId: string;
   actId?: string;
+  /** Titles of stops the learner has already completed — sent to the Detective as
+   *  their prior knowledge (background only; it never argues from stop content). */
+  priorStops?: string[];
   onClose: () => void;
   onAdd: (draft: ContextDraft) => Promise<void> | void;
 }
 
-export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props) {
+export default function ContextAskFlow({ tourId, actId, priorStops, onClose, onAdd }: Props) {
   const [phase, setPhase] = useState<Phase>('lens');
   const [lens, setLens] = useState<PastCategory>('society');
   const [text, setText] = useState('');
@@ -131,7 +134,7 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
     fetch('/api/context-answer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, originalQuestion: originalQuestionRef.current || question, tourId, actId, lens }),
+      body: JSON.stringify({ question, originalQuestion: originalQuestionRef.current || question, tourId, actId, lens, priorStops }),
       signal: ctrl.signal,
     })
       .then((r) => (r.ok ? r.json() : { status: 'banked' }))

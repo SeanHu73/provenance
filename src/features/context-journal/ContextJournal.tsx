@@ -67,9 +67,13 @@ interface Props {
   /** Called when the learner opens a context to read/listen — records it as
    *  viewed so unlock dependencies can fire. */
   onContextViewed?: (ctx: { contextId: string; title: string; lens: string; question?: string }) => void;
+  /** Titles of the stops the learner has already completed on the tour. Passed to
+   *  the Ask-your-own flow as the learner's *prior knowledge* (background only —
+   *  the Detective never argues from stop content). */
+  priorStopTitles?: string[];
 }
 
-export default function ContextJournal({ tourId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed }: Props) {
+export default function ContextJournal({ tourId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [] }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
   // Both the in-tour flow and the revisit overlay read/write the learner's
   // guest-local contexts (sessionStorage); only a bare standalone visit uses
@@ -464,6 +468,7 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
       {askOpen && (
         <ContextAskFlow
           tourId={scopeId}
+          priorStops={priorStopTitles}
           onClose={() => setAskOpen(false)}
           onAdd={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); setExplored(true); }}
         />

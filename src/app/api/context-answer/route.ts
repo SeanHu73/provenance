@@ -165,10 +165,16 @@ async function loadCandidates(tourId: string): Promise<{ candidates: Candidate[]
 }
 
 export async function POST(req: Request) {
-  let body: { question?: string; originalQuestion?: string; tourId?: string; actId?: string; lens?: PastLens } = {};
+  let body: { question?: string; originalQuestion?: string; tourId?: string; actId?: string; lens?: PastLens; priorStops?: string[] } = {};
   try { body = await req.json(); } catch { /* empty */ }
 
   const question = (body.question || '').trim();
+  // Titles of stops the learner has already seen — their prior knowledge. Passed
+  // to the model as background ONLY (see the guardrail in researchUser); it must
+  // never argue from stop content — contextualising is the learner's job.
+  const priorStops = Array.isArray(body.priorStops)
+    ? body.priorStops.map((s) => String(s || '').trim()).filter(Boolean).slice(0, 40)
+    : [];
   // The learner's first-asked question, before any Framing Coach reframe. Defaults
   // to the final question when they kept their wording. Logged for the author.
   const originalQuestion = (body.originalQuestion || body.question || '').trim();
@@ -198,9 +204,15 @@ export async function POST(req: Request) {
       : '(the verified base has no entries yet)';
     const lensLine = requestLens ? `: ${requestLens}` : ' — not specified; determine the lead lens yourself.';
 
+    const priorBlock = priorStops.length
+      ? `LEARNER'S PRIOR KNOWLEDGE — stops they have already visited on this tour: ${priorStops.join('; ')}.\n`
+        + `This is BACKGROUND ONLY, to gauge what they likely already know and pitch the answer accordingly (don't re-explain what they've clearly seen). Do NOT treat these stops as sources or evidence, do NOT quote or argue from their content, and do NOT make the connections between them and the answer for the learner — drawing those links is the learner's own job.\n\n`
+      : '';
+
     const researchUser =
       `QUESTION FROM THE LEARNER:\n"${question}"\n\n`
       + `ENTRY LENS${lensLine}\n\n`
+      + priorBlock
       + `RETRIEVED VERIFIED-BASE CANDIDATES (curator-authored; verified. Use only those that DIRECTLY answer — fit, not presence):\n${candidateBlock}\n\n`
       + `PRIORITISED DOMAINS for web search (prioritise, do not restrict to): ${domains.join(', ') || 'academic and official / university sites'}\n\n`
       + `Follow your P.A.S.T., Research, and Grounding skills. Screen first (is this a question? is it about context?). If the verified base directly answers, use it (branch verified-base). If not, supplement with web search — first decide the specific entities, dates, or sub-questions you actually need and run targeted queries for those rather than one broad search, prioritising the domains above and academic / official / university sources, and marking every web source unverified (branch live). If nothing solid comes back, bank it (status + branch banked). Then call submit_answer exactly once: the draft (guiding first-person plural, it will be voiced afterwards), the branch, the lead lens, and every source you actually used as its own object in the sources array (entry/context id for verified, url for web) — never as text and never inside relevanceNote. Leave unused source sub-fields as empty strings, and relevanceNote empty unless this context is likely not relevant to what the learner is exploring.`;

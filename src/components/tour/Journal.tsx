@@ -371,6 +371,13 @@ export default function Journal({ onMapPeek }: JournalProps) {
               return [{ actTitle: a?.title ?? '', promptText: refl.promptText ?? '', text: refl.text }];
             });
             const guidingQuestion = (additional ? additional.guidingQuestion : act?.guidingQuestion)?.trim() || undefined;
+            // Stops the learner has completed — passed to Ask-your-own as their
+            // prior knowledge (titles only; the Detective never argues from them).
+            const doneStops = new Set(session.completedStops);
+            const priorStopTitles = getActiveStops(tour)
+              .filter((s) => doneStops.has(s.id))
+              .map((s) => (s.title || '').trim())
+              .filter(Boolean);
             return (
               <div className="fixed inset-0 z-[55]">
                 <ContextJournal
@@ -384,6 +391,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
                   guidingQuestion={guidingQuestion}
                   viewedContextIds={(session?.viewedContexts || []).map((v) => v.contextId)}
                   onContextViewed={recordContextViewed}
+                  priorStopTitles={priorStopTitles}
                 />
               </div>
             );
