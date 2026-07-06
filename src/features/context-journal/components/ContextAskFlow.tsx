@@ -307,15 +307,17 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
             />
 
             {researchReady ? (
+              // Ready: a bright, distinct colour (green = "go") with a pulsing ring
+              // — clearly different from the researching state.
               <motion.button
                 onClick={() => setPhase('result')}
                 className="relative w-full py-3.5 rounded-xl text-base font-semibold text-white overflow-visible"
-                style={{ backgroundColor: 'var(--th-primary)' }}
-                animate={{ scale: [1, 1.035, 1] }}
-                transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ backgroundColor: '#16a34a' }}
+                animate={{ scale: [1, 1.04, 1] }}
+                transition={{ duration: 1.05, repeat: Infinity, ease: 'easeInOut' }}
               >
                 {/* pulsing ring cueing that the answer is ready */}
-                <span className="pointer-events-none absolute inset-0 rounded-xl animate-ping" style={{ boxShadow: '0 0 0 3px var(--th-primary)', opacity: 0.35 }} aria-hidden />
+                <span className="pointer-events-none absolute inset-0 rounded-xl animate-ping" style={{ boxShadow: '0 0 0 3px #16a34a', opacity: 0.35 }} aria-hidden />
                 <span className="relative inline-flex items-center justify-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
                   Your answer is ready — reveal it
@@ -325,6 +327,12 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
               <div className="space-y-3">
                 {/* the research animation, back while it's being looked up */}
                 <ContextAskLoading />
+                {/* the primary button starts as a plain outline "Researching…"
+                    and only flips to the filled green button above once ready. */}
+                <div className="w-full py-3.5 rounded-xl text-base font-semibold border-2 flex items-center justify-center gap-2" style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
+                  <span className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--th-primary)', borderTopColor: 'transparent' }} />
+                  Researching…
+                </div>
                 <button onClick={cancelSearch} className="w-full py-2.5 rounded-xl text-[14px] font-semibold border-2" style={{ color: 'var(--text-secondary)', borderColor: 'var(--th-border)' }}>
                   Cancel search / change question
                 </button>
@@ -354,15 +362,9 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
                   {(resp?.sources || []).map((s, i) => (
                     <li key={i}>
                       {s.url ? <a href={s.url} target="_blank" rel="noreferrer" className="underline">{s.name || s.url}</a> : (s.name || 'Source')}
-                      {!s.verified && ' · found online, not yet checked'}
                     </li>
                   ))}
                 </ul>
-                {(resp?.sources || []).some((s) => !s.verified) && (
-                  <p className="mt-1.5 leading-snug italic">
-                    &ldquo;Not yet checked&rdquo; means the Detective found it online rather than in your guide&apos;s verified sources — worth a second look.
-                  </p>
-                )}
               </div>
             )}
             {/* their own theory, kept for comparison */}

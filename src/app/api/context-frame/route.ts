@@ -96,12 +96,14 @@ export async function POST(req: Request) {
     }
     // Coherence guard: ok and needsReframe must not both be true.
     const needsReframe = out.needsReframe && !out.ok;
+    // Keep EVERY proposed reframe (no truncation) so the author can review the
+    // full set the coach offered and give feedback on it.
     const result: FrameOutput = {
       ok: out.ok,
       reorientation: out.reorientation || '',
       needsReframe,
       reframeTip: needsReframe ? (out.reframeTip || '') : '',
-      suggestedQuestions: needsReframe ? (out.suggestedQuestions || []).filter(Boolean).slice(0, 3) : [],
+      suggestedQuestions: needsReframe ? (out.suggestedQuestions || []).filter(Boolean) : [],
     };
     void logFraming({ question, tourId, actId, lens, result });
     return NextResponse.json(result);
