@@ -21,7 +21,7 @@ function read(file: string): string {
 }
 
 let cache: {
-  past: string; voice: string; research: string; grounding: string; parse: string; exemplars: string;
+  past: string; voice: string; research: string; grounding: string; parse: string; frameCoach: string; exemplars: string;
 } | null = null;
 
 function skills() {
@@ -32,6 +32,7 @@ function skills() {
     research: read('Context_Detective_Research_Skill.md'),
     grounding: read('Context_Detective_Grounding_Skill.md'),
     parse: read('Context_Detective_Parse_Skill.md'),
+    frameCoach: read('Context_Detective_Framing_Coach_Skill.md'),
     exemplars: read('Stanford_Wealth_Context_Entries.md'),
   };
   return cache;
@@ -65,38 +66,12 @@ export function parseSystem(): string {
 
 /**
  * Framing Coach pass (fast, Haiku): a quick screen that runs BEFORE the heavy
- * research pipeline. It reorients the learner, decides whether their question is
- * already a good *contextual* question, and — only when it is too narrow, factual,
- * or off-topic — offers a short tip plus a few tap-to-use reframes toward a P.A.S.T.
- * contextual question. It never answers the question. Gets the P.A.S.T. skill (so
- * it knows what a contextual question looks like) plus optional author guidance.
+ * research pipeline. It reorients the learner and, only when the question is
+ * off-topic or a bare fact lookup, models a better contextual direction. Gets the
+ * Framing Coach skill + the P.A.S.T. skill (for the lens definitions). Tour-specific
+ * relevance comes from the TOUR CONTEXT block in the user message, not the system.
  */
-export function frameSystem(coaching?: string): string {
+export function frameSystem(): string {
   const s = skills();
-  const rules =
-    '# FRAMING COACH SKILL\n\n'
-    + 'You are the Context Detective\'s fast "framing coach". You run in a couple of seconds, BEFORE any research, '
-    + 'to help a learner ask a strong *contextual* question. You NEVER answer the question or state facts about it.\n\n'
-    + 'A strong contextual question probes the forces around a topic through a P.A.S.T. lens (Place, Affairs, '
-    + 'Society, Technology) — the conditions, causes, values, systems, or changes of a time and place. A weak one is '
-    + 'a narrow fact lookup ("what year did X open?", "who designed Y?"), a yes/no, or something with no historical '
-    + 'context to explore.\n\n'
-    + 'Given the learner\'s question and their chosen lens, return via the tool:\n'
-    + '- reorientation: ONE warm, short sentence that mirrors what they seem curious about and ties it to the lens. '
-    + 'Never reveal or hint at the answer.\n'
-    + '- ok: true if the question is already a good contextual question worth researching as-is.\n'
-    + '- needsReframe: true ONLY when it is too narrow/factual/off-topic to yield a rich context. If ok is true, '
-    + 'needsReframe MUST be false.\n'
-    + '- reframeTip: when needsReframe, one plain sentence pointing at the DIRECTION to widen toward (the forces or '
-    + 'conditions behind their interest) — a nudge, not a script (empty otherwise).\n'
-    + '- suggestedQuestions: when needsReframe, 1–2 example questions that MODEL that direction — concrete illustrations '
-    + 'of how their interest could open into a contextual question, NOT a ready-made answer to hand over. Keep them close '
-    + 'to what they care about; the learner is meant to take the *direction* and ideally write their own, though they may '
-    + 'adopt one. Empty array otherwise.\n\n'
-    + 'Be encouraging and brief. Prefer to pass a decent question through (ok:true) rather than nit-pick; only reframe '
-    + 'when it genuinely would not research well.';
-  const authorNote = coaching && coaching.trim()
-    ? `\n\n# TOUR-SPECIFIC COACHING (from the author — weight this heavily)\n\n${coaching.trim()}`
-    : '';
-  return join(rules + authorNote, s.past);
+  return join(s.frameCoach, s.past);
 }

@@ -64,16 +64,22 @@ export async function POST(req: Request) {
   const lens = body.lens;
   if (!question) return NextResponse.json({ error: 'No question provided' }, { status: 400 });
 
-  // Load tour-specific coaching guidance + the act's framing, if available.
-  let coaching = '';
-  let tourTitle = '';
+  // Build a compact TOUR CONTEXT block from the tour's existing metadata so the
+  // coach can judge "relevant to this tour" (Tier 1) without any manual field.
+  let tourContext = '';
   try {
     if (tourId) {
       const snap = await getDoc(doc(db, 'memorial-church-tours', tourId));
       if (snap.exists()) {
         const tour = snap.data() as Tour;
-        coaching = (tour.questionCoaching || '').trim();
-        tourTitle = tour.title || '';
+        const parts: string[] = [];
+        if (tour.title) parts.push(`Title: ${tour.title}`);
+        if (tour.subtitle) parts.push(`Subtitle: ${tour.subtitle}`);
+        if (tour.description) parts.push(`About: ${tour.description}`);
+        if (tour.essentialQuestion?.question) parts.push(`Essential question: ${tour.essentialQuestion.question}`);
+        const act = actId ? (tour.acts || []).find((a) => a.id === actId) : undefined;
+        if (act?.guidingQuestion) parts.push(`Current section's guiding question: ${act.guidingQuestion}`);
+        tourContext = parts.join('\n');
       }
     }
   } catch (err) {
@@ -83,11 +89,11 @@ export async function POST(req: Request) {
   try {
     const userText =
       `LEARNER'S QUESTION:\n"${question}"\n\n`
-      + `CHOSEN LENS: ${lens ? LENS_LABEL[lens] : 'not specified'}\n`
-      + (tourTitle ? `TOUR: ${tourTitle}\n` : '')
-      + `\nCoach this question per your Framing Coach skill, then call the tool exactly once.`;
+      + `CHOSEN LENS: ${lens ? LENS_LABEL[lens] : 'not specified'}\n\n`
+      + `TOUR CONTEXT (what this tour is about — for judging broad relevance):\n${tourContext || '(unknown)'}\n\n`
+      + `Coach this question per your Framing Coach skill, then call the tool exactly once.`;
 
-    const out = await frameQuestion(frameSystem(coaching), userText);
+    const out = await frameQuestion(frameSystem(), userText);
     if (!out) {
       // Degrade gracefully: treat as fine to proceed, no reframe.
       const fallback: FrameOutput = { ok: true, reorientation: '', needsReframe: false, reframeTip: '', suggestedQuestions: [] };

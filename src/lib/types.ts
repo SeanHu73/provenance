@@ -613,11 +613,6 @@ export interface Tour {
   // Playback mode — source of truth. When absent, derived from
   // `unstructuredMode` for backward compatibility (see getTourMode).
   tourMode?: TourMode;
-  // Tour-specific guidance for the Context Detective's "Framing Coach" — the fast
-  // pre-pass that reorients a learner's question and, if it's too narrow/factual,
-  // suggests how to reframe it as a contextual (P.A.S.T.) question. Injected into
-  // the coach prompt so authors can tune the coaching per tour.
-  questionCoaching?: string;
   // Preferred websites/domains the Context Detective should lean on when it has to
   // search the web (e.g. "stanford.edu", "sgs.stanford.edu/founding-grant"). These
   // are always prioritised (not restricted-to), on top of any source links from
