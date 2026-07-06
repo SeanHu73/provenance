@@ -254,21 +254,41 @@ function ContextEntriesBlock({ entries }: { entries: ContextEntrySnapshot[] }) {
   return (
     <div className="space-y-2">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">Context Journal — what they built ({entries.length})</p>
-      {entries.map((e) => {
-        const setup = describeSetup(e);
-        return (
-          <div key={e.id} className="rounded border border-stone-200 p-2.5 space-y-1">
-            <div className="flex items-center gap-2">
-              <Tag color={LENS_BY_KEY[e.lens as PastCategory]?.colour}>{lensLabel(e.lens)}</Tag>
-              {e.origin && <Tag>{e.origin === 'self' ? 'their own' : e.origin}</Tag>}
-              <span className="text-sm font-semibold text-stone-800">{e.title}</span>
-            </div>
-            {e.question && <p className="text-xs text-stone-600 italic">“{e.question}”</p>}
-            {e.shortSummary && <p className="text-xs text-stone-700">{e.shortSummary}</p>}
-            {setup && <p className="text-[11px] text-stone-500 font-mono">{setup}</p>}
-          </div>
-        );
-      })}
+      {entries.map((e) => <ContextEntryRow key={e.id} e={e} />)}
+    </div>
+  );
+}
+
+function ContextEntryRow({ e }: { e: ContextEntrySnapshot }) {
+  const [open, setOpen] = useState(false);
+  const setup = describeSetup(e);
+  return (
+    <div className="rounded border border-stone-200 p-2.5 space-y-1">
+      <div className="flex items-center gap-2">
+        <Tag color={LENS_BY_KEY[e.lens as PastCategory]?.colour}>{lensLabel(e.lens)}</Tag>
+        {e.origin && <Tag>{e.origin === 'self' ? 'their own' : e.origin}</Tag>}
+        <span className="text-sm font-semibold text-stone-800">{e.title}</span>
+      </div>
+      {/* If the Framing Coach reframed the question, show what they first asked. */}
+      {e.originalQuestion && (
+        <p className="text-[11px] text-amber-700">First asked: &ldquo;{e.originalQuestion}&rdquo; <span className="text-stone-400">→ reframed to:</span></p>
+      )}
+      {e.question && <p className="text-xs text-stone-600 italic">“{e.question}”</p>}
+      {e.shortSummary && <p className="text-xs text-stone-700">{e.shortSummary}</p>}
+      {/* Full context — the whole answer, collapsed by default. */}
+      {e.longExplanation && (
+        <div>
+          <button onClick={() => setOpen((v) => !v)} className="text-[11px] font-semibold text-blue-700 hover:underline">
+            {open ? 'Hide full context ▲' : 'Show full context ▼'}
+          </button>
+          {open && <p className="mt-1 text-xs text-stone-700 whitespace-pre-line leading-relaxed border-l-2 border-stone-200 pl-2">{e.longExplanation}</p>}
+        </div>
+      )}
+      {/* The learner's own prediction, written before revealing the answer. */}
+      {e.learnerPrediction && (
+        <p className="text-[11px] text-stone-600"><span className="font-semibold text-stone-500">Their prediction:</span> {e.learnerPrediction}</p>
+      )}
+      {setup && <p className="text-[11px] text-stone-500 font-mono">{setup}</p>}
     </div>
   );
 }

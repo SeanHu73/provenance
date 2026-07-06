@@ -94,6 +94,9 @@ export interface ContextEntry {
    *  Detective's answer (the predict-then-reveal step). Shown at the bottom of the
    *  context page for comparison. Absent for authored contexts. */
   learnerPrediction?: string;
+  /** The learner's FIRST question, before the Framing Coach reframe — only set when
+   *  it differs from `question` (they adopted a suggested reframe). For admin review. */
+  originalQuestion?: string;
   /** Cached OpenAI narration (Title + Full Explanation) — reused on the reader
    *  page when the hash still matches; otherwise the bar generates on demand. */
   ttsAudioUrl?: string | null;

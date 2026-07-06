@@ -181,6 +181,9 @@ export default function ContextAskFlow({ tourId, actId, priorStops, onClose, onA
       thumbnailMediaId: photos.length ? 'ph_0' : null,
       sources,
       learnerPrediction: theory.trim() || undefined,
+      // Record the pre-coach question only when they actually took a reframe.
+      originalQuestion: (originalQuestionRef.current && originalQuestionRef.current !== asked)
+        ? originalQuestionRef.current : undefined,
     };
   };
 

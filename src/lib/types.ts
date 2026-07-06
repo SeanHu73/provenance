@@ -910,12 +910,20 @@ export interface ContextEntrySnapshot {
   id: string;
   title: string;
   shortSummary?: string;
+  /** The full context text (the Detective's answer / authored explanation), so the
+   *  admin can read the whole thing in the sessions view, not just the summary. */
+  longExplanation?: string;
+  /** The learner's own predicted answer (predict-then-reveal), if they wrote one. */
+  learnerPrediction?: string;
   /** The P.A.S.T. lens ('place' | 'attitudes' | 'society' | 'technology'). */
   lens: string;
   /** authored = designer's, added = the learner's own copy, self = their own. */
   origin?: 'authored' | 'added' | 'self';
   /** The question they gave themselves (self-authored contexts). */
   question?: string;
+  /** The learner's FIRST question, before the Framing Coach reframe — only stored
+   *  when it differs from `question` (they took a suggested reframe). */
+  originalQuestion?: string;
   /** Timeline span they set, inclusive years. */
   timeRange?: { start: number; end: number } | null;
   /** Map camera they framed the geometry with. */
