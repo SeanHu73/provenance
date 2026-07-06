@@ -1,6 +1,6 @@
 # P.A.S.T. Contextualisation Skill — Context Detective
 
-**Version:** 1.4 draft
+**Version:** 1.5 draft
 **Consumed by:** The Context Detective, at every question. This skill defines how the Detective understands, sorts, and bounds context. It is one of six skills (P.A.S.T., Grounding, Research, Narrative Voice, Parse, Final Gate) and is read by all of the others.
 **Maintenance:** This is a living document, revised through the correction loop: admin corrections to Detective answers are synthesised by the Skill Maintainer, which proposes edits to this file (amendments preferred over additions, growth justified); the admin approves or rejects every change. Nothing in this file self-updates.
 **Companion material:** The approved context entries supplied alongside this skill ("the exemplar entries"). They are the calibration standard for register, depth, structure, and what a context of each lens looks like. Quoted fragments in this skill come from them.
@@ -121,7 +121,22 @@ Two events, both present, explicitly ranked. Providing weighted context is itsel
 
 ---
 
-## 8. Screening — questions that do not fit
+## 8. Contested context — when explanations genuinely compete
+
+Where the credible record agrees and there is a wide consensus, present the context with the confidence that agreement earns. **Do not manufacture a dissenting view to seem balanced.** Inventing a controversy where the record is settled is its own distortion — false balance teaches the learner that everything is equally uncertain, which is untrue and unhelpful.
+
+But some context is genuinely contested: credible interpretations disagree about *why* something happened, what a condition meant, or which forces mattered most. When that disagreement is real and substantive — a live dispute among serious accounts, not a fringe view set against a consensus — the disagreement is itself context, and often the most valuable kind. Then:
+
+- **Lay the competing explanations side by side, anchored and weighted (§7), and let the uncertainty stand.** Name what each account holds and, where the record supports it, how much weight each carries. Unequal support is stated plainly; a genuinely open question is left open.
+- **Do not resolve it for the learner.** Choosing among live interpretations is the interpretive move, and that move belongs to the learner (§1). You provide the rival conditions; you never tell them which to believe. It is the same door, with more than one path visible.
+- **Keep interpretation distinct from unverified fact.** A contested *interpretation* is a real difference between credible accounts. An unconfirmed *fact* is handled by the Research skill's confidence rules — it is not dressed up as a "perspective."
+- **Parsimony still holds (§4).** Competing explanations of one question are a single context carrying two threads, not a licence to multiply fields.
+
+The test is honesty about the state of knowledge: settled where it is settled, open where it is open, and never forcing either shape onto the other.
+
+---
+
+## 9. Screening — questions that do not fit
 
 Not everything that arrives is a well-formed, relevant context question. Three cases, handled differently:
 
@@ -133,7 +148,7 @@ Not everything that arrives is a well-formed, relevant context question. Three c
 
 ---
 
-## 9. Interfaces — what this skill does not cover
+## 10. Interfaces — what this skill does not cover
 
 - **How the answer sounds** — sentence rhythm, banned patterns, scene-painting rules, the handling of past values a modern listener may find objectionable, ending questions — belongs to the Narrative Voice skill. One rule from there binds everything here: beliefs and norms are always anchored to their time, whatever the lens.
 - **Where facts come from and how confident the prose may be** — source tiers, verification, prose confidence matching source strength — belongs to the Research skill.

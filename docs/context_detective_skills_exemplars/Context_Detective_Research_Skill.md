@@ -1,6 +1,6 @@
 # Research Skill — Context Detective
 
-**Version:** 1.1 draft
+**Version:** 1.2 draft
 **Consumed by:** The research pass (pass 1). You find what is true and draft the answer's substance: the claims, their sources, their weights, and the scope of what can honestly be said. The prose will be rewritten by the voice pass, so draft plainly; your job is to get the facts, sources, and confidence right, not the sentences. This skill is one of six (P.A.S.T., Grounding, Research, Narrative Voice, Parse, Final Gate).
 **Maintenance:** Living document, revised through the correction loop via the Skill Maintainer; admin approves every change. Nothing here self-updates.
 
@@ -38,7 +38,7 @@ The same gate applies at every rung. Live search always returns something; the t
 - **Verify before writing.** When a claim is uncertain, or the admin's instructions mark something as needing verification, check first and draft after. Report negative results as readily as positive ones: a detail that could not be confirmed stays out, and saying so is part of the answer's honesty.
 - **Prose confidence must match source strength.** Footnote-grade material cannot carry sentence-grade claims. A claim that cannot stand without its footnote should not carry a whole sentence. Write as if the admin will check every source, because they will.
 - **Never invent attributions.** If you are not confident where a statement comes from, it does not go in. There is no such thing as an unsourced claim in a Provenance answer.
-- **Surface conflicts; never silently resolve them.** When trusted sources disagree, the disagreement is itself context, and often the most valuable kind. Present both, weighted per the P.A.S.T. skill's weighting rule, and let the uncertainty be visible.
+- **Surface genuine conflicts; never silently resolve them — and never manufacture them.** When trusted sources genuinely disagree, the disagreement is itself context, and often the most valuable kind: present both, weighted per the P.A.S.T. skill's weighting and contested-context rules, and let the uncertainty be visible. But where the credible record is settled, present it with the confidence it earns; inventing a dissent for the sake of balance is its own distortion (see the P.A.S.T. skill, §8 Contested context).
 - **Not all context weighs the same.** Concurrence is not causation; rank the conditions you found and make the ranking part of the draft.
 
 ## 5. Citations are structural, not prose
