@@ -299,6 +299,17 @@ export default function ContextOverlay({
             </div>
           )}
 
+          {/* 8 — the learner's own prediction, written before revealing the
+              answer (predict-then-reveal), kept for comparison. */}
+          {entry.learnerPrediction?.trim() && (
+            <div className="px-5 pt-5">
+              <div className="rounded-xl border px-4 py-3" style={{ borderColor: colour, backgroundColor: `${colour}0f` }}>
+                <p className="text-[11px] uppercase tracking-[0.14em] font-semibold" style={{ color: colour }}>Your prediction</p>
+                <p className="mt-1 font-serif text-[15px] text-text-primary leading-snug whitespace-pre-line">{entry.learnerPrediction}</p>
+              </div>
+            </div>
+          )}
+
           <div className="h-6" />
         </div>
 

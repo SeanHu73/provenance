@@ -603,6 +603,11 @@ export interface Tour {
   // Playback mode — source of truth. When absent, derived from
   // `unstructuredMode` for backward compatibility (see getTourMode).
   tourMode?: TourMode;
+  // Tour-specific guidance for the Context Detective's "Framing Coach" — the fast
+  // pre-pass that reorients a learner's question and, if it's too narrow/factual,
+  // suggests how to reframe it as a contextual (P.A.S.T.) question. Injected into
+  // the coach prompt so authors can tune the coaching per tour.
+  questionCoaching?: string;
   // Unstructured exploration mode
   unstructuredMode?: boolean;        // Default false — when true, explorer chooses stop order
   // Parallel stops array used when unstructuredMode is true. Authored

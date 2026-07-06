@@ -178,6 +178,46 @@ const HANDOUT_SCHEMA = {
   required: ['cards', 'relevanceNote'],
 };
 
+// ── Framing coach (fast pre-pass, Haiku, structured output) ──
+
+export interface FrameOutput {
+  ok: boolean;
+  reorientation: string;
+  needsReframe: boolean;
+  reframeTip: string;
+  suggestedQuestions: string[];
+}
+
+const FRAME_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    ok: { type: 'boolean' },
+    reorientation: { type: 'string' },
+    needsReframe: { type: 'boolean' },
+    reframeTip: { type: 'string' },
+    suggestedQuestions: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['ok', 'reorientation', 'needsReframe', 'reframeTip', 'suggestedQuestions'],
+};
+
+export async function frameQuestion(system: string, userText: string): Promise<FrameOutput | null> {
+  const resp = await callClaude({
+    model: HAIKU,
+    max_tokens: 900,
+    system: cachedSystem(system),
+    output_config: { format: { type: 'json_schema', schema: FRAME_SCHEMA } },
+    messages: [{ role: 'user', content: userText }],
+  });
+  const text = ((resp.content || []) as Json[]).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+  try {
+    return JSON.parse(text) as FrameOutput;
+  } catch (err) {
+    console.error('[detective] frame JSON failed:', err, text.slice(0, 200));
+    return null;
+  }
+}
+
 export async function parseHandout(system: string, userText: string): Promise<ParseOutput | null> {
   const resp = await callClaude({
     model: HAIKU,

@@ -1221,6 +1221,25 @@ export default function TourEditorPage() {
           <KnowledgeBaseEditor tourId={tour.id} />
         </section>
 
+        {/* Question coaching — tunes the fast "Framing Coach" that reorients a
+            learner's question and suggests contextual reframes before research. */}
+        <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-3">
+          <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Question coaching (Context Detective)</h2>
+          <p className="text-[11px] text-stone-500 leading-snug">
+            Before researching, a fast pre-pass reorients the learner and — only when their question is too narrow or
+            factual — suggests how to reframe it as a contextual (P.A.S.T.) question. Add tour-specific guidance below to
+            steer that coaching: what a strong contextual question looks like for this place, example good/weak questions,
+            terms to nudge toward, or topics to steer around. Leave blank to use the default coaching.
+          </p>
+          <textarea
+            value={tour.questionCoaching || ''}
+            onChange={(e) => updateField('questionCoaching', e.target.value)}
+            rows={5}
+            placeholder={'e.g. Strong questions probe how the railroad, wealth, or migration shaped this campus. If a learner asks a date/name fact ("when was the chapel built?"), nudge them toward the forces behind it ("how did Stanford\'s wealth shape what got built here?").'}
+            className="w-full px-3 py-2 border border-stone-300 rounded text-sm bg-white"
+          />
+        </section>
+
         {/* Background photo */}
         <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-3">
           <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Background Photo</h2>
