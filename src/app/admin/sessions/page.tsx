@@ -19,11 +19,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Tour, Act, ContextEntrySnapshot } from '@/lib/types';
+import { Tour, Act, ContextEntrySnapshot, DetectiveCorrection, KnowledgeEntry } from '@/lib/types';
 import type { PastCategory } from '@/features/context-journal/types';
 import { LENS_BY_KEY, formatYear } from '@/features/context-journal/constants';
 import { getAllTourSessions, StoredTourSession } from '@/lib/tour-sessions-store';
 import { getTours } from '@/lib/tours-store';
+import { getAllCorrections, saveCorrection } from '@/lib/detective-corrections-store';
+import { fetchEmbedding, saveKnowledgeEntry, newKnowledgeId, knowledgeEmbedText, knowledgeEmbedHash } from '@/lib/knowledge-store';
 
 type Row = string[];
 
@@ -249,46 +251,176 @@ function ActBlock({ s, act, index }: { s: StoredTourSession; act: Act; index: nu
 
 // ── Contexts the explorer built (map + timeline) ──
 
-function ContextEntriesBlock({ entries }: { entries: ContextEntrySnapshot[] }) {
+function ContextEntriesBlock({ entries, sessionId, tourId, corrections, onSaved }: {
+  entries: ContextEntrySnapshot[];
+  sessionId: string;
+  tourId: string;
+  corrections: Record<string, DetectiveCorrection>;
+  onSaved: () => void;
+}) {
   if (entries.length === 0) return null;
   return (
     <div className="space-y-2">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">Context Journal — what they built ({entries.length})</p>
-      {entries.map((e) => <ContextEntryRow key={e.id} e={e} />)}
+      {entries.map((e) => (
+        <ContextEntryRow key={e.id} e={e} sessionId={sessionId} tourId={tourId} correction={corrections[e.id]} onSaved={onSaved} />
+      ))}
     </div>
   );
 }
 
-function ContextEntryRow({ e }: { e: ContextEntrySnapshot }) {
+const VERDICTS: { key: NonNullable<DetectiveCorrection['verdict']>; label: string; cls: string; hex: string }[] = [
+  { key: 'approved', label: 'Approved', cls: 'bg-emerald-600', hex: '#059669' },
+  { key: 'needs_work', label: 'Needs work', cls: 'bg-amber-600', hex: '#d97706' },
+  { key: 'rejected', label: 'Rejected', cls: 'bg-red-600', hex: '#dc2626' },
+];
+
+function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
+  e: ContextEntrySnapshot;
+  sessionId: string;
+  tourId: string;
+  correction?: DetectiveCorrection;
+  onSaved: () => void;
+}) {
   const [open, setOpen] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [note, setNote] = useState(correction?.note ?? '');
+  const [verdict, setVerdict] = useState<DetectiveCorrection['verdict']>(correction?.verdict);
+  const cur = correction?.edited ?? { title: e.title, shortSummary: e.shortSummary ?? '', longExplanation: e.longExplanation ?? '' };
+  const [eTitle, setETitle] = useState(cur.title);
+  const [eSummary, setESummary] = useState(cur.shortSummary);
+  const [eLong, setELong] = useState(cur.longExplanation);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState('');
   const setup = describeSetup(e);
+
+  // Persist the current review state. `original` is captured the first time an
+  // edit is made and never overwritten, so the AI can see what changed.
+  const persist = async (over: Partial<DetectiveCorrection> = {}) => {
+    setBusy(true);
+    const willEdit = over.edited !== undefined ? over.edited : correction?.edited;
+    const next: DetectiveCorrection = {
+      id: e.id, sessionId, tourId,
+      verdict, note: note.trim() || undefined,
+      original: correction?.original ?? { title: e.title, shortSummary: e.shortSummary ?? '', longExplanation: e.longExplanation ?? '' },
+      edited: willEdit,
+      promotedEntryId: correction?.promotedEntryId,
+      ...over,
+      updatedAt: new Date().toISOString(),
+    };
+    try { await saveCorrection(next); onSaved(); } catch (err) { console.error(err); setStatus('Save failed'); }
+    setBusy(false);
+  };
+
+  const saveEdit = async () => {
+    await persist({ edited: { title: eTitle.trim(), shortSummary: eSummary.trim(), longExplanation: eLong.trim() } });
+    setEditing(false);
+    setStatus('Saved edit');
+  };
+
+  // Promote the (corrected, else original) answer into the verified knowledge base.
+  const promote = async () => {
+    setBusy(true);
+    setStatus('Embedding…');
+    const src = correction?.edited ?? { title: e.title, shortSummary: e.shortSummary ?? '', longExplanation: e.longExplanation ?? '' };
+    try {
+      const base: KnowledgeEntry = {
+        id: correction?.promotedEntryId || newKnowledgeId(),
+        title: src.title, shortSummary: src.shortSummary, longExplanation: src.longExplanation,
+        sourceLinks: e.sourceLinks ?? [], lens: e.lens as KnowledgeEntry['lens'],
+        status: 'verified', createdAt: '', updatedAt: '',
+      };
+      const { embedding, model } = await fetchEmbedding(knowledgeEmbedText(base));
+      base.embedding = embedding; base.embeddingModel = model; base.embeddingHash = knowledgeEmbedHash(base);
+      await saveKnowledgeEntry(tourId, base);
+      await persist({ promotedEntryId: base.id, verdict: verdict ?? 'approved' });
+      setStatus('Promoted to knowledge base ✓');
+    } catch (err) {
+      console.error('[sessions] promote failed:', err);
+      setStatus('Promote failed — check OPENAI_API_KEY');
+    }
+    setBusy(false);
+  };
+
+  const shownTitle = correction?.edited?.title || e.title;
+  const shownLong = correction?.edited?.longExplanation || e.longExplanation;
+
   return (
     <div className="rounded border border-stone-200 p-2.5 space-y-1">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Tag color={LENS_BY_KEY[e.lens as PastCategory]?.colour}>{lensLabel(e.lens)}</Tag>
         {e.origin && <Tag>{e.origin === 'self' ? 'their own' : e.origin}</Tag>}
-        <span className="text-sm font-semibold text-stone-800">{e.title}</span>
+        {correction?.verdict && (() => { const v = VERDICTS.find((x) => x.key === correction.verdict); return v ? <Tag color={v.hex}>{v.label}</Tag> : null; })()}
+        {correction?.edited && <Tag>edited</Tag>}
+        {correction?.promotedEntryId && <Tag>in base</Tag>}
+        <span className="text-sm font-semibold text-stone-800">{shownTitle}</span>
       </div>
-      {/* If the Framing Coach reframed the question, show what they first asked. */}
       {e.originalQuestion && (
         <p className="text-[11px] text-amber-700">First asked: &ldquo;{e.originalQuestion}&rdquo; <span className="text-stone-400">→ reframed to:</span></p>
       )}
       {e.question && <p className="text-xs text-stone-600 italic">“{e.question}”</p>}
-      {e.shortSummary && <p className="text-xs text-stone-700">{e.shortSummary}</p>}
-      {/* Full context — the whole answer, collapsed by default. */}
-      {e.longExplanation && (
+      {e.shortSummary && <p className="text-xs text-stone-700">{correction?.edited?.shortSummary || e.shortSummary}</p>}
+      {shownLong && (
         <div>
           <button onClick={() => setOpen((v) => !v)} className="text-[11px] font-semibold text-blue-700 hover:underline">
             {open ? 'Hide full context ▲' : 'Show full context ▼'}
           </button>
-          {open && <p className="mt-1 text-xs text-stone-700 whitespace-pre-line leading-relaxed border-l-2 border-stone-200 pl-2">{e.longExplanation}</p>}
+          {open && <p className="mt-1 text-xs text-stone-700 whitespace-pre-line leading-relaxed border-l-2 border-stone-200 pl-2">{shownLong}</p>}
         </div>
       )}
-      {/* The learner's own prediction, written before revealing the answer. */}
       {e.learnerPrediction && (
         <p className="text-[11px] text-stone-600"><span className="font-semibold text-stone-500">Their prediction:</span> {e.learnerPrediction}</p>
       )}
       {setup && <p className="text-[11px] text-stone-500 font-mono">{setup}</p>}
+
+      {/* Review / correct */}
+      <div className="pt-1">
+        {!reviewing ? (
+          <button onClick={() => setReviewing(true)} className="text-[11px] font-semibold text-stone-600 hover:underline">
+            {correction ? 'Review ▸ (edit / verdict / promote)' : 'Correct this answer ▸'}
+          </button>
+        ) : (
+          <div className="mt-1 rounded bg-stone-50 border border-stone-200 p-2.5 space-y-2">
+            {/* verdict */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {VERDICTS.map((v) => (
+                <button key={v.key} onClick={() => { setVerdict(v.key); void persist({ verdict: v.key }); }}
+                  className={`px-2 py-0.5 rounded text-[11px] text-white ${v.cls} ${verdict === v.key ? '' : 'opacity-40'}`}>{v.label}</button>
+              ))}
+              <button onClick={() => setReviewing(false)} className="ml-auto text-[11px] text-stone-500 hover:underline">Close</button>
+            </div>
+            {/* note */}
+            <div className="flex gap-2 items-start">
+              <textarea value={note} onChange={(ev) => setNote(ev.target.value)} rows={2} placeholder="Correction note (what's wrong / what to fix)…"
+                className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs bg-white" />
+              <button onClick={() => void persist()} disabled={busy} className="px-2 py-1 rounded bg-blue-700 text-white text-[11px] disabled:opacity-40">Save note</button>
+            </div>
+            {/* edit answer */}
+            {!editing ? (
+              <button onClick={() => setEditing(true)} className="text-[11px] font-semibold text-blue-700 hover:underline">Edit the answer text ▸</button>
+            ) : (
+              <div className="space-y-1.5">
+                <input value={eTitle} onChange={(ev) => setETitle(ev.target.value)} placeholder="Title" className="w-full px-2 py-1 border border-stone-300 rounded text-xs bg-white" />
+                <textarea value={eSummary} onChange={(ev) => setESummary(ev.target.value)} rows={2} placeholder="Short summary" className="w-full px-2 py-1 border border-stone-300 rounded text-xs bg-white" />
+                <textarea value={eLong} onChange={(ev) => setELong(ev.target.value)} rows={5} placeholder="Full context" className="w-full px-2 py-1 border border-stone-300 rounded text-xs bg-white" />
+                <p className="text-[10px] text-stone-400">The original answer is kept on record; your edit is stored alongside it so the change is legible.</p>
+                <div className="flex gap-2">
+                  <button onClick={saveEdit} disabled={busy} className="px-2 py-1 rounded bg-blue-700 text-white text-[11px] disabled:opacity-40">Save edit</button>
+                  <button onClick={() => setEditing(false)} className="text-[11px] text-stone-500 hover:underline">Cancel</button>
+                </div>
+              </div>
+            )}
+            {/* promote */}
+            <div className="flex items-center gap-2 pt-0.5">
+              <button onClick={promote} disabled={busy} className="px-2 py-1 rounded bg-emerald-700 text-white text-[11px] hover:bg-emerald-800 disabled:opacity-40">
+                {correction?.promotedEntryId ? 'Update in knowledge base' : 'Promote to knowledge base'}
+              </button>
+              {status && <span className="text-[11px] text-stone-600">{status}</span>}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -298,18 +430,22 @@ function ContextEntryRow({ e }: { e: ContextEntrySnapshot }) {
 export default function SessionsAdminPage() {
   const [sessions, setSessions] = useState<StoredTourSession[]>([]);
   const [toursById, setToursById] = useState<Record<string, Tour>>({});
+  const [corrections, setCorrections] = useState<Record<string, DetectiveCorrection>>({});
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
     setLoading(true);
-    const [ss, ts] = await Promise.all([getAllTourSessions(), getTours()]);
+    const [ss, ts, cx] = await Promise.all([getAllTourSessions(), getTours(), getAllCorrections()]);
     const map: Record<string, Tour> = {};
     ts.forEach((t) => { map[t.id] = t; });
     setSessions(ss);
     setToursById(map);
+    setCorrections(cx);
     setLoading(false);
   }, []);
   useEffect(() => { reload(); }, [reload]);
+
+  const refreshCorrections = useCallback(async () => { setCorrections(await getAllCorrections()); }, []);
 
   const rows = buildRows(sessions, toursById);
 
@@ -350,60 +486,78 @@ export default function SessionsAdminPage() {
             <p className="text-xs text-stone-500">If you expected data here, the Firestore rule may be missing — add <code className="bg-stone-200 px-1 rounded">match /memorial-church-tour-sessions/&#123;doc&#125; &#123; allow read, write: if true; &#125;</code> in the console. (It only protects sessions recorded after it&apos;s added.)</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {sessions.map((s) => {
-              const tour = toursById[s.tourId];
-              const acts = actsOf(tour);
-              const reached = actsReached(s, tour);
-              const entries = s.contextEntries || [];
-              const hasAnything = buildRows([s], toursById).length > 0;
-
-              return (
-                <div key={s.id} className="border border-stone-300 rounded bg-white p-4 space-y-3">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">{tour?.title || s.tourId}</p>
-                      <p className="text-[10px] text-stone-400 font-mono">
-                        {s.id} · started {s.startedAt ? new Date(s.startedAt).toLocaleString() : '—'}
-                        {s.completedAt ? ` · completed ${new Date(s.completedAt).toLocaleString()}` : ' · in progress'}
-                      </p>
-                    </div>
-                    <span className="text-[10px] text-stone-400 shrink-0">{s.completedStops?.length ?? 0} stops</span>
-                  </div>
-
-                  {/* Acts reached */}
-                  {acts.length > 0 && (
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[10px] uppercase tracking-wide text-stone-400 mr-1">Acts reached {reached.size}/{acts.length}:</span>
-                      {acts.map((a, i) => (
-                        <span key={a.id}
-                          className={`px-1.5 py-0.5 rounded text-[11px] ${reached.has(a.id) ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-400 line-through'}`}>
-                          {actTitleOf(a, `Act ${i + 1}`)}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {!hasAnything ? (
-                    <p className="text-xs text-stone-400 italic">No recorded answers in this session.</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {/* Per-act */}
-                      {acts.map((act, i) => <ActBlock key={act.id} s={s} act={act} index={i} />)}
-
-                      {/* Contexts they built */}
-                      <ContextEntriesBlock entries={entries} />
-
-                      {/* EQ / banked / midway / per-stop reflections — flat fallback rows */}
-                      <FlatExtras s={s} tour={tour} />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div className="space-y-3">
+            {sessions.map((s) => (
+              <SessionCard key={s.id} s={s} toursById={toursById} corrections={corrections} onSaved={refreshCorrections} />
+            ))}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** One session, collapsed by default (the list gets long). The header stays
+ *  visible; the body — acts, contexts + their review controls, extras — expands. */
+function SessionCard({ s, toursById, corrections, onSaved }: {
+  s: StoredTourSession;
+  toursById: Record<string, Tour>;
+  corrections: Record<string, DetectiveCorrection>;
+  onSaved: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const tour = toursById[s.tourId];
+  const acts = actsOf(tour);
+  const reached = actsReached(s, tour);
+  const entries = s.contextEntries || [];
+  const hasAnything = buildRows([s], toursById).length > 0;
+  const reviewed = entries.filter((e) => corrections[e.id]).length;
+
+  return (
+    <div className="border border-stone-300 rounded bg-white">
+      <button onClick={() => setOpen((o) => !o)} className="w-full flex items-baseline justify-between gap-3 p-4 text-left hover:bg-stone-50">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">
+            <span className="text-stone-400 mr-1">{open ? '▾' : '▸'}</span>
+            {tour?.title || s.tourId}
+          </p>
+          <p className="text-[10px] text-stone-400 font-mono">
+            {s.id} · started {s.startedAt ? new Date(s.startedAt).toLocaleString() : '—'}
+            {s.completedAt ? ` · completed ${new Date(s.completedAt).toLocaleString()}` : ' · in progress'}
+          </p>
+        </div>
+        <span className="text-[10px] text-stone-400 shrink-0 text-right">
+          {s.completedStops?.length ?? 0} stops · {entries.length} context{entries.length === 1 ? '' : 's'}
+          {reviewed > 0 && <span className="ml-1 text-emerald-600">· {reviewed} reviewed</span>}
+        </span>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 space-y-3 border-t border-stone-100 pt-3">
+          {/* Acts reached */}
+          {acts.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wide text-stone-400 mr-1">Acts reached {reached.size}/{acts.length}:</span>
+              {acts.map((a, i) => (
+                <span key={a.id}
+                  className={`px-1.5 py-0.5 rounded text-[11px] ${reached.has(a.id) ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-400 line-through'}`}>
+                  {actTitleOf(a, `Act ${i + 1}`)}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {!hasAnything ? (
+            <p className="text-xs text-stone-400 italic">No recorded answers in this session.</p>
+          ) : (
+            <div className="space-y-4">
+              {acts.map((act, i) => <ActBlock key={act.id} s={s} act={act} index={i} />)}
+              <ContextEntriesBlock entries={entries} sessionId={s.id} tourId={s.tourId} corrections={corrections} onSaved={onSaved} />
+              <FlatExtras s={s} tour={tour} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

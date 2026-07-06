@@ -924,6 +924,9 @@ export interface ContextEntrySnapshot {
   /** The learner's FIRST question, before the Framing Coach reframe — only stored
    *  when it differs from `question` (they took a suggested reframe). */
   originalQuestion?: string;
+  /** The context's cited sources (label + url), carried so an admin can promote a
+   *  reviewed answer into the verified knowledge base with its provenance intact. */
+  sourceLinks?: { label: string; url: string }[];
   /** Timeline span they set, inclusive years. */
   timeRange?: { start: number; end: number } | null;
   /** Map camera they framed the geometry with. */
@@ -934,6 +937,28 @@ export interface ContextEntrySnapshot {
   /** Full geometry as a JSON string (nested arrays can't be stored raw). */
   geometryJson?: string | null;
   mediaCount?: number;
+}
+
+/**
+ * An admin's review/correction of a Detective answer the learner kept (keyed by
+ * the context entry id). Editing preserves BOTH the `original` and `edited` text so
+ * the change is legible — the raw material for the skill-correction loop. Stored in
+ * `memorial-church-detective-corrections/{contextId}`, separate from the learner's
+ * session so the learner's client can never clobber an admin correction.
+ */
+export interface DetectiveCorrection {
+  id: string;                 // = the reviewed context entry's id
+  sessionId: string;
+  tourId: string;
+  verdict?: 'approved' | 'needs_work' | 'rejected';
+  note?: string;
+  /** Snapshot of the answer as the AI produced it, captured on first edit. */
+  original?: { title: string; shortSummary: string; longExplanation: string };
+  /** The admin's corrected text (present only when they edited). */
+  edited?: { title: string; shortSummary: string; longExplanation: string };
+  /** Knowledge-entry id if the admin promoted this into the verified base. */
+  promotedEntryId?: string;
+  updatedAt: string;
 }
 
 /** A designer-authored context item the explorer opened during the tour. */

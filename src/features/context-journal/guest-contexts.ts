@@ -94,6 +94,9 @@ export function toSnapshot(e: ContextEntry): ContextEntrySnapshot {
     origin: e.origin,
     question: e.question || undefined,
     originalQuestion: e.originalQuestion || undefined,
+    sourceLinks: (e.sources ?? [])
+      .filter((s) => s.url)
+      .map((s) => ({ label: (s.name || s.url || '').slice(0, 120), url: s.url as string })),
     timeRange: e.timeRange ? { start: e.timeRange.start, end: e.timeRange.end } : null,
     camera: e.camera ? { center: e.camera.center, zoom: e.camera.zoom } : null,
     mapType: e.mapType,
