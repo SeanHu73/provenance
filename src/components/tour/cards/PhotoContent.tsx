@@ -202,7 +202,7 @@ export function PhotoCarousel({
           <div
             key={photo.url + i}
             ref={(el) => { slideRefs.current[i] = el; }}
-            className="snap-center shrink-0 w-[85%]"
+            className="snap-center snap-always shrink-0 w-[85%]"
           >
             <PhotoBlock
               photo={photo}

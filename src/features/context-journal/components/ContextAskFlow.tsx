@@ -12,14 +12,23 @@
  * for comparison; "Add to my journal" saves it (their prediction rides along).
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { LENSES, LENS_BY_KEY } from '../constants';
 import type { ContextDraft, ContextSource, PastCategory } from '../types';
 import RecordButton from '@/components/tour/cards/RecordButton';
 import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
+import ContextAskLoading from '@/components/tour/cards/ContextAskLoading';
 import ImageSearchModal from '@/components/ImageSearchModal';
 import { contextNarrationText } from '@/lib/tts-narration';
 import { uploadSharePhoto } from '@/lib/community-store';
+
+/** A firm two-buzz haptic to draw the learner back when the answer is ready. */
+function readyHaptic() {
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+    navigator.vibrate([60, 50, 60, 50, 140]);
+  }
+}
 
 interface RespSource { kind?: string; url?: string; name?: string; author?: string; date?: string; verified?: boolean }
 interface RespCard { lens?: PastCategory; title?: string; summary?: string; explanation?: string }
@@ -60,8 +69,16 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
   const [searchOpen, setSearchOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  // The learner's first-asked question, captured before any coach reframe.
+  const originalQuestionRef = useRef('');
 
   const lensLabel = LENS_BY_KEY[lens]?.label ?? 'this';
+
+  // Pulse + a firm haptic the moment the background answer lands, to draw the
+  // learner back from writing their theory.
+  useEffect(() => {
+    if (phase === 'researching' && researchReady) readyHaptic();
+  }, [phase, researchReady]);
 
   const addPhotos = async (files: FileList | null) => {
     if (!files || !files.length) return;
@@ -79,13 +96,14 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
   const runCoach = async () => {
     const question = text.trim();
     if (!question) return;
+    originalQuestionRef.current = question;
     setPhase('coaching');
     let out: FrameResp | null = null;
     try {
       const r = await fetch('/api/context-frame', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, tourId, lens }),
+        body: JSON.stringify({ question, tourId, actId, lens }),
       });
       if (r.ok) out = await r.json();
     } catch { /* degrade to proceed */ }
@@ -113,7 +131,7 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
     fetch('/api/context-answer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, tourId, actId, lens }),
+      body: JSON.stringify({ question, originalQuestion: originalQuestionRef.current || question, tourId, actId, lens }),
       signal: ctrl.signal,
     })
       .then((r) => (r.ok ? r.json() : { status: 'banked' }))
@@ -289,15 +307,24 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
             />
 
             {researchReady ? (
-              <button onClick={() => setPhase('result')} className="w-full py-3.5 rounded-xl text-base font-semibold text-white animate-fade-in" style={{ backgroundColor: 'var(--th-primary)' }}>
-                Your answer is ready — reveal it
-              </button>
+              <motion.button
+                onClick={() => setPhase('result')}
+                className="relative w-full py-3.5 rounded-xl text-base font-semibold text-white overflow-visible"
+                style={{ backgroundColor: 'var(--th-primary)' }}
+                animate={{ scale: [1, 1.035, 1] }}
+                transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                {/* pulsing ring cueing that the answer is ready */}
+                <span className="pointer-events-none absolute inset-0 rounded-xl animate-ping" style={{ boxShadow: '0 0 0 3px var(--th-primary)', opacity: 0.35 }} aria-hidden />
+                <span className="relative inline-flex items-center justify-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  Your answer is ready — reveal it
+                </span>
+              </motion.button>
             ) : (
-              <div className="space-y-2">
-                <div className="flex items-center justify-center gap-2 py-1">
-                  <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--th-primary)', borderTopColor: 'transparent' }} />
-                  <p className="text-[13px] italic" style={{ color: 'var(--text-secondary)' }}>Researching your answer… take your time.</p>
-                </div>
+              <div className="space-y-3">
+                {/* the research animation, back while it's being looked up */}
+                <ContextAskLoading />
                 <button onClick={cancelSearch} className="w-full py-2.5 rounded-xl text-[14px] font-semibold border-2" style={{ color: 'var(--text-secondary)', borderColor: 'var(--th-border)' }}>
                   Cancel search / change question
                 </button>
@@ -327,10 +354,15 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
                   {(resp?.sources || []).map((s, i) => (
                     <li key={i}>
                       {s.url ? <a href={s.url} target="_blank" rel="noreferrer" className="underline">{s.name || s.url}</a> : (s.name || 'Source')}
-                      {!s.verified && ' · unverified'}
+                      {!s.verified && ' · found online, not yet checked'}
                     </li>
                   ))}
                 </ul>
+                {(resp?.sources || []).some((s) => !s.verified) && (
+                  <p className="mt-1.5 leading-snug italic">
+                    &ldquo;Not yet checked&rdquo; means the Detective found it online rather than in your guide&apos;s verified sources — worth a second look.
+                  </p>
+                )}
               </div>
             )}
             {/* their own theory, kept for comparison */}

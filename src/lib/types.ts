@@ -290,6 +290,10 @@ export interface DetectiveLog extends DetectiveAnswer {
   tourId: string;
   actId?: string;
   question: string;
+  /** The learner's ORIGINAL question, before the Framing Coach may have prompted
+   *  a reframe. Equals `question` when they kept their wording. Lets the author
+   *  see whether learners arrived at a good contextual question on their own. */
+  originalQuestion?: string;
   /** ids of the verified-base sources retrieved for this question. */
   retrievedIds: string[];
   createdAt: string;

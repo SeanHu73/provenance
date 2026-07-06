@@ -62,8 +62,8 @@ async function logResponse(input: Omit<DetectiveLog, 'id' | 'createdAt' | 'revie
   }
 }
 
-function banked(question: string, tourId: string, actId: string | undefined, narrative = ''): DetectiveAnswer {
-  void logResponse({ question, tourId, actId, status: 'banked', narrative, handout: null, branch: 'banked', sources: [], retrievedIds: [] });
+function banked(question: string, tourId: string, actId: string | undefined, narrative = '', originalQuestion?: string): DetectiveAnswer {
+  void logResponse({ question, originalQuestion, tourId, actId, status: 'banked', narrative, handout: null, branch: 'banked', sources: [], retrievedIds: [] });
   return { status: 'banked', narrative, handout: null, branch: 'banked', sources: [] };
 }
 
@@ -105,15 +105,18 @@ async function loadCandidates(tourId: string): Promise<Candidate[]> {
 }
 
 export async function POST(req: Request) {
-  let body: { question?: string; tourId?: string; actId?: string; lens?: PastLens } = {};
+  let body: { question?: string; originalQuestion?: string; tourId?: string; actId?: string; lens?: PastLens } = {};
   try { body = await req.json(); } catch { /* empty */ }
 
   const question = (body.question || '').trim();
+  // The learner's first-asked question, before any Framing Coach reframe. Defaults
+  // to the final question when they kept their wording. Logged for the author.
+  const originalQuestion = (body.originalQuestion || body.question || '').trim();
   const tourId = (body.tourId || '').trim();
   const actId = body.actId;
   const requestLens = body.lens;
   if (!question) return NextResponse.json({ error: 'No question provided' }, { status: 400 });
-  if (!tourId) return NextResponse.json(banked(question, tourId, actId));
+  if (!tourId) return NextResponse.json(banked(question, tourId, actId, '', originalQuestion));
 
   try {
     // 1. Retrieval — embed question + authored contexts, cosine over everything.
@@ -143,7 +146,7 @@ export async function POST(req: Request) {
 
     const research = await researchDraft(researchSystem(), researchUser);
     if (!research || research.status === 'banked') {
-      return NextResponse.json(banked(question, tourId, actId));
+      return NextResponse.json(banked(question, tourId, actId, '', originalQuestion));
     }
 
     // Guard: a model glitch sometimes dumps source markup into relevanceNote —
@@ -161,7 +164,7 @@ export async function POST(req: Request) {
 
     if (research.status === 'declined') {
       const declined: DetectiveAnswer = { status: 'declined', narrative: research.draft, handout: null, branch: research.branch, sources, relevanceNote: research.relevanceNote || undefined };
-      void logResponse({ ...declined, question, tourId, actId, retrievedIds: ranked.map((c) => c.id) });
+      void logResponse({ ...declined, question, originalQuestion, tourId, actId, retrievedIds: ranked.map((c) => c.id) });
       return NextResponse.json(declined);
     }
 
@@ -201,10 +204,10 @@ export async function POST(req: Request) {
       status: 'answered', narrative, handout, branch: research.branch, sources,
       relevanceNote: handout.relevanceNote,
     };
-    void logResponse({ ...answer, question, tourId, actId, retrievedIds: ranked.map((c) => c.id) });
+    void logResponse({ ...answer, question, originalQuestion, tourId, actId, retrievedIds: ranked.map((c) => c.id) });
     return NextResponse.json(answer);
   } catch (err) {
     console.error('[context-answer] pipeline error:', err);
-    return NextResponse.json(banked(question, tourId, actId));
+    return NextResponse.json(banked(question, tourId, actId, '', originalQuestion));
   }
 }
