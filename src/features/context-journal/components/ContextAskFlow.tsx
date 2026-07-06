@@ -253,7 +253,7 @@ export default function ContextAskFlow({ tourId, actId, onClose, onAdd }: Props)
               {coach.reframeTip && <p className="text-[15px] leading-snug" style={{ color: 'var(--text-primary)' }}>{coach.reframeTip}</p>}
               {coach.suggestedQuestions.length > 0 && (
                 <div className="space-y-2 pt-1">
-                  <p className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>Tap one to ask it, or keep your own below.</p>
+                  <p className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>A direction you could take it — write your own inspired by this, or tap to use one.</p>
                   {coach.suggestedQuestions.map((s, i) => (
                     <button
                       key={i}

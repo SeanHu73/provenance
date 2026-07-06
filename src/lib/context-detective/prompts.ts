@@ -87,9 +87,12 @@ export function frameSystem(coaching?: string): string {
     + '- ok: true if the question is already a good contextual question worth researching as-is.\n'
     + '- needsReframe: true ONLY when it is too narrow/factual/off-topic to yield a rich context. If ok is true, '
     + 'needsReframe MUST be false.\n'
-    + '- reframeTip: when needsReframe, one plain sentence on HOW to widen it into a contextual question (empty otherwise).\n'
-    + '- suggestedQuestions: when needsReframe, 1–3 concrete rewritten questions the learner could ask instead — each '
-    + 'a full contextual question in their voice, staying close to their interest (empty array otherwise).\n\n'
+    + '- reframeTip: when needsReframe, one plain sentence pointing at the DIRECTION to widen toward (the forces or '
+    + 'conditions behind their interest) — a nudge, not a script (empty otherwise).\n'
+    + '- suggestedQuestions: when needsReframe, 1–2 example questions that MODEL that direction — concrete illustrations '
+    + 'of how their interest could open into a contextual question, NOT a ready-made answer to hand over. Keep them close '
+    + 'to what they care about; the learner is meant to take the *direction* and ideally write their own, though they may '
+    + 'adopt one. Empty array otherwise.\n\n'
     + 'Be encouraging and brief. Prefer to pass a decent question through (ok:true) rather than nit-pick; only reframe '
     + 'when it genuinely would not research well.';
   const authorNote = coaching && coaching.trim()
