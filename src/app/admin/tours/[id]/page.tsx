@@ -2281,6 +2281,25 @@ export default function TourEditorPage() {
           )}
         </section>
 
+        {/* Preferred sources — websites/domains the Detective leans on when it
+            must search the web (always prioritised, never restricted-to). */}
+        <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-3">
+          <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Preferred sources (Context Detective)</h2>
+          <p className="text-[11px] text-stone-500 leading-snug">
+            Websites or specific pages the Detective should lean on when it has to search the web for this tour — e.g.
+            <code className="mx-1 px-1 rounded bg-stone-100">stanford.edu</code> or a Founding Grant page URL. One per line.
+            These are always <em>prioritised</em> (added on top of the source links on your knowledge entries); they don&apos;t
+            restrict it to only these sites.
+          </p>
+          <textarea
+            value={(tour.preferredDomains || []).join('\n')}
+            onChange={(e) => updateField('preferredDomains', e.target.value.split('\n').map((d) => d.trim()).filter(Boolean))}
+            rows={4}
+            placeholder={'stanford.edu\nsgs.stanford.edu\nhttps://exhibits.stanford.edu/founding-documents'}
+            className="w-full px-3 py-2 border border-stone-300 rounded text-sm bg-white font-mono"
+          />
+        </section>
+
         {/* Knowledge base — the Context Detective's verified base for this tour.
             Kept at the bottom: it can grow long as candidates accrue. */}
         <section className="mb-8 p-4 rounded border-2 border-indigo-300 bg-indigo-50/40 space-y-3">

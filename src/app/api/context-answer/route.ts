@@ -122,8 +122,9 @@ async function captureCandidate(input: {
   }
 }
 
-async function loadCandidates(tourId: string): Promise<Candidate[]> {
+async function loadCandidates(tourId: string): Promise<{ candidates: Candidate[]; preferredDomains: string[] }> {
   const out: Candidate[] = [];
+  let preferredDomains: string[] = [];
   // Knowledge entries (already embedded)
   try {
     const snap = await getDocs(collection(db, 'memorial-church-tours', tourId, 'knowledge-entries'));
@@ -146,6 +147,7 @@ async function loadCandidates(tourId: string): Promise<Candidate[]> {
     const tSnap = await getDoc(doc(db, 'memorial-church-tours', tourId));
     if (tSnap.exists()) {
       const tour = tSnap.data() as Tour;
+      preferredDomains = (tour.preferredDomains || []).map((d) => d.trim()).filter(Boolean);
       for (const act of tour.acts || []) {
         for (const c of act.contexts || []) {
           out.push({
@@ -159,7 +161,7 @@ async function loadCandidates(tourId: string): Promise<Candidate[]> {
   } catch (err) {
     console.error('[context-answer] load contexts failed:', err);
   }
-  return out;
+  return { candidates: out, preferredDomains };
 }
 
 export async function POST(req: Request) {
@@ -178,7 +180,7 @@ export async function POST(req: Request) {
 
   try {
     // 1. Retrieval — embed question + authored contexts, cosine over everything.
-    const candidates = await loadCandidates(tourId);
+    const { candidates, preferredDomains } = await loadCandidates(tourId);
     const contexts = candidates.filter((c) => c.kind === 'context');
     const [qVec, ...ctxVecs] = await embedTexts([question, ...contexts.map(candidateText)]);
     contexts.forEach((c, i) => { c.embedding = ctxVecs[i]; });
@@ -188,8 +190,9 @@ export async function POST(req: Request) {
       .sort((a, b) => b.score - a.score)
       .slice(0, TOP_K);
 
-    // 2. Research + draft.
-    const domains = Array.from(new Set(ranked.flatMap((c) => c.domains))).slice(0, 12);
+    // 2. Research + draft. The tour's preferred domains lead the list (so they
+    //    survive the cap), then source links from the retrieved entries.
+    const domains = Array.from(new Set([...preferredDomains, ...ranked.flatMap((c) => c.domains)])).slice(0, 16);
     const candidateBlock = ranked.length
       ? ranked.map((c) => `[${c.kind}:${c.id}] (${c.lens}) ${c.title}\n${c.summary}\n${c.explanation}\nSource links: ${c.domains.join(', ') || '—'}`).join('\n\n')
       : '(the verified base has no entries yet)';

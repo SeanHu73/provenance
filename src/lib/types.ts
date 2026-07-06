@@ -618,6 +618,11 @@ export interface Tour {
   // suggests how to reframe it as a contextual (P.A.S.T.) question. Injected into
   // the coach prompt so authors can tune the coaching per tour.
   questionCoaching?: string;
+  // Preferred websites/domains the Context Detective should lean on when it has to
+  // search the web (e.g. "stanford.edu", "sgs.stanford.edu/founding-grant"). These
+  // are always prioritised (not restricted-to), on top of any source links from
+  // retrieved entries. Domains or full URLs, one per entry.
+  preferredDomains?: string[];
   // Unstructured exploration mode
   unstructuredMode?: boolean;        // Default false — when true, explorer chooses stop order
   // Parallel stops array used when unstructuredMode is true. Authored
