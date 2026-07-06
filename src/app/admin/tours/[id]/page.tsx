@@ -1215,12 +1215,6 @@ export default function TourEditorPage() {
           <ContextJournalConfig tourId={tour.id} />
         </section>
 
-        {/* Knowledge base — the Context Detective's verified base for this tour */}
-        <section className="mb-8 p-4 rounded border-2 border-indigo-300 bg-indigo-50/40 space-y-3">
-          <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Knowledge base (Context Detective)</h2>
-          <KnowledgeBaseEditor tourId={tour.id} />
-        </section>
-
         {/* Question coaching — tunes the fast "Framing Coach" that reorients a
             learner's question and suggests contextual reframes before research. */}
         <section className="mb-8 p-4 rounded border border-stone-300 bg-white space-y-3">
@@ -2285,6 +2279,13 @@ export default function TourEditorPage() {
               }))}
             </ul>
           )}
+        </section>
+
+        {/* Knowledge base — the Context Detective's verified base for this tour.
+            Kept at the bottom: it can grow long as candidates accrue. */}
+        <section className="mb-8 p-4 rounded border-2 border-indigo-300 bg-indigo-50/40 space-y-3">
+          <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Knowledge base (Context Detective)</h2>
+          <KnowledgeBaseEditor tourId={tour.id} />
         </section>
 
         {/* Preview modal */}
