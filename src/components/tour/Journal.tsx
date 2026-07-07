@@ -401,7 +401,13 @@ export default function Journal({ onMapPeek }: JournalProps) {
                     origin: 'self',
                     title: info.title || info.question,
                     shortSummary: info.shortSummary,
-                    longExplanation: info.answer || '',
+                    // Banked answers have no text — record a clear marker so the admin
+                    // sees the Detective failed (and can Correct + promote a real answer),
+                    // rather than an empty row that looks like missing data.
+                    longExplanation: info.answer
+                      || (info.status === 'banked'
+                        ? '[No answer — the Context Detective banked this question (the learner saw the "saved, I\'ll help you find this" message). Use “Correct this answer” to supply the right answer, then promote it.]'
+                        : ''),
                     lens: info.lens,
                     question: info.question,
                     originalQuestion: info.originalQuestion,
