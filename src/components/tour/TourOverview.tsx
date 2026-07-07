@@ -13,7 +13,7 @@ import { useState, useEffect } from 'react';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { Tour, Stop } from '@/lib/types';
 import { guidePhotoStyle } from '@/lib/guide-photo';
-import { getActiveStops } from '@/lib/tours-store';
+import { getGuidedStops } from '@/lib/tours-store';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 const MAP_ID = 'b8f339c02d8c7d5bd3f12d1b';
@@ -30,7 +30,7 @@ interface Props {
  *  fan out in a small ring around the tour pin so numbered pins don't overlap. */
 function buildPinPositions(tour: Tour): { id: string; number: number; pos: { lat: number; lng: number } }[] {
   const base = tour.location ?? FALLBACK_LOCATION;
-  const stops = getActiveStops(tour);
+  const stops = getGuidedStops(tour);
   let offsetIdx = 0;
   return stops.map((stop, i) => {
     let pos: { lat: number; lng: number };
@@ -187,7 +187,7 @@ export default function TourOverview({ tour, onBegin, onDismiss }: Props) {
   const peekAutoplay = autoplayPref && !tour.peekAudioAutoplayDisabled;
   const [descExpanded, setDescExpanded] = useState(false);
 
-  const stops = getActiveStops(tour);
+  const stops = getGuidedStops(tour);
   const count = stops.length;
   const minutes = count * 5;
 

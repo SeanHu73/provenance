@@ -179,6 +179,19 @@ export function getActiveStops(tour: Tour): Stop[] {
 }
 
 /**
+ * The stops that make up the *guided* tour — active stops minus any moved into the
+ * post-tour "additional" pool (context mode). Learners only meet additional stops
+ * after the guided tour, so overviews, numbering, and progress use this, not
+ * `getActiveStops`. For non-context tours (no additional pool) this equals
+ * `getActiveStops`.
+ */
+export function getGuidedStops(tour: Tour): Stop[] {
+  const additional = new Set((tour.additionalStops || []).map((a) => a.stopId));
+  if (additional.size === 0) return getActiveStops(tour);
+  return getActiveStops(tour).filter((s) => !additional.has(s.id));
+}
+
+/**
  * Returns a new Tour with the active stops array replaced. Writes to the
  * array matching the current mode (`contextStops` / `unstructuredStops` /
  * `stops`).
