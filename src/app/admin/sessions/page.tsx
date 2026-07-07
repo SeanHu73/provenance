@@ -122,6 +122,11 @@ function buildRows(sessions: StoredTourSession[], toursById: Record<string, Tour
       rows.push([...base, 'Context viewed', actTitleOf(act, v.actId || ''), `${lensLabel(v.lens)} · ${v.title}`, v.question || '']);
     }
 
+    // Every Detective answer the explorer got from asking their own question.
+    for (const e of s.detectiveAnswers || []) {
+      rows.push([...base, 'Context question (Detective answer)', lensLabel(e.lens), e.question || e.title, e.longExplanation || '']);
+    }
+
     // Contexts the explorer built in their Context Journal (map + timeline).
     for (const e of s.contextEntries || []) {
       const kind = e.origin === 'self' ? 'Context created (own)' : 'Context added/edited';
@@ -251,17 +256,18 @@ function ActBlock({ s, act, index }: { s: StoredTourSession; act: Act; index: nu
 
 // ── Contexts the explorer built (map + timeline) ──
 
-function ContextEntriesBlock({ entries, sessionId, tourId, corrections, onSaved }: {
+function ContextEntriesBlock({ entries, sessionId, tourId, corrections, onSaved, heading = 'Context Journal — what they built' }: {
   entries: ContextEntrySnapshot[];
   sessionId: string;
   tourId: string;
   corrections: Record<string, DetectiveCorrection>;
   onSaved: () => void;
+  heading?: string;
 }) {
   if (entries.length === 0) return null;
   return (
     <div className="space-y-2">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">Context Journal — what they built ({entries.length})</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">{heading} ({entries.length})</p>
       {entries.map((e) => (
         <ContextEntryRow key={e.id} e={e} sessionId={sessionId} tourId={tourId} correction={corrections[e.id]} onSaved={onSaved} />
       ))}
@@ -552,6 +558,11 @@ function SessionCard({ s, toursById, corrections, onSaved }: {
           ) : (
             <div className="space-y-4">
               {acts.map((act, i) => <ActBlock key={act.id} s={s} act={act} index={i} />)}
+              <ContextEntriesBlock
+                entries={s.detectiveAnswers || []}
+                heading="Questions they asked — Detective answers to review / promote"
+                sessionId={s.id} tourId={s.tourId} corrections={corrections} onSaved={onSaved}
+              />
               <ContextEntriesBlock entries={entries} sessionId={s.id} tourId={s.tourId} corrections={corrections} onSaved={onSaved} />
               <FlatExtras s={s} tour={tour} />
             </div>

@@ -19,7 +19,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange, LENS_BY_KEY } from './constants';
-import type { ContextEntry, MapType, NewContextEntry, TimeRange } from './types';
+import type { ContextEntry, MapType, NewContextEntry, PastCategory, TimeRange } from './types';
 import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds, getPlaceConfig, addContextEntry, updateContextEntry, deleteContextEntry } from './store';
 import { subscribeGuestContexts, addGuestContext, updateGuestContext, deleteGuestContext } from './guest-contexts';
 import ContextMapLoader from './components/ContextMapLoader';
@@ -78,9 +78,20 @@ interface Props {
    *  learner to pose their *own* context question and see a response before the
    *  journal (exploring other contexts) opens. */
   askFirst?: boolean;
-  /** Called when the learner asks their own question and sees a response — records
-   *  the question + AI answer so the admin Sessions view can review it. */
-  onContextQuestion?: (info: { question: string; answer: string | null; status: 'answered' | 'banked' }) => void;
+  /** Called when the learner asks their own question and sees a response — hands up
+   *  a full snapshot of the Detective answer so the admin Sessions view can
+   *  review / correct / promote it. */
+  onContextQuestion?: (info: {
+    question: string;
+    title: string;
+    shortSummary: string;
+    answer: string | null;
+    lens: PastCategory;
+    sources: { label: string; url: string }[];
+    learnerPrediction?: string;
+    originalQuestion?: string;
+    status: 'answered' | 'banked';
+  }) => void;
 }
 
 export default function ContextJournal({ tourId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false, onContextQuestion }: Props) {

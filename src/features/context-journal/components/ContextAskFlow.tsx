@@ -62,9 +62,20 @@ interface Props {
   onClose: () => void;
   onAdd: (draft: ContextDraft) => Promise<void> | void;
   /** Fired once when the learner reaches the revealed response (the "sees a
-   *  response" moment). Carries the question + AI answer so the journal can record
-   *  it for the admin, and is used by the ask-first gate to unlock the journal. */
-  onAnswered?: (info: { question: string; answer: string | null; status: 'answered' | 'banked' }) => void;
+   *  response" moment). Carries a full snapshot of the answer so the journal can
+   *  record it for admin review/correction/promotion, and is used by the ask-first
+   *  gate to unlock the journal. */
+  onAnswered?: (info: {
+    question: string;
+    title: string;
+    shortSummary: string;
+    answer: string | null;
+    lens: PastCategory;
+    sources: { label: string; url: string }[];
+    learnerPrediction?: string;
+    originalQuestion?: string;
+    status: 'answered' | 'banked';
+  }) => void;
 }
 
 export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'Ask your own question', intro, onClose, onAdd, onAnswered }: Props) {
@@ -101,9 +112,24 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
       answeredRef.current = true;
       const c = resp?.handout?.cards?.[0];
       const ans = c?.explanation || resp?.narrative || '';
-      onAnswered?.({ question: asked, answer: ans || null, status: resp?.status === 'answered' ? 'answered' : 'banked' });
+      onAnswered?.({
+        question: asked,
+        title: c?.title || asked,
+        shortSummary: c?.summary || '',
+        answer: ans || null,
+        lens: (c?.lens || lens) as PastCategory,
+        sources: (resp?.sources || [])
+          .filter((s) => s.url || s.name)
+          .map((s) => ({ label: s.name || s.url || 'Source', url: s.url || '' })),
+        learnerPrediction: theory.trim() || undefined,
+        originalQuestion: (originalQuestionRef.current && originalQuestionRef.current !== asked)
+          ? originalQuestionRef.current : undefined,
+        status: resp?.status === 'answered' ? 'answered' : 'banked',
+      });
     }
-  }, [phase, onAnswered, asked, resp]);
+    // answeredRef guards a single fire; other reads are intentionally not deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, onAnswered]);
 
   const addPhotos = async (files: FileList | null) => {
     if (!files || !files.length) return;

@@ -7,7 +7,7 @@
  * a single group visit.
  */
 
-import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry, ActContextItem, ContextMediaItem, ContextQuestion, ReflectionPrompt, AdditionalStop } from './types';
+import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry, ContextEntrySnapshot, ActContextItem, ContextMediaItem, ContextQuestion, ReflectionPrompt, AdditionalStop } from './types';
 import { getActiveStops, getTourMode } from './tours-store';
 
 export type { TourPhase };
@@ -422,15 +422,16 @@ function addContextQuestion(
   return { ...prev, [actId]: { ...(prev[actId] || {}), contextQuestions: [...existing, entry] } };
 }
 
-/** Record a self-asked context question (+ its AI answer) against an act, outside
- *  the phase machine, so the admin Sessions view can show what learners asked in
- *  the Context Journal and the responses they got. */
-export function recordContextQuestion(
+/** Record a full snapshot of a Detective answer the learner got from asking their
+ *  own question in the Context Journal — captured whether or not they "added" it,
+ *  so the admin can review/correct/promote it. Deduped by id. */
+export function recordDetectiveAnswer(
   session: TourSession,
-  actId: string,
-  entry: ContextQuestionEntry,
+  snapshot: ContextEntrySnapshot,
 ): TourSession {
-  return { ...session, actResponses: addContextQuestion(session.actResponses, actId, entry) };
+  const existing = session.detectiveAnswers || [];
+  if (existing.some((d) => d.id === snapshot.id)) return session;
+  return { ...session, detectiveAnswers: [...existing, snapshot] };
 }
 
 /** The reflection prompt for an act — new `reflectionQuestion`, else the legacy

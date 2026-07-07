@@ -68,7 +68,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
     tour,
     session,
     recordContextViewed,
-    recordContextQuestion,
+    recordDetectiveAnswer,
     currentStop,
     isLastStop,
     goBack,
@@ -396,7 +396,18 @@ export default function Journal({ onMapPeek }: JournalProps) {
                   guidingQuestion={guidingQuestion}
                   viewedContextIds={(session?.viewedContexts || []).map((v) => v.contextId)}
                   onContextViewed={(ctx) => recordContextViewed({ ...ctx, actId: act?.id })}
-                  onContextQuestion={(info) => { if (act) recordContextQuestion(act.id, info); }}
+                  onContextQuestion={(info) => recordDetectiveAnswer({
+                    id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `ans_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+                    origin: 'self',
+                    title: info.title || info.question,
+                    shortSummary: info.shortSummary,
+                    longExplanation: info.answer || '',
+                    lens: info.lens,
+                    question: info.question,
+                    originalQuestion: info.originalQuestion,
+                    learnerPrediction: info.learnerPrediction,
+                    sourceLinks: info.sources,
+                  })}
                   priorStopTitles={priorStopTitles}
                   askFirst={askFirst}
                 />

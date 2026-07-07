@@ -1026,6 +1026,11 @@ export interface TourSession {
    *  Context Journal, mirrored from the guest-local store so the admin can see
    *  them (and their map + timeline setup) and they survive an early exit. */
   contextEntries?: ContextEntrySnapshot[];
+  /** Every Detective answer the explorer got from asking their own question in the
+   *  Context Journal — captured whether or not they "added" it, so the admin can
+   *  review/correct/promote each answer (the skill-correction loop). Full snapshots
+   *  so they render with the same controls as built contexts. */
+  detectiveAnswers?: ContextEntrySnapshot[];
   /** Designer-authored context items the explorer opened during the tour. */
   viewedContexts?: ViewedContext[];
   startedAt: string;

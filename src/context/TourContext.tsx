@@ -9,7 +9,7 @@
  */
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { Tour, Stop, TourSession, TourPhase, BankedQuestion, ContextQuestionEntry, ActReflectionResponse } from '@/lib/types';
+import { Tour, Stop, TourSession, TourPhase, BankedQuestion, ContextQuestionEntry, ContextEntrySnapshot, ActReflectionResponse } from '@/lib/types';
 import { getTour, getActiveStops, getTourMode } from '@/lib/tours-store';
 import { persistTourSession, persistSessionContextEntries } from '@/lib/tour-sessions-store';
 import { resetGuestContexts, snapshotGuestContexts, subscribeGuestContexts } from '@/features/context-journal/guest-contexts';
@@ -49,7 +49,7 @@ import {
   completeActContext as completeActContextImpl,
   completeReflectionIntro as completeReflectionIntroImpl,
   completeActContextQuestions as completeActContextQuestionsImpl,
-  recordContextQuestion as recordContextQuestionImpl,
+  recordDetectiveAnswer as recordDetectiveAnswerImpl,
   completeActReflection as completeActReflectionImpl,
   markActReflectionShared as markActReflectionSharedImpl,
   completeCommunityShare as completeCommunityShareImpl,
@@ -106,9 +106,9 @@ interface TourContextValue {
   /** Record that the explorer opened a designer-authored context item (deduped
    *  by id) so the admin can see which contexts they chose to look at. */
   recordContextViewed: (ctx: { contextId: string; title: string; lens: string; question?: string; actId?: string }) => void;
-  /** Record a self-asked context question and its AI answer against an act, so the
-   *  admin can review what learners asked in the journal and the responses given. */
-  recordContextQuestion: (actId: string, entry: ContextQuestionEntry) => void;
+  /** Record a full snapshot of a Detective answer the learner got in the journal, so
+   *  the admin can review / correct / promote it (whether or not they added it). */
+  recordDetectiveAnswer: (snapshot: ContextEntrySnapshot) => void;
   markReflectionShared: (shareId: string) => void;
   completeCommunityShare: () => void;
   /** Post-tour additional stops: open one from the menu, or finish and go to the
@@ -727,9 +727,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist({ ...session, viewedContexts: [...existing, { ...ctx, at: new Date().toISOString() }] });
   }, [session, persist]);
 
-  const recordContextQuestionFn = useCallback((actId: string, entry: ContextQuestionEntry) => {
-    if (!session || !actId) return;
-    persist(recordContextQuestionImpl(session, actId, entry));
+  const recordDetectiveAnswerFn = useCallback((snapshot: ContextEntrySnapshot) => {
+    if (!session) return;
+    persist(recordDetectiveAnswerImpl(session, snapshot));
   }, [session, persist]);
 
   const endTour = useCallback(() => {
@@ -779,7 +779,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeActContextQuestions: completeActContextQuestionsFn,
       completeActReflection: completeActReflectionFn,
       recordContextViewed: recordContextViewedFn,
-      recordContextQuestion: recordContextQuestionFn,
+      recordDetectiveAnswer: recordDetectiveAnswerFn,
       markReflectionShared: markReflectionSharedFn,
       completeCommunityShare: completeCommunityShareFn,
       startAdditionalStop: startAdditionalStopFn,
