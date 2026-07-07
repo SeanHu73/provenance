@@ -18,16 +18,34 @@ const COLLECTION = 'memorial-church-tour-sessions';
 /** A persisted session carries a `lastUpdated` stamp not on TourSession. */
 export type StoredTourSession = TourSession & { lastUpdated?: string };
 
+/** Recursively drop `undefined` values — Firestore rejects them (the client isn't
+ *  configured with `ignoreUndefinedProperties`), and a single nested `undefined`
+ *  (e.g. an unanswered `learnerPrediction` on a Detective-answer snapshot) would
+ *  otherwise fail the whole session write and silently stop live syncing. `null`
+ *  is preserved (Firestore accepts it). */
+function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) return value.map((v) => stripUndefined(v)) as unknown as T;
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (v === undefined) continue;
+      out[k] = stripUndefined(v);
+    }
+    return out as T;
+  }
+  return value;
+}
+
 export async function persistTourSession(session: TourSession): Promise<void> {
   try {
     const { id, ...data } = session;
     // Merge (not replace) so this composes with `persistSessionContextEntries`,
     // which writes the `contextEntries` field on the same doc out-of-band. The
     // session only ever accumulates fields, so merge loses nothing.
-    await setDoc(doc(db, COLLECTION, id), {
+    await setDoc(doc(db, COLLECTION, id), stripUndefined({
       ...data,
       lastUpdated: new Date().toISOString(),
-    }, { merge: true });
+    }), { merge: true });
   } catch (err) {
     // Non-fatal — sessionStorage is the primary store.
     // Firestore persistence is for analytics, not reliability.
@@ -42,7 +60,7 @@ export async function persistSessionContextEntries(sessionId: string, contextEnt
   try {
     await setDoc(
       doc(db, COLLECTION, sessionId),
-      { contextEntries, lastUpdated: new Date().toISOString() },
+      stripUndefined({ contextEntries, lastUpdated: new Date().toISOString() }),
       { merge: true },
     );
   } catch (err) {
