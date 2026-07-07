@@ -422,6 +422,17 @@ function addContextQuestion(
   return { ...prev, [actId]: { ...(prev[actId] || {}), contextQuestions: [...existing, entry] } };
 }
 
+/** Record a self-asked context question (+ its AI answer) against an act, outside
+ *  the phase machine, so the admin Sessions view can show what learners asked in
+ *  the Context Journal and the responses they got. */
+export function recordContextQuestion(
+  session: TourSession,
+  actId: string,
+  entry: ContextQuestionEntry,
+): TourSession {
+  return { ...session, actResponses: addContextQuestion(session.actResponses, actId, entry) };
+}
+
 /** The reflection prompt for an act — new `reflectionQuestion`, else the legacy
  *  `closingQuestion` for tours authored before the redesign. */
 export function reflectionPromptOf(act: Act | null): string {

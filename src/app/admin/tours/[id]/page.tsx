@@ -136,6 +136,9 @@ export default function TourEditorPage() {
   const tourId = params.id as string;
 
   const [tour, setTour] = useState<Tour | null>(null);
+  // Delete-tour guard: a type-the-name confirmation so a stray click can't wipe a tour.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteText, setDeleteText] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [narrGen, setNarrGen] = useState<{ running: boolean; done: number; total: number; msg: string }>({ running: false, done: 0, total: 0, msg: '' });
@@ -630,8 +633,14 @@ export default function TourEditorPage() {
 
   // ── Delete tour ──
 
+  // The phrase the admin must type to confirm deletion — the tour's exact name
+  // (or "DELETE" for an untitled tour). Guards against an accidental click.
+  const deleteConfirmPhrase = ((tour?.title || '').trim()) || 'DELETE';
+
   const handleDeleteTour = async () => {
-    if (!confirm('Delete this entire tour? This cannot be undone.')) return;
+    // Never delete unless the exact confirmation phrase was typed. Double-guarded:
+    // the modal's button is disabled until it matches, and we re-check here.
+    if (!tour || deleteText.trim() !== deleteConfirmPhrase) return;
     await deleteTour(tourId);
     router.push('/admin/tours');
   };
@@ -777,7 +786,7 @@ export default function TourEditorPage() {
               </div>
               {saving && <span className="text-xs text-stone-400 italic">Saving...</span>}
               <button
-                onClick={handleDeleteTour}
+                onClick={() => { setDeleteText(''); setDeleteOpen(true); }}
                 className="px-3 py-1.5 rounded bg-red-100 text-red-700 hover:bg-red-200 text-xs"
               >
                 Delete tour
@@ -786,6 +795,46 @@ export default function TourEditorPage() {
             </div>
           </div>
         </header>
+
+        {/* Delete-tour confirmation — requires typing the tour's exact name so a
+            stray click can't destroy a tour. Defaults to Cancel; Delete stays
+            disabled until the typed name matches. */}
+        {deleteOpen && tour && (
+          <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setDeleteOpen(false)} />
+            <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl p-6">
+              <h2 className="text-lg font-bold text-stone-800">Delete this tour?</h2>
+              <p className="mt-2 text-sm text-stone-600">
+                This permanently deletes <span className="font-semibold">{tour.title || 'this tour'}</span> and everything in it. This cannot be undone.
+              </p>
+              <p className="mt-4 text-sm text-stone-700">
+                Type <span className="font-semibold px-1 rounded bg-stone-100">{deleteConfirmPhrase}</span> to confirm:
+              </p>
+              <input
+                value={deleteText}
+                onChange={(e) => setDeleteText(e.target.value)}
+                placeholder={deleteConfirmPhrase}
+                autoFocus
+                className="mt-2 w-full px-3 py-2 rounded border-2 border-stone-300 focus:outline-none focus:border-red-400 text-sm"
+              />
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  onClick={() => setDeleteOpen(false)}
+                  className="px-4 py-2 rounded bg-stone-100 text-stone-700 hover:bg-stone-200 text-sm font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteTour}
+                  disabled={deleteText.trim() !== deleteConfirmPhrase}
+                  className="px-4 py-2 rounded bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Delete tour
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Narration — cache OpenAI text-to-speech for stops with no voiceover. */}
         <section className="mb-8 p-4 rounded border-2 border-emerald-300 bg-emerald-50/40 space-y-2">

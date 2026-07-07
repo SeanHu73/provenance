@@ -78,9 +78,12 @@ interface Props {
    *  learner to pose their *own* context question and see a response before the
    *  journal (exploring other contexts) opens. */
   askFirst?: boolean;
+  /** Called when the learner asks their own question and sees a response — records
+   *  the question + AI answer so the admin Sessions view can review it. */
+  onContextQuestion?: (info: { question: string; answer: string | null; status: 'answered' | 'banked' }) => void;
 }
 
-export default function ContextJournal({ tourId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false }: Props) {
+export default function ContextJournal({ tourId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false, onContextQuestion }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
   // Both the in-tour flow and the revisit overlay read/write the learner's
   // guest-local contexts (sessionStorage); only a bare standalone visit uses
@@ -337,7 +340,7 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
             priorStops={priorStopTitles}
             heading="Ask your own question"
             intro="Try asking your own context question first — then you can explore other contexts."
-            onAnswered={() => { sawResponseRef.current = true; setExplored(true); }}
+            onAnswered={(info) => { sawResponseRef.current = true; setExplored(true); onContextQuestion?.(info); }}
             onAdd={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); setExplored(true); }}
             onClose={() => { setGateAskOpen(false); if (sawResponseRef.current) setAskedOwn(true); }}
           />
@@ -533,6 +536,7 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
         <ContextAskFlow
           tourId={scopeId}
           priorStops={priorStopTitles}
+          onAnswered={(info) => { setExplored(true); onContextQuestion?.(info); }}
           onClose={() => setAskOpen(false)}
           onAdd={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); setExplored(true); }}
         />

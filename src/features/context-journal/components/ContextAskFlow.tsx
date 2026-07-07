@@ -62,8 +62,9 @@ interface Props {
   onClose: () => void;
   onAdd: (draft: ContextDraft) => Promise<void> | void;
   /** Fired once when the learner reaches the revealed response (the "sees a
-   *  response" moment) — used by the ask-first gate to unlock the journal. */
-  onAnswered?: () => void;
+   *  response" moment). Carries the question + AI answer so the journal can record
+   *  it for the admin, and is used by the ask-first gate to unlock the journal. */
+  onAnswered?: (info: { question: string; answer: string | null; status: 'answered' | 'banked' }) => void;
 }
 
 export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'Ask your own question', intro, onClose, onAdd, onAnswered }: Props) {
@@ -98,9 +99,11 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
   useEffect(() => {
     if (phase === 'result' && !answeredRef.current) {
       answeredRef.current = true;
-      onAnswered?.();
+      const c = resp?.handout?.cards?.[0];
+      const ans = c?.explanation || resp?.narrative || '';
+      onAnswered?.({ question: asked, answer: ans || null, status: resp?.status === 'answered' ? 'answered' : 'banked' });
     }
-  }, [phase, onAnswered]);
+  }, [phase, onAnswered, asked, resp]);
 
   const addPhotos = async (files: FileList | null) => {
     if (!files || !files.length) return;
@@ -353,6 +356,12 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
               </motion.button>
             ) : (
               <div className="space-y-3">
+                {/* Once they've written their theory they needn't wait on this
+                    screen — reassure them they can keep exploring meanwhile. Only
+                    shown while researching (not during compose). */}
+                <p className="text-[13px] font-semibold leading-snug text-center" style={{ color: '#16a34a' }}>
+                  Done proposing your own theory? Feel free to keep looking around while you wait — we&apos;ll let you know the moment your answer&apos;s ready.
+                </p>
                 {/* the research animation, back while it's being looked up */}
                 <ContextAskLoading />
                 {/* the primary button starts as a plain outline "Researching…"

@@ -68,6 +68,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
     tour,
     session,
     recordContextViewed,
+    recordContextQuestion,
     currentStop,
     isLastStop,
     goBack,
@@ -394,7 +395,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
                   responses={responses}
                   guidingQuestion={guidingQuestion}
                   viewedContextIds={(session?.viewedContexts || []).map((v) => v.contextId)}
-                  onContextViewed={recordContextViewed}
+                  onContextViewed={(ctx) => recordContextViewed({ ...ctx, actId: act?.id })}
+                  onContextQuestion={(info) => { if (act) recordContextQuestion(act.id, info); }}
                   priorStopTitles={priorStopTitles}
                   askFirst={askFirst}
                 />

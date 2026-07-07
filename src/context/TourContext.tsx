@@ -49,6 +49,7 @@ import {
   completeActContext as completeActContextImpl,
   completeReflectionIntro as completeReflectionIntroImpl,
   completeActContextQuestions as completeActContextQuestionsImpl,
+  recordContextQuestion as recordContextQuestionImpl,
   completeActReflection as completeActReflectionImpl,
   markActReflectionShared as markActReflectionSharedImpl,
   completeCommunityShare as completeCommunityShareImpl,
@@ -105,6 +106,9 @@ interface TourContextValue {
   /** Record that the explorer opened a designer-authored context item (deduped
    *  by id) so the admin can see which contexts they chose to look at. */
   recordContextViewed: (ctx: { contextId: string; title: string; lens: string; question?: string; actId?: string }) => void;
+  /** Record a self-asked context question and its AI answer against an act, so the
+   *  admin can review what learners asked in the journal and the responses given. */
+  recordContextQuestion: (actId: string, entry: ContextQuestionEntry) => void;
   markReflectionShared: (shareId: string) => void;
   completeCommunityShare: () => void;
   /** Post-tour additional stops: open one from the menu, or finish and go to the
@@ -723,6 +727,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist({ ...session, viewedContexts: [...existing, { ...ctx, at: new Date().toISOString() }] });
   }, [session, persist]);
 
+  const recordContextQuestionFn = useCallback((actId: string, entry: ContextQuestionEntry) => {
+    if (!session || !actId) return;
+    persist(recordContextQuestionImpl(session, actId, entry));
+  }, [session, persist]);
+
   const endTour = useCallback(() => {
     setTour(null);
     setSession(null);
@@ -770,6 +779,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeActContextQuestions: completeActContextQuestionsFn,
       completeActReflection: completeActReflectionFn,
       recordContextViewed: recordContextViewedFn,
+      recordContextQuestion: recordContextQuestionFn,
       markReflectionShared: markReflectionSharedFn,
       completeCommunityShare: completeCommunityShareFn,
       startAdditionalStop: startAdditionalStopFn,
