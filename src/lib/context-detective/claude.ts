@@ -1,8 +1,10 @@
 /**
  * The Context Detective's Claude passes (raw fetch, matching the codebase's
- * provider convention). Research+draft runs Opus 4.8 with web search and returns
- * a structured answer via a `submit_answer` tool; voice runs Opus 4.8 (prose
- * only); parse runs Haiku 4.5 with a structured-output schema.
+ * provider convention). Research+draft runs Sonnet 5 with web search and returns
+ * a structured answer via a `submit_answer` tool (near-Opus quality on this task
+ * but meaningfully faster, so answers land well under the serverless time limit);
+ * voice runs Opus 4.8 (prose only); parse runs Haiku 4.5 with a structured-output
+ * schema.
  */
 
 import { PastLens } from '../types';
@@ -10,6 +12,7 @@ import { PastLens } from '../types';
 const ANTHROPIC = 'https://api.anthropic.com/v1/messages';
 const VERSION = '2023-06-01';
 const OPUS = 'claude-opus-4-8';
+const SONNET = 'claude-sonnet-5';
 const HAIKU = 'claude-haiku-4-5';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,7 +81,7 @@ const RESEARCH_SCHEMA = {
 
 export async function researchDraft(system: string, userText: string): Promise<ResearchOutput | null> {
   const tools = [
-    { type: 'web_search_20260209', name: 'web_search', max_uses: 2 },
+    { type: 'web_search_20260209', name: 'web_search', max_uses: 4 },
     {
       name: 'submit_answer',
       description:
@@ -91,7 +94,7 @@ export async function researchDraft(system: string, userText: string): Promise<R
   const messages: Json[] = [{ role: 'user', content: userText }];
   for (let i = 0; i < 8; i++) {
     const resp = await callClaude({
-      model: OPUS,
+      model: SONNET,
       max_tokens: 8000,
       system: cachedSystem(system),
       thinking: { type: 'adaptive' },
