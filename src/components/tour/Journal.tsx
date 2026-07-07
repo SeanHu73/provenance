@@ -363,6 +363,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
               ? getAdditionalStops(tour).find((a) => a.entry.stopId === session.currentAdditionalStopId)?.entry ?? null
               : null;
             const act = additional ? null : findActOfStop(tour, currentStop.id);
+            // From the second act onward (never on additional stops), gate the
+            // journal behind the learner posing their own question first.
+            const actNumber = act ? getActs(tour).findIndex((a) => a.id === act.id) + 1 : 0;
+            const askFirst = !additional && actNumber >= 2;
             const authored = (additional ? (additional.contexts ?? []) : getActContexts(act)).map((c) => authoredToEntry(c, tour.id));
             const responses = Object.entries(session.actResponses ?? {}).flatMap(([aid, r]) => {
               const refl = r?.reflection;
@@ -392,6 +396,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
                   viewedContextIds={(session?.viewedContexts || []).map((v) => v.contextId)}
                   onContextViewed={recordContextViewed}
                   priorStopTitles={priorStopTitles}
+                  askFirst={askFirst}
                 />
               </div>
             );

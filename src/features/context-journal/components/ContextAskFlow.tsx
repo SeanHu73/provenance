@@ -54,11 +54,19 @@ interface Props {
   /** Titles of stops the learner has already completed — sent to the Detective as
    *  their prior knowledge (background only; it never argues from stop content). */
   priorStops?: string[];
+  /** Modal title (defaults to "Ask your own question"). */
+  heading?: string;
+  /** Optional lead line shown above the lens picker — used by the "ask first" gate
+   *  to frame this as the required first step. */
+  intro?: string;
   onClose: () => void;
   onAdd: (draft: ContextDraft) => Promise<void> | void;
+  /** Fired once when the learner reaches the revealed response (the "sees a
+   *  response" moment) — used by the ask-first gate to unlock the journal. */
+  onAnswered?: () => void;
 }
 
-export default function ContextAskFlow({ tourId, actId, priorStops, onClose, onAdd }: Props) {
+export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'Ask your own question', intro, onClose, onAdd, onAnswered }: Props) {
   const [phase, setPhase] = useState<Phase>('lens');
   const [lens, setLens] = useState<PastCategory>('society');
   const [text, setText] = useState('');
@@ -82,6 +90,17 @@ export default function ContextAskFlow({ tourId, actId, priorStops, onClose, onA
   useEffect(() => {
     if (phase === 'researching' && researchReady) readyHaptic();
   }, [phase, researchReady]);
+
+  // Signal (once) the moment the learner reaches the revealed response — the
+  // "posed their own question and saw a response" milestone the ask-first gate
+  // waits on. `result` covers both the answered and the banked/declined outcome.
+  const answeredRef = useRef(false);
+  useEffect(() => {
+    if (phase === 'result' && !answeredRef.current) {
+      answeredRef.current = true;
+      onAnswered?.();
+    }
+  }, [phase, onAnswered]);
 
   const addPhotos = async (files: FileList | null) => {
     if (!files || !files.length) return;
@@ -201,7 +220,7 @@ export default function ContextAskFlow({ tourId, actId, priorStops, onClose, onA
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <h3 className="font-display font-bold text-[22px]" style={{ color: 'var(--th-primary)' }}>Ask your own question</h3>
+          <h3 className="font-display font-bold text-[22px]" style={{ color: 'var(--th-primary)' }}>{heading}</h3>
           <button onClick={onClose} aria-label="Close" className="w-9 h-9 flex items-center justify-center rounded-full" style={{ color: 'var(--text-secondary)' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
@@ -209,6 +228,9 @@ export default function ContextAskFlow({ tourId, actId, priorStops, onClose, onA
 
         {phase === 'lens' && (
           <div className="space-y-3">
+            {intro && (
+              <p className="text-[15px] font-serif italic leading-snug" style={{ color: 'var(--th-primary)' }}>{intro}</p>
+            )}
             <p className="text-[16px] font-semibold" style={{ color: 'var(--text-primary)' }}>Which lens are you asking through?</p>
             <div className="grid grid-cols-2 gap-3">
               {LENSES.map((l) => (

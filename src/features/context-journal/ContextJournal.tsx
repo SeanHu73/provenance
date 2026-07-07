@@ -33,6 +33,9 @@ import ContextAskFlow from './components/ContextAskFlow';
  *  + hard offset shadow (see PastLens). */
 const INK = '#241f1b';
 const INK_SHADOW = 'rgba(26,20,14,0.9)';
+/** Warm coral accent shared with the context splashes (mirrors ContextIntroCard's
+ *  CONTEXT_ACCENT) — used on the ask-first gate's kicker. No P.A.S.T. lens uses it. */
+const CONTEXT_ACCENT = '#E08A5F';
 
 /** Optional light haptic tick (matches the repo pattern). */
 function haptic(ms = 8) {
@@ -71,9 +74,13 @@ interface Props {
    *  the Ask-your-own flow as the learner's *prior knowledge* (background only —
    *  the Detective never argues from stop content). */
   priorStopTitles?: string[];
+  /** In-tour, from the second act onward (never on additional stops): require the
+   *  learner to pose their *own* context question and see a response before the
+   *  journal (exploring other contexts) opens. */
+  askFirst?: boolean;
 }
 
-export default function ContextJournal({ tourId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [] }: Props) {
+export default function ContextJournal({ tourId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
   // Both the in-tour flow and the revisit overlay read/write the learner's
   // guest-local contexts (sessionStorage); only a bare standalone visit uses
@@ -108,6 +115,13 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
   const [fullEntry, setFullEntry] = useState<ContextEntry | null>(null);
   // In-tour gate: the learner must open at least one context before continuing.
   const [explored, setExplored] = useState(false);
+  // Ask-first gate (act 2+, not additional stops): the journal stays closed until
+  // the learner poses their own question and sees a response. `gateAskOpen` shows
+  // the question screen straight away; `sawResponseRef` records that they reached a
+  // response, so closing the ask flow (Done or after adding) unlocks the journal.
+  const [askedOwn, setAskedOwn] = useState(false);
+  const [gateAskOpen, setGateAskOpen] = useState(true);
+  const sawResponseRef = useRef(false);
   // The continue gate is engagement with a *question*: tapping an authored
   // question (or asking your own — set on submit below), NOT just re-opening a
   // context that's already been added.
@@ -281,6 +295,55 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
   const liveFull = fullEntry
     ? entries.find((e) => e.id === fullEntry.id) ?? (authored ?? []).find((a) => a.id === fullEntry.id) ?? fullEntry
     : null;
+
+  // Ask-first gate — from the second act onward the learner must pose their own
+  // context question and see a response before the journal opens. Replaces the
+  // whole screen (no journal access) with a framed prompt + the question flow
+  // ready to go. Additional stops and act 1 pass askFirst=false and skip this.
+  if (askFirst && !askedOwn) {
+    return (
+      <div
+        className="fixed inset-0 z-[55] flex flex-col items-center justify-center text-center px-8 select-none"
+        style={{ backgroundColor: 'var(--th-journal)' }}
+      >
+        <div style={{ maxWidth: '20ch' }}>
+          <span className="font-display block" style={{ fontSize: 'clamp(14px, 4vw, 18px)', letterSpacing: '0.14em', textTransform: 'uppercase', color: CONTEXT_ACCENT }}>
+            Your turn
+          </span>
+          <h1 className="font-display mt-3" style={{ fontSize: 'clamp(30px, 8vw, 46px)', lineHeight: 1.05, color: 'var(--th-surface)' }}>
+            Try asking your own context question first!
+          </h1>
+          <p className="font-serif mt-5" style={{ fontSize: 'clamp(16px, 4.4vw, 20px)', lineHeight: 1.4, color: 'var(--th-surface)', opacity: 0.85 }}>
+            Before you explore how others have contextualised this place, pose a question of your own and see what the Context Detective turns up.
+          </p>
+          <button
+            onClick={() => { haptic(10); setGateAskOpen(true); }}
+            className="mt-8 inline-flex items-center justify-center gap-2.5 rounded-2xl px-7 py-3.5 font-display font-bold text-[17px]"
+            style={{ backgroundColor: 'var(--th-surface)', color: 'var(--th-primary)' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z" />
+              <path d="M10 9a2.5 2.5 0 0 1 4.8.8c0 1.7-2.3 2.2-2.3 3.4" />
+              <line x1="12.4" y1="16" x2="12.41" y2="16" />
+            </svg>
+            Ask your own question
+          </button>
+        </div>
+
+        {gateAskOpen && (
+          <ContextAskFlow
+            tourId={scopeId}
+            priorStops={priorStopTitles}
+            heading="Ask your own question"
+            intro="Try asking your own context question first — then you can explore other contexts."
+            onAnswered={() => { sawResponseRef.current = true; setExplored(true); }}
+            onAdd={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); setExplored(true); }}
+            onClose={() => { setGateAskOpen(false); if (sawResponseRef.current) setAskedOwn(true); }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col" style={{ height: '100dvh', backgroundColor: 'var(--th-bg)' }}>
