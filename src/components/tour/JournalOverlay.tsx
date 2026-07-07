@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { Tour, TourSession } from '@/lib/types';
-import { getActiveStops, getTourMode } from '@/lib/tours-store';
+import { getActiveStops, getGuidedStops, getTourMode } from '@/lib/tours-store';
 import PhotoContent from './cards/PhotoContent';
 import FullscreenPhoto from './cards/FullscreenPhoto';
 import FormattedText from './cards/FormattedText';
@@ -45,6 +45,9 @@ export default function JournalOverlay({ tour, session, onClose, closingPeek = f
 
   const completedIds = new Set(session.completedStops);
   const currentIdx = session.currentStopIndex;
+  // Match the current stop by id, not array index — the displayed list may drop
+  // post-tour "additional" stops, which would shift indices.
+  const currentStopId = getActiveStops(tour)[currentIdx]?.id;
   const isContext = getTourMode(tour) === 'context';
 
   // Context mode renames "Your Theory" → "Your Responses" and drops the
@@ -131,14 +134,16 @@ export default function JournalOverlay({ tour, session, onClose, closingPeek = f
                     .filter(({ i: j }) => !usedIndices.has(j));
                   stopsToShow = [...orderedEntries, ...remainingEntries];
                 } else {
-                  stopsToShow = activeStops.map((stop, i) => ({ stop, i }));
+                  // Guided stops only — post-tour "additional" stops stay out of
+                  // the in-tour Stops list and renumber cleanly.
+                  stopsToShow = getGuidedStops(tour).map((stop, i) => ({ stop, i }));
                 }
                 return stopsToShow.map(({ stop, i }) => {
                 const isCompleted = completedIds.has(stop.id);
                 const isInStop = !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional',
                   'eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end',
                   'unstructured_map', 'midway_checkin'].includes(session.currentPhase);
-                const isCurrent = i === currentIdx && isInStop;
+                const isCurrent = stop.id === currentStopId && isInStop;
                 const isUpcoming = !isCompleted && !isCurrent;
                 const isExpanded = expandedStopId === stop.id;
                 const thumbPhoto = getStopThumbnailPhoto(stop);
