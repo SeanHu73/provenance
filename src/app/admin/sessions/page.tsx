@@ -164,6 +164,50 @@ function toCsv(rows: Row[]): string {
   return [HEADER, ...rows].map((r) => r.map(esc).join(',')).join('\r\n');
 }
 
+/** Every Detective answer (and any reviewed built context) joined with the admin's
+ *  verdict / note / edit — the raw material for improving the Detective's skills &
+ *  exemplars. Exported as JSON so it can be handed back for review. */
+function buildDetectiveReviews(
+  sessions: StoredTourSession[],
+  toursById: Record<string, Tour>,
+  corrections: Record<string, DetectiveCorrection>,
+) {
+  const out: Record<string, unknown>[] = [];
+  for (const s of sessions) {
+    const tourTitle = toursById[s.tourId]?.title || s.tourId;
+    const rowFor = (e: ContextEntrySnapshot, kind: string) => {
+      const c = corrections[e.id];
+      return {
+        sessionId: s.id,
+        tourId: s.tourId,
+        tourTitle,
+        kind,
+        lens: e.lens,
+        question: e.question || e.title || '',
+        aiAnswer: e.longExplanation || '',
+        learnerPrediction: e.learnerPrediction || undefined,
+        sources: (e.sourceLinks || []).map((l) => l.url).filter(Boolean),
+        review: c
+          ? {
+              verdict: c.verdict,
+              note: c.note,
+              editedTitle: c.edited?.title,
+              editedAnswer: c.edited?.longExplanation,
+              promotedToKnowledgeBase: !!c.promotedEntryId,
+            }
+          : undefined,
+      };
+    };
+    for (const e of s.detectiveAnswers || []) out.push(rowFor(e, 'detective-answer'));
+    // Built/self contexts that were reviewed but aren't in detectiveAnswers.
+    const answerIds = new Set((s.detectiveAnswers || []).map((e) => e.id));
+    for (const e of s.contextEntries || []) {
+      if (corrections[e.id] && !answerIds.has(e.id)) out.push(rowFor(e, 'built-context'));
+    }
+  }
+  return out;
+}
+
 // ── Small presentational atoms ──
 
 function Tag({ children, color }: { children: React.ReactNode; color?: string }) {
@@ -455,17 +499,23 @@ export default function SessionsAdminPage() {
 
   const rows = buildRows(sessions, toursById);
 
-  const exportCsv = () => {
-    const blob = new Blob([toCsv(rows)], { type: 'text/csv;charset=utf-8' });
+  const download = (data: string, filename: string, mime: string) => {
+    const blob = new Blob([data], { type: mime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `provenance-sessions.csv`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
   };
+
+  const exportCsv = () => download(toCsv(rows), 'provenance-sessions.csv', 'text/csv;charset=utf-8');
+
+  const reviews = buildDetectiveReviews(sessions, toursById, corrections);
+  const exportReviews = () =>
+    download(JSON.stringify(reviews, null, 2), 'provenance-detective-reviews.json', 'application/json');
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 p-6 font-sans">
@@ -479,6 +529,14 @@ export default function SessionsAdminPage() {
           </div>
           <div className="flex gap-3 text-sm items-center">
             <button onClick={exportCsv} disabled={rows.length === 0} className="px-3 py-1.5 rounded bg-blue-700 text-white hover:bg-blue-800 disabled:opacity-40">Export CSV</button>
+            <button
+              onClick={exportReviews}
+              disabled={reviews.length === 0}
+              title="Download every Detective answer with your verdict / note / edit, as JSON — for reviewing or improving the Detective."
+              className="px-3 py-1.5 rounded bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-40"
+            >
+              Export Detective reviews ({reviews.length})
+            </button>
             <button onClick={reload} className="text-blue-700 hover:underline">Refresh</button>
             <Link href="/admin" className="text-blue-700 hover:underline">← Admin</Link>
           </div>
