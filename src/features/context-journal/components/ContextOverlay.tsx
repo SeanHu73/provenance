@@ -23,6 +23,7 @@ import ContextTimeline from './ContextTimeline';
 import { useReadAloud } from './useReadAloud';
 import { useReadMode } from '@/lib/read-mode';
 import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
+import AudioButton from '@/components/tour/cards/AudioButton';
 import { contextNarrationText } from '@/lib/tts-narration';
 import { hashText, ttsSanitize } from '@/lib/tts-text';
 
@@ -186,16 +187,21 @@ export default function ContextOverlay({
             {entry.question && (
               <p className="mt-1 font-serif italic text-[15px] text-text-secondary leading-snug">{entry.question}</p>
             )}
-            {/* OpenAI narration (Title + Full Explanation). Reuses the cached
-                authored-context audio when the hash matches; otherwise generates
-                on demand. (The free browser voice stays disabled here.) */}
-            {entry.longExplanation.trim() && (
+            {/* Narration. An uploaded voiceover wins outright — it's played
+                directly. Otherwise OpenAI narration (Title + Full Explanation),
+                reusing the cached authored-context audio when the hash matches or
+                generating on demand. (The free browser voice stays disabled here.) */}
+            {(entry.voiceoverUrl || entry.longExplanation.trim()) && (
               <div className="mt-3">
-                <OpenAiSpeechBar
-                  text={contextNarrationText(entry)}
-                  title={entry.title}
-                  cachedUrl={entry.ttsAudioHash && entry.ttsAudioHash === hashText(ttsSanitize(contextNarrationText(entry))) ? entry.ttsAudioUrl : null}
-                />
+                {entry.voiceoverUrl ? (
+                  <AudioButton audioUrl={entry.voiceoverUrl} title={entry.voiceoverTitle || entry.title || 'Narration'} />
+                ) : (
+                  <OpenAiSpeechBar
+                    text={contextNarrationText(entry)}
+                    title={entry.title}
+                    cachedUrl={entry.ttsAudioHash && entry.ttsAudioHash === hashText(ttsSanitize(contextNarrationText(entry))) ? entry.ttsAudioUrl : null}
+                  />
+                )}
               </div>
             )}
           </div>

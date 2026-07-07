@@ -83,6 +83,7 @@ export default function ActContextCard({ onComplete, aiResponse = false }: Props
     timeRange: ctx.timeRange, geometry: ctx.geometry, camera: ctx.camera,
     mapType: ctx.mapType, media: ctx.media, thumbnailMediaId: ctx.thumbnailMediaId,
     sources: ctx.sources,
+    voiceoverUrl: ctx.voiceoverUrl, voiceoverTitle: ctx.voiceoverTitle,
   };
 
   const addAsIs = async () => {

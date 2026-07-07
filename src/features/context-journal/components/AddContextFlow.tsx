@@ -44,6 +44,13 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
     (initial?.media ?? []).map((m) => ({ id: m.id, kind: m.kind, title: m.title, previewUrl: m.url, existingUrl: m.url })),
   );
   const [thumbId, setThumbId] = useState<string | null>(initial?.thumbnailMediaId ?? null);
+  // Voiceover: a single uploaded audio file that narrates this context. When set it
+  // replaces the read-aloud (TTS) narration. `existing` holds an already-saved URL
+  // (edit); `file` a freshly picked one; `preview` drives the inline player.
+  const [voiceoverExisting, setVoiceoverExisting] = useState<string | null>(initial?.voiceoverUrl ?? null);
+  const [voiceoverFile, setVoiceoverFile] = useState<File | null>(null);
+  const [voiceoverTitle, setVoiceoverTitle] = useState(initial?.voiceoverTitle ?? '');
+  const [voiceoverPreview, setVoiceoverPreview] = useState<string | null>(initial?.voiceoverUrl ?? null);
   const [sources, setSources] = useState<DraftSource[]>(
     (initial?.sources ?? []).map((s) => ({
       id: s.id, name: s.name, author: s.author, date: s.date, url: s.url ?? '',
@@ -140,6 +147,21 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
   const setMediaTitle = (id: string, t: string) =>
     setMedia((prev) => prev.map((m) => (m.id === id ? { ...m, title: t } : m)));
 
+  const setVoiceoverFromFiles = (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    if (voiceoverFile && voiceoverPreview) URL.revokeObjectURL(voiceoverPreview);
+    setVoiceoverFile(file);
+    setVoiceoverPreview(URL.createObjectURL(file));
+    setVoiceoverExisting(null);
+  };
+  const removeVoiceover = () => {
+    if (voiceoverFile && voiceoverPreview) URL.revokeObjectURL(voiceoverPreview);
+    setVoiceoverFile(null);
+    setVoiceoverPreview(null);
+    setVoiceoverExisting(null);
+  };
+
   const addSource = () => setSources((prev) => [...prev, { id: mkId(), name: '', author: '', date: '', url: '', previewUrl: '' }]);
   const removeSource = (id: string) => setSources((prev) => {
     const s = prev.find((x) => x.id === id);
@@ -178,6 +200,8 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
           imageUrl: s.file ? await uploadContextMedia(s.file) : (s.existingUrl ?? null),
         })),
       );
+      // The voiceover: upload a freshly picked file, else keep any existing URL.
+      const voiceoverUrl = voiceoverFile ? await uploadContextMedia(voiceoverFile) : voiceoverExisting;
       await onSubmit({
         question: question.trim(),
         title: title.trim(),
@@ -192,6 +216,8 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
         media: uploaded,
         thumbnailMediaId,
         sources: uploadedSources,
+        voiceoverUrl: voiceoverUrl ?? null,
+        voiceoverTitle: voiceoverUrl ? (voiceoverTitle.trim() || null) : null,
       });
       onClose();
     } catch (err) {
@@ -306,6 +332,26 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
               className="w-full px-3 py-2.5 rounded-lg border-2 bg-white text-[16px] font-serif text-text-primary focus:outline-none"
               style={{ borderColor: 'var(--th-border)' }}
             />
+          </Field>
+
+          {/* voiceover — a single uploaded narration clip that overrides the TTS */}
+          <Field label="Voiceover (optional)">
+            <p className="text-[11px] text-text-muted mb-2">Upload an audio file to narrate this context. When set, it plays as the narration instead of the read-aloud (text-to-speech) voice.</p>
+            {voiceoverPreview ? (
+              <div className="space-y-2 p-2 rounded-lg border" style={{ borderColor: 'var(--th-border)' }}>
+                <audio src={voiceoverPreview} controls preload="none" className="w-full" />
+                <div className="flex items-center gap-2">
+                  <input
+                    value={voiceoverTitle} onChange={(e) => setVoiceoverTitle(e.target.value)}
+                    placeholder="Voiceover title (optional)"
+                    className="flex-1 min-w-0 px-2 py-1.5 rounded border bg-white text-sm" style={{ borderColor: 'var(--th-border)' }}
+                  />
+                  <button onClick={removeVoiceover} aria-label="Remove voiceover" className="shrink-0 text-text-muted text-xl leading-none px-1">&times;</button>
+                </div>
+              </div>
+            ) : (
+              <UploadButton label="Add voiceover" accept="audio/*" onFiles={setVoiceoverFromFiles} colour={colour} />
+            )}
           </Field>
 
           {/* media */}

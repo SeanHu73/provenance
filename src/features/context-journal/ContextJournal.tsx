@@ -282,6 +282,7 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
         // copy — otherwise the added context loses `includePlaceTime` (falls back
         // to "show map when geometry exists") and its OpenAI narration cache.
         includePlaceTime: entry.includePlaceTime,
+        voiceoverUrl: entry.voiceoverUrl, voiceoverTitle: entry.voiceoverTitle,
         ttsAudioUrl: entry.ttsAudioUrl, ttsAudioHash: entry.ttsAudioHash,
         sourceId: entry.id, origin: 'added', placeId: scopeId,
       });

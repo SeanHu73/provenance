@@ -97,8 +97,14 @@ export interface ContextEntry {
   /** The learner's FIRST question, before the Framing Coach reframe — only set when
    *  it differs from `question` (they adopted a suggested reframe). For admin review. */
   originalQuestion?: string;
+  /** An uploaded voiceover for this context's narration. When present it *is* the
+   *  narration — played instead of any generated text-to-speech (mirrors
+   *  ActContextItem). `voiceoverTitle` is an optional label for the player. */
+  voiceoverUrl?: string | null;
+  voiceoverTitle?: string | null;
   /** Cached OpenAI narration (Title + Full Explanation) — reused on the reader
-   *  page when the hash still matches; otherwise the bar generates on demand. */
+   *  page when the hash still matches; otherwise the bar generates on demand.
+   *  Ignored when a `voiceoverUrl` is present. */
   ttsAudioUrl?: string | null;
   ttsAudioHash?: string | null;
   /** Cited sources shown on the context page. */
