@@ -29,6 +29,7 @@ import ProgressBar from './ProgressBar';
 import TourFooter from './TourFooter';
 import TourMenu from './TourMenu';
 import SeedCard from './cards/SeedCard';
+import FindDiscoverCard from './cards/FindDiscoverCard';
 import NoticeCard from './cards/NoticeCard';
 import WonderCard from './cards/WonderCard';
 import RevealCard from './cards/RevealCard';
@@ -141,9 +142,12 @@ export default function Journal({ onMapPeek }: JournalProps) {
   // Context-Prototype mode skips per-stop discussion (wonder) and bridge
   // (whats_next); the per-stop loop is seed → reveal → [reflect] only.
   const isContext = getTourMode(tour) === 'context';
+  // Context stops merge FIND + DISCOVER into one snap-scroll screen at the seed phase.
+  const isMergedFindDiscover = phase === 'seed' && isContext;
   // The stop map (and the post-tour additional-stops map) fill the whole card
-  // area edge-to-edge (no white card chrome).
-  const isFullBleed = phase === 'stop_map' || phase === 'additional_menu';
+  // area edge-to-edge (no white card chrome). The merged FIND/DISCOVER screen is
+  // also full-bleed so its two sections lay out from the top for snap-scroll.
+  const isFullBleed = phase === 'stop_map' || phase === 'additional_menu' || isMergedFindDiscover;
 
   const stopNum = session.currentStopIndex + 1;
 
@@ -271,7 +275,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
               : { x: isBack ? '100%' : '-100%' }
             }
             transition={{ duration: isFade ? 0.4 : 0.12, ease: isFade ? 'easeInOut' : 'easeOut' }}
-            className="absolute inset-0 overflow-y-auto tour-scroll"
+            className={`absolute inset-0 overflow-y-auto tour-scroll ${isMergedFindDiscover ? 'snap-y snap-mandatory' : ''}`}
             ref={(el) => { scrollContainerRef.current = el; checkScroll(); }}
             onScroll={checkScroll}
           >
@@ -317,7 +321,16 @@ export default function Journal({ onMapPeek }: JournalProps) {
         )}
 
         {phase === 'seed' && currentStop && (
-          <SeedCard stop={currentStop} onContinue={advancePhase} onPeekMap={onMapPeek} />
+          isContext ? (
+            <FindDiscoverCard
+              stop={currentStop}
+              onContinue={advancePhase}
+              isFinalInStop={nextPhaseWouldBeWhatsNext(currentStop, 'seed', session.currentRound, isContext)}
+              onPeekMap={onMapPeek}
+            />
+          ) : (
+            <SeedCard stop={currentStop} onContinue={advancePhase} onPeekMap={onMapPeek} />
+          )
         )}
 
         {/* Context-Prototype: "Act N: Title" splash */}

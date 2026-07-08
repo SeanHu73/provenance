@@ -150,7 +150,7 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
           onClick={onContinue}
           className="flex-1 py-3 rounded-lg text-base font-semibold bg-aged-gold text-white transition-colors"
         >
-          {isFinalInStop ? 'Continue Tour' : 'Continue'}
+          {isFinalInStop ? 'Explore more' : 'Continue'}
         </button>
       </div>
 

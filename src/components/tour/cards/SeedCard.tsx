@@ -25,13 +25,17 @@ import { usePhotoCues } from '../usePhotoCues';
 
 interface Props {
   stop: Stop;
-  onContinue: () => void;
+  onContinue?: () => void;
   /** Optional handler for the "find me on the map" button. Visible only
    *  when the stop has a location. */
   onPeekMap?: () => void;
+  /** When true this is the FIND section of a merged FIND+DISCOVER page: no
+   *  footer/continue button (the reader snap-scrolls down to DISCOVER); a
+   *  "scroll to discover" cue replaces it. */
+  embedded?: boolean;
 }
 
-export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
+export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false }: Props) {
   const [autoplayPref] = useAudioAutoplay();
   // Background narration source: uploaded voiceover → cached OpenAI narration →
   // free browser voice. The narration takes autoplay priority — a non-voiceover
@@ -167,6 +171,16 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
     </>
   );
 
+  // Merged mode: a gentle "scroll down to DISCOVER" cue in place of the footer.
+  const scrollCue = (
+    <div className="flex flex-col items-center gap-1 pt-4 pb-2" style={{ color: 'var(--th-primary)' }}>
+      <span className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">Scroll to discover</span>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="animate-bounce" aria-hidden="true">
+        <path d="M12 5v14M6 13l6 6 6-6" />
+      </svg>
+    </div>
+  );
+
   // Timer + continue/back row (always at the bottom)
   const footerBlock = (
     <>
@@ -211,18 +225,16 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
     return (
       <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
         <div>
-          <ActionTitle action="DISCOVER" />
+          <ActionTitle action={embedded ? 'FIND' : 'DISCOVER'} />
           {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[22px] leading-snug">{stop.title}</p>}
         </div>
         {backgroundContent}
-        {footerBlock}
+        {embedded ? scrollCue : footerBlock}
       </div>
     );
   }
 
   // Merged FIND page: find instructions + photo on top, Background below.
-  // Single continuous scroll (no snap) — the Journal's "Keep scrolling"
-  // indicator cues that there's more below.
   return (
     <div className="animate-fade-in space-y-6">
       <div className="space-y-5">
@@ -237,7 +249,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap }: Props) {
         {backgroundContent}
       </div>
 
-      {footerBlock}
+      {embedded ? scrollCue : footerBlock}
     </div>
   );
 }

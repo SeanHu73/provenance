@@ -227,7 +227,7 @@ export default function ReflectCard({
                 onClick={handleSubmit}
                 className="flex-1 py-3 rounded-lg text-base font-semibold bg-text-secondary text-white"
               >
-                {isFinalInStop ? 'Continue Tour' : 'Continue'}
+                {isFinalInStop ? 'Explore more' : 'Continue'}
               </button>
             </div>
           )}

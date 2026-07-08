@@ -70,11 +70,13 @@ function nextPhaseAndRound(
   switch (current) {
     case 'seed': {
       // Seed + Notice are merged into one screen.
-      // Skip notice, go directly to wonder or reveal.
       const wonder = stop.wonder;
-      return (!skipWonder && wonder !== null)
-        ? { phase: 'wonder', round: 0 }
-        : { phase: 'reveal', round: 0 };
+      if (!skipWonder && wonder !== null) return { phase: 'wonder', round: 0 };
+      // Context mode merges FIND + DISCOVER onto the seed screen (the reveal is
+      // shown there as a second snap section), so skip the standalone reveal
+      // round-0 phase and go straight to whatever follows it (reflect / end).
+      if (skipWonder) return advanceFromReveal(0, extras, stop, skipWonder);
+      return { phase: 'reveal', round: 0 };
     }
 
     case 'notice': {
