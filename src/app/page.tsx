@@ -55,14 +55,13 @@ function HomeInner() {
     if (!session) return;
     setAudioDoneFor(session.id);
     try { sessionStorage.setItem('provenance.audioSetupSession', session.id); } catch { /* ignore */ }
-    // First tour ever: pop the menu open pointing at the Auto-Play toggle.
-    try {
-      if (!localStorage.getItem('provenance.autoplayHintShown')) {
-        requestAutoplayHint();
-        localStorage.setItem('provenance.autoplayHintShown', '1');
-      }
-    } catch { /* ignore */ }
+    // Pop the menu open pointing at the Auto-Play toggle so they know where to
+    // change it. (Deferred a tick so it lands after the setup overlay unmounts.)
+    setTimeout(() => requestAutoplayHint(), 350);
   }, [session]);
+  // While the audio setup is still up, hold back the tour content so its
+  // narration (e.g. "Meet Your Guide") doesn't start playing behind the overlay.
+  const audioSetupPending = isActive && !!session && audioDoneFor !== session.id;
 
   useEffect(() => {
     getTours().then(setTours).catch((err) => {
@@ -424,7 +423,7 @@ function HomeInner() {
 
       {/* Tour journal — active tour playback; not shown while we're on
           the map, in midway check-in, or running the closing flow. */}
-      {isActive && !mapPeek && !isOnTourMap && !isMidwayCheckin && !isUnstructuredClosing && (
+      {isActive && !audioSetupPending && !mapPeek && !isOnTourMap && !isMidwayCheckin && !isUnstructuredClosing && (
         <Journal
           onMapPeek={currentStopHasLocation || openingFrameHasLocation ? () => setMapPeek(true) : undefined}
         />
