@@ -92,7 +92,11 @@ export async function saveTour(tour: Tour): Promise<Tour> {
   // returned `next` keeps the in-memory geometry objects for the caller/editor.
   const forStore = mapTourContextGeometry(next, (g) => geometryToStore(g as Geometry | null));
   const { id, ...data } = forStore;
-  await setDoc(doc(db, TOURS_COLLECTION, id), data);
+  // Firestore's setDoc rejects `undefined` field values (no ignoreUndefinedProperties
+  // on this instance), which silently failed saves that cleared an optional field —
+  // e.g. setting "Unlock after listening to" back to "Available from the start". A
+  // JSON round-trip drops undefined so a full-replace setDoc actually clears them.
+  await setDoc(doc(db, TOURS_COLLECTION, id), JSON.parse(JSON.stringify(data)));
   return next;
 }
 
