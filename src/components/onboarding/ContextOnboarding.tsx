@@ -19,7 +19,7 @@ import { usePathname } from 'next/navigation';
 import PastFramework from './PastFramework';
 
 const LEAVE_MS = 500;
-const TOTAL = 12;
+const TOTAL = 11;
 const GATES = [1, 7, 8]; // panel indices that block forward progress until satisfied
 
 function haptic(ms = 10) {
@@ -66,17 +66,21 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
   const scrollToPanel = useCallback((i: number) => {
     const root = screenRef.current;
     if (!root) return;
-    // Defer with a macrotask (NOT rAF, which pauses while the tab is backgrounded)
-    // so freshly-revealed panels are laid out first. Mandatory scroll-snap swallows
-    // a programmatic scroll, so disable it, jump, then restore once it settles
-    // (re-enabling too early snaps the not-yet-committed scroll back to the origin).
-    window.setTimeout(() => {
+    // Defer with a macrotask (NOT rAF, which pauses while the tab is backgrounded).
+    // A gate reveals its target panel via setState just before this runs; when we're
+    // called outside a React event (e.g. from a timer), the commit can lag, so the
+    // panel is still display:none (offsetTop 0). Retry until it's laid out. Mandatory
+    // scroll-snap swallows a programmatic scroll, so disable it, jump, then restore
+    // once settled (restoring too early snaps the scroll back to the origin).
+    const attempt = (tries: number) => window.setTimeout(() => {
       const panel = root.querySelectorAll('.onb-panel')[i] as HTMLElement | undefined;
       if (!panel) return;
+      if (i > 0 && panel.offsetTop === 0 && tries < 6) { attempt(tries + 1); return; }
       root.style.scrollSnapType = 'none';
       root.scrollTop = panel.offsetTop;
       window.setTimeout(() => { root.style.scrollSnapType = ''; }, 220);
-    }, 0);
+    }, tries === 0 ? 0 : 40);
+    attempt(0);
   }, []);
 
   // Satisfy a gate: reveal the panels through to the next gate (or the end) and,
@@ -89,7 +93,7 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
   const onBegin = useCallback(() => { haptic(); scrollToPanel(1); }, [scrollToPanel]);
   const onSubmitRank = useCallback(() => { haptic(); satisfyGate(1, true); }, [satisfyGate]);
   const onExplorePast = useCallback(() => { haptic(); satisfyGate(7, true); }, [satisfyGate]);
-  const onLensesDone = useCallback(() => { satisfyGate(8, false); }, [satisfyGate]);
+  const onLensesDone = useCallback(() => { satisfyGate(8, true); }, [satisfyGate]);
 
   if (dismissed || onAdmin) return <>{children}</>;
 
@@ -158,11 +162,11 @@ const OnbPanels = memo(function OnbPanels({
         </div>
       </section>
 
-      {/* 3 — Thanks (paragraphs fade one at a time) */}
-      <section data-idx={2} className="onb-panel" style={vis(2)}>
+      {/* 3 — Thanks (paragraphs fade one at a time, sat low on the page) */}
+      <section data-idx={2} className="onb-panel onb-bottom" style={vis(2)}>
         <p className="onb-q onb-r" style={{ '--d': '0.1s', color: 'var(--th-primary)', fontSize: 'clamp(30px, 8.5vw, 46px)' } as React.CSSProperties}>Thanks for sharing<br />what you think.</p>
-        <p className="onb-lead onb-r mt-16" style={{ '--d': '1.1s' } as React.CSSProperties}>We might have different thoughts on history&hellip;</p>
-        <p className="onb-lead onb-r mt-6" style={{ '--d': '2.1s' } as React.CSSProperties}>
+        <p className="onb-lead onb-r mt-24" style={{ '--d': '0.7s' } as React.CSSProperties}>We might have different thoughts on history&hellip;</p>
+        <p className="onb-lead onb-r mt-6 ml-auto text-right" style={{ '--d': '1.3s', maxWidth: '26ch' } as React.CSSProperties}>
           &hellip; but most of us learned it as lists of <strong><em>people, dates, and events</em></strong> &mdash; sometimes as a story!
         </p>
       </section>
@@ -171,41 +175,41 @@ const OnbPanels = memo(function OnbPanels({
       <section data-idx={3} className="onb-panel onb-top" style={vis(3)}>
         <p className="onb-lead onb-r">But people, dates, and events are like <Pieces text="fragments" />.</p>
         <p className="onb-lead onb-r mt-10 ml-auto text-right" style={{ '--d': '0.4s', maxWidth: '24ch' } as React.CSSProperties}>
-          To understand the past, we need to piece those fragments back into the <strong style={{ color: 'var(--th-primary)' }}>bigger picture.</strong>
+          To understand the past, we need to piece those fragments back into the <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>bigger picture.</strong>
         </p>
       </section>
 
       {/* 5 — Reconstruct → Context (slow, spaced reveal) */}
       <section data-idx={4} className="onb-panel" style={vis(4)}>
-        <p className="onb-lead onb-r" style={{ '--d': '0.1s' } as React.CSSProperties}><strong>That&rsquo;s how a historian thinks.</strong></p>
-        <p className="onb-lead onb-r mt-6" style={{ '--d': '1.0s' } as React.CSSProperties}>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '0.1s' } as React.CSSProperties}><strong>That&rsquo;s how a historian thinks.</strong></p>
+        <p className="onb-lead onb-r mt-6" style={{ '--d': '0.7s' } as React.CSSProperties}>
           To understand the past, they first <Reconstruct text="reconstruct" />{' '}the bigger picture &mdash; or the world around people and events.
         </p>
-        <p className="onb-lead onb-r mt-16 text-center italic" style={{ '--d': '2.2s' } as React.CSSProperties}>That world is what historians call&hellip;</p>
-        <p className="onb-r mt-5 text-center" style={{ '--d': '3.0s', transitionDuration: '1.3s' } as React.CSSProperties}><span className="onb-ctx" style={{ fontSize: 'clamp(46px, 15vw, 74px)' }}>Context</span></p>
+        <p className="onb-lead onb-r mt-20 text-center italic" style={{ '--d': '1.6s' } as React.CSSProperties}>That world is what historians call&hellip;</p>
+        <p className="onb-r mt-5 text-center" style={{ '--d': '2.3s', transitionDuration: '1.3s' } as React.CSSProperties}><span className="onb-ctx" style={{ fontSize: 'clamp(46px, 15vw, 74px)' }}>Context</span></p>
       </section>
 
-      {/* 6 — Definition (vertically centred; sparse emphasis) */}
+      {/* 6 — Definition (vertically centred; only the two verbs bold) */}
       <section data-idx={5} className="onb-panel" style={vis(5)}>
         <p className="onb-lead onb-r" style={{ opacity: 0.85 }}>Contextualising is&hellip;</p>
-        <p className="onb-q onb-r mt-5" style={{ '--d': '0.3s', color: 'var(--th-text)', fontSize: 'clamp(28px, 7.5vw, 44px)' } as React.CSSProperties}>
+        <p className="onb-lead onb-r mt-12" style={{ '--d': '0.3s' } as React.CSSProperties}>
           <strong>Reconstructing</strong> a <em>time and place</em> in the past&hellip;
         </p>
-        <p className="onb-q onb-r mt-6 ml-auto text-right" style={{ '--d': '0.6s', color: 'var(--th-text)', fontSize: 'clamp(28px, 7.5vw, 44px)' } as React.CSSProperties}>
-          &hellip; then using it to understand <strong>people and events.</strong>
+        <p className="onb-lead onb-r mt-6 ml-auto text-right" style={{ '--d': '0.6s', maxWidth: '24ch' } as React.CSSProperties}>
+          &hellip; then using it to <strong>understand</strong> <em>people and events.</em>
         </p>
       </section>
 
-      {/* 7 — So how? (tap the blurred phrase) */}
-      <section data-idx={6} className="onb-panel onb-top" style={vis(6)}>
+      {/* 7 — So how? (phrase fades in slowly, low on the page) */}
+      <section data-idx={6} className="onb-panel onb-bottom" style={vis(6)}>
         <SlideAsk />
       </section>
 
-      {/* 8 — Provenance + P.A.S.T. (button to go on) */}
-      <section data-idx={7} className="onb-panel onb-top" style={vis(7)}>
+      {/* 8 — Provenance + P.A.S.T. (sits low so the button is near the bottom) */}
+      <section data-idx={7} className="onb-panel onb-bottom" style={vis(7)}>
         <p className="onb-q onb-r" style={{ color: 'var(--th-text)', fontSize: 'clamp(28px, 7.5vw, 44px)' }}>This is where <span style={{ color: 'var(--th-primary)' }}>Provenance</span> comes in.</p>
         <p className="onb-lead onb-r mt-12" style={{ '--d': '0.3s' } as React.CSSProperties}>
-          We use the <PastWord /> framework to help you think about <strong style={{ color: 'var(--th-primary)' }}>context</strong> in <em>different lenses</em>&hellip;
+          We use the <PastWord /> framework to help you think about <strong style={{ color: 'var(--th-primary)' }}>context</strong> in different lenses&hellip;
         </p>
         <p className="onb-lead onb-r mt-5 ml-auto text-right" style={{ '--d': '0.55s' } as React.CSSProperties}>
           &hellip; then we <strong>ask questions</strong> to <Reconstruct text="reconstruct" />{' '}the world around us.
@@ -225,8 +229,8 @@ const OnbPanels = memo(function OnbPanels({
         <p className="onb-lead onb-r italic" style={{ opacity: 0.85 }}>In this experience you will&hellip;</p>
         <div className="mt-8 flex flex-col items-center text-center">
           {FLOW.map((f, i) => (
-            <div key={f.word} className="onb-r flex flex-col items-center" style={{ '--d': `${0.3 + i * 0.8}s` } as React.CSSProperties}>
-              <p className="font-display leading-none" style={{ color: f.colour, fontSize: 'clamp(40px, 12vw, 62px)' }}>{f.word}</p>
+            <div key={f.word} className="onb-r flex flex-col items-center" style={{ '--d': `${0.25 + i * 0.5}s` } as React.CSSProperties}>
+              <p className="font-display leading-none" style={{ color: f.colour, fontSize: 'clamp(46px, 14vw, 74px)' }}>{f.word}</p>
               <p className="mt-1 font-serif text-[17px]" style={{ color: 'var(--th-text)', opacity: 0.8 }}>{f.sub}</p>
               {i < FLOW.length - 1 && (
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--th-secondary)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="my-3"><path d="M12 5v14M6 13l6 6 6-6" /></svg>
@@ -234,16 +238,10 @@ const OnbPanels = memo(function OnbPanels({
             </div>
           ))}
         </div>
-        <p className="onb-lead onb-r italic mt-8 ml-auto text-right" style={{ '--d': '2.7s' } as React.CSSProperties}>&hellip; to think like a historian.</p>
       </section>
 
-      {/* 11 — Why it matters */}
-      <section data-idx={10} className="onb-panel" style={vis(10)}>
-        <SlideWhy />
-      </section>
-
-      {/* 12 — Ready → Find a Tour */}
-      <section data-idx={11} className="onb-panel onb-cx" style={vis(11)}>
+      {/* 11 — Ready → Find a Tour */}
+      <section data-idx={10} className="onb-panel onb-cx" style={vis(10)}>
         <SlideReady onDone={onDone} />
       </section>
     </div>
@@ -252,8 +250,13 @@ const OnbPanels = memo(function OnbPanels({
 
 /* ── 1 · Welcome — CTA appears after the logo/wordmark animation ─────── */
 function SlideWelcome({ onBegin }: { onBegin: () => void }) {
-  const [showCta, setShowCta] = useState(false);
-  useEffect(() => { const t = window.setTimeout(() => setShowCta(true), 1700); return () => window.clearTimeout(t); }, []);
+  const [showReady, setShowReady] = useState(false);
+  const [showBtn, setShowBtn] = useState(false);
+  useEffect(() => {
+    const t1 = window.setTimeout(() => setShowReady(true), 1700);
+    const t2 = window.setTimeout(() => setShowBtn(true), 2500);
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+  }, []);
   return (
     <div className="flex flex-col items-center">
       <div className="relative flex items-center justify-center">
@@ -262,33 +265,23 @@ function SlideWelcome({ onBegin }: { onBegin: () => void }) {
         <div className="splash-shadow absolute left-1/2 -bottom-3 h-3 w-36 rounded-[50%]" style={{ backgroundColor: 'rgba(0,0,0,0.1)', filter: 'blur(5px)' }} />
       </div>
       <p className="splash-wordmark onb-title mt-6">Welcome to Provenance!</p>
-      {showCta && (
-        <div className="flex flex-col items-center animate-fade-in">
-          <p className="onb-lead mt-5">Ready to think like a historian?</p>
-          <button onClick={onBegin} className="mt-9 px-9 py-4 rounded-full text-[17px] font-semibold" style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}>
-            Let&rsquo;s begin &darr;
-          </button>
-        </div>
-      )}
+      {/* "Ready…" fades in first, the button follows. */}
+      <p className="onb-lead mt-5 transition-opacity duration-700" style={{ opacity: showReady ? 1 : 0 }}>Ready to think like a historian?</p>
+      <button onClick={onBegin} className="mt-9 px-9 py-4 rounded-full text-[17px] font-semibold transition-opacity duration-500" style={{ opacity: showBtn ? 1 : 0, pointerEvents: showBtn ? 'auto' : 'none', backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}>
+        Let&rsquo;s begin &darr;
+      </button>
     </div>
   );
 }
 
-/* ── 7 · So how? (tap the blurred phrase) ──────────────────────────── */
+/* ── 7 · So how? (the answer fades in slowly) ──────────────────────── */
 function SlideAsk() {
-  const [revealed, setRevealed] = useState(false);
   return (
     <>
       <p className="onb-r" style={{ fontStyle: 'italic', color: 'var(--th-text)', fontFamily: 'var(--th-font-display, "DM Serif Display"), serif', fontSize: 'clamp(30px, 8vw, 46px)', lineHeight: 1.1 }}>So how do we do it?</p>
-      <p className="onb-lead onb-r mt-2" style={{ '--d': '0.15s' } as React.CSSProperties}>By&hellip;</p>
-      <button
-        onClick={() => { if (!revealed) { setRevealed(true); haptic(18); } }}
-        className="onb-r mt-14 font-display leading-tight text-left transition-all duration-500"
-        style={{ '--d': '0.3s', color: 'var(--th-secondary)', fontSize: 'clamp(34px, 9.5vw, 56px)', filter: revealed ? 'none' : 'blur(10px)', cursor: revealed ? 'default' : 'pointer' } as React.CSSProperties}
-      >
-        asking the right questions.
-      </button>
-      {!revealed && <p className="onb-r mt-6 text-[15px] italic" style={{ '--d': '0.5s', color: 'var(--th-text)', opacity: 0.6 } as React.CSSProperties}>Tap to reveal</p>}
+      <p className="onb-r mt-8 font-display leading-tight" style={{ '--d': '0.5s', transitionDuration: '1.5s', color: 'var(--th-secondary)', fontSize: 'clamp(34px, 9.5vw, 56px)' } as React.CSSProperties}>
+        By asking the right questions.
+      </p>
     </>
   );
 }
@@ -296,7 +289,12 @@ function SlideAsk() {
 /* ── 9 · The P.A.S.T. lenses (reveal all → unlock) ─────────────────── */
 function SlideLenses({ onDone }: { onDone: () => void }) {
   const [all, setAll] = useState(false);
-  useEffect(() => { if (all) onDone(); }, [all, onDone]);
+  // Once every lens is revealed, show the closing line, then auto-scroll on.
+  useEffect(() => {
+    if (!all) return;
+    const t = window.setTimeout(onDone, 1500);
+    return () => window.clearTimeout(t);
+  }, [all, onDone]);
   return (
     <>
       <p className="onb-lead onb-r mb-4" style={{ fontSize: 'clamp(23px, 6vw, 28px)' }}>Check out the lenses of the <PastWord />!</p>
@@ -304,7 +302,7 @@ function SlideLenses({ onDone }: { onDone: () => void }) {
         <PastFramework onAllRevealed={() => setAll(true)} />
       </div>
       {all && (
-        <p className="mt-5 text-center font-serif animate-fade-in" style={{ fontSize: 'clamp(17px, 4.6vw, 20px)', color: 'var(--th-primary)' }}>
+        <p className="mt-6 text-center font-serif animate-fade-in" style={{ fontSize: 'clamp(20px, 5.4vw, 26px)', color: 'var(--th-text)' }}>
           Use these lenses to help ask context questions.
         </p>
       )}
@@ -319,49 +317,7 @@ const FLOW = [
   { word: 'Reflect', sub: 'Share your thoughts!', colour: 'var(--th-secondary)' },
 ];
 
-/* ── 11 · Why it matters (reveal one at a time on scroll) ──────────── */
-function RedWord({ children }: { children: React.ReactNode }) {
-  return <span style={{ color: 'var(--th-primary)', fontWeight: 700 }}>{children}</span>;
-}
-function SlideWhy() {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [shown, setShown] = useState(0);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    let started = false;
-    const io = new IntersectionObserver((entries) => entries.forEach((e) => {
-      if (e.isIntersecting && !started) {
-        started = true;
-        [0, 1, 2].forEach((i) => window.setTimeout(() => setShown((s) => Math.max(s, i + 1)), 400 + i * 1000));
-      }
-    }), { threshold: 0.5 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  const small: React.CSSProperties = { fontSize: 'clamp(17px, 4.4vw, 20px)', color: 'var(--th-text)', opacity: 0.85 };
-  const lines = [
-    <><RedWord>Question</RedWord><span style={small}> and see past what is in front of us.</span></>,
-    <><RedWord>Connect</RedWord><span style={small}> better to the past.</span></>,
-    <><RedWord>Map out</RedWord><span style={small}> the past from one place to another using </span><RedWord>context</RedWord><span style={small}>!</span></>,
-  ];
-  return (
-    <div ref={ref}>
-      <p className="onb-r" style={{ fontFamily: 'var(--th-font-body, "Newsreader"), serif', fontSize: 'clamp(24px, 6.4vw, 32px)', lineHeight: 1.3, color: 'var(--th-text)' }}>
-        <strong><em>Contextualising</em></strong> is important because it helps us&hellip;
-      </p>
-      <div className="mt-10 space-y-6">
-        {lines.map((line, i) => (
-          <p key={i} className="transition-all duration-700" style={{ fontSize: 'clamp(24px, 6.4vw, 30px)', lineHeight: 1.2, opacity: i < shown ? 1 : 0, transform: i < shown ? 'translateY(0)' : 'translateY(12px)' }}>
-            {line}
-          </p>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ── 12 · Ready → Find a Tour ──────────────────────────────────────── */
+/* ── 11 · Ready → Find a Tour ──────────────────────────────────────── */
 function SlideReady({ onDone }: { onDone: () => void }) {
   const [yes, setYes] = useState(false);
   return (
