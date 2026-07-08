@@ -15,6 +15,8 @@ import UnstructuredMapControls, { MidwayCheckinCard } from '@/components/tour/ca
 import UnstructuredClosingView from '@/components/tour/cards/UnstructuredClosingView';
 import TourFooter from '@/components/tour/TourFooter';
 import TourMenu from '@/components/tour/TourMenu';
+import TourAudioSetup from '@/components/tour/TourAudioSetup';
+import { requestAutoplayHint } from '@/lib/autoplay-hint';
 import RoomLobby from '@/components/room/RoomLobby';
 import RoomStopProposalOverlay from '@/components/room/RoomStopProposalOverlay';
 import { useRoom } from '@/context/RoomContext';
@@ -41,6 +43,26 @@ function HomeInner() {
     enterUnstructuredStop,
   } = useTour();
   const { room, isHost: isRoomHost } = useRoom();
+
+  // Per-tour audio (Listen/Read) setup gate — shown once at the start of each
+  // tour. Keyed by session id (persisted for this tab so a reload mid-tour
+  // doesn't re-show it).
+  const [audioDoneFor, setAudioDoneFor] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try { return sessionStorage.getItem('provenance.audioSetupSession'); } catch { return null; }
+  });
+  const finishAudioSetup = useCallback(() => {
+    if (!session) return;
+    setAudioDoneFor(session.id);
+    try { sessionStorage.setItem('provenance.audioSetupSession', session.id); } catch { /* ignore */ }
+    // First tour ever: pop the menu open pointing at the Auto-Play toggle.
+    try {
+      if (!localStorage.getItem('provenance.autoplayHintShown')) {
+        requestAutoplayHint();
+        localStorage.setItem('provenance.autoplayHintShown', '1');
+      }
+    } catch { /* ignore */ }
+  }, [session]);
 
   useEffect(() => {
     getTours().then(setTours).catch((err) => {
@@ -367,6 +389,11 @@ function HomeInner() {
           <TourFooter tour={activeTour} session={session} />
           <TourMenu />
         </>
+      )}
+
+      {/* Per-tour audio setup — gates the tour once, right after Begin Tour. */}
+      {isActive && session && audioDoneFor !== session.id && (
+        <TourAudioSetup onDone={finishAudioSetup} />
       )}
 
       {/* Map peek return — full-width bottom bar shown when the user is
