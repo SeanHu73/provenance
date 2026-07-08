@@ -10,19 +10,28 @@
  * magnifier opens the shared PastLensCard with the sample context questions.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { LENSES, type LensDef } from '@/features/context-journal/constants';
 import PastLensCard from '@/features/context-journal/components/PastLensCard';
 
-export default function PastFramework() {
+/** A light haptic tick (no-op where unsupported). */
+function haptic(ms = 12) {
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(ms);
+}
+
+export default function PastFramework({ onAllRevealed }: { onAllRevealed?: () => void } = {}) {
   const [openLens, setOpenLens] = useState<LensDef | null>(null);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
   const allRevealed = revealed.size === LENSES.length;
 
+  // Tell the onboarding once every lens has been unveiled (unlocks the scroll).
+  useEffect(() => { if (allRevealed) onAllRevealed?.(); }, [allRevealed, onAllRevealed]);
+
   const reveal = (key: string) =>
     setRevealed((prev) => {
       if (prev.has(key)) return prev;
+      haptic();
       const next = new Set(prev);
       next.add(key);
       return next;
