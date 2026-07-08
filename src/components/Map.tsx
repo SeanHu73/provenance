@@ -969,6 +969,18 @@ export default function MapContainer({
     setContainerSize(s);
   }, []);
 
+  // Google calls this global when it rejects the Maps key (bad/absent key,
+  // HTTP-referrer restriction that doesn't allow this site, billing disabled, or
+  // the Maps JavaScript API not enabled). Surface a clear, actionable message
+  // instead of only Google's grey "This page can't load Google Maps correctly."
+  const [authFailed, setAuthFailed] = useState(false);
+  useEffect(() => {
+    const w = window as unknown as { gm_authFailure?: () => void };
+    const prev = w.gm_authFailure;
+    w.gm_authFailure = () => setAuthFailed(true);
+    return () => { w.gm_authFailure = prev; };
+  }, []);
+
   const tourLocs = (tourPins ?? []).filter((tp) => tp.tour.location).map((tp) => tp.tour.location!);
 
   function handleTourPinClick(tour: Tour) {
@@ -1002,6 +1014,16 @@ export default function MapContainer({
   return (
     <APIProvider apiKey={apiKey}>
       <div className="relative w-full h-full">
+        {authFailed && (
+          <div className="absolute inset-0 z-[40] flex items-center justify-center p-6 text-center font-sans" style={{ backgroundColor: 'var(--th-surface)' }}>
+            <div className="max-w-xs">
+              <p className="font-semibold text-text-primary">Map couldn&rsquo;t load</p>
+              <p className="mt-1.5 text-sm text-text-secondary leading-snug">
+                Google rejected the Maps key. In Google Cloud, check that this site is in the key&rsquo;s allowed referrers, the Maps JavaScript API is enabled, and billing is active.
+              </p>
+            </div>
+          </div>
+        )}
         <GoogleMap
           mapId="b8f339c02d8c7d5bd3f12d1b"
           defaultCenter={CHURCH_LOCATION}
