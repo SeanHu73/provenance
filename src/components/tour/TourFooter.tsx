@@ -8,7 +8,6 @@ import { getTourMode, getActiveStops } from '@/lib/tours-store';
 import { findActOfStop, getActs, getActContexts } from '@/lib/tour-session';
 import { useTour } from '@/context/TourContext';
 import MicButton from './MicButton';
-import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useRoom } from '@/context/RoomContext';
 import RoomMenu from '@/components/room/RoomMenu';
 import ContextJournal from '@/features/context-journal/ContextJournal';
@@ -28,9 +27,6 @@ interface Props {
   session: TourSession;
   /** When true, the onboarding "point at the ? button" arrow shows over the ? button. */
   pointAtQuestion?: boolean;
-  /** When true, the bouncing arrow shows over the autoplay toggle so users
-   *  who just made an autoplay choice in onboarding see they can change it. */
-  pointAtAutoplay?: boolean;
 }
 
 /**
@@ -38,10 +34,9 @@ interface Props {
  * Shared between Journal.tsx (in-stop phases) and page.tsx (map, midway,
  * closing) so the footer stays visible across the whole active tour.
  */
-export default function TourFooter({ tour, session, pointAtQuestion = false, pointAtAutoplay = false }: Props) {
+export default function TourFooter({ tour, session, pointAtQuestion = false }: Props) {
   const [showQuestionInput, setShowQuestionInput] = useState(false);
   const [showRoomMenu, setShowRoomMenu] = useState(false);
-  const [autoplayPref, setAutoplayPref] = useAudioAutoplay();
   const { room, isInRoom } = useRoom();
   const { recordContextViewed } = useTour();
   // Context-Prototype hides the Inquiries (ask a question) affordance and
@@ -190,50 +185,6 @@ export default function TourFooter({ tour, session, pointAtQuestion = false, poi
           )}
         </button>
         )}
-        <button
-          data-auto-button
-          onClick={() => setAutoplayPref(!autoplayPref)}
-          className={`relative flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] uppercase tracking-wider font-semibold transition-colors border ${
-            autoplayPref
-              ? 'bg-warm-white text-journal border-warm-white shadow'
-              : 'text-warm-white/85 hover:text-warm-white bg-black/15 hover:bg-black/25 border-white/20'
-          }`}
-          title={autoplayPref ? 'Auto-play narration: on (tap to disable)' : 'Auto-play narration: off (tap to enable)'}
-          aria-pressed={autoplayPref}
-        >
-          Auto
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            fill={autoplayPref ? 'currentColor' : 'none'}
-          >
-            <polygon points="6,4 20,12 6,20" />
-          </svg>
-          {pointAtAutoplay && (
-            <span className="absolute left-1/2 bottom-full mb-1.5 -translate-x-1/2 pointer-events-none">
-              <svg
-                className="animate-bounce"
-                width="46"
-                height="46"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--th-secondary)"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))' }}
-              >
-                <line x1="12" y1="3" x2="12" y2="17" />
-                <polyline points="5 11 12 18 19 11" />
-              </svg>
-            </span>
-          )}
-        </button>
       </div>
 
       {/* Group / room indicator — only mounted while a room is active.

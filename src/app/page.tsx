@@ -14,6 +14,7 @@ import ProgressBar from '@/components/tour/ProgressBar';
 import UnstructuredMapControls, { MidwayCheckinCard } from '@/components/tour/cards/UnstructuredMapOverlay';
 import UnstructuredClosingView from '@/components/tour/cards/UnstructuredClosingView';
 import TourFooter from '@/components/tour/TourFooter';
+import TourMenu from '@/components/tour/TourMenu';
 import RoomLobby from '@/components/room/RoomLobby';
 import RoomStopProposalOverlay from '@/components/room/RoomStopProposalOverlay';
 import { useRoom } from '@/context/RoomContext';
@@ -362,7 +363,10 @@ function HomeInner() {
       {/* Persistent Journal + Ask (?) footer during the map / midway /
           closing phases that page.tsx renders outside Journal. */}
       {isActive && (isOnTourMap || isMidwayCheckin || isUnstructuredClosing) && activeTour && session && session.currentPhase !== 'end' && (
-        <TourFooter tour={activeTour} session={session} />
+        <>
+          <TourFooter tour={activeTour} session={session} />
+          <TourMenu />
+        </>
       )}
 
       {/* Map peek return — full-width bottom bar shown when the user is

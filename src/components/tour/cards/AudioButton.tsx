@@ -6,6 +6,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useAudioSpeed, nextAudioSpeed, speedLabel } from '@/lib/audio-speed';
 
 interface Props {
   audioUrl: string;
@@ -33,9 +34,12 @@ export default function AudioButton({ audioUrl, title, autoplay = false, onTimeU
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  // Tour-wide playback speed (persisted) — applied live to the element below.
+  const [speed, setSpeed] = useAudioSpeed();
 
   useEffect(() => {
     const audio = new Audio(audioUrl);
+    audio.playbackRate = speed;
     audioRef.current = audio;
 
     audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
@@ -57,6 +61,12 @@ export default function AudioButton({ audioUrl, title, autoplay = false, onTimeU
     // preference mid-screen should not retroactively start playback.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioUrl]);
+
+  // Apply speed changes live to the current clip (unlike autoplay, this SHOULD
+  // take effect mid-playback).
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = speed;
+  }, [speed]);
 
   const toggle = useCallback(() => {
     const audio = audioRef.current;
@@ -111,6 +121,7 @@ export default function AudioButton({ audioUrl, title, autoplay = false, onTimeU
             {formatTime(currentTime)} / {duration ? formatTime(duration) : '--:--'}
           </p>
         </div>
+        <SpeedChip speed={speed} onCycle={() => setSpeed(nextAudioSpeed(speed))} />
       </div>
 
       {/* Timeline bar */}
@@ -128,6 +139,31 @@ export default function AudioButton({ audioUrl, title, autoplay = false, onTimeU
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * Obvious tap-to-change playback-speed chip. Shows the current multiplier
+ * (e.g. "1.5×") and cycles through AUDIO_SPEEDS on tap. Shared by the MP3 and
+ * browser-voice players so the control looks and behaves the same everywhere.
+ */
+export function SpeedChip({ speed, onCycle }: { speed: number; onCycle: () => void }) {
+  return (
+    <button
+      onClick={onCycle}
+      aria-label={`Playback speed ${speedLabel(speed)} — tap to change`}
+      title="Playback speed — tap to change"
+      className={`shrink-0 flex items-center gap-1 pl-2 pr-2.5 h-8 rounded-full border-2 text-[13px] font-bold tabular-nums transition-colors ${
+        speed !== 1
+          ? 'bg-aged-gold text-white border-aged-gold'
+          : 'bg-sandstone-light text-journal border-sandstone-light'
+      }`}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M13 2 3 14h7l-1 8 10-12h-7z" />
+      </svg>
+      {speedLabel(speed)}
+    </button>
   );
 }
 

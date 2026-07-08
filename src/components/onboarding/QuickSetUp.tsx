@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { APIProvider, Map as GoogleMap } from '@vis.gl/react-google-maps';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useReadMode } from '@/lib/read-mode';
+import { requestAutoplayHint } from '@/lib/autoplay-hint';
 
 const TOTAL = 5;
 const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -40,7 +41,7 @@ export default function QuickSetUp({ onDone }: { onDone: () => void }) {
         {step === 1 && <FlowStep onNext={next} />}
         {step === 2 && <MapStep onNext={next} />}
         {step === 3 && <FindLearnStep onNext={next} />}
-        {step === 4 && <ReadyStep onDone={onDone} />}
+        {step === 4 && <ReadyStep onDone={() => { requestAutoplayHint(); onDone(); }} />}
       </div>
     </div>
   );
@@ -65,17 +66,16 @@ function PrimaryButton({ children, onClick, disabled }: { children: React.ReactN
 
 /* ── 0 · Audio ─────────────────────────────────────────────────── */
 function AudioStep({ onNext }: { onNext: () => void }) {
-  const [autoplayPref, setAutoplayPref] = useAudioAutoplay();
+  const [, setAutoplayPref] = useAudioAutoplay();
   const [, setReadMode] = useReadMode();
-  // Level 1: prefer listening or reading. Level 2 (listen only): autoplay.
   const [mode, setMode] = useState<'listen' | 'read' | null>(null);
-  const [autoChoice, setAutoChoice] = useState<'on' | 'off' | null>(null);
 
-  const pickListen = () => { setMode('listen'); setReadMode(false); };
-  const pickRead = () => { setMode('read'); setReadMode(true); setAutoplayPref(false); setAutoChoice(null); };
-  const pickAuto = (c: 'on' | 'off') => { setAutoChoice(c); setAutoplayPref(c === 'on'); };
+  // Listen ⇒ read-along collapsed + audio auto-plays. Read ⇒ text expanded +
+  // audio is tap-to-play. (They can flip Auto-Play later from the menu.)
+  const pickListen = () => { setMode('listen'); setReadMode(false); setAutoplayPref(true); };
+  const pickRead = () => { setMode('read'); setReadMode(true); setAutoplayPref(false); };
 
-  const canContinue = mode === 'read' || (mode === 'listen' && autoChoice !== null);
+  const canContinue = mode !== null;
   const selStyle = { background: 'var(--th-primary)', color: 'var(--th-surface)', borderColor: 'var(--th-primary)' };
   const unselStyle = { background: 'transparent', color: 'var(--th-primary)', borderColor: 'var(--th-primary)' };
 
@@ -87,7 +87,6 @@ function AudioStep({ onNext }: { onNext: () => void }) {
           <strong>Earphones</strong> are recommended for the best experience.
         </p>
 
-        {/* Level 1 — Listen or Read */}
         <p className="mt-6 text-[17px] font-semibold text-text-primary text-center">What is your preferred default?</p>
         <div className="mt-4 flex gap-3 justify-center">
           <button
@@ -108,66 +107,16 @@ function AudioStep({ onNext }: { onNext: () => void }) {
           </button>
         </div>
 
-        {/* Level 2 — Listen only: autoplay choice */}
-        {mode === 'listen' && (
-          <div className="mt-7 animate-fade-in">
-            <p className="text-[17px] font-semibold text-text-primary text-center">Should the audio play automatically?</p>
-            <div className="mt-4 flex gap-3 justify-center">
-              {(['on', 'off'] as const).map((opt) => {
-                const selected = autoChoice === opt;
-                return (
-                  <button
-                    key={opt}
-                    onClick={() => pickAuto(opt)}
-                    className="flex items-center gap-2 px-6 py-3 rounded-lg text-[17px] font-semibold border-2 transition-colors"
-                    style={selected ? selStyle : unselStyle}
-                  >
-                    {opt === 'on' ? 'Auto-play' : 'Tap to play'}
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill={opt === 'on' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"><polygon points="6,4 20,12 6,20" /></svg>
-                  </button>
-                );
-              })}
-            </div>
-            {autoChoice !== null && (
-              <p className="mt-5 text-[14px] text-text-secondary text-center px-3 animate-fade-in">
-                Change option anytime with the <strong>Auto</strong> button below.
-              </p>
-            )}
-          </div>
+        {mode && (
+          <p className="mt-5 text-[14px] text-text-secondary text-center px-3 animate-fade-in">
+            {mode === 'listen'
+              ? 'Narration will play automatically — you can change that in the menu.'
+              : 'Text shows by default; audio is tap-to-play. Change that in the menu.'}
+          </p>
         )}
 
-        <div className="mt-8"><PrimaryButton onClick={onNext} disabled={!canContinue}>{mode === 'read' ? 'Continue' : 'Next'}</PrimaryButton></div>
+        <div className="mt-8"><PrimaryButton onClick={onNext} disabled={!canContinue}>Continue</PrimaryButton></div>
       </div>
-
-      {/* Mock tour footer — points to where the Auto toggle lives (Listen only). */}
-      {mode === 'listen' && autoChoice !== null && (
-        <div className="shrink-0 px-4 py-3 border-t flex items-center gap-3 justify-between animate-fade-in" style={{ backgroundColor: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
-          <span
-            className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-warm-white bg-white/25 border border-white/50"
-            style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' }}
-            aria-hidden="true"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-            </svg>
-          </span>
-          <div className="flex-1 min-w-0 text-center leading-tight text-warm-white uppercase tracking-[0.14em] opacity-85" style={{ fontSize: 11 }}>
-            Set Up + Instructions
-          </div>
-          <div className="relative shrink-0">
-            <span className="absolute left-1/2 bottom-full mb-1 -translate-x-1/2 pointer-events-none">
-              <svg className="animate-bounce" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--th-secondary)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))' }}>
-                <line x1="12" y1="3" x2="12" y2="17" /><polyline points="5 11 12 18 19 11" />
-              </svg>
-            </span>
-            <div className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] uppercase tracking-wider font-semibold border ${autoplayPref ? 'bg-warm-white text-journal border-warm-white shadow' : 'text-warm-white/85 bg-black/15 border-white/20'}`}>
-              Auto
-              <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" fill={autoplayPref ? 'currentColor' : 'none'}><polygon points="6,4 20,12 6,20" /></svg>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

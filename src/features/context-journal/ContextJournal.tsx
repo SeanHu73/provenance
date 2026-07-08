@@ -28,6 +28,7 @@ import PastPanel from './components/PastPanel';
 import ContextOverlay from './components/ContextOverlay';
 import AddContextFlow from './components/AddContextFlow';
 import ContextAskFlow from './components/ContextAskFlow';
+import { AutoPlayMenuItem } from '@/components/tour/TourMenu';
 
 /** Comic ink shared with the P.A.S.T. lens buttons, for the "Ask" CTA's border
  *  + hard offset shadow (see PastLens). */
@@ -390,14 +391,17 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
           aria-label="Menu" aria-expanded={menuOpen}
           className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white bg-white/20 hover:bg-white/30 border border-white/40"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
         {menuOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
             <div className="absolute right-3 top-full mt-1 z-50 w-72 max-h-[70vh] overflow-y-auto rounded-2xl shadow-xl bg-warm-white border" style={{ borderColor: 'var(--th-border)' }}>
+              <div className="border-b" style={{ borderColor: 'var(--th-border)' }}>
+                <AutoPlayMenuItem />
+              </div>
               <button
                 onClick={() => { setMenuOpen(false); setAddOpen(true); }}
                 className="w-full flex items-center gap-2 px-4 py-3 text-left font-semibold text-text-primary hover:bg-black/[0.03] border-b"

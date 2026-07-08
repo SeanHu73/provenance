@@ -27,6 +27,7 @@ import EqFinalReflectCard from './cards/EqFinalReflectCard';
 import EqQuestionsCard from './cards/EqQuestionsCard';
 import ProgressBar from './ProgressBar';
 import TourFooter from './TourFooter';
+import TourMenu from './TourMenu';
 import SeedCard from './cards/SeedCard';
 import NoticeCard from './cards/NoticeCard';
 import WonderCard from './cards/WonderCard';
@@ -648,6 +649,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
       {phase !== 'end' && (
         <TourFooter tour={tour} session={session} />
       )}
+      {phase !== 'end' && <TourMenu />}
     </div>
   );
 }

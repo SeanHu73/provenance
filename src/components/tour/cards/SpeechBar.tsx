@@ -22,7 +22,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ttsSanitize, ttsChunks } from '@/lib/tts-text';
-import { ScrollingTitle } from './AudioButton';
+import { ScrollingTitle, SpeedChip } from './AudioButton';
+import { useAudioSpeed, nextAudioSpeed } from '@/lib/audio-speed';
 
 interface Props {
   /** Raw authored text — sanitized here before speaking. */
@@ -40,6 +41,11 @@ const WORDS_PER_SEC = 2.6 * RATE; // rough estimate, for the duration readout on
 export default function SpeechBar({ text, title, autoplay = false, onEnded }: Props) {
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
+  // Tour-wide playback speed multiplier (persisted). A ref so freshly-issued
+  // chunks pick up the current value without re-creating the speak callbacks.
+  const [speed, setSpeed] = useAudioSpeed();
+  const speedRef = useRef(speed);
+  speedRef.current = speed;
   const clean = useMemo(() => ttsSanitize(text), [text]);
   const chunks = useMemo(() => ttsChunks(clean), [clean]);
   // Char offset where each chunk starts, plus the total, to drive progress.
@@ -50,8 +56,8 @@ export default function SpeechBar({ text, title, autoplay = false, onEnded }: Pr
     return { starts: s, total: Math.max(1, acc) };
   }, [chunks]);
   const estTotal = useMemo(
-    () => Math.max(2, Math.round(clean.split(/\s+/).filter(Boolean).length / WORDS_PER_SEC)),
-    [clean],
+    () => Math.max(2, Math.round(clean.split(/\s+/).filter(Boolean).length / (WORDS_PER_SEC * speed))),
+    [clean, speed],
   );
 
   const supported = typeof window !== 'undefined' && 'speechSynthesis' in window;
@@ -94,7 +100,7 @@ export default function SpeechBar({ text, title, autoplay = false, onEnded }: Pr
     idxRef.current = i;
     boundaryRef.current = 0;
     const u = new SpeechSynthesisUtterance(chunks[i]);
-    u.rate = RATE;
+    u.rate = RATE * speedRef.current;
     // Flip to "playing" only once speech actually starts — so if a browser
     // blocks autoplay without a gesture (mobile), the bar stays on its play
     // button instead of a stuck pause button.
@@ -137,6 +143,17 @@ export default function SpeechBar({ text, title, autoplay = false, onEnded }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // speechSynthesis can't retune a live utterance, so on a speed change while
+  // playing, re-issue the current chunk at the new rate.
+  useEffect(() => {
+    if (state === 'playing' && supported) {
+      window.speechSynthesis.cancel();
+      const runId = ++runIdRef.current;
+      speakChunk(runId, idxRef.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speed]);
+
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
@@ -174,6 +191,7 @@ export default function SpeechBar({ text, title, autoplay = false, onEnded }: Pr
             {formatTime(elapsed)} / ~{formatTime(estTotal)}
           </p>
         </div>
+        <SpeedChip speed={speed} onCycle={() => setSpeed(nextAudioSpeed(speed))} />
       </div>
 
       {/* Timeline bar (no seek — speech can't be scrubbed) */}
