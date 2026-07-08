@@ -22,6 +22,7 @@ import ContextAskLoading from '@/components/tour/cards/ContextAskLoading';
 import ImageSearchModal from '@/components/ImageSearchModal';
 import { contextNarrationText } from '@/lib/tts-narration';
 import { uploadSharePhoto } from '@/lib/community-store';
+import { startResearch, cancelJob, setJobTheory, markSeen, useResearchJobs } from '../research-store';
 
 /** A firm two-buzz haptic to draw the learner back when the answer is ready. */
 function readyHaptic() {
@@ -59,6 +60,9 @@ interface Props {
   /** Optional lead line shown above the lens picker — used by the "ask first" gate
    *  to frame this as the required first step. */
   intro?: string;
+  /** Reopen a finished/ongoing background job (from the "answer ready" overlay)
+   *  straight at its research/result screen instead of the lens picker. */
+  existingJobId?: string;
   onClose: () => void;
   onAdd: (draft: ContextDraft) => Promise<void> | void;
   /** Fired once when the learner reaches the revealed response (the "sees a
@@ -78,22 +82,41 @@ interface Props {
   }) => void;
 }
 
-export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'Ask your own question', intro, onClose, onAdd, onAnswered }: Props) {
-  const [phase, setPhase] = useState<Phase>('lens');
-  const [lens, setLens] = useState<PastCategory>('society');
+export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'Ask your own question', intro, existingJobId, onClose, onAdd, onAnswered }: Props) {
+  const jobs = useResearchJobs();
+  const [jobId, setJobId] = useState<string | null>(existingJobId ?? null);
+  const job = jobId ? jobs.find((j) => j.id === jobId) ?? null : null;
+  // The heavy answer lives in the background research store, so it survives the
+  // learner closing this sheet to keep exploring. Mirror the current job into the
+  // local resp/ready the rest of the flow reads.
+  const resp: DetectiveResp | null = job?.result ?? null;
+  const researchReady = job ? job.status !== 'researching' : false;
+
+  const [phase, setPhase] = useState<Phase>(existingJobId ? 'researching' : 'lens');
+  const [lens, setLens] = useState<PastCategory>((job?.lens as PastCategory) ?? 'society');
   const [text, setText] = useState('');
-  const [asked, setAsked] = useState('');
+  const [asked, setAsked] = useState(job?.question ?? '');
   const [coach, setCoach] = useState<FrameResp | null>(null);
-  const [theory, setTheory] = useState('');
-  const [resp, setResp] = useState<DetectiveResp | null>(null);
-  const [researchReady, setResearchReady] = useState(false);
+  const [theory, setTheory] = useState(job?.theory ?? '');
   const [photos, setPhotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [adding, setAdding] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
   // The learner's first-asked question, captured before any coach reframe.
-  const originalQuestionRef = useRef('');
+  const originalQuestionRef = useRef(job?.originalQuestion ?? '');
+
+  // Reopened from the ready overlay on a finished job → jump straight to it.
+  useEffect(() => {
+    if (existingJobId) {
+      const j = jobs.find((x) => x.id === existingJobId);
+      if (j && j.status !== 'researching') { setPhase('result'); markSeen(existingJobId); }
+    }
+    // Run once on open for the incoming job id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingJobId]);
+
+  // Keep the learner's evolving theory on the job so it's there if they reopen it.
+  useEffect(() => { if (jobId) setJobTheory(jobId, theory); }, [jobId, theory]);
 
   const lensLabel = LENS_BY_KEY[lens]?.label ?? 'this';
 
@@ -173,35 +196,22 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
     const question = q.trim();
     if (!question) return;
     setAsked(question);
-    setResp(null);
-    setResearchReady(false);
+    // Hand the heavy answer to the background store so it keeps running even if
+    // the learner closes this sheet to keep exploring.
+    const id = startResearch({
+      question, originalQuestion: originalQuestionRef.current || question,
+      lens, tourId, actId, priorStops, theory,
+    });
+    setJobId(id);
     setPhase('researching');
-
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-    fetch('/api/context-answer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, originalQuestion: originalQuestionRef.current || question, tourId, actId, lens, priorStops }),
-      signal: ctrl.signal,
-    })
-      .then((r) => (r.ok ? r.json() : { status: 'banked' }))
-      .then((data: DetectiveResp) => { setResp(data); setResearchReady(true); })
-      .catch((err) => {
-        if (err?.name === 'AbortError') return;
-        setResp({ status: 'banked' });
-        setResearchReady(true);
-      });
   };
 
   // Bail out of an in-flight search — keeps the question + theory so they can
   // rework and re-ask.
   const cancelSearch = () => {
-    abortRef.current?.abort();
-    abortRef.current = null;
+    if (jobId) cancelJob(jobId);
+    setJobId(null);
     setText(asked || text);
-    setResearchReady(false);
-    setResp(null);
     setPhase('compose');
   };
 
@@ -367,7 +377,7 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
               // Ready: a bright, distinct colour (green = "go") with a pulsing ring
               // — clearly different from the researching state.
               <motion.button
-                onClick={() => setPhase('result')}
+                onClick={() => { if (jobId) markSeen(jobId); setPhase('result'); }}
                 className="relative w-full py-3.5 rounded-xl text-base font-semibold text-white overflow-visible"
                 style={{ backgroundColor: '#16a34a' }}
                 animate={{ scale: [1, 1.04, 1] }}

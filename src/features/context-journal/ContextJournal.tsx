@@ -28,6 +28,7 @@ import PastPanel from './components/PastPanel';
 import ContextOverlay from './components/ContextOverlay';
 import AddContextFlow from './components/AddContextFlow';
 import ContextAskFlow from './components/ContextAskFlow';
+import ResearchReadyBar from './components/ResearchReadyBar';
 import { AutoPlayMenuItem } from '@/components/tour/TourMenu';
 
 /** Comic ink shared with the P.A.S.T. lens buttons, for the "Ask" CTA's border
@@ -121,6 +122,9 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
   const [showMapPanel, setShowMapPanel] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
+  // A finished background job the learner tapped "reveal" on — reopens the ask
+  // sheet straight at its result.
+  const [reopenJobId, setReopenJobId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   // A prior response opened full-screen from the menu (previews are clamped, so
   // long reflections don't blow out the dropdown).
@@ -546,13 +550,19 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
         )}
       </div>
 
-      {/* Ask the Context Detective (lens → dictate/type → AI answer → add). */}
-      {askOpen && (
+      {/* "Answer ready" overlay — pulls the learner back to a background job that
+          finished while they explored something else. Hidden while a sheet is open. */}
+      <ResearchReadyBar tourId={scopeId} hidden={askOpen || !!reopenJobId} onReveal={(id) => setReopenJobId(id)} />
+
+      {/* Ask the Context Detective (lens → dictate/type → AI answer → add). Also
+          reopened straight at a finished job's result via the ready overlay. */}
+      {(askOpen || reopenJobId) && (
         <ContextAskFlow
           tourId={scopeId}
           priorStops={priorStopTitles}
+          existingJobId={reopenJobId ?? undefined}
           onAnswered={(info) => { setExplored(true); onContextQuestion?.(info); }}
-          onClose={() => setAskOpen(false)}
+          onClose={() => { setAskOpen(false); setReopenJobId(null); }}
           onAdd={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); setExplored(true); }}
         />
       )}

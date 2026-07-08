@@ -34,6 +34,7 @@ import NoticeCard from './cards/NoticeCard';
 import WonderCard from './cards/WonderCard';
 import RevealCard from './cards/RevealCard';
 import ReflectCard from './cards/ReflectCard';
+import ReflectGate from './cards/ReflectGate';
 import FormattedText from './cards/FormattedText';
 import WhatsNext from './cards/WhatsNext';
 import BranchCard from './cards/BranchCard';
@@ -567,14 +568,16 @@ export default function Journal({ onMapPeek }: JournalProps) {
         )}
 
         {phase === 'reflect' && currentStop && (
-          <ReflectCard
-            stop={currentStop}
-            isLastStop={isLastStop}
-            onAskQuestion={enterBranch}
-            onContinue={advanceStop}
-            onAddReflection={(sliderValue, followUpResponse) => addReflection(sliderValue, followUpResponse)}
-            isFinalInStop={isContext || !hasBridgeContent(currentStop)}
-          />
+          <ReflectGate tourId={tour.id}>
+            <ReflectCard
+              stop={currentStop}
+              isLastStop={isLastStop}
+              onAskQuestion={enterBranch}
+              onContinue={advanceStop}
+              onAddReflection={(sliderValue, followUpResponse) => addReflection(sliderValue, followUpResponse)}
+              isFinalInStop={isContext || !hasBridgeContent(currentStop)}
+            />
+          </ReflectGate>
         )}
 
         {phase === 'branch' && (
