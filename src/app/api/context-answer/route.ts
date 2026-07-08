@@ -184,12 +184,16 @@ export async function POST(req: Request) {
   if (!question) return NextResponse.json({ error: 'No question provided' }, { status: 400 });
   if (!tourId) return NextResponse.json(banked(question, tourId, actId, '', originalQuestion));
 
+  const t0 = Date.now();
+  const timings: Record<string, number> = {};
   try {
     // 1. Retrieval — embed question + authored contexts, cosine over everything.
+    const tRetrieve = Date.now();
     const { candidates, preferredDomains } = await loadCandidates(tourId);
     const contexts = candidates.filter((c) => c.kind === 'context');
     const [qVec, ...ctxVecs] = await embedTexts([question, ...contexts.map(candidateText)]);
     contexts.forEach((c, i) => { c.embedding = ctxVecs[i]; });
+    timings.retrieve = Date.now() - tRetrieve;
 
     const ranked = candidates
       .map((c) => ({ ...c, score: cosine(qVec, c.embedding) }))
@@ -217,8 +221,11 @@ export async function POST(req: Request) {
       + `PRIORITISED DOMAINS for web search (prioritise, do not restrict to): ${domains.join(', ') || 'academic and official / university sites'}\n\n`
       + `Follow your P.A.S.T., Research, and Grounding skills. Screen first (is this a question? is it about context?). If the verified base directly answers, use it (branch verified-base). If not, supplement with web search — first decide the specific entities, dates, or sub-questions you actually need and run targeted queries for those rather than one broad search, prioritising the domains above and academic / official / university sources, and marking every web source unverified (branch live). Well-established, verifiable facts (who someone was, their religion or role, key dates and events) may be answered from any reputable source — encyclopedic, news, official, or university, not only academic — as long as you cite it and mark it unverified; do not bank a question just because the best source is a general reference. Only bank (status + branch banked) when the answer genuinely cannot be established from available sources, and decide that PROMPTLY: if a couple of targeted searches turn up nothing usable, bank quickly and honestly rather than spending further searches — a fast "we could not find this" is far better than a slow one. Then call submit_answer exactly once: the draft (guiding first-person plural, it will be voiced afterwards), the branch, the lead lens, and every source you actually used as its own object in the sources array (entry/context id for verified, url for web) — never as text and never inside relevanceNote. Leave unused source sub-fields as empty strings, and relevanceNote empty unless this context is likely not relevant to what the learner is exploring.`;
 
+    const tResearch = Date.now();
     const research = await researchDraft(researchSystem(), researchUser);
+    timings.research = Date.now() - tResearch;
     if (!research || research.status === 'banked') {
+      console.log(`[detective] "${question.slice(0, 70)}" → banked · retrieve=${timings.retrieve}ms research=${timings.research}ms total=${Date.now() - t0}ms`);
       return NextResponse.json(banked(question, tourId, actId, '', originalQuestion));
     }
 
@@ -245,7 +252,9 @@ export async function POST(req: Request) {
     const voiceUser =
       `Rewrite the following draft for the spoken Context Detective voice, following your Narrative Voice skill exactly. Do not add, remove, or change any fact, source, or claim — only the prose. British spelling, no em dashes, written to be heard. You are granted NO rationed devices this turn: no closing question, no painted scene, no exclamation. Return only the rewritten prose.\n\n`
       + `DRAFT:\n${research.draft}\n\nLENS: ${entryLens}`;
+    const tVoice = Date.now();
     const narrative = (await voiceRewrite(voiceSystem(), voiceUser)) || research.draft;
+    timings.voice = Date.now() - tVoice;
 
     // 4. Parse to handout.
     const parseUser =
@@ -255,7 +264,13 @@ export async function POST(req: Request) {
       + `BRANCH: ${research.branch}\n${research.relevanceNote ? `RELEVANCE NOTE (Case 2): ${research.relevanceNote}\n` : ''}\n`
       + `SPOKEN ANSWER:\n${narrative}\n\n`
       + `Return the handout JSON: one or more cards (lens, title, summary, explanation, sources[] with checkThis arrays), and relevanceNote (empty string if none).`;
+    const tParse = Date.now();
     const parsed = await parseHandout(parseSystem(), parseUser);
+    timings.parse = Date.now() - tParse;
+    console.log(
+      `[detective] "${question.slice(0, 70)}" → ${research.status}/${research.branch} · `
+      + `retrieve=${timings.retrieve}ms research=${timings.research}ms voice=${timings.voice}ms parse=${timings.parse}ms · total=${Date.now() - t0}ms`,
+    );
 
     const handout: DetectiveHandout = {
       framingQuestion: question,   // stamped by the route

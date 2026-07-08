@@ -92,7 +92,10 @@ export async function researchDraft(system: string, userText: string): Promise<R
     },
   ];
   const messages: Json[] = [{ role: 'user', content: userText }];
+  const started = Date.now();
+  let totalSearches = 0;
   for (let i = 0; i < 8; i++) {
+    const iterStart = Date.now();
     const resp = await callClaude({
       model: SONNET,
       max_tokens: 8000,
@@ -103,15 +106,39 @@ export async function researchDraft(system: string, userText: string): Promise<R
       messages,
     });
     const content: Json[] = resp.content || [];
+
+    // Visibility: what did this turn search, and how long did it take? Web search
+    // is the pipeline's main latency, so log every query + how many results came
+    // back. server_tool_use carries the query; web_search_tool_result the hits.
+    const queries = content
+      .filter((b: Json) => b.type === 'server_tool_use' && b.name === 'web_search')
+      .map((b: Json) => b.input?.query as string)
+      .filter(Boolean);
+    const resultUrls = content
+      .filter((b: Json) => b.type === 'web_search_tool_result' && Array.isArray(b.content))
+      .flatMap((b: Json) => (b.content as Json[]).map((r) => r?.url as string).filter(Boolean));
+    totalSearches += queries.length;
+    const iterMs = Date.now() - iterStart;
+    console.log(
+      `[detective] research call ${i + 1} · ${iterMs}ms · stop=${resp.stop_reason}`
+      + (queries.length ? ` · searched: ${queries.map((q) => `"${q}"`).join(', ')}` : '')
+      + (resultUrls.length ? ` → ${resultUrls.length} hits (${resultUrls.slice(0, 6).join(' | ')})` : ''),
+    );
+
     const submit = content.find((b: Json) => b.type === 'tool_use' && b.name === 'submit_answer');
-    if (submit) return submit.input as ResearchOutput;
+    if (submit) {
+      console.log(`[detective] research done · ${Date.now() - started}ms total · ${i + 1} model calls · ${totalSearches} web searches`);
+      return submit.input as ResearchOutput;
+    }
     // Web search is a server tool (resolved inline); on pause_turn/tool_use, resend.
     if (resp.stop_reason === 'pause_turn' || resp.stop_reason === 'tool_use') {
       messages.push({ role: 'assistant', content });
       continue;
     }
+    console.log(`[detective] research ended without submitting (stop=${resp.stop_reason}) after ${Date.now() - started}ms`);
     return null; // ended without submitting — treat as a miss
   }
+  console.log(`[detective] research hit the 8-call cap after ${Date.now() - started}ms, ${totalSearches} searches — giving up`);
   return null;
 }
 
