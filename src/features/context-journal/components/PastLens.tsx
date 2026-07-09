@@ -350,10 +350,9 @@ function QuestionRow({ entry, colour, lock, onTap }: {
         </svg>
       </span>
       {photo && (
-        <span className="block mt-2.5 rounded-lg overflow-hidden" style={{ border: `1.5px solid ${colour}55` }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photo} alt="" className="w-full object-cover" style={{ height: 66 }} />
-        </span>
+        // Full photo, uncropped, capped so it supports the question without dominating.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photo} alt="" className="block mt-2.5 rounded-lg max-w-full" style={{ maxHeight: 150, border: `1.5px solid ${colour}55` }} />
       )}
       {/* speech-bubble tail on the left */}
       <span aria-hidden className="absolute" style={{ left: -13, top: 16, width: 0, height: 0, borderTop: '10px solid transparent', borderBottom: '10px solid transparent', borderRight: `13px solid ${colour}` }} />

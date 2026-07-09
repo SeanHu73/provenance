@@ -7,6 +7,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAudioSpeed, nextAudioSpeed, speedLabel } from '@/lib/audio-speed';
+import { registerTourAudio } from '@/lib/tour-audio';
 
 interface Props {
   audioUrl: string;
@@ -30,6 +31,7 @@ export default function AudioButton({ audioUrl, title, autoplay = false, onTimeU
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -56,7 +58,10 @@ export default function AudioButton({ audioUrl, title, autoplay = false, onTimeU
       audio.play().catch(() => {});
     }
 
-    return () => { audio.pause(); audio.src = ''; };
+    // Let the scroll container pause this clip when its section leaves view.
+    const unregister = rootRef.current ? registerTourAudio(audio, rootRef.current) : undefined;
+
+    return () => { unregister?.(); audio.pause(); audio.src = ''; };
     // autoplay is intentionally only read on mount — toggling the user
     // preference mid-screen should not retroactively start playback.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -95,7 +100,7 @@ export default function AudioButton({ audioUrl, title, autoplay = false, onTimeU
   };
 
   return (
-    <div className="rounded-lg bg-sandstone border border-sandstone-light p-4 space-y-3">
+    <div ref={rootRef} className="rounded-lg bg-sandstone border border-sandstone-light p-4 space-y-3">
       {/* Title row */}
       <div className="flex items-center gap-2">
         <button

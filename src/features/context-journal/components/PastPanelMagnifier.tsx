@@ -262,10 +262,9 @@ function QuestionBubble({ entry, colour, lock, onTap }: {
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-1"><path d="M9 6l6 6-6 6" /></svg>
       </span>
       {photo && (
-        <span className="block mt-2.5 rounded-lg overflow-hidden" style={{ border: `1.5px solid ${colour}55` }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photo} alt="" className="w-full object-cover" style={{ height: 64 }} />
-        </span>
+        // Full photo, uncropped, capped so it supports the question without dominating.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photo} alt="" className="block mt-2.5 rounded-lg max-w-full" style={{ maxHeight: 150, border: `1.5px solid ${colour}55` }} />
       )}
       {/* speech-bubble tail on the left, pointing toward the lens */}
       <span aria-hidden className="absolute" style={{ left: -13, top: 16, width: 0, height: 0, borderTop: '10px solid transparent', borderBottom: '10px solid transparent', borderRight: `13px solid ${colour}` }} />

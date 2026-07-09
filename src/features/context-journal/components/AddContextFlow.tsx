@@ -59,6 +59,11 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
   );
   const [startYear, setStartYear] = useState(initial?.timeRange?.start ?? 1900);
   const [endYear, setEndYear] = useState(initial?.timeRange?.end ?? 1950);
+  // New contexts default to untimed (they span the whole timeline → show across
+  // every period). Detect an existing untimed context by its full-span range.
+  const [untimed, setUntimed] = useState(() =>
+    !initial?.timeRange || (initial.timeRange.start <= TIMELINE_BOUNDS.start && initial.timeRange.end >= TIMELINE_BOUNDS.end),
+  );
   const [geometry, setGeometry] = useState(initial?.geometry ?? null);
   const [camera, setCamera] = useState(initial?.camera ?? null);
   const [mapType, setMapType] = useState<MapType>(initial?.mapType ?? 'default');
@@ -119,7 +124,7 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
   const [showPlaceTime, setShowPlaceTime] = useState(false);
 
   const colour = LENS_BY_KEY[category].colour;
-  const rangeValid = startYear <= endYear;
+  const rangeValid = untimed || startYear <= endYear;
   const canSave = title.trim().length > 0 && rangeValid && !saving;
 
   const addFiles = (kind: 'photo' | 'audio', files: FileList | null) => {
@@ -208,7 +213,7 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
         shortSummary: shortSummary.trim(),
         longExplanation: longExplanation.trim(),
         pastCategory: category,
-        timeRange: { start: startYear, end: endYear },
+        timeRange: untimed ? { start: TIMELINE_BOUNDS.start, end: TIMELINE_BOUNDS.end } : { start: startYear, end: endYear },
         geometry,
         camera,
         mapType,
@@ -469,15 +474,23 @@ export default function AddContextFlow({ onClose, onSubmit, initial, heading = '
             </label>
             <p className="mt-1 text-[11px] text-text-muted">If unticked, place &amp; time stay editable here but don&apos;t appear when reading the context.</p>
           </div>
-          {/* time range */}
-          <Field label="Time range (years)">
-            <div className="flex items-center gap-3">
-              <YearInput value={startYear} onChange={setStartYear} />
-              <span className="text-text-muted">to</span>
-              <YearInput value={endYear} onChange={setEndYear} />
-            </div>
-            <p className="mt-1 text-xs text-text-muted">Use negative years for BC (e.g. −500 = 500 BC).</p>
-            {!rangeValid && <p className="mt-1 text-xs" style={{ color: 'var(--th-primary)' }}>Start year must be on or before the end year.</p>}
+          {/* time range — untimed by default */}
+          <Field label="Time period">
+            <label className="flex items-center gap-2 text-[13px] cursor-pointer mb-2" style={{ color: 'var(--text-primary)' }}>
+              <input type="checkbox" checked={untimed} onChange={(e) => setUntimed(e.target.checked)} />
+              <span className="font-semibold">Untimed — applies across every period</span>
+            </label>
+            {!untimed && (
+              <>
+                <div className="flex items-center gap-3">
+                  <YearInput value={startYear} onChange={setStartYear} />
+                  <span className="text-text-muted">to</span>
+                  <YearInput value={endYear} onChange={setEndYear} />
+                </div>
+                <p className="mt-1 text-xs text-text-muted">Use negative years for BC (e.g. −500 = 500 BC).</p>
+                {!rangeValid && <p className="mt-1 text-xs" style={{ color: 'var(--th-primary)' }}>Start year must be on or before the end year.</p>}
+              </>
+            )}
           </Field>
 
           {/* map step */}
