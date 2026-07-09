@@ -594,7 +594,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
               {guidingQuestion ? (
                 <>
                   <h2 className="font-serif text-[18px] leading-snug text-text-secondary">Look through the P.A.S.T. to contextualise&hellip;</h2>
-                  <p className="mt-1.5 font-display font-bold text-[24px] leading-tight" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>
+                  <p className="mt-3 mb-1 font-display font-bold text-[30px] leading-tight text-center" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>
                 </>
               ) : (
                 <h2 className="font-display text-[26px] leading-tight text-text-primary">Look through the P.A.S.T.</h2>
@@ -615,6 +615,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
               onToggleSave={toggleSave}
               onOpenFull={openFull}
               onAskLens={(lens) => { setAskLens(lens); setAskOpen(true); }}
+              onAnyOpenChange={setAnyLensOpen}
             />
           </>
         )}
@@ -623,7 +624,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
             scroll pinned near the bottom (an overlay CTA), then un-sticks and
             docks in flow just above the Continue button as you reach the end, so
             the two never overlap. (AI flow lands later; opens the add form.) */}
-        <div className={`sticky bottom-4 z-30 px-5 pt-3 ${lensVariant === 'magnifier' && anyLensOpen && !continueNudge ? 'hidden' : ''}`}>
+        <div className={`sticky bottom-4 z-30 px-5 pt-3 ${anyLensOpen && !continueNudge ? 'hidden' : ''}`}>
           <motion.button
             onClick={() => { haptic(10); setContinueNudge(false); setAskLens(undefined); setAskOpen(true); }}
             whileTap={{ x: 4, y: 4, boxShadow: `0px 0px 0 ${INK_SHADOW}` }}

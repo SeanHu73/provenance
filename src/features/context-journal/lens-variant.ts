@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * Which P.A.S.T. lens UI to show: the new magnifying-glass lenses (`magnifier`,
- * the default for everyone) or the original chunky "door" buttons (`classic`).
- * The journal menu has a toggle to switch, and the choice sticks per device.
+ * Which P.A.S.T. lens UI to show: the original chunky "door" buttons (`classic`,
+ * the default) or the newer magnifying-glass lenses (`magnifier`). The journal
+ * menu has a toggle to switch (for brainstorming), and the choice sticks per device.
  */
 
 import { useEffect, useState } from 'react';
 
 export type LensVariant = 'classic' | 'magnifier';
-const DEFAULT: LensVariant = 'magnifier';
+const DEFAULT: LensVariant = 'classic';
 const KEY = 'provenance.lensVariant';
 const subscribers = new Set<() => void>();
 

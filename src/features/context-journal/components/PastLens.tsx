@@ -51,6 +51,8 @@ interface Props {
   onOpenFull: (entry: ContextEntry) => void;
   /** Open the ask flow already scoped to this lens (skips the lens picker). */
   onAskLens?: (lens: PastCategory) => void;
+  /** Report expand/collapse so the journal can hide its floating ask while open. */
+  onOpenChange?: (open: boolean) => void;
 }
 
 /** The name with an oversized leading initial, e.g. a big "P" + "lace". */
@@ -93,9 +95,10 @@ function CountBubbles({ present, questions, big = false }: { present: number; qu
   );
 }
 
-export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, prompt = false, lockInfoById, onFocus, onToggleSave, onOpenFull, onAskLens }: Props) {
+export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, prompt = false, lockInfoById, onFocus, onToggleSave, onOpenFull, onAskLens, onOpenChange }: Props) {
   const [open, setOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
+  useEffect(() => { onOpenChange?.(open); }, [open, onOpenChange]);
   // Once THIS lens has been opened, its tap-cue is done — but the others keep
   // animating until each is tapped.
   const [engaged, setEngaged] = useState(false);

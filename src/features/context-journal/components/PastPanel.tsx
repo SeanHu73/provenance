@@ -9,7 +9,7 @@
  * of truth for what shows.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { LENSES, overlapsRange } from '../constants';
 import type { ContextEntry, PastCategory, TimeRange } from '../types';
 import PastLens from './PastLens';
@@ -30,9 +30,16 @@ interface Props {
   onToggleSave: (id: string) => void;
   onOpenFull: (entry: ContextEntry) => void;
   onAskLens?: (lens: PastCategory) => void;
+  /** True whenever ≥1 lens is expanded — the journal hides its floating ask CTA. */
+  onAnyOpenChange?: (anyOpen: boolean) => void;
 }
 
-export default function PastPanel({ entries, selectedRange, savedIds, focusedId, compact, promptUnopened, lockInfoById, onFocus, onToggleSave, onOpenFull, onAskLens }: Props) {
+export default function PastPanel({ entries, selectedRange, savedIds, focusedId, compact, promptUnopened, lockInfoById, onFocus, onToggleSave, onOpenFull, onAskLens, onAnyOpenChange }: Props) {
+  const openKeys = useRef<Set<string>>(new Set());
+  const handleOpenChange = (key: string, isOpen: boolean) => {
+    if (isOpen) openKeys.current.add(key); else openKeys.current.delete(key);
+    onAnyOpenChange?.(openKeys.current.size > 0);
+  };
   const byLens = useMemo(() => {
     const inRange = entries.filter((e) =>
       overlapsRange({ start: e.timeRange.start, end: e.timeRange.end }, selectedRange),
@@ -59,6 +66,7 @@ export default function PastPanel({ entries, selectedRange, savedIds, focusedId,
           onToggleSave={onToggleSave}
           onOpenFull={onOpenFull}
           onAskLens={onAskLens}
+          onOpenChange={(o) => handleOpenChange(lens.key, o)}
         />
       ))}
     </div>
