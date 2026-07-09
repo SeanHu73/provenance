@@ -252,28 +252,22 @@ function QuestionBubble({ entry, colour, lock, onTap }: {
       </div>
     );
   }
-  // With a photo: a box — big picture on top, question below (like an added
-  // context) so the image is large enough to draw the learner in.
-  if (photo) {
-    return (
-      <button onClick={onTap} className="w-full text-left rounded-2xl overflow-hidden"
-        style={{ backgroundColor: 'var(--th-bg)', border: `2.5px solid ${colour}`, boxShadow: `3px 3px 0 color-mix(in srgb, ${colour} 45%, ${SHADOW})` }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photo} alt="" className="w-full object-cover" style={{ height: 128 }} />
-        <span className="flex items-center gap-2 px-3.5 py-2.5">
-          <span className="flex-1 min-w-0 font-serif text-[15px] text-text-primary leading-snug">{label}</span>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M9 6l6 6-6 6" /></svg>
-        </span>
-      </button>
-    );
-  }
-
-  // No photo: a plain speech bubble with a side tail pointing toward the lens.
+  // A chat bubble: the question leads, large and readable; any photo sits small
+  // in a box at the bottom so it supports the question without stealing focus.
   return (
-    <button onClick={onTap} className="relative w-full text-left rounded-2xl font-serif text-[15px] text-text-primary leading-snug"
-      style={{ backgroundColor: 'var(--th-bg)', border: `2.5px solid ${colour}`, padding: '10px 34px 10px 14px', boxShadow: `3px 3px 0 color-mix(in srgb, ${colour} 45%, ${SHADOW})` }}>
-      {label}
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="absolute right-3 top-1/2 -translate-y-1/2"><path d="M9 6l6 6-6 6" /></svg>
+    <button onClick={onTap} className="relative w-full text-left rounded-2xl"
+      style={{ backgroundColor: 'var(--th-bg)', border: `2.5px solid ${colour}`, padding: '12px 14px', boxShadow: `3px 3px 0 color-mix(in srgb, ${colour} 45%, ${SHADOW})` }}>
+      <span className="flex items-start gap-2">
+        <span className="flex-1 min-w-0 font-serif text-[17px] text-text-primary leading-snug">{label}</span>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-1"><path d="M9 6l6 6-6 6" /></svg>
+      </span>
+      {photo && (
+        <span className="block mt-2.5 rounded-lg overflow-hidden" style={{ border: `1.5px solid ${colour}55` }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photo} alt="" className="w-full object-cover" style={{ height: 64 }} />
+        </span>
+      )}
+      {/* speech-bubble tail on the left, pointing toward the lens */}
       <span aria-hidden className="absolute" style={{ left: -13, top: 16, width: 0, height: 0, borderTop: '10px solid transparent', borderBottom: '10px solid transparent', borderRight: `13px solid ${colour}` }} />
       <span aria-hidden className="absolute" style={{ left: -9, top: 19.5, width: 0, height: 0, borderTop: '6.5px solid transparent', borderBottom: '6.5px solid transparent', borderRight: '9px solid var(--th-bg)' }} />
     </button>
