@@ -28,6 +28,7 @@ import EqFinalReflectCard from './cards/EqFinalReflectCard';
 import EqQuestionsCard from './cards/EqQuestionsCard';
 import { StopTrackerOverlay } from './ProgressBar';
 import PhaseHeader, { phaseGroup } from './PhaseHeader';
+import LeaveTourGuard from './LeaveTourGuard';
 import TourFooter from './TourFooter';
 import TourMenu from './TourMenu';
 import SeedCard from './cards/SeedCard';
@@ -250,6 +251,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
           menu={<TourMenu inline />}
         />
       )}
+      {/* Confirm before the browser/OS back button (or refresh) drops the tour. */}
+      <LeaveTourGuard active={phase !== 'end'} />
       {stopsOpen && <StopTrackerOverlay tour={tour} session={session} onClose={() => setStopsOpen(false)} onPreviewStop={setPreviewStop} />}
       {previewStop && createPortal(
         <div className="fixed inset-0 z-[65] flex flex-col" style={{ backgroundColor: 'var(--th-surface)' }}>
