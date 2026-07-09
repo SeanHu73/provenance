@@ -39,9 +39,13 @@ interface Props {
   onContinue: () => void;
   /** True when this reveal is the final in-stop screen (no bridge → no whats_next). */
   isFinalInStop?: boolean;
+  /** Override the bottom button label (e.g. "Return to …" when revisiting). */
+  continueLabel?: string;
+  /** Hide the tour Back button (used when shown as a read-only revisit preview). */
+  hideBack?: boolean;
 }
 
-export default function RevealCard({ stop, onContinue, isFinalInStop = false }: Props) {
+export default function RevealCard({ stop, onContinue, isFinalInStop = false, continueLabel, hideBack = false }: Props) {
   const hasAudio = !!stop.reveal.audioUrl;
   const [autoplayPref] = useAudioAutoplay();
   const [readMode] = useReadMode();
@@ -145,12 +149,12 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false }: 
 
       {/* Continue + Back */}
       <div className="flex gap-2">
-        <BackButton />
+        {!hideBack && <BackButton />}
         <button
           onClick={onContinue}
           className="flex-1 py-3 rounded-lg text-base font-semibold bg-aged-gold text-white transition-colors"
         >
-          {isFinalInStop ? 'Explore more' : 'Continue'}
+          {continueLabel ?? (isFinalInStop ? 'Explore more' : 'Continue')}
         </button>
       </div>
 

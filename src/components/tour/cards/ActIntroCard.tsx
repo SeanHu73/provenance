@@ -45,17 +45,18 @@ export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props)
           transition: 'opacity 700ms ease-out 300ms, transform 700ms ease-out 300ms',
         }}
       >
-        {/* Phase marker — this act begins the EXPLORE phase. */}
+        {/* Phase marker — begins EXPLORE; matches the Contextualise/Reflect fade
+            scenes' display font, and larger than "Act N". */}
         <div
-          className="font-sans font-black uppercase leading-none mb-4 text-warm-white"
-          style={{ fontSize: 'clamp(26px, 8vw, 46px)', letterSpacing: '0.12em', opacity: 0.92 }}
+          className="font-display leading-[0.95] tracking-tight mb-2 text-warm-white"
+          style={{ fontSize: 'clamp(56px, 18vw, 124px)' }}
         >
           Explore
         </div>
-        {/* "Act N" — amber, very large */}
+        {/* "Act N" — amber, secondary to the phase word */}
         <div
           className="font-display font-bold leading-none"
-          style={{ fontSize: 'clamp(48px, 15vw, 104px)', color: '#F59E0B' }}
+          style={{ fontSize: 'clamp(32px, 9vw, 64px)', color: '#F59E0B' }}
         >
           Act {actNumber}
         </div>

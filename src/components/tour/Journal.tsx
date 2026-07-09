@@ -253,19 +253,18 @@ export default function Journal({ onMapPeek }: JournalProps) {
       {stopsOpen && <StopTrackerOverlay tour={tour} session={session} onClose={() => setStopsOpen(false)} onPreviewStop={setPreviewStop} />}
       {previewStop && createPortal(
         <div className="fixed inset-0 z-[65] flex flex-col" style={{ backgroundColor: 'var(--th-surface)' }}>
-          {/* Revisit bar — this is a read-only peek; Return just closes it. */}
-          <div className="shrink-0 flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: 'var(--th-primary)', borderBottom: '3px solid #241f1b' }}>
-            <button
-              onClick={() => setPreviewStop(null)}
-              className="flex items-center gap-1.5 pl-2 pr-3 py-2 rounded-full text-warm-white font-semibold text-sm bg-white/15 hover:bg-white/25 border-2 border-white/40 shrink-0"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
-              Return to {previewReturnLabel}
-            </button>
-            <span className="flex-1 min-w-0 text-right text-warm-white/90 text-[13px] font-display truncate">Revisiting: {previewStop.title || 'a stop'}</span>
+          {/* Read-only peek — a slim label; the bottom "Return to …" button closes it. */}
+          <div className="shrink-0 flex items-center justify-center px-4 py-2.5" style={{ backgroundColor: 'var(--th-primary)', borderBottom: '3px solid #241f1b' }}>
+            <span className="text-warm-white/90 text-[13px] font-display truncate">Revisiting: {previewStop.title || 'a stop'}</span>
           </div>
-          <div className="flex-1 overflow-y-auto" style={{ backgroundColor: 'var(--th-bg)' }}>
-            <RevealCard stop={previewStop} onContinue={() => setPreviewStop(null)} isFinalInStop />
+          <div className="flex-1 overflow-y-auto px-5 py-6" style={{ backgroundColor: 'var(--th-bg)' }}>
+            <RevealCard
+              stop={previewStop}
+              onContinue={() => setPreviewStop(null)}
+              isFinalInStop
+              hideBack
+              continueLabel={`Return to ${previewReturnLabel}`}
+            />
           </div>
         </div>,
         document.body,
