@@ -12,7 +12,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Stop } from '@/lib/types';
-import { pauseTourAudioWithin } from '@/lib/tour-audio';
+import { pauseTourAudioWithin, resumeTourAudioWithin } from '@/lib/tour-audio';
 import SeedCard from './SeedCard';
 import RevealCard from './RevealCard';
 
@@ -29,8 +29,10 @@ export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = fal
   const [showDiscover, setShowDiscover] = useState(false);
 
   // Mount DISCOVER once it scrolls in, and — since FIND and DISCOVER share one
-  // snap-scroll page — stop a section's audio the moment it snaps out of view so
-  // the two never play over each other.
+  // snap-scroll page — pause a section's audio when it snaps out of view and
+  // resume it (from where it left off) when it snaps back, so the two never play
+  // over each other. The 0.35–0.7 gap is hysteresis: mid-scroll (both ~0.5)
+  // nothing toggles, avoiding a play/pause stutter.
   useEffect(() => {
     const find = findRef.current, discover = discoverRef.current;
     if (!find || !discover) return;
@@ -38,9 +40,10 @@ export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = fal
     const io = new IntersectionObserver(
       (entries) => entries.forEach((e) => {
         if (e.target === discover && e.isIntersecting && e.intersectionRatio >= 0.2) setShowDiscover(true);
-        if (e.intersectionRatio < 0.5) pauseTourAudioWithin(e.target);
+        if (e.intersectionRatio >= 0.7) resumeTourAudioWithin(e.target);
+        else if (e.intersectionRatio <= 0.35) pauseTourAudioWithin(e.target);
       }),
-      { root, threshold: [0.2, 0.5, 0.9] },
+      { root, threshold: [0.2, 0.35, 0.7] },
     );
     io.observe(find);
     io.observe(discover);
