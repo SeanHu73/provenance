@@ -258,13 +258,13 @@ function QuestionBubble({ entry, colour, lock, onTap }: {
     <button onClick={onTap} className="relative w-full text-left rounded-2xl"
       style={{ backgroundColor: 'var(--th-bg)', border: `2.5px solid ${colour}`, padding: '12px 14px', boxShadow: `3px 3px 0 color-mix(in srgb, ${colour} 45%, ${SHADOW})` }}>
       <span className="flex items-start gap-2">
-        <span className="flex-1 min-w-0 font-serif text-[17px] text-text-primary leading-snug">{label}</span>
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-1"><path d="M9 6l6 6-6 6" /></svg>
+        <span className="flex-1 min-w-0 font-serif text-[19px] text-text-primary leading-snug">{label}</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-1.5"><path d="M9 6l6 6-6 6" /></svg>
       </span>
       {photo && (
-        // Full photo, uncropped, capped so it supports the question without dominating.
+        // Full photo, uncropped, capped and centred so it supports the question.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo} alt="" className="block mt-2.5 rounded-lg max-w-full" style={{ maxHeight: 150, border: `1.5px solid ${colour}55` }} />
+        <img src={photo} alt="" className="block mx-auto mt-2.5 rounded-lg max-w-full" style={{ maxHeight: 150, border: `1.5px solid ${colour}55` }} />
       )}
       {/* speech-bubble tail on the left, pointing toward the lens */}
       <span aria-hidden className="absolute" style={{ left: -13, top: 16, width: 0, height: 0, borderTop: '10px solid transparent', borderBottom: '10px solid transparent', borderRight: `13px solid ${colour}` }} />
