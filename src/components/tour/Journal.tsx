@@ -455,6 +455,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
                   priorStopTitles={priorStopTitles}
                   askFirst={askFirst}
                   requireAskToContinue={requireAskToContinue}
+                  exploreLabel={exploreLabel}
+                  onOpenStops={() => setStopsOpen(true)}
                 />
               </div>
             );

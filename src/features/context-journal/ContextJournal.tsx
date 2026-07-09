@@ -27,6 +27,7 @@ import ContextTimeline from './components/ContextTimeline';
 import PastPanel from './components/PastPanel';
 import PastPanelMagnifier from './components/PastPanelMagnifier';
 import { useLensVariant } from './lens-variant';
+import { PhaseBars } from '@/components/tour/PhaseHeader';
 import ContextOverlay from './components/ContextOverlay';
 import AddContextFlow from './components/AddContextFlow';
 import ContextAskFlow from './components/ContextAskFlow';
@@ -106,9 +107,13 @@ interface Props {
     originalQuestion?: string;
     status: 'answered' | 'banked';
   }) => void;
+  /** In-tour: shows the Explore→Contextualise→Reflect phase bars in the header
+   *  (Contextualise active), with EXPLORE opening the stops list. */
+  exploreLabel?: string;
+  onOpenStops?: () => void;
 }
 
-export default function ContextJournal({ tourId, actId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false, requireAskToContinue = false, onContextQuestion }: Props) {
+export default function ContextJournal({ tourId, actId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false, requireAskToContinue = false, onContextQuestion, exploreLabel, onOpenStops }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
   // Both the in-tour flow and the revisit overlay read/write the learner's
   // guest-local contexts (sessionStorage); only a bare standalone visit uses
@@ -441,7 +446,11 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
             </svg>
           </Link>
         )}
-        <h1 className="flex-1 font-display text-xl text-warm-white">Context Journal</h1>
+        {onOpenStops && !revisit ? (
+          <PhaseBars active="contextualise" exploreLabel={exploreLabel} activeSub="the P.A.S.T." onExplore={onOpenStops} className="flex-1" />
+        ) : (
+          <h1 className="flex-1 font-display text-xl text-warm-white">Context Journal</h1>
+        )}
         <button
           onClick={() => setMenuOpen((v) => !v)}
           aria-label="Menu" aria-expanded={menuOpen}

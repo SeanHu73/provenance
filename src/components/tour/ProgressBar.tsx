@@ -400,7 +400,7 @@ export function StopTrackerOverlay({ tour, session, onClose, onPreviewStop }: { 
     null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex flex-col" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
 
       {/* Panel — drops from top */}

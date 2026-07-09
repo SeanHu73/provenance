@@ -39,14 +39,51 @@ const CLIP = [
   'polygon(13px 0,100% 0,100% 100%,0 100%)',
 ];
 
-interface Props {
+interface BarsProps {
   active: PhaseGroup;
-  /** Small line under EXPLORE, e.g. "3 of 6". */
   exploreLabel?: string;
-  /** Small line under the active non-explore bar, e.g. "the P.A.S.T.". */
   activeSub?: string;
-  /** Tap EXPLORE → open the stops list (available from any phase). */
   onExplore?: () => void;
+  className?: string;
+}
+
+/** Just the three slant-split bars — reused inside the Context Journal's own
+ *  header (which already supplies the maroon bar + its own menu). */
+export function PhaseBars({ active, exploreLabel, activeSub, onExplore, className = '' }: BarsProps) {
+  return (
+    <div className={`relative flex min-w-0 h-11 rounded-[11px] overflow-hidden ${className}`} style={{ backgroundColor: INK, border: `2.5px solid ${INK}` }}>
+      {BARS.map((b, i) => {
+        const isActive = b.key === active;
+        const sub = b.key === 'explore' ? exploreLabel : (isActive ? activeSub : undefined);
+        const tappable = b.key === 'explore' && !!onExplore;
+        return (
+          <button
+            key={b.key}
+            type="button"
+            onClick={tappable ? onExplore : undefined}
+            aria-current={isActive ? 'step' : undefined}
+            aria-label={`${b.label}${tappable ? ' — see your stops' : ''}`}
+            className="relative flex-1 flex flex-col items-center justify-center gap-0.5 border-0 leading-none"
+            style={{
+              clipPath: CLIP[i],
+              marginLeft: i === 0 ? 0 : -11,
+              paddingLeft: 6,
+              paddingRight: 6,
+              backgroundColor: isActive ? AMBER : 'var(--warm-white)',
+              color: isActive ? INK : 'var(--text-secondary)',
+              cursor: tappable ? 'pointer' : 'default',
+            }}
+          >
+            <span className="font-sans font-extrabold uppercase" style={{ fontSize: isActive ? 13 : 10, letterSpacing: '0.03em', opacity: isActive ? 1 : 0.7 }}>{b.label}</span>
+            {sub && <span className="font-sans" style={{ fontSize: 8.5, opacity: 0.85 }}>{sub}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+interface Props extends BarsProps {
   /** Back chevron on the left, shown only when provided. */
   onBack?: () => void;
   /** The menu circle, rendered inside the bar. */
@@ -70,40 +107,7 @@ export default function PhaseHeader({ active, exploreLabel, activeSub, onExplore
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         </button>
       )}
-      <div className="relative flex flex-1 min-w-0 h-11 rounded-[11px] overflow-hidden" style={{ backgroundColor: INK, border: `2.5px solid ${INK}` }}>
-        {BARS.map((b, i) => {
-          const isActive = b.key === active;
-          const sub = b.key === 'explore' ? exploreLabel : (isActive ? activeSub : undefined);
-          const tappable = b.key === 'explore' && !!onExplore;
-          return (
-            <button
-              key={b.key}
-              type="button"
-              onClick={tappable ? onExplore : undefined}
-              aria-current={isActive ? 'step' : undefined}
-              aria-label={`${b.label}${tappable ? ' — see your stops' : ''}`}
-              className="relative flex-1 flex flex-col items-center justify-center gap-0.5 border-0 leading-none"
-              style={{
-                clipPath: CLIP[i],
-                marginLeft: i === 0 ? 0 : -11,
-                paddingLeft: i === 0 ? 6 : 6,
-                paddingRight: i === 2 ? 6 : 6,
-                backgroundColor: isActive ? AMBER : 'var(--warm-white)',
-                color: isActive ? INK : 'var(--text-secondary)',
-                cursor: tappable ? 'pointer' : 'default',
-              }}
-            >
-              <span
-                className="font-sans font-extrabold uppercase"
-                style={{ fontSize: isActive ? 13 : 10, letterSpacing: '0.03em', opacity: isActive ? 1 : 0.7 }}
-              >
-                {b.label}
-              </span>
-              {sub && <span className="font-sans" style={{ fontSize: 8.5, opacity: 0.85 }}>{sub}</span>}
-            </button>
-          );
-        })}
-      </div>
+      <PhaseBars active={active} exploreLabel={exploreLabel} activeSub={activeSub} onExplore={onExplore} className="flex-1" />
       {menu && <div className="shrink-0 self-center">{menu}</div>}
     </div>
   );
