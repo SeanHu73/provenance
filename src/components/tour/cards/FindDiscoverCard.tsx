@@ -52,10 +52,10 @@ export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = fal
 
   return (
     <>
-      <section ref={findRef} className="min-h-full snap-start flex flex-col justify-center px-5 py-6">
+      <section ref={findRef} className="min-h-full snap-start flex flex-col justify-start px-5 py-6">
         <SeedCard stop={stop} embedded onPeekMap={onPeekMap} />
       </section>
-      <section ref={discoverRef} className="min-h-full snap-start flex flex-col justify-center px-5 py-6">
+      <section ref={discoverRef} className="min-h-full snap-start flex flex-col justify-start px-5 py-6">
         {showDiscover ? (
           <RevealCard stop={stop} onContinue={onContinue} isFinalInStop={isFinalInStop} />
         ) : (

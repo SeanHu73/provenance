@@ -77,7 +77,7 @@ export default function RevealCard({ stop, onContinue, isFinalInStop = false, co
   ].filter((p) => p.url);
 
   return (
-    <div className="animate-fade-in space-y-4 min-h-full flex flex-col justify-center">
+    <div className="animate-fade-in space-y-4 min-h-full flex flex-col justify-start">
       {/* Title */}
       <div>
         <ActionTitle action="DISCOVER" />
