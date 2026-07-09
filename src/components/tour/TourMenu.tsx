@@ -50,7 +50,7 @@ export function AutoPlayMenuItem({ highlight = false }: { highlight?: boolean })
   );
 }
 
-export default function TourMenu() {
+export default function TourMenu({ inline = false }: { inline?: boolean }) {
   const [open, setOpen] = useState(false);
   const [hint, clearHint] = useAutoplayHint();
 
@@ -65,7 +65,9 @@ export default function TourMenu() {
       <button
         onClick={() => (shown ? close() : setOpen(true))}
         aria-label="Menu" aria-expanded={shown}
-        className="fixed top-3 right-3 z-[46] w-10 h-10 rounded-full flex items-center justify-center text-warm-white bg-black/35 hover:bg-black/50 backdrop-blur border border-white/30 shadow-lg"
+        className={inline
+          ? 'w-10 h-10 rounded-full flex items-center justify-center text-warm-white bg-white/15 hover:bg-white/25 border-2 border-white/50'
+          : 'fixed top-3 right-3 z-[46] w-10 h-10 rounded-full flex items-center justify-center text-warm-white bg-black/35 hover:bg-black/50 backdrop-blur border border-white/30 shadow-lg'}
       >
         {/* three horizontal lines */}
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>

@@ -14,7 +14,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { getActiveStops, getTourMode } from '@/lib/tours-store';
-import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts, getAdditionalStops } from '@/lib/tour-session';
+import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts, getAdditionalStops, getContextOrderedStops, getLogicalStops } from '@/lib/tour-session';
 import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
 import EqSceneCard from './cards/EqSceneCard';
@@ -25,7 +25,8 @@ import EqClosingCard from './cards/EqClosingCard';
 import EqClosingAdditionalCard from './cards/EqClosingAdditionalCard';
 import EqFinalReflectCard from './cards/EqFinalReflectCard';
 import EqQuestionsCard from './cards/EqQuestionsCard';
-import ProgressBar from './ProgressBar';
+import { StopTrackerOverlay } from './ProgressBar';
+import PhaseHeader, { phaseGroup } from './PhaseHeader';
 import TourFooter from './TourFooter';
 import TourMenu from './TourMenu';
 import SeedCard from './cards/SeedCard';
@@ -108,6 +109,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
   } = useTour();
 
   const [paused, setPaused] = useState(false);
+  const [stopsOpen, setStopsOpen] = useState(false);
   const [canScrollMore, setCanScrollMore] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -152,8 +154,13 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
   const stopNum = session.currentStopIndex + 1;
 
-  // Progress bar visibility — show during stops, hide on pre-tour/end screens
-  const showProgress = !['intro', 'meet_guide', 'guide_outro', 'end', 'act_intro', 'act_context_intro', 'act_reflection_intro', 'resources', 'additional_menu'].includes(phase);
+  // Phase header: which of Explore/Contextualise/Reflect we're in, and the
+  // "N of M" explored count (M excludes bonus/additional stops).
+  const group = phaseGroup(phase);
+  const logicalStops = isContext ? getContextOrderedStops(tour) : getLogicalStops(tour);
+  const exploredCount = logicalStops.filter((ls) => new Set(session.completedStops).has(ls.id)).length;
+  const exploreLabel = `${exploredCount} of ${logicalStops.length}`;
+  const activeSub = group === 'contextualise' ? 'the P.A.S.T.' : undefined;
 
   // Determine transition type from the phase history.
   // Look at the previous entry — if it was in the same stop, slide. Otherwise fade.
@@ -223,33 +230,19 @@ export default function Journal({ onMapPeek }: JournalProps) {
       className="fixed inset-0 z-40 flex flex-col"
       style={{ backgroundColor: 'var(--th-surface)' }}
     >
-      {/* Title bar — centered, above progress */}
-      <div
-        className="shrink-0 flex items-center justify-between px-4 py-2"
-        style={{ backgroundColor: 'var(--th-primary)' }}
-      >
-        <div className="w-8">
-          {canGoBack && phase !== 'end' && (
-            <button
-              onClick={goBack}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15"
-              title="Go back"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-          )}
-        </div>
-        <p className="text-lg font-display font-bold text-warm-white text-center">{tour.title}</p>
-        {/* Empty placeholder keeps the title centred without offering a
-            mid-tour exit. Leaving the tour is only available from the
-            EndCard at the natural end of the experience. */}
-        <div className="w-8" />
-      </div>
-
-      {/* Progress bar */}
-      {showProgress && <ProgressBar tour={tour} session={session} />}
+      {/* Phase header — the Explore → Contextualise → Reflect bars replace the
+          old title bar + progress pills; the menu circle now lives inside it. */}
+      {phase !== 'end' && (
+        <PhaseHeader
+          active={group}
+          exploreLabel={exploreLabel}
+          activeSub={activeSub}
+          onExplore={() => setStopsOpen(true)}
+          onBack={canGoBack ? goBack : undefined}
+          menu={<TourMenu inline />}
+        />
+      )}
+      {stopsOpen && <StopTrackerOverlay tour={tour} session={session} onClose={() => setStopsOpen(false)} />}
 
       {/* Card area — scrollable with slide transitions */}
       <div className="flex-1 overflow-hidden relative" style={{ backgroundColor: 'var(--th-bg)' }}>
@@ -669,7 +662,6 @@ export default function Journal({ onMapPeek }: JournalProps) {
       {phase !== 'end' && (
         <TourFooter tour={tour} session={session} />
       )}
-      {phase !== 'end' && <TourMenu />}
     </div>
   );
 }

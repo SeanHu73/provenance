@@ -321,7 +321,7 @@ const Pill = React.forwardRef<
 
 // ─── Swipeable Stop Tracker Overlay ──────────────────────────────
 
-function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: TourSession; onClose: () => void }) {
+export function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: TourSession; onClose: () => void }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentRef = useRef<HTMLDivElement>(null);
   const completedIds = new Set(session.completedStops);

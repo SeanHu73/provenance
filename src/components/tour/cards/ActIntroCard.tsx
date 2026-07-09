@@ -45,6 +45,13 @@ export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props)
           transition: 'opacity 700ms ease-out 300ms, transform 700ms ease-out 300ms',
         }}
       >
+        {/* Phase marker — this act begins the EXPLORE phase. */}
+        <div
+          className="font-sans font-black uppercase leading-none mb-4 text-warm-white"
+          style={{ fontSize: 'clamp(26px, 8vw, 46px)', letterSpacing: '0.12em', opacity: 0.92 }}
+        >
+          Explore
+        </div>
         {/* "Act N" — amber, very large */}
         <div
           className="font-display font-bold leading-none"
