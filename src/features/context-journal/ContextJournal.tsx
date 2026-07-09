@@ -623,11 +623,12 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
             scroll pinned near the bottom (an overlay CTA), then un-sticks and
             docks in flow just above the Continue button as you reach the end, so
             the two never overlap. (AI flow lands later; opens the add form.) */}
-        <div className={`sticky bottom-4 z-30 px-5 pt-3 ${lensVariant === 'magnifier' && anyLensOpen ? 'hidden' : ''}`}>
+        <div className={`sticky bottom-4 z-30 px-5 pt-3 ${lensVariant === 'magnifier' && anyLensOpen && !continueNudge ? 'hidden' : ''}`}>
           <motion.button
             onClick={() => { haptic(10); setContinueNudge(false); setAskLens(undefined); setAskOpen(true); }}
             whileTap={{ x: 4, y: 4, boxShadow: `0px 0px 0 ${INK_SHADOW}` }}
-            animate={{ scale: continueNudge ? [1, 1.08, 1, 1.08, 1] : 1 }}
+            variants={{ rest: { scale: 1 }, nudge: { scale: [1, 1.1, 1, 1.1, 1], transition: { duration: 1.2, ease: 'easeInOut' } } }}
+            animate={continueNudge ? 'nudge' : 'rest'}
             transition={{ type: 'spring', stiffness: 600, damping: 32 }}
             className="w-full flex items-center justify-center gap-2.5 rounded-2xl py-3.5 bg-warm-white font-display font-bold text-[17px]"
             style={{ color: 'var(--th-primary)', border: `3px solid ${INK}`, boxShadow: `4px 4px 0 ${INK_SHADOW}` }}
@@ -649,16 +650,25 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
               // First act: Continue is hollow until they've posed their own
               // question. Tapping it buzzes + nudges toward the ask CTA.
               <>
+                {/* Locked-looking: dashed, translucent, a lock — not a solid CTA. */}
                 <button
                   onClick={() => { haptic(30); setContinueNudge(true); }}
-                  className="w-full py-3.5 rounded-2xl text-base font-semibold border-2 bg-transparent"
-                  style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
+                  className="w-full py-3.5 rounded-2xl text-base font-semibold border-2 border-dashed bg-transparent flex items-center justify-center gap-2"
+                  style={{ color: 'color-mix(in srgb, var(--th-primary) 55%, transparent)', borderColor: 'color-mix(in srgb, var(--th-primary) 38%, transparent)' }}
                 >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                   {continueLabel}
                 </button>
-                {continueNudge && (
-                  <p className="mt-2 text-center text-xs font-semibold" style={{ color: 'var(--th-primary)' }}>Ask your own question first!</p>
-                )}
+                <AnimatePresence>
+                  {continueNudge && (
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+                      className="mt-3 flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-[15px] font-bold text-warm-white"
+                      style={{ backgroundColor: 'var(--th-primary)' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+                      Ask your own question first
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </>
             ) : (
               <>

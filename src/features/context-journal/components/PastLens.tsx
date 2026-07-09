@@ -341,7 +341,9 @@ function QuestionRow({ entry, colour, lock, onTap }: {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="absolute right-3 top-1/2 -translate-y-1/2">
         <path d="M9 6l6 6-6 6" />
       </svg>
-      <span className="absolute" style={{ left: 20, bottom: -11, width: 18, height: 13, background: 'var(--th-bg)', border: `2.5px solid ${colour}`, borderTop: 'none', borderLeft: 'none', clipPath: 'polygon(0 0,100% 0,100% 100%)', transform: 'skewX(-18deg)' }} />
+      {/* speech-bubble tail on the left */}
+      <span aria-hidden className="absolute" style={{ left: -13, top: 16, width: 0, height: 0, borderTop: '10px solid transparent', borderBottom: '10px solid transparent', borderRight: `13px solid ${colour}` }} />
+      <span aria-hidden className="absolute" style={{ left: -9, top: 19.5, width: 0, height: 0, borderTop: '6.5px solid transparent', borderBottom: '6.5px solid transparent', borderRight: '9px solid var(--th-bg)' }} />
     </button>
   );
 }
