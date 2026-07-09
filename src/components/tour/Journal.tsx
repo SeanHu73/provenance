@@ -245,7 +245,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
           active={group}
           exploreLabel={exploreLabel}
           activeSub={activeSub}
-          onExplore={() => setStopsOpen(true)}
+          onOpen={() => setStopsOpen(true)}
           onBack={canGoBack ? goBack : undefined}
           menu={<TourMenu inline />}
         />

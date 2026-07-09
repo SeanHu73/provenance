@@ -27,7 +27,7 @@ import ContextTimeline from './components/ContextTimeline';
 import PastPanel from './components/PastPanel';
 import PastPanelMagnifier from './components/PastPanelMagnifier';
 import { useLensVariant } from './lens-variant';
-import { PhaseBars } from '@/components/tour/PhaseHeader';
+import { PhaseBars, StopsHandle } from '@/components/tour/PhaseHeader';
 import ContextOverlay from './components/ContextOverlay';
 import AddContextFlow from './components/AddContextFlow';
 import ContextAskFlow from './components/ContextAskFlow';
@@ -447,7 +447,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
           </Link>
         )}
         {onOpenStops && !revisit ? (
-          <PhaseBars active="contextualise" exploreLabel={exploreLabel} activeSub="the P.A.S.T." onExplore={onOpenStops} className="flex-1" />
+          <PhaseBars active="contextualise" exploreLabel={exploreLabel} activeSub="the P.A.S.T." onOpen={onOpenStops} className="flex-1" />
         ) : (
           <h1 className="flex-1 font-display text-xl text-warm-white">Context Journal</h1>
         )}
@@ -541,6 +541,11 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
           </>
         )}
       </header>
+      {onOpenStops && !revisit && (
+        <div className="shrink-0 flex justify-center" style={{ backgroundColor: 'var(--th-primary)', borderBottom: '3px solid #241f1b' }}>
+          <StopsHandle onClick={onOpenStops} />
+        </div>
+      )}
 
       {/* 1 — collapsible map + timeline (collapsed by default) */}
       <div data-cj-keep className="shrink-0 border-b" style={{ borderColor: 'var(--th-border)', backgroundColor: 'var(--th-surface)' }}>
