@@ -383,6 +383,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
             // journal behind the learner posing their own question first.
             const actNumber = act ? getActs(tour).findIndex((a) => a.id === act.id) + 1 : 0;
             const askFirst = !additional && actNumber >= 2;
+            // Act 1: no entry gate, but require a self-posed question before continuing.
+            const requireAskToContinue = !additional && actNumber === 1;
             const authored = (additional ? (additional.contexts ?? []) : getActContexts(act)).map((c) => authoredToEntry(c, tour.id));
             const responses = Object.entries(session.actResponses ?? {}).flatMap(([aid, r]) => {
               const refl = r?.reflection;
@@ -432,6 +434,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
                   })}
                   priorStopTitles={priorStopTitles}
                   askFirst={askFirst}
+                  requireAskToContinue={requireAskToContinue}
                 />
               </div>
             );

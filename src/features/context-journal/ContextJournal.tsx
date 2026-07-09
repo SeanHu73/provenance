@@ -86,6 +86,10 @@ interface Props {
    *  learner to pose their *own* context question and see a response before the
    *  journal (exploring other contexts) opens. */
   askFirst?: boolean;
+  /** First act: don't gate entry, but require the learner to pose their *own*
+   *  question before they can continue past the context phase — so they practise
+   *  contextualising at least once early on. */
+  requireAskToContinue?: boolean;
   /** Called when the learner asks their own question and sees a response — hands up
    *  a full snapshot of the Detective answer so the admin Sessions view can
    *  review / correct / promote it. */
@@ -102,7 +106,7 @@ interface Props {
   }) => void;
 }
 
-export default function ContextJournal({ tourId, actId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false, onContextQuestion }: Props) {
+export default function ContextJournal({ tourId, actId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false, requireAskToContinue = false, onContextQuestion }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
   // Both the in-tour flow and the revisit overlay read/write the learner's
   // guest-local contexts (sessionStorage); only a bare standalone visit uses
@@ -596,16 +600,32 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
 
         {inTour && !revisit ? (
           <div className="px-5 pb-8 pt-4">
-            <button
-              onClick={onExit}
-              disabled={!explored}
-              className="w-full py-3.5 rounded-2xl text-base font-semibold text-warm-white disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ backgroundColor: 'var(--th-primary)' }}
-            >
-              {continueLabel}
-            </button>
-            {!explored && (
-              <p className="mt-2 text-center text-xs text-text-muted">Ask a question — or tap one to explore — before continuing.</p>
+            {requireAskToContinue && !exploredUnlocked ? (
+              // First act: they must pose their own question before continuing.
+              <>
+                <button
+                  onClick={() => setAskOpen(true)}
+                  className="w-full py-3.5 rounded-2xl text-base font-semibold text-warm-white"
+                  style={{ backgroundColor: 'var(--th-primary)' }}
+                >
+                  Ask your own question to continue
+                </button>
+                <p className="mt-2 text-center text-xs text-text-muted">Practise contextualising — pose your own question about this act before moving on.</p>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={onExit}
+                  disabled={!explored}
+                  className="w-full py-3.5 rounded-2xl text-base font-semibold text-warm-white disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'var(--th-primary)' }}
+                >
+                  {continueLabel}
+                </button>
+                {!explored && (
+                  <p className="mt-2 text-center text-xs text-text-muted">Ask a question — or tap one to explore — before continuing.</p>
+                )}
+              </>
             )}
           </div>
         ) : (
