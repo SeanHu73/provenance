@@ -48,7 +48,7 @@ export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props)
         {/* Phase marker — begins EXPLORE; matches the Contextualise/Reflect fade
             scenes' display font, and larger than "Act N". */}
         <div
-          className="font-display leading-[0.95] tracking-tight mb-12 text-warm-white"
+          className="font-display font-normal leading-[0.95] tracking-tight mb-20 text-warm-white"
           style={{ fontSize: 'clamp(64px, 21vw, 148px)' }}
         >
           Explore
