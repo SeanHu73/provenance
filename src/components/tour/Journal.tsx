@@ -404,6 +404,12 @@ export default function Journal({ onMapPeek }: JournalProps) {
             const askFirst = !additional && actNumber >= 2;
             // Act 1: no entry gate, but require a self-posed question before continuing.
             const requireAskToContinue = !additional && actNumber === 1;
+            // Persisted signal that they've already engaged this act (asked or
+            // explored a context) — so returning here via back-nav doesn't re-lock.
+            const alreadyEngaged = !!act?.id && (
+              (session.detectiveAnswers || []).some((a) => a.actId === act.id)
+              || (session.viewedContexts || []).some((v) => v.actId === act.id)
+            );
             const authored = (additional ? (additional.contexts ?? []) : getActContexts(act)).map((c) => authoredToEntry(c, tour.id));
             const responses = Object.entries(session.actResponses ?? {}).flatMap(([aid, r]) => {
               const refl = r?.reflection;
@@ -436,6 +442,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
                   onContextQuestion={(info) => recordDetectiveAnswer({
                     id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `ans_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
                     origin: 'self',
+                    actId: act?.id,
                     title: info.title || info.question,
                     shortSummary: info.shortSummary,
                     // Banked answers have no text — record a clear marker so the admin
@@ -456,6 +463,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
                   requireAskToContinue={requireAskToContinue}
                   exploreLabel={exploreLabel}
                   onOpenStops={() => setStopsOpen(true)}
+                  onBack={canGoBack ? goBack : undefined}
+                  alreadyAsked={alreadyEngaged}
                 />
               </div>
             );

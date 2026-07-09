@@ -919,6 +919,9 @@ export interface ContextEntrySnapshot {
   lens: string;
   /** authored = designer's, added = the learner's own copy, self = their own. */
   origin?: 'authored' | 'added' | 'self';
+  /** The act this answer belongs to — lets the journal tell it was asked for this
+   *  act (so back-nav doesn't re-lock the ask gate). */
+  actId?: string;
   /** The question they gave themselves (self-authored contexts). */
   question?: string;
   /** The learner's FIRST question, before the Framing Coach reframe — only stored

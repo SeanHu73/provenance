@@ -111,9 +111,14 @@ interface Props {
    *  (Contextualise active), with EXPLORE opening the stops list. */
   exploreLabel?: string;
   onOpenStops?: () => void;
+  /** In-tour back — steps the tour back a phase (shown as a header arrow). */
+  onBack?: () => void;
+  /** The learner has already asked/explored for this act (from a persisted
+   *  signal) → seed the gates unlocked so back-nav doesn't re-lock them. */
+  alreadyAsked?: boolean;
 }
 
-export default function ContextJournal({ tourId, actId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false, requireAskToContinue = false, onContextQuestion, exploreLabel, onOpenStops }: Props) {
+export default function ContextJournal({ tourId, actId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false, requireAskToContinue = false, onContextQuestion, exploreLabel, onOpenStops, onBack, alreadyAsked = false }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
   // Both the in-tour flow and the revisit overlay read/write the learner's
   // guest-local contexts (sessionStorage); only a bare standalone visit uses
@@ -158,7 +163,9 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   // learner has posed their own question for this act.
   const [othersContexts, setOthersContexts] = useState<ExploredContext[]>([]);
   const [exploredPanelOpen, setExploredPanelOpen] = useState(false);
-  const [askedOwnActId, setAskedOwnActId] = useState<string | null>(null);
+  // Seed the unlock state from a persisted per-act signal so returning to this
+  // act (via back-nav) doesn't re-lock the gates once they've engaged.
+  const [askedOwnActId, setAskedOwnActId] = useState<string | null>(alreadyAsked ? (actId ?? null) : null);
   const [lockNudge, setLockNudge] = useState(false);
   const exploredUnlocked = !!actId && askedOwnActId === actId;
   // A prior response opened full-screen from the menu (previews are clamped, so
@@ -168,12 +175,12 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   const [editEntry, setEditEntry] = useState<ContextEntry | null>(null);
   const [fullEntry, setFullEntry] = useState<ContextEntry | null>(null);
   // In-tour gate: the learner must open at least one context before continuing.
-  const [explored, setExplored] = useState(false);
+  const [explored, setExplored] = useState(!!alreadyAsked);
   // Ask-first gate (act 2+, not additional stops): the journal stays closed until
   // the learner poses their own question and sees a response. `gateAskOpen` shows
   // the question screen straight away; `sawResponseRef` records that they reached a
   // response, so closing the ask flow (Done or after adding) unlocks the journal.
-  const [askedOwn, setAskedOwn] = useState(false);
+  const [askedOwn, setAskedOwn] = useState(!!alreadyAsked);
   const [gateAskOpen, setGateAskOpen] = useState(true);
   const sawResponseRef = useRef(false);
   // The continue gate is engagement with a *question*: tapping an authored
@@ -431,14 +438,14 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
           <button onClick={onExit} aria-label="Close" className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15 text-2xl leading-none">
             &times;
           </button>
+        ) : inTour && onBack ? (
+          // In-tour: step the tour back a phase (returning is safe — gates are
+          // seeded from a persisted signal so they don't re-lock).
+          <button onClick={onBack} aria-label="Go back" className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
         ) : inTour ? (
-          // No back affordance in the gated in-tour flow: the only way onward is
-          // the "Continue" button, so a stray tap can't skip into later phases.
-          <span className="w-9 h-9 flex items-center justify-center text-warm-white/80" aria-hidden>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-            </svg>
-          </span>
+          <span className="w-9 h-9" aria-hidden />
         ) : (
           <Link href="/" aria-label="Back" className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
