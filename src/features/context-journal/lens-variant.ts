@@ -1,31 +1,25 @@
 'use client';
 
 /**
- * A/B flag for the P.A.S.T. lens UI: the original chunky "door" buttons
- * (`classic`) vs the new magnifying-glass lenses (`magnifier`).
- *
- * Each device is assigned a variant 50/50 the first time and it sticks
- * (persisted), so people organically split across the two for testing. A manual
- * override (the journal menu toggle) lets you force either for a demo.
+ * Which P.A.S.T. lens UI to show: the new magnifying-glass lenses (`magnifier`,
+ * the default for everyone) or the original chunky "door" buttons (`classic`).
+ * The journal menu has a toggle to switch, and the choice sticks per device.
  */
 
 import { useEffect, useState } from 'react';
 
 export type LensVariant = 'classic' | 'magnifier';
+const DEFAULT: LensVariant = 'magnifier';
 const KEY = 'provenance.lensVariant';
 const subscribers = new Set<() => void>();
 
 function read(): LensVariant {
-  if (typeof window === 'undefined') return 'classic';
+  if (typeof window === 'undefined') return DEFAULT;
   try {
     const v = window.localStorage.getItem(KEY);
-    if (v === 'classic' || v === 'magnifier') return v;
-    // First visit — assign a stable 50/50 bucket.
-    const assigned: LensVariant = Math.random() < 0.5 ? 'classic' : 'magnifier';
-    window.localStorage.setItem(KEY, assigned);
-    return assigned;
+    return v === 'classic' || v === 'magnifier' ? v : DEFAULT;
   } catch {
-    return 'classic';
+    return DEFAULT;
   }
 }
 
@@ -39,9 +33,9 @@ export function setLensVariant(v: LensVariant): void {
   subscribers.forEach((s) => s());
 }
 
-/** `[variant, setVariant]`. Assigns (and persists) a bucket on first use. */
+/** `[variant, setVariant]`. Defaults to the magnifier; toggling persists. */
 export function useLensVariant(): [LensVariant, (v: LensVariant) => void] {
-  const [variant, setVariant] = useState<LensVariant>('classic');
+  const [variant, setVariant] = useState<LensVariant>(DEFAULT);
   useEffect(() => {
     const update = () => setVariant(read());
     update();
