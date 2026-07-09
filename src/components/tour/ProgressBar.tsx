@@ -321,7 +321,7 @@ const Pill = React.forwardRef<
 
 // ─── Swipeable Stop Tracker Overlay ──────────────────────────────
 
-export function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; session: TourSession; onClose: () => void }) {
+export function StopTrackerOverlay({ tour, session, onClose, onPreviewStop }: { tour: Tour; session: TourSession; onClose: () => void; onPreviewStop?: (stop: Stop) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentRef = useRef<HTMLDivElement>(null);
   const completedIds = new Set(session.completedStops);
@@ -384,6 +384,21 @@ export function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; ses
     }
   }, []);
 
+  // Split the journey into guided stops (numbered) and bonus/additional stops
+  // (shown as "Bonus Stop", never numbered) so the numbering + count exclude bonuses.
+  const additionalIds = new Set((tour.additionalStops || []).map((a) => a.stopId));
+  const mainStops = orderedStops.filter((s) => !additionalIds.has(s.id));
+  const bonusStops = orderedStops.filter((s) => additionalIds.has(s.id));
+  const exploredMain = mainStops.filter((s) => completedIds.has(s.id)).length;
+  const inStopPhase = !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end', 'unstructured_map', 'midway_checkin'].includes(session.currentPhase);
+  const activeStopId = session.currentStopIndex >= 0 ? getActiveStops(tour)[session.currentStopIndex]?.id ?? null : null;
+  const photoFor = (stop: Stop) =>
+    (stop.notice.photos || []).find((p) => p.url) ||
+    (stop.notice.photoUrl ? { url: stop.notice.photoUrl, caption: stop.notice.photoCaption } : null) ||
+    (stop.seed.photos || []).find((p) => p.url) ||
+    (stop.seed.photoUrl ? { url: stop.seed.photoUrl, caption: stop.seed.photoCaption } : null) ||
+    null;
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
@@ -394,16 +409,19 @@ export function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; ses
         style={{ backgroundColor: 'var(--th-surface)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* Header — the count excludes bonus stops */}
         <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--th-border)' }}>
-          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Tour Progress</p>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-sandstone-light/30"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            &times;
-          </button>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Stops explored</p>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold tabular-nums" style={{ color: 'var(--th-primary)' }}>{exploredMain} of {mainStops.length} stops</span>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-sandstone-light/30"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              &times;
+            </button>
+          </div>
         </div>
 
         {/* Horizontal scrollable stop cards */}
@@ -412,55 +430,21 @@ export function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; ses
           className="flex gap-3 px-4 py-4 overflow-x-auto"
           style={{ scrollbarWidth: 'none', scrollSnapType: 'x mandatory' }}
         >
-          {/* Intro card */}
-          {tour.essentialQuestion && (() => {
-            const isActive = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional'].includes(session.currentPhase);
-            const isDone = !isActive;
-            return (
-              <div
-                className={`shrink-0 w-[200px] rounded-xl overflow-hidden border-2 transition-all ${isActive ? 'border-aged-gold shadow-lg' : 'border-olive/30'}`}
-                style={{ scrollSnapAlign: 'center' }}
-              >
-                <div className={`h-28 flex items-center justify-center ${isActive ? 'bg-aged-gold/10' : 'bg-sandstone'}`}>
-                  <span className="text-3xl">📖</span>
-                </div>
-                <div className="p-3" style={{ backgroundColor: 'var(--th-surface)' }}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-aged-gold text-white' : 'bg-olive/20 text-olive'}`}>★</span>
-                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-aged-gold animate-pulse" />}
-                    {isDone && !isActive && <span className="text-olive text-xs">✓</span>}
-                  </div>
-                  <p className={`text-sm font-semibold ${isActive ? 'text-aged-gold' : 'text-text-primary'}`}>Discussion Question</p>
-                  <p className="text-[10px] text-text-secondary mt-0.5">{isActive ? 'In progress' : 'Completed'}</p>
-                </div>
-              </div>
-            );
-          })()}
-
-          {orderedStops.map((stop, i) => {
+          {mainStops.map((stop, i) => {
             const isCompleted = completedIds.has(stop.id);
-            const inStopPhase = !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end', 'unstructured_map', 'midway_checkin'].includes(session.currentPhase);
-            const activeStopId = session.currentStopIndex >= 0 ? getActiveStops(tour)[session.currentStopIndex]?.id : null;
             const isCurrent = inStopPhase && stop.id === activeStopId && !isCompleted;
             const isUpcoming = !isCompleted && !isCurrent;
-
-            const thumbPhoto =
-              (stop.notice.photos || []).find(p => p.url) ||
-              (stop.notice.photoUrl ? { url: stop.notice.photoUrl, caption: stop.notice.photoCaption } : null) ||
-              (stop.seed.photos || []).find(p => p.url) ||
-              (stop.seed.photoUrl ? { url: stop.seed.photoUrl, caption: stop.seed.photoCaption } : null) ||
-              null;
-
-            const displayTitle = stop.title;
+            const thumbPhoto = photoFor(stop);
+            const canPreview = (isCompleted || isCurrent) && !!onPreviewStop;
             const groupLabel = isContext ? null : (stop.mergeGroup || null);
-
             return (
               <div
                 key={stop.id}
                 ref={isCurrent ? currentRef : undefined}
+                onClick={canPreview ? () => { onPreviewStop!(stop); onClose(); } : undefined}
                 className={`shrink-0 w-[200px] rounded-xl overflow-hidden border-2 transition-all ${
                   isCurrent ? 'border-aged-gold shadow-lg' : isCompleted ? 'border-olive/30' : 'border-sandstone-light/50'
-                }`}
+                } ${canPreview ? 'cursor-pointer active:scale-[0.98]' : ''}`}
                 style={{ scrollSnapAlign: 'center' }}
               >
                 <div className={`h-28 ${isUpcoming ? 'bg-sandstone-light/20' : 'bg-sandstone'}`}>
@@ -489,44 +473,61 @@ export function StopTrackerOverlay({ tour, session, onClose }: { tour: Tour; ses
                     {isCompleted && <span className="text-olive text-xs">✓</span>}
                   </div>
                   <p className={`text-sm font-semibold truncate ${isUpcoming ? 'text-text-secondary/40' : 'text-text-primary'}`}>
-                    {isUpcoming ? `Stop ${i + 1}` : (displayTitle || `Stop ${i + 1}`)}
+                    {isUpcoming ? `Stop ${i + 1}` : (stop.title || `Stop ${i + 1}`)}
                   </p>
                   {groupLabel && !isUpcoming && (
-                    <p className="text-[10px] italic truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                      {groupLabel}
-                    </p>
+                    <p className="text-[10px] italic truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>{groupLabel}</p>
                   )}
                   <p className="text-[10px] text-text-secondary mt-0.5">
-                    {isCurrent ? 'In progress' : isCompleted ? 'Completed' : 'Upcoming'}
+                    {isCurrent ? 'In progress' : isCompleted ? 'Completed' : 'Upcoming'}{canPreview ? ' · tap to revisit' : ''}
                   </p>
                 </div>
               </div>
             );
           })}
 
-          {/* Closing card */}
-          {(() => {
-            const closingPhases = ['eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end'];
-            const isActive = closingPhases.includes(session.currentPhase);
+          {/* Bonus / additional stops — shown as "Bonus Stop", never numbered */}
+          {bonusStops.map((stop) => {
+            const isCompleted = completedIds.has(stop.id);
+            const isCurrent = inStopPhase && stop.id === activeStopId && !isCompleted;
+            const thumbPhoto = photoFor(stop);
+            const canPreview = (isCompleted || isCurrent) && !!onPreviewStop;
             return (
               <div
-                className={`shrink-0 w-[200px] rounded-xl overflow-hidden border-2 transition-all ${isActive ? 'border-aged-gold shadow-lg' : 'border-sandstone-light/50'}`}
+                key={stop.id}
+                ref={isCurrent ? currentRef : undefined}
+                onClick={canPreview ? () => { onPreviewStop!(stop); onClose(); } : undefined}
+                className={`shrink-0 w-[200px] rounded-xl overflow-hidden border-2 transition-all ${
+                  isCurrent ? 'border-aged-gold shadow-lg' : 'border-sandstone-light/50'
+                } ${canPreview ? 'cursor-pointer active:scale-[0.98]' : ''}`}
                 style={{ scrollSnapAlign: 'center' }}
               >
-                <div className={`h-28 flex items-center justify-center ${isActive ? 'bg-aged-gold/10' : 'bg-sandstone-light/20'}`}>
-                  <span className="text-3xl">{tour.essentialQuestion ? '🔄' : '✦'}</span>
+                <div className="h-28 bg-sandstone">
+                  {thumbPhoto ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={thumbPhoto.url}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      style={thumbPhoto.thumbnailFocalPoint ? { objectPosition: `${thumbPhoto.thumbnailFocalPoint.x}% ${thumbPhoto.thumbnailFocalPoint.y}%` } : undefined}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center" style={{ background: 'repeating-linear-gradient(45deg, var(--th-surface-alt), var(--th-surface-alt) 8px, var(--th-border) 8px, var(--th-border) 16px)' }}>
+                      <span className="text-2xl">✦</span>
+                    </div>
+                  )}
                 </div>
                 <div className="p-3" style={{ backgroundColor: 'var(--th-surface)' }}>
-                  <p className={`text-sm font-semibold ${isActive ? 'text-aged-gold' : 'text-text-secondary/50'}`}>
-                    {tour.essentialQuestion ? 'Closing Reflection' : 'Wrap Up'}
-                  </p>
-                  <p className="text-[10px] text-text-secondary mt-0.5">
-                    {isActive ? 'In progress' : session.currentPhase === 'end' ? 'Completed' : 'Upcoming'}
-                  </p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-aged-gold/20 text-aged-gold">Bonus</span>
+                    {isCompleted && <span className="text-olive text-xs">✓</span>}
+                  </div>
+                  <p className="text-sm font-semibold truncate text-text-primary">Bonus Stop</p>
+                  <p className="text-[10px] text-text-secondary mt-0.5 truncate">{stop.title || 'Extra context'}{canPreview ? ' · tap to revisit' : ''}</p>
                 </div>
               </div>
             );
-          })()}
+          })}
         </div>
       </div>
     </div>

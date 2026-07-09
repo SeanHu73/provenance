@@ -14,6 +14,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { getActiveStops, getTourMode } from '@/lib/tours-store';
+import type { Stop } from '@/lib/types';
 import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts, getAdditionalStops, getContextOrderedStops, getLogicalStops } from '@/lib/tour-session';
 import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
@@ -110,6 +111,9 @@ export default function Journal({ onMapPeek }: JournalProps) {
 
   const [paused, setPaused] = useState(false);
   const [stopsOpen, setStopsOpen] = useState(false);
+  // Revisit a past stop's Discover screen as a temporary overlay — never touches
+  // the real tour sequence; "Return" just closes it.
+  const [previewStop, setPreviewStop] = useState<Stop | null>(null);
   const [canScrollMore, setCanScrollMore] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -161,6 +165,10 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const exploredCount = logicalStops.filter((ls) => new Set(session.completedStops).has(ls.id)).length;
   const exploreLabel = `${exploredCount} of ${logicalStops.length}`;
   const activeSub = group === 'contextualise' ? 'the P.A.S.T.' : undefined;
+  // Where "Return" from a stop preview sends them back to.
+  const previewReturnLabel = group === 'contextualise' ? 'Contextualising'
+    : group === 'reflect' ? 'Reflecting'
+    : (getActiveStops(tour)[session.currentStopIndex]?.title || 'the tour');
 
   // Determine transition type from the phase history.
   // Look at the previous entry — if it was in the same stop, slide. Otherwise fade.
@@ -242,7 +250,26 @@ export default function Journal({ onMapPeek }: JournalProps) {
           menu={<TourMenu inline />}
         />
       )}
-      {stopsOpen && <StopTrackerOverlay tour={tour} session={session} onClose={() => setStopsOpen(false)} />}
+      {stopsOpen && <StopTrackerOverlay tour={tour} session={session} onClose={() => setStopsOpen(false)} onPreviewStop={setPreviewStop} />}
+      {previewStop && createPortal(
+        <div className="fixed inset-0 z-[65] flex flex-col" style={{ backgroundColor: 'var(--th-surface)' }}>
+          {/* Revisit bar — this is a read-only peek; Return just closes it. */}
+          <div className="shrink-0 flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: 'var(--th-primary)', borderBottom: '3px solid #241f1b' }}>
+            <button
+              onClick={() => setPreviewStop(null)}
+              className="flex items-center gap-1.5 pl-2 pr-3 py-2 rounded-full text-warm-white font-semibold text-sm bg-white/15 hover:bg-white/25 border-2 border-white/40 shrink-0"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+              Return to {previewReturnLabel}
+            </button>
+            <span className="flex-1 min-w-0 text-right text-warm-white/90 text-[13px] font-display truncate">Revisiting: {previewStop.title || 'a stop'}</span>
+          </div>
+          <div className="flex-1 overflow-y-auto" style={{ backgroundColor: 'var(--th-bg)' }}>
+            <RevealCard stop={previewStop} onContinue={() => setPreviewStop(null)} isFinalInStop />
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {/* Card area — scrollable with slide transitions */}
       <div className="flex-1 overflow-hidden relative" style={{ backgroundColor: 'var(--th-bg)' }}>
