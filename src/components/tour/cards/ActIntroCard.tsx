@@ -48,22 +48,22 @@ export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props)
         {/* Phase marker — begins EXPLORE; matches the Contextualise/Reflect fade
             scenes' display font, and larger than "Act N". */}
         <div
-          className="font-display leading-[0.95] tracking-tight mb-2 text-warm-white"
-          style={{ fontSize: 'clamp(56px, 18vw, 124px)' }}
+          className="font-display leading-[0.95] tracking-tight mb-12 text-warm-white"
+          style={{ fontSize: 'clamp(64px, 21vw, 148px)' }}
         >
           Explore
         </div>
-        {/* "Act N" — amber, secondary to the phase word */}
+        {/* "Act N" — amber, italic, secondary to the phase word */}
         <div
-          className="font-display font-bold leading-none"
-          style={{ fontSize: 'clamp(32px, 9vw, 64px)', color: '#F59E0B' }}
+          className="font-display italic font-bold leading-none"
+          style={{ fontSize: 'clamp(38px, 10vw, 76px)', color: '#F59E0B' }}
         >
           Act {actNumber}
         </div>
         {/* Act name / guiding question — white, regular, slightly smaller but still large */}
         {actTitle.trim() && (
           <div
-            className="font-serif text-warm-white leading-tight mt-3"
+            className="font-serif text-warm-white leading-tight mt-5"
             style={{ fontSize: 'clamp(28px, 8vw, 60px)' }}
           >
             {actTitle}

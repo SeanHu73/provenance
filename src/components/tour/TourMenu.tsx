@@ -66,8 +66,9 @@ export default function TourMenu({ inline = false }: { inline?: boolean }) {
         onClick={() => (shown ? close() : setOpen(true))}
         aria-label="Menu" aria-expanded={shown}
         className={inline
-          ? 'w-10 h-10 rounded-full flex items-center justify-center text-warm-white bg-white/15 hover:bg-white/25 border-2 border-white/50'
+          ? 'w-9 h-9 rounded-full flex items-center justify-center bg-warm-white hover:bg-black/[0.04] border-2'
           : 'fixed top-3 right-3 z-[46] w-10 h-10 rounded-full flex items-center justify-center text-warm-white bg-black/35 hover:bg-black/50 backdrop-blur border border-white/30 shadow-lg'}
+        style={inline ? { color: 'var(--text-secondary)', borderColor: 'var(--th-border)' } : undefined}
       >
         {/* three horizontal lines */}
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
