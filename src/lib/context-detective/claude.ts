@@ -81,7 +81,7 @@ const RESEARCH_SCHEMA = {
 
 export async function researchDraft(system: string, userText: string): Promise<ResearchOutput | null> {
   const tools = [
-    { type: 'web_search_20260209', name: 'web_search', max_uses: 4 },
+    { type: 'web_search_20260209', name: 'web_search', max_uses: 3 },
     {
       name: 'submit_answer',
       description:
