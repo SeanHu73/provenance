@@ -12,7 +12,7 @@
  */
 
 import {
-  collection, doc, setDoc, onSnapshot, query, where, serverTimestamp,
+  collection, doc, setDoc, deleteDoc, onSnapshot, query, where, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { PastCategory } from './types';
@@ -60,7 +60,18 @@ export function subscribeGuideQuestions(tourId: string, onChange: (qs: GuideQues
   }, (err) => console.error('[shared-store] guide-questions failed:', err));
 }
 
+export async function setGuideQuestionResolved(tourId: string, id: string, resolved: boolean): Promise<void> {
+  await setDoc(doc(db, TOURS, tourId, 'guide-questions', id), { resolved }, { merge: true });
+}
+export async function deleteGuideQuestion(tourId: string, id: string): Promise<void> {
+  await deleteDoc(doc(db, TOURS, tourId, 'guide-questions', id));
+}
+
 // ── Contexts explored by others (the shared per-act pool) ──
+//
+// A learner-added context lands as `pending`. The admin reviews it (and can
+// edit the text), then `approved` — only approved contexts appear to other
+// learners under "Contexts Explored by Others".
 
 export interface ExploredContext {
   id: string;
@@ -71,31 +82,50 @@ export interface ExploredContext {
   shortSummary: string;
   longExplanation: string;
   sources: { label: string; url: string }[];
-  hidden?: boolean;
+  /** On-demand narration MP3, once anyone has generated it (shared). */
+  audioUrl?: string;
+  status: 'pending' | 'approved';
   createdAt?: unknown;
 }
 
-export async function captureExploredContext(tourId: string, input: Omit<ExploredContext, 'id' | 'hidden' | 'createdAt'>): Promise<void> {
+export type ExploredContextEdit = Pick<ExploredContext, 'lens' | 'question' | 'title' | 'shortSummary' | 'longExplanation' | 'sources'>;
+
+export async function captureExploredContext(tourId: string, input: Omit<ExploredContext, 'id' | 'status' | 'createdAt'>): Promise<void> {
   if (!input.longExplanation?.trim()) return; // nothing worth pooling (e.g. a banked add)
   const id = newId('ec');
   await setDoc(doc(db, TOURS, tourId, 'explored-contexts', id), clean({
     id, actId: input.actId, lens: input.lens, question: input.question,
     title: input.title, shortSummary: input.shortSummary, longExplanation: input.longExplanation,
-    sources: input.sources || [], hidden: false, createdAt: serverTimestamp(),
+    sources: input.sources || [], status: 'pending', createdAt: serverTimestamp(),
   }));
 }
 
-/** Live pool for one act (client filters `hidden`). Pass no actId to get all. */
+/** Learner-facing: approved pool for one act only. */
 export function subscribeExploredContexts(tourId: string, actId: string | undefined, onChange: (list: ExploredContext[]) => void): () => void {
   const col = collection(db, TOURS, tourId, 'explored-contexts');
   const q = actId ? query(col, where('actId', '==', actId)) : col;
   return onSnapshot(q, (snap) => {
     const out: ExploredContext[] = [];
-    snap.forEach((d) => { const e = { ...(d.data() as ExploredContext), id: d.id }; if (!e.hidden) out.push(e); });
+    snap.forEach((d) => { const e = { ...(d.data() as ExploredContext), id: d.id }; if (e.status === 'approved') out.push(e); });
     onChange(out);
   }, (err) => console.error('[shared-store] explored-contexts failed:', err));
 }
 
-export async function setExploredContextHidden(tourId: string, id: string, hidden: boolean): Promise<void> {
-  await setDoc(doc(db, TOURS, tourId, 'explored-contexts', id), { hidden }, { merge: true });
+/** Admin: the whole pool (pending + approved) for a tour. */
+export function subscribeAllExploredContexts(tourId: string, onChange: (list: ExploredContext[]) => void): () => void {
+  return onSnapshot(collection(db, TOURS, tourId, 'explored-contexts'), (snap) => {
+    const out: ExploredContext[] = [];
+    snap.forEach((d) => out.push({ ...(d.data() as ExploredContext), id: d.id }));
+    onChange(out);
+  }, (err) => console.error('[shared-store] all explored-contexts failed:', err));
+}
+
+export async function setExploredContextStatus(tourId: string, id: string, status: 'pending' | 'approved'): Promise<void> {
+  await setDoc(doc(db, TOURS, tourId, 'explored-contexts', id), { status }, { merge: true });
+}
+export async function updateExploredContext(tourId: string, id: string, patch: Partial<ExploredContextEdit> & { audioUrl?: string }): Promise<void> {
+  await setDoc(doc(db, TOURS, tourId, 'explored-contexts', id), clean(patch), { merge: true });
+}
+export async function deleteExploredContext(tourId: string, id: string): Promise<void> {
+  await deleteDoc(doc(db, TOURS, tourId, 'explored-contexts', id));
 }

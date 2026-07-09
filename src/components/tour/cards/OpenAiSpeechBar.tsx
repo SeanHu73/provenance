@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'react';
 import AudioButton from './AudioButton';
 import SpeechBar from './SpeechBar';
-import { fetchTtsObjectUrl } from '@/lib/tts-client';
+import { fetchTtsObjectUrl, fetchTtsPersistentUrl } from '@/lib/tts-client';
 
 interface Props {
   text: string;
@@ -23,11 +23,17 @@ interface Props {
   /** A pre-generated, saved narration file for this exact text (authored context
    *  pages). When present it's played directly — no generation, no cost. */
   cachedUrl?: string | null;
+  /** Save the generated clip to shared Firebase Storage (by text hash) so other
+   *  learners reuse it — for shared surfaces like "Contexts Explored by Others". */
+  durable?: boolean;
+  /** Fires with the generated file URL (durable mode) so the caller can persist
+   *  it on the record and skip generation next time. */
+  onGenerated?: (url: string) => void;
   /** Fires when the narration finishes playing. */
   onEnded?: () => void;
 }
 
-export default function OpenAiSpeechBar({ text, title, autoplay = false, cachedUrl, onEnded }: Props) {
+export default function OpenAiSpeechBar({ text, title, autoplay = false, cachedUrl, durable = false, onGenerated, onEnded }: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -39,7 +45,9 @@ export default function OpenAiSpeechBar({ text, title, autoplay = false, cachedU
     setLoading(true);
     setPlayOnReady(shouldPlay);
     try {
-      setUrl(await fetchTtsObjectUrl(text));
+      const u = durable ? await fetchTtsPersistentUrl(text) : await fetchTtsObjectUrl(text);
+      setUrl(u);
+      if (durable) onGenerated?.(u);
     } catch {
       setFailed(true);
     } finally {

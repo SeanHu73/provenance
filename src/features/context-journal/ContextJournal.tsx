@@ -29,7 +29,9 @@ import ContextOverlay from './components/ContextOverlay';
 import AddContextFlow from './components/AddContextFlow';
 import ContextAskFlow from './components/ContextAskFlow';
 import ResearchReadyBar from './components/ResearchReadyBar';
-import { captureExploredContext, subscribeExploredContexts, type ExploredContext } from './shared-store';
+import { captureExploredContext, subscribeExploredContexts, updateExploredContext, type ExploredContext } from './shared-store';
+import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
+import { contextNarrationText } from '@/lib/tts-narration';
 import { AutoPlayMenuItem } from '@/components/tour/TourMenu';
 
 /** Comic ink shared with the P.A.S.T. lens buttons, for the "Ask" CTA's border
@@ -657,7 +659,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
                       <span className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>· by others</span>
                     </div>
                     <div className="space-y-2">
-                      {items.map((c) => <ExploredCard key={c.id} ctx={c} colour={l.colour} />)}
+                      {items.map((c) => <ExploredCard key={c.id} ctx={c} colour={l.colour} tourId={tourId} />)}
                     </div>
                   </section>
                 );
@@ -724,7 +726,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
 
 /* A single "explored by others" context: title + question + summary, expanding
    to the full explanation and its sources. */
-function ExploredCard({ ctx, colour }: { ctx: ExploredContext; colour: string }) {
+function ExploredCard({ ctx, colour, tourId }: { ctx: ExploredContext; colour: string; tourId?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--th-border)', borderLeftColor: colour, borderLeftWidth: 4 }}>
@@ -735,6 +737,15 @@ function ExploredCard({ ctx, colour }: { ctx: ExploredContext; colour: string })
       </button>
       {open && (
         <div className="px-3.5 pb-3 space-y-2">
+          {/* Narration is generated once and saved (shared), so the next learner
+              streams it instead of regenerating. */}
+          <OpenAiSpeechBar
+            text={contextNarrationText({ title: ctx.title, longExplanation: ctx.longExplanation })}
+            title={ctx.title}
+            durable
+            cachedUrl={ctx.audioUrl ?? null}
+            onGenerated={(url) => { if (tourId && !ctx.audioUrl) void updateExploredContext(tourId, ctx.id, { audioUrl: url }); }}
+          />
           <p className="text-[14px] leading-relaxed whitespace-pre-line" style={{ color: 'var(--text-primary)' }}>{ctx.longExplanation}</p>
           {ctx.sources?.length > 0 && (
             <ul className="text-[11px] space-y-0.5" style={{ color: 'var(--text-secondary)' }}>

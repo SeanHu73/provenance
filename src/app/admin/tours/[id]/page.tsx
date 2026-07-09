@@ -791,6 +791,7 @@ export default function TourEditorPage() {
               >
                 Delete tour
               </button>
+              <Link href={`/admin/tours/${tourId}/detective`} className="text-blue-700 hover:underline">Context Detective &rarr;</Link>
               <Link href="/admin/tours" className="text-blue-700 hover:underline">&larr; Tours</Link>
             </div>
           </div>
