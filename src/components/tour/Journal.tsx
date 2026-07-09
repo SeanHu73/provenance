@@ -402,6 +402,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
               <div className="fixed inset-0 z-[55]">
                 <ContextJournal
                   tourId={tour.id}
+                  actId={act?.id}
                   authored={authored}
                   inTour={!additional}
                   revisit={!!additional}

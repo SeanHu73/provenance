@@ -23,6 +23,7 @@ import ImageSearchModal from '@/components/ImageSearchModal';
 import { contextNarrationText } from '@/lib/tts-narration';
 import { uploadSharePhoto } from '@/lib/community-store';
 import { startResearch, cancelJob, setJobTheory, markSeen, useResearchJobs } from '../research-store';
+import { sendQuestionToGuide } from '../shared-store';
 
 /** A firm two-buzz haptic to draw the learner back when the answer is ready. */
 function readyHaptic() {
@@ -83,6 +84,7 @@ interface Props {
 }
 
 export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'Ask your own question', intro, existingJobId, onClose, onAdd, onAnswered }: Props) {
+  const [sentToGuide, setSentToGuide] = useState(false);
   const jobs = useResearchJobs();
   const [jobId, setJobId] = useState<string | null>(existingJobId ?? null);
   const job = jobId ? jobs.find((j) => j.id === jobId) ?? null : null;
@@ -491,7 +493,23 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
                 <p className="text-[15px] font-serif leading-snug whitespace-pre-line" style={{ color: 'var(--text-primary)' }}>{theory}</p>
               </div>
             )}
-            <button onClick={onClose} className="w-full py-3.5 rounded-xl text-base font-semibold text-white" style={{ backgroundColor: 'var(--th-primary)' }}>Done</button>
+            {/* No solid answer — hand it to the tour guide to answer later. */}
+            {sentToGuide ? (
+              <p className="text-[14px] font-semibold py-2" style={{ color: '#16a34a' }}>Sent to your tour guide — they&apos;ll take a look.</p>
+            ) : (
+              <button
+                onClick={async () => {
+                  setSentToGuide(true);
+                  try { await sendQuestionToGuide(tourId, { actId, question: asked, lens, learnerTheory: theory.trim() || undefined }); }
+                  catch (err) { console.error('[ask] send to guide failed:', err); }
+                }}
+                className="w-full py-3.5 rounded-xl text-base font-semibold text-white"
+                style={{ backgroundColor: 'var(--th-primary)' }}
+              >
+                Send Question to Tour Guide
+              </button>
+            )}
+            <button onClick={onClose} className="w-full py-2 text-sm underline" style={{ color: 'var(--text-secondary)' }}>Done</button>
           </div>
         ))}
       </div>

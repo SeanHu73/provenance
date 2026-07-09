@@ -18,8 +18,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange, LENS_BY_KEY } from './constants';
-import type { ContextEntry, MapType, NewContextEntry, PastCategory, TimeRange } from './types';
+import { DEFAULT_PLACE_ID, DEFAULT_DOMAIN, defaultRange, clampRange, LENS_BY_KEY, LENSES } from './constants';
+import type { ContextDraft, ContextEntry, MapType, NewContextEntry, PastCategory, TimeRange } from './types';
 import { getViewerId, saveContext, unsaveContext, subscribeContextEntries, subscribeSavedIds, getPlaceConfig, addContextEntry, updateContextEntry, deleteContextEntry } from './store';
 import { subscribeGuestContexts, addGuestContext, updateGuestContext, deleteGuestContext } from './guest-contexts';
 import ContextMapLoader from './components/ContextMapLoader';
@@ -29,6 +29,7 @@ import ContextOverlay from './components/ContextOverlay';
 import AddContextFlow from './components/AddContextFlow';
 import ContextAskFlow from './components/ContextAskFlow';
 import ResearchReadyBar from './components/ResearchReadyBar';
+import { captureExploredContext, subscribeExploredContexts, type ExploredContext } from './shared-store';
 import { AutoPlayMenuItem } from '@/components/tour/TourMenu';
 
 /** Comic ink shared with the P.A.S.T. lens buttons, for the "Ask" CTA's border
@@ -48,6 +49,9 @@ interface Props {
   /** When opened from a tour, the journal scopes its config + contexts to it.
    *  (Per-stop scoping drops in here later.) */
   tourId?: string;
+  /** The current act's id — scopes "Send to Tour Guide" and the shared
+   *  "Contexts Explored by Others" pool to this act. */
+  actId?: string;
   /** The tour's authored contexts for this act, shown as read-only *questions*
    *  to explore. Adding one persists a learner copy carrying its `sourceId`. */
   authored?: ContextEntry[];
@@ -96,7 +100,7 @@ interface Props {
   }) => void;
 }
 
-export default function ContextJournal({ tourId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false, onContextQuestion }: Props) {
+export default function ContextJournal({ tourId, actId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false, onContextQuestion }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
   // Both the in-tour flow and the revisit overlay read/write the learner's
   // guest-local contexts (sessionStorage); only a bare standalone visit uses
@@ -126,6 +130,13 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
   // sheet straight at its result.
   const [reopenJobId, setReopenJobId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  // "Contexts Explored by Others" — the shared per-act pool, unlocked once the
+  // learner has posed their own question for this act.
+  const [othersContexts, setOthersContexts] = useState<ExploredContext[]>([]);
+  const [exploredPanelOpen, setExploredPanelOpen] = useState(false);
+  const [askedOwnActId, setAskedOwnActId] = useState<string | null>(null);
+  const [lockNudge, setLockNudge] = useState(false);
+  const exploredUnlocked = !!actId && askedOwnActId === actId;
   // A prior response opened full-screen from the menu (previews are clamped, so
   // long reflections don't blow out the dropdown).
   const [viewResponse, setViewResponse] = useState<{ actTitle: string; promptText: string; text: string } | null>(null);
@@ -186,6 +197,21 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
 
   const persistAdd = (entry: NewContextEntry): Promise<string> =>
     guestLocal ? Promise.resolve(addGuestContext(scopeId, entry)) : addContextEntry(entry);
+
+  // Adding a context the learner *researched themselves* (the Ask flow): save it
+  // to their journal AND pool it to this act's shared "Contexts Explored by
+  // Others" so peers (once they've asked their own) can see it.
+  const askAdd = async (draft: ContextDraft) => {
+    await persistAdd({ ...draft, placeId: scopeId, origin: 'self' });
+    if (tourId) {
+      void captureExploredContext(tourId, {
+        actId, lens: draft.pastCategory, question: draft.question || '',
+        title: draft.title, shortSummary: draft.shortSummary || '', longExplanation: draft.longExplanation || '',
+        sources: (draft.sources || []).filter((s) => s.url || s.name).map((s) => ({ label: s.name || s.url || 'Source', url: s.url || '' })),
+      });
+    }
+    setExplored(true);
+  };
   const persistUpdate = (id: string, patch: Partial<NewContextEntry>): Promise<void> =>
     guestLocal ? Promise.resolve(updateGuestContext(scopeId, id, patch)) : updateContextEntry(id, patch);
   const persistDelete = (id: string): Promise<void> =>
@@ -211,6 +237,12 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
     const unsub = subscribeSavedIds(id, setSavedIds);
     return unsub;
   }, []);
+
+  // Live pool of contexts other learners explored in this act.
+  useEffect(() => {
+    if (!tourId || !actId) return;
+    return subscribeExploredContexts(tourId, actId, setOthersContexts);
+  }, [tourId, actId]);
 
   // Deselect a focused (tapped-once) thumbnail only on a genuine *tap* elsewhere
   // — a drag/scroll must NOT deselect. We record the pointer-down spot and only
@@ -353,11 +385,12 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
         {gateAskOpen && (
           <ContextAskFlow
             tourId={scopeId}
+            actId={actId}
             priorStops={priorStopTitles}
             heading="Ask your own question"
             intro="Try asking your own context question first — then you can explore other contexts."
-            onAnswered={(info) => { sawResponseRef.current = true; setExplored(true); onContextQuestion?.(info); }}
-            onAdd={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); setExplored(true); }}
+            onAnswered={(info) => { sawResponseRef.current = true; setExplored(true); setAskedOwnActId(actId ?? null); onContextQuestion?.(info); }}
+            onAdd={askAdd}
             onClose={() => { setGateAskOpen(false); if (sawResponseRef.current) setAskedOwn(true); }}
           />
         )}
@@ -414,6 +447,34 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                 Add context
               </button>
+
+              {/* Contexts Explored by Others — locked until the learner has posed
+                  their own question for this act. */}
+              <button
+                onClick={() => {
+                  if (!exploredUnlocked) { setLockNudge(true); return; }
+                  setMenuOpen(false); setLockNudge(false); setExploredPanelOpen(true);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-3 text-left font-semibold hover:bg-black/[0.03] border-b"
+                style={{ borderColor: 'var(--th-border)', color: exploredUnlocked ? 'var(--text-primary)' : 'var(--text-muted)' }}
+                aria-disabled={!exploredUnlocked}
+              >
+                {exploredUnlocked ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                )}
+                <span className="flex-1">Contexts Explored by Others</span>
+                {exploredUnlocked && othersContexts.length > 0 && (
+                  <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: 'var(--th-primary)' }}>{othersContexts.length}</span>
+                )}
+              </button>
+              {lockNudge && !exploredUnlocked && (
+                <p className="px-4 py-2 text-[12px] italic leading-snug border-b" style={{ color: 'var(--th-primary)', borderColor: 'var(--th-border)' }}>
+                  Ask your own question for this act first — then you can see what others explored.
+                </p>
+              )}
+
               <p className="px-4 pt-3 pb-1 text-[11px] uppercase tracking-[0.14em] font-semibold text-text-secondary">Your responses</p>
               {responses.length === 0 ? (
                 <p className="px-4 pb-3 text-sm italic text-text-muted">Nothing yet — your reflections will show up here.</p>
@@ -559,12 +620,51 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
       {(askOpen || reopenJobId) && (
         <ContextAskFlow
           tourId={scopeId}
+          actId={actId}
           priorStops={priorStopTitles}
           existingJobId={reopenJobId ?? undefined}
-          onAnswered={(info) => { setExplored(true); onContextQuestion?.(info); }}
+          onAnswered={(info) => { setExplored(true); setAskedOwnActId(actId ?? null); onContextQuestion?.(info); }}
           onClose={() => { setAskOpen(false); setReopenJobId(null); }}
-          onAdd={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); setExplored(true); }}
+          onAdd={askAdd}
         />
+      )}
+
+      {/* Contexts Explored by Others — the shared per-act pool, grouped by lens
+          and kept distinct from the pre-authored questions. */}
+      {exploredPanelOpen && (
+        <div className="fixed inset-0 z-[68] flex flex-col" style={{ backgroundColor: 'var(--th-surface)' }}>
+          <header className="shrink-0 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--th-border)' }}>
+            <div>
+              <h3 className="font-display font-bold text-[20px]" style={{ color: 'var(--th-primary)' }}>Explored by others</h3>
+              <p className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>Contexts other learners looked into for this act — including your own.</p>
+            </div>
+            <button onClick={() => setExploredPanelOpen(false)} aria-label="Close" className="w-9 h-9 flex items-center justify-center rounded-full" style={{ color: 'var(--text-secondary)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+            </button>
+          </header>
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
+            {othersContexts.length === 0 ? (
+              <p className="text-[15px] italic text-center py-10" style={{ color: 'var(--text-secondary)' }}>No one&apos;s explored a context here yet — yours will be the first others see.</p>
+            ) : (
+              LENSES.map((l) => {
+                const items = othersContexts.filter((c) => c.lens === l.key);
+                if (!items.length) return null;
+                return (
+                  <section key={l.key}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: l.colour }} />
+                      <h4 className="font-semibold text-[15px]" style={{ color: l.colour }}>{l.label}</h4>
+                      <span className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>· by others</span>
+                    </div>
+                    <div className="space-y-2">
+                      {items.map((c) => <ExploredCard key={c.id} ctx={c} colour={l.colour} />)}
+                    </div>
+                  </section>
+                );
+              })
+            )}
+          </div>
+        </div>
       )}
 
       <AnimatePresence>
@@ -616,6 +716,33 @@ export default function ContextJournal({ tourId, authored, inTour, revisit, onEx
               <p className="font-serif text-[17px] text-text-primary leading-relaxed whitespace-pre-wrap">{viewResponse.text}</p>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* A single "explored by others" context: title + question + summary, expanding
+   to the full explanation and its sources. */
+function ExploredCard({ ctx, colour }: { ctx: ExploredContext; colour: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--th-border)', borderLeftColor: colour, borderLeftWidth: 4 }}>
+      <button onClick={() => setOpen((v) => !v)} className="w-full text-left px-3.5 py-3">
+        <p className="font-serif font-semibold text-[15px] leading-snug" style={{ color: 'var(--text-primary)' }}>{ctx.title}</p>
+        {ctx.question && <p className="text-[12px] italic mt-0.5" style={{ color: 'var(--text-secondary)' }}>&ldquo;{ctx.question}&rdquo;</p>}
+        {ctx.shortSummary && <p className="text-[13px] mt-1 leading-snug" style={{ color: 'var(--text-secondary)' }}>{ctx.shortSummary}</p>}
+      </button>
+      {open && (
+        <div className="px-3.5 pb-3 space-y-2">
+          <p className="text-[14px] leading-relaxed whitespace-pre-line" style={{ color: 'var(--text-primary)' }}>{ctx.longExplanation}</p>
+          {ctx.sources?.length > 0 && (
+            <ul className="text-[11px] space-y-0.5" style={{ color: 'var(--text-secondary)' }}>
+              {ctx.sources.map((s, i) => (
+                <li key={i}>{s.url ? <a href={s.url} target="_blank" rel="noreferrer" className="underline">{s.label || s.url}</a> : s.label}</li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>
