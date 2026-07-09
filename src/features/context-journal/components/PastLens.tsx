@@ -15,7 +15,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { thumbnailPhotoUrl, type LensDef } from '../constants';
-import type { ContextEntry } from '../types';
+import type { ContextEntry, PastCategory } from '../types';
 import BookmarkButton from './BookmarkButton';
 import PastLensCard from './PastLensCard';
 
@@ -49,6 +49,8 @@ interface Props {
   onFocus: (entry: ContextEntry | null) => void;
   onToggleSave: (id: string) => void;
   onOpenFull: (entry: ContextEntry) => void;
+  /** Open the ask flow already scoped to this lens (skips the lens picker). */
+  onAskLens?: (lens: PastCategory) => void;
 }
 
 /** The name with an oversized leading initial, e.g. a big "P" + "lace". */
@@ -91,7 +93,7 @@ function CountBubbles({ present, questions, big = false }: { present: number; qu
   );
 }
 
-export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, prompt = false, lockInfoById, onFocus, onToggleSave, onOpenFull }: Props) {
+export default function PastLens({ lens, entries, savedIds, focusedId, compact = false, prompt = false, lockInfoById, onFocus, onToggleSave, onOpenFull, onAskLens }: Props) {
   const [open, setOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
   // Once THIS lens has been opened, its tap-cue is done — but the others keep
@@ -234,6 +236,17 @@ export default function PastLens({ lens, entries, savedIds, focusedId, compact =
                     {questions.map((entry) => (
                       <QuestionRow key={entry.id} entry={entry} colour={colour} lock={lockInfoById?.get(entry.id) ?? null} onTap={() => onOpenFull(entry)} />
                     ))}
+                    {/* ask your own — in-lens (skips the lens picker) */}
+                    {onAskLens && (
+                      <button
+                        onClick={() => onAskLens(lens.key)}
+                        className="w-full flex items-center justify-center gap-2 rounded-[14px] py-2.5 font-display text-[16px] text-warm-white"
+                        style={{ backgroundColor: 'var(--th-primary)', border: `2.5px solid ${INK}`, boxShadow: `3px 3px 0 ${SHADOW}` }}
+                      >
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z" /></svg>
+                        Ask your own question
+                      </button>
+                    )}
                     {/* contexts already added (thumbnails) */}
                     {added.length > 0 && (
                       <div data-cj-keep className="flex gap-3 overflow-x-auto cj-hscroll -mx-1 px-1 py-0.5">
@@ -321,14 +334,14 @@ function QuestionRow({ entry, colour, lock, onTap }: {
   return (
     <button
       onClick={onTap}
-      className="w-full flex items-center gap-3 text-left rounded-xl border bg-warm-white px-4 py-3 hover:bg-black/[0.02]"
-      style={{ borderColor: 'var(--th-border)' }}
+      className="relative w-full text-left rounded-2xl font-serif text-[16px] text-text-primary leading-snug"
+      style={{ backgroundColor: 'var(--th-bg)', border: `2.5px solid ${colour}`, padding: '11px 36px 11px 15px', boxShadow: `3px 3px 0 color-mix(in srgb, ${colour} 45%, ${SHADOW})` }}
     >
-      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: colour }} />
-      <span className="flex-1 min-w-0 font-serif text-[16px] text-text-primary leading-snug">{label}</span>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+      {label}
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="absolute right-3 top-1/2 -translate-y-1/2">
         <path d="M9 6l6 6-6 6" />
       </svg>
+      <span className="absolute" style={{ left: 20, bottom: -11, width: 18, height: 13, background: 'var(--th-bg)', border: `2.5px solid ${colour}`, borderTop: 'none', borderLeft: 'none', clipPath: 'polygon(0 0,100% 0,100% 100%)', transform: 'skewX(-18deg)' }} />
     </button>
   );
 }

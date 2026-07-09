@@ -11,7 +11,7 @@
 
 import { useMemo } from 'react';
 import { LENSES, overlapsRange } from '../constants';
-import type { ContextEntry, TimeRange } from '../types';
+import type { ContextEntry, PastCategory, TimeRange } from '../types';
 import PastLens from './PastLens';
 
 interface Props {
@@ -29,9 +29,10 @@ interface Props {
   onFocus: (entry: ContextEntry | null) => void;
   onToggleSave: (id: string) => void;
   onOpenFull: (entry: ContextEntry) => void;
+  onAskLens?: (lens: PastCategory) => void;
 }
 
-export default function PastPanel({ entries, selectedRange, savedIds, focusedId, compact, promptUnopened, lockInfoById, onFocus, onToggleSave, onOpenFull }: Props) {
+export default function PastPanel({ entries, selectedRange, savedIds, focusedId, compact, promptUnopened, lockInfoById, onFocus, onToggleSave, onOpenFull, onAskLens }: Props) {
   const byLens = useMemo(() => {
     const inRange = entries.filter((e) =>
       overlapsRange({ start: e.timeRange.start, end: e.timeRange.end }, selectedRange),
@@ -57,6 +58,7 @@ export default function PastPanel({ entries, selectedRange, savedIds, focusedId,
           onFocus={onFocus}
           onToggleSave={onToggleSave}
           onOpenFull={onOpenFull}
+          onAskLens={onAskLens}
         />
       ))}
     </div>

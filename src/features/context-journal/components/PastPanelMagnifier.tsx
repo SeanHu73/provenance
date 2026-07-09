@@ -43,17 +43,17 @@ interface Props {
 
 /** A cartoon magnifying glass: handle down-left, ink-outlined, glass lens. */
 function Magnifier({ colour, letter, big }: { colour: string; letter: string; big?: boolean }) {
-  const size = big ? 82 : 34;
+  const size = big ? 128 : 36;
   return (
     <span className="relative inline-block" style={{ width: size, height: size }}>
-      <svg viewBox="0 0 100 100" width={size} height={size} fill="none" style={{ filter: big ? `drop-shadow(3px 4px 0 ${SHADOW})` : 'none' }}>
+      <svg viewBox="0 0 100 100" width={size} height={size} fill="none" style={{ filter: big ? `drop-shadow(4px 5px 0 ${SHADOW})` : 'none' }}>
         <line x1="41" y1="61" x2="15" y2="87" stroke={INK} strokeWidth="17" strokeLinecap="round" />
         <line x1="41" y1="61" x2="15" y2="87" stroke={colour} strokeWidth="9" strokeLinecap="round" />
         <circle cx="57" cy="43" r="31" fill="#fbf7efee" stroke={INK} strokeWidth="4.5" />
         <circle cx="57" cy="43" r="26.5" fill="none" stroke={colour} strokeWidth="5" />
         <path d="M42 30 a20 20 0 0 1 11 -7" stroke="#ffffffcc" strokeWidth="4" strokeLinecap="round" />
       </svg>
-      <span className="absolute font-display font-bold leading-none" style={{ left: '56%', top: '43%', transform: 'translate(-50%,-50%)', color: colour, fontSize: big ? 30 : 15 }}>{letter}</span>
+      <span className="absolute font-display font-bold leading-none" style={{ left: '56%', top: '43%', transform: 'translate(-50%,-50%)', color: colour, fontSize: big ? 48 : 16 }}>{letter}</span>
     </span>
   );
 }
@@ -75,20 +75,20 @@ export default function PastPanelMagnifier({
     setOpenKeys((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   };
 
-  const indents = [0, 84, 168, 252];
+  const indents = [0, 74, 148, 222];
 
   return (
     <div className="px-5 pb-4">
-      {/* left-aligned intro */}
+      {/* intro — instruction lines left, the guiding question centred + large */}
       <div className="pt-6 pb-2">
         <h2 className="font-display text-[19px] leading-snug text-text-primary">
           Look through the <PastWord /> to contextualise&hellip;
         </h2>
-        {guidingQuestion && <p className="mt-1.5 font-display font-bold text-[26px] leading-tight" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>}
+        {guidingQuestion && <p className="mt-3 mb-1 font-display font-bold text-[30px] leading-tight text-center" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>}
         <p className="mt-3 font-serif italic text-[15px] text-text-secondary leading-snug">Tap a lens to explore a context question &mdash; or ask your own!</p>
       </div>
 
-      <div className="flex flex-col gap-3.5 mt-3">
+      <div className="flex flex-col gap-2 mt-3">
         {byLens.map(({ lens, items }, i) => {
           const open = openKeys.has(lens.key);
           const questions = items.filter((e) => e.origin === 'authored');
@@ -111,7 +111,7 @@ export default function PastPanelMagnifier({
                     <Magnifier colour={lens.colour} letter={lens.label[0]} big />
                     {questions.length > 0 && (
                       <span className="absolute z-10 flex items-center justify-center font-sans font-extrabold text-white tabular-nums"
-                        style={{ left: '74%', top: '62%', transform: 'translate(-50%,-50%)', minWidth: 23, height: 23, padding: '0 5px', borderRadius: 999, backgroundColor: '#c31d1d', border: '2.5px solid var(--warm-white)', fontSize: 12 }}>
+                        style={{ left: '74%', top: '62%', transform: 'translate(-50%,-50%)', minWidth: 31, height: 31, padding: '0 6px', borderRadius: 999, backgroundColor: '#c31d1d', border: '3px solid var(--warm-white)', fontSize: 15 }}>
                         {questions.length}
                       </span>
                     )}
@@ -201,7 +201,7 @@ function LensCard({ lens, questions, added, savedIds, focusedId, lockInfoById, o
       <button onClick={onAsk} className="mx-3.5 mt-3 mb-1 flex items-center justify-center gap-2 rounded-[14px] py-2.5 font-display text-[16.5px] text-warm-white"
         style={{ backgroundColor: 'var(--th-primary)', border: `2.5px solid ${INK}`, boxShadow: `3px 3px 0 ${SHADOW}`, width: 'calc(100% - 28px)' }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z" /></svg>
-        Ask your own {lens.label} question
+        Ask your own question
       </button>
 
       {/* contexts already added here */}

@@ -142,6 +142,13 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   const [lensVariant, setLensVariant] = useLensVariant();
   const [anyLensOpen, setAnyLensOpen] = useState(false);
   const [askLens, setAskLens] = useState<PastCategory | undefined>(undefined);
+  // Act-1 gate: a blocked Continue tap buzzes, nudges, and pulses the ask CTA.
+  const [continueNudge, setContinueNudge] = useState(false);
+  useEffect(() => {
+    if (!continueNudge) return;
+    const t = window.setTimeout(() => setContinueNudge(false), 2600);
+    return () => window.clearTimeout(t);
+  }, [continueNudge]);
   // "Contexts Explored by Others" — the shared per-act pool, unlocked once the
   // learner has posed their own question for this act.
   const [othersContexts, setOthersContexts] = useState<ExploredContext[]>([]);
@@ -607,6 +614,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
               onFocus={handleFocus}
               onToggleSave={toggleSave}
               onOpenFull={openFull}
+              onAskLens={(lens) => { setAskLens(lens); setAskOpen(true); }}
             />
           </>
         )}
@@ -617,8 +625,9 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
             the two never overlap. (AI flow lands later; opens the add form.) */}
         <div className={`sticky bottom-4 z-30 px-5 pt-3 ${lensVariant === 'magnifier' && anyLensOpen ? 'hidden' : ''}`}>
           <motion.button
-            onClick={() => { haptic(10); setAskLens(undefined); setAskOpen(true); }}
+            onClick={() => { haptic(10); setContinueNudge(false); setAskLens(undefined); setAskOpen(true); }}
             whileTap={{ x: 4, y: 4, boxShadow: `0px 0px 0 ${INK_SHADOW}` }}
+            animate={{ scale: continueNudge ? [1, 1.08, 1, 1.08, 1] : 1 }}
             transition={{ type: 'spring', stiffness: 600, damping: 32 }}
             className="w-full flex items-center justify-center gap-2.5 rounded-2xl py-3.5 bg-warm-white font-display font-bold text-[17px]"
             style={{ color: 'var(--th-primary)', border: `3px solid ${INK}`, boxShadow: `4px 4px 0 ${INK_SHADOW}` }}
@@ -637,16 +646,19 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
         {inTour && !revisit ? (
           <div className="px-5 pb-8 pt-4">
             {requireAskToContinue && !exploredUnlocked ? (
-              // First act: they must pose their own question before continuing.
+              // First act: Continue is hollow until they've posed their own
+              // question. Tapping it buzzes + nudges toward the ask CTA.
               <>
                 <button
-                  onClick={() => setAskOpen(true)}
-                  className="w-full py-3.5 rounded-2xl text-base font-semibold text-warm-white"
-                  style={{ backgroundColor: 'var(--th-primary)' }}
+                  onClick={() => { haptic(30); setContinueNudge(true); }}
+                  className="w-full py-3.5 rounded-2xl text-base font-semibold border-2 bg-transparent"
+                  style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
                 >
-                  Ask your own question to continue
+                  {continueLabel}
                 </button>
-                <p className="mt-2 text-center text-xs text-text-muted">Practise contextualising — pose your own question about this act before moving on.</p>
+                {continueNudge && (
+                  <p className="mt-2 text-center text-xs font-semibold" style={{ color: 'var(--th-primary)' }}>Ask your own question first!</p>
+                )}
               </>
             ) : (
               <>
