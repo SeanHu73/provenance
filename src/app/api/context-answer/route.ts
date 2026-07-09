@@ -21,6 +21,7 @@ import {
 import { researchSystem, voiceSystem, parseSystem } from '@/lib/context-detective/prompts';
 import { researchDraft, voiceRewrite, parseHandout, ResearchSource } from '@/lib/context-detective/claude';
 import { embedTexts, cosine } from '@/lib/context-detective/embed';
+import { embeddingKey, getCachedEmbeddings, putCachedEmbedding } from '@/lib/context-detective/embed-cache';
 import { hashText } from '@/lib/tts-text';
 
 // The three-pass pipeline + web search can run a couple of minutes; allow it on
@@ -187,12 +188,22 @@ export async function POST(req: Request) {
   const t0 = Date.now();
   const timings: Record<string, number> = {};
   try {
-    // 1. Retrieval — embed question + authored contexts, cosine over everything.
+    // 1. Retrieval — embed the question + rank. Authored-context embeddings are
+    //    cached by text hash and reused (only cache-misses are embedded here);
+    //    knowledge entries already carry theirs. The question is always embedded.
     const tRetrieve = Date.now();
     const { candidates, preferredDomains } = await loadCandidates(tourId);
     const contexts = candidates.filter((c) => c.kind === 'context');
-    const [qVec, ...ctxVecs] = await embedTexts([question, ...contexts.map(candidateText)]);
-    contexts.forEach((c, i) => { c.embedding = ctxVecs[i]; });
+    const ctxTexts = contexts.map(candidateText);
+    const ctxHashes = ctxTexts.map(embeddingKey);
+    const cached = await getCachedEmbeddings(ctxHashes);
+    const missIdx = contexts.map((_, i) => i).filter((i) => !cached.has(ctxHashes[i]));
+    const [qVec, ...missVecs] = await embedTexts([question, ...missIdx.map((i) => ctxTexts[i])]);
+    contexts.forEach((c, i) => { c.embedding = cached.get(ctxHashes[i]); });
+    missIdx.forEach((ctxI, k) => {
+      contexts[ctxI].embedding = missVecs[k];
+      void putCachedEmbedding(ctxHashes[ctxI], missVecs[k]); // fill the cache for next time
+    });
     timings.retrieve = Date.now() - tRetrieve;
 
     const ranked = candidates

@@ -88,6 +88,9 @@ export async function researchDraft(system: string, userText: string): Promise<R
         'Submit your final structured answer. Call this exactly once, after any web research. '
         + 'Put EVERY source you used as its own object in the `sources` array — never as text. '
         + '`relevanceNote` is a short plain sentence or an empty string; never put sources, JSON, or markup in it.',
+      // Strict schema adherence — the model can't drop required fields (it was
+      // occasionally omitting `sources`/`branch`, yielding uncited answers).
+      strict: true,
       input_schema: RESEARCH_SCHEMA,
     },
   ];
