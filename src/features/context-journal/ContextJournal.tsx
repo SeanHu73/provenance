@@ -25,6 +25,8 @@ import { subscribeGuestContexts, addGuestContext, updateGuestContext, deleteGues
 import ContextMapLoader from './components/ContextMapLoader';
 import ContextTimeline from './components/ContextTimeline';
 import PastPanel from './components/PastPanel';
+import PastPanelMagnifier from './components/PastPanelMagnifier';
+import { useLensVariant } from './lens-variant';
 import ContextOverlay from './components/ContextOverlay';
 import AddContextFlow from './components/AddContextFlow';
 import ContextAskFlow from './components/ContextAskFlow';
@@ -136,6 +138,10 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   // sheet straight at its result.
   const [reopenJobId, setReopenJobId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  // A/B lens UI variant + the magnifier variant's open/ask coordination.
+  const [lensVariant, setLensVariant] = useLensVariant();
+  const [anyLensOpen, setAnyLensOpen] = useState(false);
+  const [askLens, setAskLens] = useState<PastCategory | undefined>(undefined);
   // "Contexts Explored by Others" — the shared per-act pool, unlocked once the
   // learner has posed their own question for this act.
   const [othersContexts, setOthersContexts] = useState<ExploredContext[]>([]);
@@ -445,6 +451,18 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
               <div className="border-b" style={{ borderColor: 'var(--th-border)' }}>
                 <AutoPlayMenuItem />
               </div>
+              {/* A/B: swap the P.A.S.T. lens UI (magnifier vs classic buttons). */}
+              <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--th-border)' }}>
+                <span className="font-semibold text-text-primary text-sm">Lens style</span>
+                <div className="flex rounded-full overflow-hidden text-[12px] font-semibold border" style={{ borderColor: 'var(--th-border)' }}>
+                  {(['classic', 'magnifier'] as const).map((v) => (
+                    <button key={v} onClick={() => setLensVariant(v)} className="px-3 py-1 capitalize"
+                      style={{ backgroundColor: lensVariant === v ? 'var(--th-primary)' : 'transparent', color: lensVariant === v ? 'var(--th-surface)' : 'var(--text-secondary)' }}>
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <button
                 onClick={() => { setMenuOpen(false); setAddOpen(true); }}
                 className="w-full flex items-center gap-2 px-4 py-3 text-left font-semibold text-text-primary hover:bg-black/[0.03] border-b"
@@ -547,41 +565,59 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
         )}
       </div>
 
-      {/* 2 — P.A.S.T. framework (the main space) */}
+      {/* 2 — P.A.S.T. framework (the main space). Two A/B variants of the lens UI. */}
       <div className="flex-1 overflow-y-auto">
-        <div className="px-5 pt-6 pb-4">
-          {guidingQuestion ? (
-            <>
-              <h2 className="font-serif text-[18px] leading-snug text-text-secondary">Look through the P.A.S.T. to contextualise&hellip;</h2>
-              <p className="mt-1.5 font-display font-bold text-[24px] leading-tight" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>
-            </>
-          ) : (
-            <h2 className="font-display text-[26px] leading-tight text-text-primary">Look through the P.A.S.T.</h2>
-          )}
-          <p className="mt-2 font-serif italic text-[17px] text-text-secondary leading-snug">
-            Tap a lens to find a question you want to ask — or ask one of your own!
-          </p>
-        </div>
-        <PastPanel
-          entries={displayEntries}
-          selectedRange={range}
-          savedIds={savedIds}
-          focusedId={focused?.id ?? null}
-          compact={showMapPanel}
-          promptUnopened={!!inTour}
-          lockInfoById={lockInfo}
-          onFocus={handleFocus}
-          onToggleSave={toggleSave}
-          onOpenFull={openFull}
-        />
+        {lensVariant === 'magnifier' ? (
+          <PastPanelMagnifier
+            entries={displayEntries}
+            selectedRange={range}
+            savedIds={savedIds}
+            focusedId={focused?.id ?? null}
+            guidingQuestion={guidingQuestion}
+            lockInfoById={lockInfo}
+            onFocus={handleFocus}
+            onToggleSave={toggleSave}
+            onOpenFull={openFull}
+            onAskLens={(lens) => { setAskLens(lens); setAskOpen(true); }}
+            onAnyOpenChange={setAnyLensOpen}
+          />
+        ) : (
+          <>
+            <div className="px-5 pt-6 pb-4">
+              {guidingQuestion ? (
+                <>
+                  <h2 className="font-serif text-[18px] leading-snug text-text-secondary">Look through the P.A.S.T. to contextualise&hellip;</h2>
+                  <p className="mt-1.5 font-display font-bold text-[24px] leading-tight" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>
+                </>
+              ) : (
+                <h2 className="font-display text-[26px] leading-tight text-text-primary">Look through the P.A.S.T.</h2>
+              )}
+              <p className="mt-2 font-serif italic text-[17px] text-text-secondary leading-snug">
+                Tap a lens to find a question you want to ask — or ask one of your own!
+              </p>
+            </div>
+            <PastPanel
+              entries={displayEntries}
+              selectedRange={range}
+              savedIds={savedIds}
+              focusedId={focused?.id ?? null}
+              compact={showMapPanel}
+              promptUnopened={!!inTour}
+              lockInfoById={lockInfo}
+              onFocus={handleFocus}
+              onToggleSave={toggleSave}
+              onOpenFull={openFull}
+            />
+          </>
+        )}
 
         {/* Ask your own question — a bold, distinct *choice*. It floats over the
             scroll pinned near the bottom (an overlay CTA), then un-sticks and
             docks in flow just above the Continue button as you reach the end, so
             the two never overlap. (AI flow lands later; opens the add form.) */}
-        <div className="sticky bottom-4 z-30 px-5 pt-3">
+        <div className={`sticky bottom-4 z-30 px-5 pt-3 ${lensVariant === 'magnifier' && anyLensOpen ? 'hidden' : ''}`}>
           <motion.button
-            onClick={() => { haptic(10); setAskOpen(true); }}
+            onClick={() => { haptic(10); setAskLens(undefined); setAskOpen(true); }}
             whileTap={{ x: 4, y: 4, boxShadow: `0px 0px 0 ${INK_SHADOW}` }}
             transition={{ type: 'spring', stiffness: 600, damping: 32 }}
             className="w-full flex items-center justify-center gap-2.5 rounded-2xl py-3.5 bg-warm-white font-display font-bold text-[17px]"
@@ -645,8 +681,9 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
           actId={actId}
           priorStops={priorStopTitles}
           existingJobId={reopenJobId ?? undefined}
+          presetLens={askLens}
           onAnswered={(info) => { setExplored(true); setAskedOwnActId(actId ?? null); onContextQuestion?.(info); }}
-          onClose={() => { setAskOpen(false); setReopenJobId(null); }}
+          onClose={() => { setAskOpen(false); setReopenJobId(null); setAskLens(undefined); }}
           onAdd={askAdd}
         />
       )}

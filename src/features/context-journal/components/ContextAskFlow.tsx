@@ -64,6 +64,8 @@ interface Props {
   /** Reopen a finished/ongoing background job (from the "answer ready" overlay)
    *  straight at its research/result screen instead of the lens picker. */
   existingJobId?: string;
+  /** Opened from inside a lens — skip the lens picker and use this lens. */
+  presetLens?: PastCategory;
   onClose: () => void;
   onAdd: (draft: ContextDraft) => Promise<void> | void;
   /** Fired once when the learner reaches the revealed response (the "sees a
@@ -83,7 +85,7 @@ interface Props {
   }) => void;
 }
 
-export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'Ask your own question', intro, existingJobId, onClose, onAdd, onAnswered }: Props) {
+export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'Ask your own question', intro, existingJobId, presetLens, onClose, onAdd, onAnswered }: Props) {
   const [sentToGuide, setSentToGuide] = useState(false);
   const jobs = useResearchJobs();
   const [jobId, setJobId] = useState<string | null>(existingJobId ?? null);
@@ -94,8 +96,8 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
   const resp: DetectiveResp | null = job?.result ?? null;
   const researchReady = job ? job.status !== 'researching' : false;
 
-  const [phase, setPhase] = useState<Phase>(existingJobId ? 'researching' : 'lens');
-  const [lens, setLens] = useState<PastCategory>((job?.lens as PastCategory) ?? 'society');
+  const [phase, setPhase] = useState<Phase>(existingJobId ? 'researching' : (presetLens ? 'compose' : 'lens'));
+  const [lens, setLens] = useState<PastCategory>(presetLens ?? (job?.lens as PastCategory) ?? 'society');
   const [text, setText] = useState('');
   const [asked, setAsked] = useState(job?.question ?? '');
   const [coach, setCoach] = useState<FrameResp | null>(null);
@@ -288,7 +290,7 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
             <div className="flex items-center gap-2 text-[13px]">
               <span style={{ color: 'var(--text-secondary)' }}>Asking through</span>
               <span className="px-2.5 py-1 rounded-full text-white font-semibold" style={{ backgroundColor: LENS_BY_KEY[lens]?.colour }}>{LENS_BY_KEY[lens]?.label}</span>
-              <button onClick={() => setPhase('lens')} className="underline" style={{ color: 'var(--text-secondary)' }}>change</button>
+              {!presetLens && <button onClick={() => setPhase('lens')} className="underline" style={{ color: 'var(--text-secondary)' }}>change</button>}
             </div>
             <RecordButton onTranscript={(t) => setText((prev) => (prev ? `${prev} ${t}` : t))} />
             <textarea
