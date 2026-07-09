@@ -253,7 +253,12 @@ export default function Journal({ onMapPeek }: JournalProps) {
       )}
       {/* Confirm before the browser/OS back button (or refresh) drops the tour. */}
       <LeaveTourGuard active={phase !== 'end'} />
-      {stopsOpen && <StopTrackerOverlay tour={tour} session={session} onClose={() => setStopsOpen(false)} onPreviewStop={setPreviewStop} />}
+      {/* Portal to body so it escapes the Journal's z-40 stacking context and
+          shows above the z-55 Context Journal / Reflection portals. */}
+      {stopsOpen && createPortal(
+        <StopTrackerOverlay tour={tour} session={session} onClose={() => setStopsOpen(false)} onPreviewStop={setPreviewStop} />,
+        document.body,
+      )}
       {previewStop && createPortal(
         <div className="fixed inset-0 z-[65] flex flex-col" style={{ backgroundColor: 'var(--th-surface)' }}>
           {/* Read-only peek — a slim label; the bottom "Return to …" button closes it. */}
