@@ -310,7 +310,13 @@ export default function Journal({ onMapPeek }: JournalProps) {
             {/* Content sits directly on the page (no card). The framed,
                 frosted-glass card was only needed to lift content off the
                 background photo, which is now disabled. */}
-            <div className={isFullBleed
+            <div className={isMergedFindDiscover
+              // display:contents so the two snap sections size against the scroll
+              // container directly (min-h-full resolves) — a short DISCOVER slide
+              // then still fills the viewport and snaps its top fully to the top,
+              // scrolling FIND (and its "Scroll to discover" cue) out of view.
+              ? 'contents'
+              : isFullBleed
               ? 'relative min-h-full'
               : 'relative min-h-full px-5 py-6 flex flex-col justify-center'}
             >

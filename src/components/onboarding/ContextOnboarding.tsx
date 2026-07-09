@@ -17,6 +17,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import PastFramework from './PastFramework';
+import RecordButton from '@/components/tour/cards/RecordButton';
 
 const LEAVE_MS = 500;
 const TOTAL = 11;
@@ -150,15 +151,15 @@ const OnbPanels = memo(function OnbPanels({
         <SlideWelcome onBegin={onBegin} />
       </section>
 
-      {/* 2 — What do you think history is? (drag to rank, Submit to go on) */}
+      {/* 2 — How have you been taught history? (free response, Submit to go on) */}
       <section data-idx={1} className="onb-panel onb-top" style={vis(1)}>
         <p className="onb-q onb-r" style={{ color: 'var(--th-secondary)' }}>But first&hellip;</p>
         <h2 className="onb-r mt-4 font-display" style={{ '--d': '0.18s', fontSize: 'clamp(28px, 7vw, 40px)', lineHeight: 1.08, color: 'var(--th-text)' } as React.CSSProperties}>
-          What do you think <span style={{ color: 'var(--th-primary)' }}>history</span> is?
+          How have you been taught <span style={{ color: 'var(--th-primary)' }}>history</span>?
         </h2>
-        <p className="onb-r text-[15px] italic mt-2" style={{ '--d': '0.3s', color: 'var(--th-text)', opacity: 0.65 } as React.CSSProperties}>Drag to rank them &mdash; no wrong answer.</p>
+        <p className="onb-r text-[15px] italic mt-2" style={{ '--d': '0.3s', color: 'var(--th-text)', opacity: 0.65 } as React.CSSProperties}>Record or type &mdash; no wrong answer.</p>
         <div className="onb-r mt-5" style={{ '--d': '0.4s' } as React.CSSProperties}>
-          <SortableRank onSubmit={onSubmitRank} />
+          <HistoryResponse onSubmit={onSubmitRank} />
         </div>
       </section>
 
@@ -339,90 +340,32 @@ function SlideReady({ onDone }: { onDone: () => void }) {
   );
 }
 
-/* ── Drag-to-rank — pick a tile up and place it (absolute-position sortable) ─ */
-const RANK_KEY = 'provenance.historyRanking';
-const RANK_INITIAL = [
-  'Reconstructing and interpreting the past',
-  'What people remember about the past',
-  'Names, dates, and events of what happened',
-];
-const ROW = 66, GAP = 12, STEP = ROW + GAP;
-function SortableRank({ onSubmit }: { onSubmit: () => void }) {
-  const [order, setOrder] = useState<string[]>(RANK_INITIAL);
-  const [drag, setDrag] = useState<{ label: string; top: number } | null>(null);
-  const contRef = useRef<HTMLDivElement | null>(null);
-  const grab = useRef<{ label: string | null; off: number }>({ label: null, off: 0 });
-
-  const onDown = (label: string) => (e: React.PointerEvent) => {
-    const cont = contRef.current;
-    if (!cont) return;
-    e.preventDefault();
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    const slot = order.indexOf(label);
-    const rect = cont.getBoundingClientRect();
-    grab.current = { label, off: (e.clientY - rect.top) - slot * STEP };
-    setDrag({ label, top: slot * STEP });
-    haptic(12);
+/* ── Free response — record or type "How have you been taught history?" ─ */
+const HISTORY_KEY = 'provenance.historyTaught';
+function HistoryResponse({ onSubmit }: { onSubmit: () => void }) {
+  const [text, setText] = useState('');
+  const submit = () => {
+    try { localStorage.setItem(HISTORY_KEY, text.trim()); } catch { /* ignore */ }
+    onSubmit();
   };
-  const onMove = (e: React.PointerEvent) => {
-    const g = grab.current;
-    if (!g.label) return;
-    e.preventDefault();
-    const cont = contRef.current;
-    if (!cont) return;
-    const rect = cont.getBoundingClientRect();
-    const maxTop = (order.length - 1) * STEP;
-    const top = Math.max(0, Math.min(maxTop, (e.clientY - rect.top) - g.off));
-    setDrag({ label: g.label, top });
-    const target = Math.max(0, Math.min(order.length - 1, Math.round(top / STEP)));
-    if (target !== order.indexOf(g.label)) {
-      setOrder((prev) => { const n = prev.filter((l) => l !== g.label); n.splice(target, 0, g.label!); return n; });
-      haptic(9);
-    }
-  };
-  const onUp = () => {
-    if (!grab.current.label) return;
-    grab.current = { label: null, off: 0 };
-    setDrag(null);
-    try { localStorage.setItem(RANK_KEY, JSON.stringify(order)); } catch { /* ignore */ }
-  };
-
   return (
     <>
-      <div ref={contRef} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
-        style={{ position: 'relative', height: order.length * STEP - GAP }}>
-        {order.map((label) => {
-          const slot = order.indexOf(label);
-          const isDrag = drag?.label === label;
-          return (
-            <div key={label} onPointerDown={onDown(label)}
-              style={{
-                position: 'absolute', left: 0, right: 0, height: ROW,
-                top: isDrag ? drag!.top : slot * STEP,
-                transition: isDrag ? 'none' : 'top .2s cubic-bezier(.2,.8,.2,1)',
-                zIndex: isDrag ? 5 : 1, touchAction: 'none', cursor: isDrag ? 'grabbing' : 'grab',
-              }}>
-              <div className="flex items-center gap-3 h-full rounded-2xl border-2 px-3"
-                style={{
-                  borderColor: isDrag ? 'var(--th-primary)' : 'var(--th-border)',
-                  backgroundColor: 'var(--th-surface)',
-                  boxShadow: isDrag ? '0 12px 26px rgba(0,0,0,0.22)' : '0 1px 2px rgba(0,0,0,0.04)',
-                  transform: isDrag ? 'scale(1.03)' : 'none',
-                }}>
-                <span className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[16px] shrink-0" style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}>{slot + 1}</span>
-                <span className="flex-1 font-serif leading-tight" style={{ color: 'var(--th-text)', fontSize: 'clamp(15px, 4.2vw, 18px)' }}>{label}</span>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ color: 'var(--th-primary)', flexShrink: 0 }}>
-                  <circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" />
-                  <circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" />
-                  <circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" />
-                </svg>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <button onClick={onSubmit} className="mt-6 w-full py-3.5 rounded-full text-[17px] font-semibold" style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}>
-        Submit
+      <RecordButton onTranscript={(t) => setText((prev) => (prev ? `${prev} ${t}` : t))} />
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={4}
+        placeholder="…or type your answer"
+        className="w-full mt-3 px-4 py-3 rounded-2xl border-2 font-serif text-[16px] focus:outline-none"
+        style={{ borderColor: 'var(--th-border)', backgroundColor: 'var(--th-surface)', color: 'var(--th-text)' }}
+      />
+      <button
+        onClick={submit}
+        disabled={!text.trim()}
+        className="mt-4 w-full py-3.5 rounded-full text-[17px] font-semibold disabled:opacity-40"
+        style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}
+      >
+        Continue
       </button>
     </>
   );
