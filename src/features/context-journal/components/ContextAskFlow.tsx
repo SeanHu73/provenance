@@ -112,6 +112,9 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
   const [timed, setTimed] = useState(false);
   const [range, setRange] = useState<TimeRange>(() => defaultRange(DEFAULT_DOMAIN));
   const [tlDomain, setTlDomain] = useState(DEFAULT_DOMAIN);
+  // Predict-then-reveal: "submitting" the theory is a UX affordance (it's already
+  // saved live) — it just makes the learner feel their answer is locked in.
+  const [submitted, setSubmitted] = useState(false);
   // The learner's first-asked question, captured before any coach reframe.
   const originalQuestionRef = useRef(job?.originalQuestion ?? '');
 
@@ -381,15 +384,36 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
               onChange={(e) => setTheory(e.target.value)}
               rows={4}
               placeholder="…or type your theory"
-              className="w-full px-4 py-3 rounded-xl border-2 bg-white text-[17px] font-serif text-text-primary focus:outline-none"
-              style={{ borderColor: 'var(--th-border)' }}
+              className="w-full px-4 py-3 rounded-xl border-2 bg-white text-[17px] font-serif text-text-primary focus:outline-none transition-shadow"
+              style={submitted
+                ? { borderColor: '#16a34a', boxShadow: '0 0 0 4px rgba(22,163,74,0.22)' }
+                : { borderColor: 'var(--th-border)' }}
             />
+
+            {/* Submit their theory — purely reassurance that it's saved; they can
+                still edit afterwards, and it auto-submits when they reveal. */}
+            {theory.trim() && (
+              <button
+                onClick={() => { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(12); setSubmitted(true); }}
+                className="w-full py-2.5 rounded-xl text-[14px] font-semibold border-2 flex items-center justify-center gap-2"
+                style={submitted
+                  ? { color: '#16a34a', borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.08)' }
+                  : { color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
+              >
+                {submitted ? (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg>
+                    Response saved — you can still edit
+                  </>
+                ) : 'Submit response'}
+              </button>
+            )}
 
             {researchReady ? (
               // Ready: a bright, distinct colour (green = "go") with a pulsing ring
               // — clearly different from the researching state.
               <motion.button
-                onClick={() => { if (jobId) markSeen(jobId); setPhase('result'); }}
+                onClick={() => { setSubmitted(true); if (jobId) markSeen(jobId); setPhase('result'); }}
                 className="relative w-full py-3.5 rounded-xl text-base font-semibold text-white overflow-visible"
                 style={{ backgroundColor: '#16a34a' }}
                 animate={{ scale: [1, 1.04, 1] }}
