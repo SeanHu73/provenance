@@ -236,6 +236,7 @@ function QuestionBubble({ entry, colour, lock, onTap }: {
 }) {
   const [hint, setHint] = useState(false);
   const label = entry.question?.trim() || entry.title?.trim() || 'Explore this context';
+  const photo = thumbnailPhotoUrl(entry);
   if (lock) {
     return (
       <div>
@@ -252,9 +253,13 @@ function QuestionBubble({ entry, colour, lock, onTap }: {
     );
   }
   return (
-    <button onClick={onTap} className="relative w-full text-left rounded-2xl font-serif text-[15px] text-text-primary"
-      style={{ backgroundColor: 'var(--th-bg)', border: `2.5px solid ${colour}`, padding: '10px 34px 10px 14px', boxShadow: `3px 3px 0 color-mix(in srgb, ${colour} 45%, ${SHADOW})` }}>
-      {label}
+    <button onClick={onTap} className="relative w-full text-left rounded-2xl flex items-center gap-3"
+      style={{ backgroundColor: 'var(--th-bg)', border: `2.5px solid ${colour}`, padding: photo ? '8px 32px 8px 8px' : '10px 34px 10px 14px', boxShadow: `3px 3px 0 color-mix(in srgb, ${colour} 45%, ${SHADOW})` }}>
+      {photo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photo} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" style={{ border: `1.5px solid ${colour}` }} />
+      )}
+      <span className="flex-1 min-w-0 font-serif text-[15px] text-text-primary leading-snug">{label}</span>
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="absolute right-3 top-1/2 -translate-y-1/2"><path d="M9 6l6 6-6 6" /></svg>
       {/* speech-bubble tail on the left, pointing toward the lens */}
       <span aria-hidden className="absolute" style={{ left: -13, top: 16, width: 0, height: 0, borderTop: '10px solid transparent', borderBottom: '10px solid transparent', borderRight: `13px solid ${colour}` }} />
