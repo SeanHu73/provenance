@@ -14,8 +14,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { LENSES, LENS_BY_KEY } from '../constants';
-import type { ContextDraft, ContextSource, PastCategory } from '../types';
+import { LENSES, LENS_BY_KEY, TIMELINE_BOUNDS, DEFAULT_DOMAIN, defaultRange } from '../constants';
+import type { ContextDraft, ContextSource, PastCategory, TimeRange } from '../types';
+import ContextTimeline from './ContextTimeline';
 import RecordButton from '@/components/tour/cards/RecordButton';
 import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
 import ContextAskLoading from '@/components/tour/cards/ContextAskLoading';
@@ -106,6 +107,11 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
   const [uploading, setUploading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [adding, setAdding] = useState(false);
+  // The learner can pin the context to a period on the timeline before adding.
+  // Left off, it's stored untimed (spans the whole timeline → shows everywhere).
+  const [timed, setTimed] = useState(false);
+  const [range, setRange] = useState<TimeRange>(() => defaultRange(DEFAULT_DOMAIN));
+  const [tlDomain, setTlDomain] = useState(DEFAULT_DOMAIN);
   // The learner's first-asked question, captured before any coach reframe.
   const originalQuestionRef = useRef(job?.originalQuestion ?? '');
 
@@ -234,7 +240,9 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
       shortSummary: card?.summary || '',
       longExplanation: answer,
       pastCategory: card?.lens || lens,
-      timeRange: { start: 1900, end: 1950 },
+      // Untimed (full span) unless the learner pinned it to a period. Time never
+      // brings up the map here — includePlaceTime stays false.
+      timeRange: timed ? range : { start: TIMELINE_BOUNDS.start, end: TIMELINE_BOUNDS.end },
       geometry: null,
       camera: null,
       mapType: 'default',
@@ -478,6 +486,32 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
                   Find online
                 </button>
               </div>
+            </div>
+
+            {/* Optional: pin this context to a period on the timeline. Purely a
+                journal index — it never surfaces a map on the context page. */}
+            <div>
+              <p className="text-[12px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-secondary)' }}>When does this apply? (optional)</p>
+              <button
+                type="button"
+                onClick={() => setTimed((v) => !v)}
+                aria-pressed={timed}
+                className="w-full flex items-center gap-2.5 rounded-xl border-2 px-3 py-2.5 text-left"
+                style={{ borderColor: timed ? 'var(--th-primary)' : 'var(--th-border)' }}
+              >
+                <span className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0" style={{ borderColor: timed ? 'var(--th-primary)' : 'var(--th-border)', backgroundColor: timed ? 'var(--th-primary)' : 'transparent' }}>
+                  {timed && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg>}
+                </span>
+                <span className="flex-1 text-[14px]" style={{ color: 'var(--text-primary)' }}>Pin it to a time period on the timeline</span>
+              </button>
+              {timed && (
+                <div className="mt-2 rounded-xl border overflow-hidden" style={{ borderColor: 'var(--th-border)' }}>
+                  <ContextTimeline value={range} onChange={setRange} domain={tlDomain} onDomainChange={setTlDomain} />
+                </div>
+              )}
+              <p className="mt-1.5 text-[12px] leading-snug" style={{ color: 'var(--text-secondary)' }}>
+                {timed ? 'Files it under this period in your journal — no map is added.' : 'Left untimed, it shows across every period in your journal.'}
+              </p>
             </div>
 
             <button onClick={add} disabled={adding} className="w-full py-3.5 rounded-xl text-base font-semibold text-white disabled:opacity-40" style={{ backgroundColor: 'var(--th-primary)' }}>
