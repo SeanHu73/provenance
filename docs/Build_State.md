@@ -1,7 +1,23 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-07-03
-(latest: the **"Set Up + Instructions" onboarding wizard**, the **P.A.S.T.
+*Handoff document for the next Claude Code session. Last updated 2026-07-09
+(latest: a **tour phase-header redesign + back-navigation overhaul + Context
+Journal polish** — new Explore→Contextualise→Reflect breadcrumb header (replaces
+the title + progress pills; menu now inside it; a "Stops" chevron handle opens
+the stops list, portaled so it works over the Contextualise/Reflect portals);
+cleaned stops list (no bogus cards, "N of M stops" excl. bonus, "Bonus Stop"
+cards, tap an explored stop → read-only **Discover preview** with "Return to …");
+per-card back arrows removed (back lives in the header arrow) + a Context-Journal
+back arrow that no longer re-locks the ask gate (seeded from a persisted per-act
+signal); a **`LeaveTourGuard`** confirm before the browser back button/refresh
+drops the single-page tour; Act fade shows a big "Explore" over an italic "Act N";
+Context Journal defaults to **classic** lens buttons with a menu toggle to a new
+**magnifier** A/B variant, question chat-bubbles, in-lens "Ask your own question"
+(skips the lens picker), untimed-by-default contexts; merged FIND/DISCOVER audio
+pause/resume across snaps + short-slide snap-to-top; onboarding slide 2 → a
+free-response "How have you been taught history?". **See the 2026-07-09 entry in
+§8.**).
+Prior 2026-07-03 (was latest: the **"Set Up + Instructions" onboarding wizard**, the **P.A.S.T.
 framework redesign**, the **LEARN → DISCOVER** rename, and an optional
 **Opening-Frame starting-point pin** (§15 **pt.29**). Onboarding moved OUT of the
 in-tour flow into a 5-step **`QuickSetUp`** shown after **"Enter →"** (the opening
@@ -155,8 +171,11 @@ Map (tour pin) → Journal Peek → Intro screens → [Meet Your Guide] →
 | UnstructuredMapOverlay | `cards/UnstructuredMapOverlay.tsx` | Unstructured-mode map UI — stop overlay card, stop gallery, exported `MidwayCheckinCard` |
 | UnstructuredClosingView | `cards/UnstructuredClosingView.tsx` | Full-screen closing sequence for unstructured tours (rendered by `page.tsx`, not Journal) |
 | ThemeColorMeta | `src/components/ThemeColorMeta.tsx` | Syncs the browser `<meta theme-color>` chrome to the active theme |
-| AudioButton | `cards/AudioButton.tsx` | Audio player with timeline |
-| BackButton | `cards/BackButton.tsx` | Back navigation (olive border) |
+| AudioButton | `cards/AudioButton.tsx` | Audio player with timeline. Registers its `new Audio()` + bar in `src/lib/tour-audio.ts` so the merged FIND/DISCOVER screen can pause/resume it per snap section (2026-07-09 §8) |
+| BackButton | `cards/BackButton.tsx` | **No-op since 2026-07-09** — back moved to the phase-header arrow; kept so its ~19 call sites don't need editing |
+| PhaseHeader | `src/components/tour/PhaseHeader.tsx` | The Explore→Contextualise→Reflect breadcrumb header (replaces the title bar + progress pills). Exports `PhaseBars` (reused in the Context Journal header, `tone`-aware), `StopsHandle`, `phaseGroup()`. Tapping it opens `StopTrackerOverlay`. See 2026-07-09 §8 |
+| LeaveTourGuard | `src/components/tour/LeaveTourGuard.tsx` | Confirms before the browser/OS back button (history-trap + modal) or refresh/close (beforeunload) drops the single-page tour. See 2026-07-09 §8 |
+| PastPanelMagnifier | `src/features/context-journal/components/PastPanelMagnifier.tsx` | Magnifying-glass A/B variant of the P.A.S.T. lens panel (`lens-variant.ts`; default is the classic buttons). See 2026-07-09 §8 |
 | PhotoContent | `cards/PhotoContent.tsx` | Text + [photo:N] markers + fullscreen |
 | FormattedText | `cards/FormattedText.tsx` | **bold** *italic* {{color}} rendering |
 | FullscreenPhoto | `cards/FullscreenPhoto.tsx` | Portal-based fullscreen with pinch zoom |
@@ -476,6 +495,87 @@ Tailwind CSS 4, TypeScript 5, @vis.gl/react-google-maps 1.8.3.
 ---
 
 ## 8. Recent Session Work (May 2026)
+
+### Tour header redesign, back-navigation overhaul & Context-Journal polish (2026-07-09)
+
+A long multi-part session; all committed and live on `master`.
+
+**New phase-header — `src/components/tour/PhaseHeader.tsx`.** Replaced the tour
+title bar + progress pills with **Explore → Contextualise → Reflect** connected
+breadcrumb segments on a light warm bar (`--th-surface-alt`): the active phase is
+the wide amber segment (full word), the others shrink and truncate, and the bar
+fades at both ends (mask gradient). The **menu circle now sits inside the header**
+(`TourMenu` gained an `inline` variant — dark styling on the light bar); a small
+chevron **"Stops" handle** beneath the bar (and tapping the bar itself) opens the
+stops list. Exports `PhaseBars` (reused inside the Context Journal's own maroon
+header via `tone="dark"`), `StopsHandle`, and `phaseGroup(phase)`. Rendered on
+every in-chrome phase (`phase !== 'end'`); the top arrow is `onBack={goBack}`.
+(Several rejected styles preceded this — amber slant tabs, breadcrumb arrows,
+rounded pill tabs — the final is the connected-diagonal light bar.)
+
+**Stops list cleanup + revisit preview — `ProgressBar.tsx` `StopTrackerOverlay`
+(now `export`ed and rendered by `Journal`, portaled to body).** Dropped the bogus
+"Discussion Question" / "Closing Reflection"/"Wrap Up" cards; the header shows an
+**"N of M stops"** count that **excludes bonuses**; guided stops are numbered while
+additional stops render as an un-numbered **"Bonus Stop"** card (no empty numbered
+thumbnail). Tapping an explored stop opens a read-only **Discover preview** —
+`RevealCard` (new `continueLabel` + `hideBack` props) in a `z-65` body portal with
+a **"Return to [Stop / Contextualising / Reflecting]"** button; it never advances
+or mutates the session. The overlay is **`createPortal`-ed to `document.body`** so
+its `z-60` clears the `z-55` Context Journal / reflection portals (otherwise it was
+trapped inside Journal's `z-40` stacking context and appeared not to open).
+
+**Back-navigation overhaul.** The per-card `<BackButton>` (§1 table) is now a
+**no-op** — back lives solely in the header arrow. The **in-tour Context Journal**
+header gained a real back arrow (`onBack` → `goBack`, replacing the decorative
+journal icon). Returning to an act **no longer re-locks its ask gates**:
+`ContextJournal` seeds `askedOwn` / `explored` / `askedOwnActId` from a persisted
+per-act signal — `session.detectiveAnswers` (now tagged with `actId`; new
+`ContextEntrySnapshot.actId`) or `session.viewedContexts` — passed down as
+`alreadyAsked`. New **`src/components/tour/LeaveTourGuard.tsx`** confirms before the
+browser/OS back button (history-trap + a "Leave the tour?" modal) or a
+refresh/close (beforeunload) drops the single-page tour. (Room mode still restricts
+back-out of context phases — see `canGoBack` in `TourContext.tsx`.)
+
+**Act fade — `ActIntroCard.tsx`.** A big display-font **"Explore"** above a smaller
+**italic "Act N"** (extra gap between them), marking the phase start.
+
+**Context-Journal A/B + UI polish.** Added a `classic` vs `magnifier` lens variant
+(`src/features/context-journal/lens-variant.ts`, **default classic**, journal-menu
+toggle) with a new **`PastPanelMagnifier.tsx`** (cartoon magnifying-glass lenses).
+Both variants: authored questions render as **chat bubbles** (the question leads,
+a small size-capped supporting photo sits at the bottom), a **centred guiding
+question**, and an in-lens **"Ask your own question"** that skips the lens picker
+(`ContextAskFlow` gained `presetLens`). Act-1 Continue is a **hollow, locked**
+button that buzzes + nudges + pulses the ask CTA until they've asked; the floating
+ask hides while a lens is open. `ContextAskFlow` also got a **"Submit response"**
+affordance for the predict-then-reveal theory (green halo, auto-submits on reveal).
+
+**Contexts untimed by default.** The ask flow + manual **Add Context** no longer
+stamp a hardcoded **1900–1950**; contexts are stored **untimed** (full timeline
+span → show in every period) unless the learner opts to pin a period on the
+timeline (a new optional step that never surfaces the map — `includePlaceTime`
+stays false).
+
+**Merged FIND/DISCOVER fixes.** Audio from one snap section **pauses on scroll-out
+and resumes from where it left off** on return — new `src/lib/tour-audio.ts`
+registry (`AudioButton` registers its `new Audio()` + bar; `FindDiscoverCard`'s
+IntersectionObserver pauses/resumes by section). Short DISCOVER slides now **snap
+fully to the top** — the wrapper around the two snap sections is `display:contents`
+so their `min-h-full` resolves against the definite scroll container, and both
+sections align content to the top (`justify-start`), so the "Scroll to discover"
+cue no longer lingers.
+
+**Onboarding slide 2** is now a **free-response** "How have you been taught
+history?" (`RecordButton` + textarea, `HISTORY_KEY` localStorage) instead of the
+drag-to-rank; the old `SortableRank` was removed.
+
+**Prior in-session (Context Detective / journal, all live earlier this session):**
+background research with a green "answer ready" overlay + ask-first gate; "Send to
+Tour Guide" → admin-approved **"Contexts Explored by Others"** (menu toggle,
+per-act, locked until they ask their own); audio-speed control; durable TTS +
+embedding caches; parallel web search (cap 3) with a translucent "researching"
+bar; FIND + DISCOVER merged onto one snap-scroll page ("Explore more" button).
 
 ### v2 tour system (earlier session)
 
