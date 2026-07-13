@@ -21,7 +21,7 @@ function read(file: string): string {
 }
 
 let cache: {
-  past: string; voice: string; research: string; grounding: string; parse: string; frameCoach: string; exemplars: string;
+  past: string; voice: string; research: string; grounding: string; frameCoach: string; exemplars: string;
 } | null = null;
 
 function skills() {
@@ -31,7 +31,6 @@ function skills() {
     voice: read('Context_Detective_Narrative_Voice_Skill.md'),
     research: read('Context_Detective_Research_Skill.md'),
     grounding: read('Context_Detective_Grounding_Skill.md'),
-    parse: read('Context_Detective_Parse_Skill.md'),
     frameCoach: read('Context_Detective_Framing_Coach_Skill.md'),
     exemplars: read('Stanford_Wealth_Context_Entries.md'),
   };
@@ -56,12 +55,6 @@ export function researchSystem(): string {
 export function voiceSystem(): string {
   const s = skills();
   return s.voice + FIREWALL + s.exemplars;
-}
-
-/** Parse pass: Parse + P.A.S.T. (for lens) + exemplars. */
-export function parseSystem(): string {
-  const s = skills();
-  return join(s.parse, s.past) + FIREWALL + s.exemplars;
 }
 
 /**

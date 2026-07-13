@@ -3,8 +3,8 @@
  *
  * embed question → cosine-retrieve over this tour's verified base (knowledge
  * entries + authored Add-Context items) → research + draft (Sonnet 5, web search,
- * domains prioritised-not-enforced) → voice rewrite (Opus 4.8) → parse to a
- * handout (Haiku 4.5, structured JSON) → return the full payload + log it.
+ * domains prioritised-not-enforced) → voice rewrite (Opus 4.8), which also returns
+ * the card's title and summary → build the handout here → return + log it.
  *
  * The route stamps the framing question and entry lens; the model never
  * generates them. Any failure degrades to a "banked" answer so the UI still
@@ -18,8 +18,8 @@ import {
   Tour, KnowledgeEntry, PastLens,
   DetectiveAnswer, DetectiveHandout, DetectiveSource, DetectiveLog,
 } from '@/lib/types';
-import { researchSystem, voiceSystem, parseSystem } from '@/lib/context-detective/prompts';
-import { researchDraft, voiceRewrite, parseHandout, ResearchSource } from '@/lib/context-detective/claude';
+import { researchSystem, voiceSystem } from '@/lib/context-detective/prompts';
+import { researchDraft, voiceRewrite, ResearchSource } from '@/lib/context-detective/claude';
 import { embedTexts, cosine } from '@/lib/context-detective/embed';
 import { embeddingKey, getCachedEmbeddings, putCachedEmbedding } from '@/lib/context-detective/embed-cache';
 import { hashText } from '@/lib/tts-text';
@@ -259,44 +259,46 @@ export async function POST(req: Request) {
       return NextResponse.json(declined);
     }
 
-    // 3. Voice rewrite.
+    // 3. Voice rewrite — and, with it, the card's title and summary. Voice owns
+    //    the finished prose, so the two compressions that inherit its rules are
+    //    written here rather than by a separate pass that would have to re-read
+    //    (and retype) the whole answer to produce them.
     const voiceUser =
-      `Rewrite the following draft for the spoken Context Detective voice, following your Narrative Voice skill exactly. Do not add, remove, or change any fact, source, or claim — only the prose. British spelling, no em dashes, written to be heard. You are granted NO rationed devices this turn: no closing question, no painted scene, no exclamation. Return only the rewritten prose.\n\n`
+      `Rewrite the following draft for the spoken Context Detective voice, following your Narrative Voice skill exactly. Do not add, remove, or change any fact, source, or claim — only the prose. British spelling, no em dashes, written to be heard. You are granted NO rationed devices this turn: no closing question, no painted scene, no exclamation.\n\n`
+      + `Return three fields:\n`
+      + `- narrative: the rewritten answer, and nothing else. This is read aloud and shown to the learner verbatim.\n`
+      + `- title: a short plain phrase naming the CONTEXT ITSELF — the conditions, not the site and not the question. "The Gilded Age economy", not "How Stanford got rich". A few words; no rhetoric, no cleverness, no punctuation tricks. A learner scanning their journal months later should know from the title alone what conditions this holds.\n`
+      + `- summary: one to three sentences distilling the conditions. It must stand alone — someone reading only the summary should come away with the core claim, its time, and its place. Name the span the effect ran (rarely a single year) and the region it held over. Your voice rules apply here in miniature: no banned patterns, no rhetoric, claims only at the confidence the sources support.\n\n`
+      + `Both title and summary must be drawn from the draft — compress it, never add to it.\n\n`
       + `DRAFT:\n${research.draft}\n\nLENS: ${entryLens}`;
     const tVoice = Date.now();
-    const narrative = (await voiceRewrite(voiceSystem(), voiceUser)) || research.draft;
+    const voiced = await voiceRewrite(voiceSystem(), voiceUser);
     timings.voice = Date.now() - tVoice;
 
-    // 4. Parse to handout.
-    const parseUser =
-      `Turn the spoken answer below into the structured handout, following your Parse skill. Extract — never author new facts.\n\n`
-      + `FRAMING QUESTION (stamped — do not change): "${question}"\nENTRY LENS (stamped — do not change): ${entryLens}\n\n`
-      + `SOURCE IDENTIFIERS the answer used (verified/unverified marks are authoritative — carry them. Fill name/author/date only where the source states them; otherwise leave blank and add that field name to checkThis. An inferred date is checkThis even when filled):\n${(research.sources || []).map((s) => JSON.stringify(s)).join('\n') || '(none)'}\n\n`
-      + `BRANCH: ${research.branch}\n${research.relevanceNote ? `RELEVANCE NOTE (Case 2): ${research.relevanceNote}\n` : ''}\n`
-      + `SPOKEN ANSWER:\n${narrative}\n\n`
-      + `Return the handout JSON: one or more cards (lens, title, summary, explanation, sources[] with checkThis arrays), and relevanceNote (empty string if none).`;
-    const tParse = Date.now();
-    const parsed = await parseHandout(parseSystem(), parseUser);
-    timings.parse = Date.now() - tParse;
+    // Voice failing (or returning unusable JSON) must not lose the answer: fall
+    // back to the plain research draft, titled with the learner's own question.
+    const narrative = voiced?.narrative?.trim() || research.draft;
+    const title = voiced?.title?.trim() || question;
+    const summary = voiced?.summary?.trim() || '';
+
     console.log(
       `[detective] "${question.slice(0, 70)}" → ${research.status}/${research.branch} · `
-      + `retrieve=${timings.retrieve}ms research=${timings.research}ms voice=${timings.voice}ms parse=${timings.parse}ms · total=${Date.now() - t0}ms`,
+      + `retrieve=${timings.retrieve}ms research=${timings.research}ms voice=${timings.voice}ms · total=${Date.now() - t0}ms`,
     );
 
+    // One card, built by the route. The explanation IS the voiced narrative —
+    // there is nothing to extract, so nothing re-types it.
     const handout: DetectiveHandout = {
       framingQuestion: question,   // stamped by the route
       entryLens,                   // stamped by the route
-      cards: (parsed?.cards || []).map((c) => ({
-        lens: c.lens, title: c.title, summary: c.summary, explanation: c.explanation,
-        sources: (c.sources || []).map((s) => ({
-          kind: s.kind, id: s.id || undefined, url: s.url || undefined, name: s.name || undefined,
-          author: s.author || undefined, date: s.date || undefined, verified: s.verified,
-          checkThis: (s.checkThis || []).filter(Boolean),
-        })),
-      })),
-      relevanceNote: (parsed?.relevanceNote && !/[<{]|https?:\/\//.test(parsed.relevanceNote)
-        ? parsed.relevanceNote.trim()
-        : relevanceNote) || undefined,
+      cards: [{
+        lens: entryLens,
+        title,
+        summary,
+        explanation: narrative,
+        sources,
+      }],
+      relevanceNote: relevanceNote || undefined,
     };
 
     const answer: DetectiveAnswer = {

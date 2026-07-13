@@ -3,8 +3,15 @@
  * provider convention). Research+draft runs Sonnet 5 with web search and returns
  * a structured answer via a `submit_answer` tool (near-Opus quality on this task
  * but meaningfully faster, so answers land well under the serverless time limit);
- * voice runs Opus 4.8 (prose only); parse runs Haiku 4.5 with a structured-output
- * schema.
+ * voice runs Opus 4.8 and returns the narrative plus its title and summary.
+ *
+ * Two passes, not three. A third (Haiku) pass used to re-read the finished
+ * narrative to produce the handout — but it spent most of its ~40s retyping the
+ * answer verbatim into the card's `explanation`, and its extra capabilities
+ * (splitting into several cards, per-source `checkThis` marks) were never read by
+ * the app, which only ever renders cards[0]. Voice now returns the title and
+ * summary directly (they inherit its rules anyway) and the route uses the
+ * narrative as the explanation.
  */
 
 import { PastLens } from '../types';
@@ -145,71 +152,51 @@ export async function researchDraft(system: string, userText: string): Promise<R
   return null;
 }
 
-// ── Voice rewrite (Opus 4.8, prose only) ──
+// ── Voice rewrite (Opus 4.8) — the narrative plus its title and summary ──
 
-export async function voiceRewrite(system: string, userText: string): Promise<string> {
-  // Voice is a constrained rewrite (no new facts) — no thinking needed, and
-  // omitting it on Opus 4.8 shaves real latency off the pipeline.
-  const resp = await callClaude({
-    model: OPUS,
-    max_tokens: 2000,
-    system: cachedSystem(system),
-    messages: [{ role: 'user', content: userText }],
-  });
-  return ((resp.content || []) as Json[])
-    .filter((b) => b.type === 'text')
-    .map((b) => b.text)
-    .join('\n')
-    .trim();
-}
-
-// ── Parse to handout JSON (Haiku 4.5, structured output) ──
-
-export interface ParseCard {
-  lens: PastLens;
+export interface VoiceOutput {
+  /** The rewritten spoken answer. Becomes the card's full explanation verbatim. */
+  narrative: string;
   title: string;
   summary: string;
-  explanation: string;
-  sources: (ResearchSource & { checkThis: string[] })[];
 }
-export interface ParseOutput { cards: ParseCard[]; relevanceNote: string; }
 
-const HANDOUT_SCHEMA = {
+const VOICE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   properties: {
-    cards: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          lens: { type: 'string', enum: ['place', 'attitudes', 'society', 'technology'] },
-          title: { type: 'string' },
-          summary: { type: 'string' },
-          explanation: { type: 'string' },
-          sources: {
-            type: 'array',
-            items: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                kind: { type: 'string', enum: ['entry', 'context', 'web'] },
-                id: { type: 'string' }, url: { type: 'string' }, name: { type: 'string' },
-                author: { type: 'string' }, date: { type: 'string' }, verified: { type: 'boolean' },
-                checkThis: { type: 'array', items: { type: 'string' } },
-              },
-              required: ['kind', 'id', 'url', 'name', 'author', 'date', 'verified', 'checkThis'],
-            },
-          },
-        },
-        required: ['lens', 'title', 'summary', 'explanation', 'sources'],
-      },
-    },
-    relevanceNote: { type: 'string' },
+    narrative: { type: 'string' },
+    title: { type: 'string' },
+    summary: { type: 'string' },
   },
-  required: ['cards', 'relevanceNote'],
+  required: ['narrative', 'title', 'summary'],
 };
+
+/**
+ * Voice owns the finished prose, so it also writes the two compressions that
+ * inherit its rules — the card's title and short summary. Producing them here
+ * (a few dozen extra tokens on a call we already make) is what lets the route
+ * skip a whole third model pass that used to retype the answer to get them.
+ *
+ * Voice is a constrained rewrite (no new facts) — no thinking needed, and
+ * omitting it on Opus 4.8 shaves real latency off the pipeline.
+ */
+export async function voiceRewrite(system: string, userText: string): Promise<VoiceOutput | null> {
+  const resp = await callClaude({
+    model: OPUS,
+    max_tokens: 3000,
+    system: cachedSystem(system),
+    output_config: { format: { type: 'json_schema', schema: VOICE_SCHEMA } },
+    messages: [{ role: 'user', content: userText }],
+  });
+  const text = ((resp.content || []) as Json[]).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+  try {
+    return JSON.parse(text) as VoiceOutput;
+  } catch (err) {
+    console.error('[detective] voice JSON failed:', err, text.slice(0, 200));
+    return null;
+  }
+}
 
 // ── Framing coach (fast pre-pass, Haiku, structured output) ──
 
@@ -251,19 +238,3 @@ export async function frameQuestion(system: string, userText: string): Promise<F
   }
 }
 
-export async function parseHandout(system: string, userText: string): Promise<ParseOutput | null> {
-  const resp = await callClaude({
-    model: HAIKU,
-    max_tokens: 4000,
-    system: cachedSystem(system),
-    output_config: { format: { type: 'json_schema', schema: HANDOUT_SCHEMA } },
-    messages: [{ role: 'user', content: userText }],
-  });
-  const text = ((resp.content || []) as Json[]).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
-  try {
-    return JSON.parse(text) as ParseOutput;
-  } catch (err) {
-    console.error('[detective] parse JSON failed:', err, text.slice(0, 200));
-    return null;
-  }
-}
