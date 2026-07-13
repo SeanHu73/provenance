@@ -1,15 +1,17 @@
 'use client';
 
 /**
- * Which P.A.S.T. lens UI to show: the original chunky "door" buttons (`classic`,
- * the default) or the newer magnifying-glass lenses (`magnifier`). The journal
- * menu has a toggle to switch (for brainstorming), and the choice sticks per device.
+ * Which P.A.S.T. lens UI to show: the swipeable single-lens deck (`slider`, the
+ * default), the original chunky "door" buttons (`classic`), or the
+ * magnifying-glass lenses (`magnifier`). The journal menu has a toggle to switch
+ * (for brainstorming), and the choice sticks per device.
  */
 
 import { useEffect, useState } from 'react';
 
-export type LensVariant = 'classic' | 'magnifier';
-const DEFAULT: LensVariant = 'classic';
+export type LensVariant = 'slider' | 'classic' | 'magnifier';
+const VARIANTS: LensVariant[] = ['slider', 'classic', 'magnifier'];
+const DEFAULT: LensVariant = 'slider';
 const KEY = 'provenance.lensVariant';
 const subscribers = new Set<() => void>();
 
@@ -17,7 +19,7 @@ function read(): LensVariant {
   if (typeof window === 'undefined') return DEFAULT;
   try {
     const v = window.localStorage.getItem(KEY);
-    return v === 'classic' || v === 'magnifier' ? v : DEFAULT;
+    return (VARIANTS as string[]).includes(v ?? '') ? (v as LensVariant) : DEFAULT;
   } catch {
     return DEFAULT;
   }
@@ -33,7 +35,7 @@ export function setLensVariant(v: LensVariant): void {
   subscribers.forEach((s) => s());
 }
 
-/** `[variant, setVariant]`. Defaults to the magnifier; toggling persists. */
+/** `[variant, setVariant]`. Defaults to the slider; toggling persists. */
 export function useLensVariant(): [LensVariant, (v: LensVariant) => void] {
   const [variant, setVariant] = useState<LensVariant>(DEFAULT);
   useEffect(() => {

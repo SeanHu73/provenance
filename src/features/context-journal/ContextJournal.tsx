@@ -26,6 +26,7 @@ import ContextMapLoader from './components/ContextMapLoader';
 import ContextTimeline from './components/ContextTimeline';
 import PastPanel from './components/PastPanel';
 import PastPanelMagnifier from './components/PastPanelMagnifier';
+import PastPanelSlider from './components/PastPanelSlider';
 import { useLensVariant } from './lens-variant';
 import { PhaseBars, StopsHandle } from '@/components/tour/PhaseHeader';
 import ContextOverlay from './components/ContextOverlay';
@@ -176,6 +177,23 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   const [fullEntry, setFullEntry] = useState<ContextEntry | null>(null);
   // In-tour gate: the learner must open at least one context before continuing.
   const [explored, setExplored] = useState(!!alreadyAsked);
+  // Slider variant: every P.A.S.T. lens has been swiped to. Seeded true for a
+  // returning learner (back-nav) so the swipe gate doesn't re-lock.
+  const [allLensesSeen, setAllLensesSeen] = useState(!!alreadyAsked);
+  // The floating "Ask your own question" CTA is hidden in the gated in-tour flow
+  // until a premature Continue reveals it — then it stays.
+  const [askCtaRevealed, setAskCtaRevealed] = useState(false);
+  // Why a locked Continue was blocked on the last tap: swipe the lenses, or ask
+  // your own first (drives the button label / hint).
+  const [continueBlock, setContinueBlock] = useState<null | 'swipe' | 'ask'>(null);
+  // After adding a context, a one-off tooltip tells the learner it now lives in
+  // the lenses for next time.
+  const [showAddedTip, setShowAddedTip] = useState(false);
+  useEffect(() => {
+    if (!showAddedTip) return;
+    const t = window.setTimeout(() => setShowAddedTip(false), 7000);
+    return () => window.clearTimeout(t);
+  }, [showAddedTip]);
   // Ask-first gate (act 2+, not additional stops): the journal stays closed until
   // the learner poses their own question and sees a response. `gateAskOpen` shows
   // the question screen straight away; `sawResponseRef` records that they reached a
@@ -242,6 +260,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
       });
     }
     setExplored(true);
+    setShowAddedTip(true);
   };
   const persistUpdate = (id: string, patch: Partial<NewContextEntry>): Promise<void> =>
     guestLocal ? Promise.resolve(updateGuestContext(scopeId, id, patch)) : updateContextEntry(id, patch);
@@ -369,6 +388,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
         sourceId: entry.id, origin: 'added', placeId: scopeId,
       });
       setFullEntry(null);
+      setShowAddedTip(true);
     } catch (err) {
       console.error('[context-journal] add failed:', err);
     }
@@ -429,6 +449,17 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
     );
   }
 
+  // Continue gate. "Engaged" = the learner has worked through the lenses: on the
+  // swipe deck that means every lens has been swiped to; on the other variants it
+  // keeps the old "opened/asked a context" rule. Act 1 (requireAskToContinue) also
+  // requires posing your own question.
+  const engaged = lensVariant === 'slider' ? allLensesSeen : explored;
+  const canContinue = requireAskToContinue ? engaged && exploredUnlocked : engaged;
+  // The floating "Ask your own" CTA is suppressed in the gated in-tour flow until
+  // a premature Continue reveals it (then it stays). Standalone / revisit keep it.
+  const gatedFlow = !!inTour && !revisit;
+  const floatingAskHidden = (gatedFlow && !askCtaRevealed) || (anyLensOpen && !continueNudge);
+
   return (
     <div className="flex flex-col" style={{ height: '100dvh', backgroundColor: 'var(--th-bg)' }}>
       {/* top bar */}
@@ -478,7 +509,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
               <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--th-border)' }}>
                 <span className="font-semibold text-text-primary text-sm">Lens style</span>
                 <div className="flex rounded-full overflow-hidden text-[12px] font-semibold border" style={{ borderColor: 'var(--th-border)' }}>
-                  {(['classic', 'magnifier'] as const).map((v) => (
+                  {(['slider', 'classic', 'magnifier'] as const).map((v) => (
                     <button key={v} onClick={() => setLensVariant(v)} className="px-3 py-1 capitalize"
                       style={{ backgroundColor: lensVariant === v ? 'var(--th-primary)' : 'transparent', color: lensVariant === v ? 'var(--th-surface)' : 'var(--text-secondary)' }}>
                       {v}
@@ -593,9 +624,24 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
         )}
       </div>
 
-      {/* 2 — P.A.S.T. framework (the main space). Two A/B variants of the lens UI. */}
+      {/* 2 — P.A.S.T. framework (the main space). Three A/B variants of the lens UI. */}
       <div className="flex-1 overflow-y-auto">
-        {lensVariant === 'magnifier' ? (
+        {lensVariant === 'slider' ? (
+          <PastPanelSlider
+            entries={displayEntries}
+            selectedRange={range}
+            savedIds={savedIds}
+            focusedId={focused?.id ?? null}
+            guidingQuestion={guidingQuestion}
+            lockInfoById={lockInfo}
+            onFocus={handleFocus}
+            onToggleSave={toggleSave}
+            onOpenFull={openFull}
+            onAskLens={(lens) => { setAskLens(lens); setAskOpen(true); }}
+            onAllSeenChange={setAllLensesSeen}
+            initiallyAllSeen={!!alreadyAsked}
+          />
+        ) : lensVariant === 'magnifier' ? (
           <PastPanelMagnifier
             entries={displayEntries}
             selectedRange={range}
@@ -645,7 +691,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
             scroll pinned near the bottom (an overlay CTA), then un-sticks and
             docks in flow just above the Continue button as you reach the end, so
             the two never overlap. (AI flow lands later; opens the add form.) */}
-        <div className={`sticky bottom-4 z-30 px-5 pt-3 ${anyLensOpen && !continueNudge ? 'hidden' : ''}`}>
+        <div className={`sticky bottom-4 z-30 px-5 pt-3 ${floatingAskHidden ? 'hidden' : ''}`}>
           <motion.button
             onClick={() => { haptic(10); setContinueNudge(false); setAskLens(undefined); setAskOpen(true); }}
             whileTap={{ x: 4, y: 4, boxShadow: `0px 0px 0 ${INK_SHADOW}` }}
@@ -668,42 +714,42 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
 
         {inTour && !revisit ? (
           <div className="px-5 pb-8 pt-4">
-            {requireAskToContinue && !exploredUnlocked ? (
-              // First act: Continue is hollow until they've posed their own
-              // question. Tapping it buzzes + nudges toward the ask CTA.
+            {requireAskToContinue && !canContinue ? (
+              // First act: Continue stays locked until they've swiped through
+              // every lens AND posed their own question. Tapping it either nudges
+              // toward swiping, or (once swiped) reveals the ask CTA and relabels
+              // the button to spell out what's left.
               <>
-                {/* Locked-looking: dashed, translucent, a lock — not a solid CTA. */}
                 <button
-                  onClick={() => { haptic(30); setContinueNudge(true); }}
-                  className="w-full py-3.5 rounded-2xl text-base font-semibold border-2 border-dashed bg-transparent flex items-center justify-center gap-2"
-                  style={{ color: 'color-mix(in srgb, var(--th-primary) 55%, transparent)', borderColor: 'color-mix(in srgb, var(--th-primary) 38%, transparent)' }}
+                  onClick={() => {
+                    haptic(30);
+                    if (!engaged) setContinueBlock('swipe');
+                    else if (!exploredUnlocked) { setContinueBlock('ask'); setAskCtaRevealed(true); setContinueNudge(true); }
+                  }}
+                  className="w-full py-3.5 rounded-2xl text-[15px] font-semibold border-2 border-dashed bg-transparent flex items-center justify-center gap-2"
+                  style={{ color: 'color-mix(in srgb, var(--th-primary) 62%, transparent)', borderColor: 'color-mix(in srgb, var(--th-primary) 38%, transparent)' }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                  {continueLabel}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                  {continueBlock === 'ask' ? 'Try asking your own question before continuing' : continueLabel}
                 </button>
-                <AnimatePresence>
-                  {continueNudge && (
-                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
-                      className="mt-3 flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-[15px] font-bold text-warm-white"
-                      style={{ backgroundColor: 'var(--th-primary)' }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
-                      Ask your own question first
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {continueBlock === 'swipe' && !engaged && (
+                  <p className="mt-2 text-center text-xs text-text-muted">Swipe through all the lenses first.</p>
+                )}
               </>
             ) : (
               <>
                 <button
                   onClick={onExit}
-                  disabled={!explored}
+                  disabled={!canContinue}
                   className="w-full py-3.5 rounded-2xl text-base font-semibold text-warm-white disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ backgroundColor: 'var(--th-primary)' }}
                 >
                   {continueLabel}
                 </button>
-                {!explored && (
-                  <p className="mt-2 text-center text-xs text-text-muted">Ask a question — or tap one to explore — before continuing.</p>
+                {!canContinue && (
+                  <p className="mt-2 text-center text-xs text-text-muted">
+                    {lensVariant === 'slider' ? 'Swipe through all the lenses to continue.' : 'Ask a question — or tap one to explore — before continuing.'}
+                  </p>
                 )}
               </>
             )}
@@ -712,6 +758,31 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
           <div className="pb-8" />
         )}
       </div>
+
+      {/* Added-context tooltip — a one-off nudge that a context the learner just
+          added now lives in the P.A.S.T. lenses for next time. */}
+      <AnimatePresence>
+        {showAddedTip && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+            className="fixed left-1/2 -translate-x-1/2 z-[70] px-4"
+            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 92px)' }}
+          >
+            <div className="relative flex items-start gap-2.5 rounded-2xl px-4 py-3 shadow-xl text-warm-white" style={{ backgroundColor: 'var(--th-primary)', maxWidth: 320 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
+                <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3M11 8v6M8 11h6" />
+              </svg>
+              <p className="flex-1 font-serif text-[13.5px] leading-snug">
+                Nice — your context now lives in the P·A·S·T lenses. You&apos;ll spot it here whenever you look through them.
+              </p>
+              <button onClick={() => setShowAddedTip(false)} aria-label="Dismiss" className="shrink-0 -mr-1 -mt-1 w-6 h-6 flex items-center justify-center text-warm-white/85 text-xl leading-none">&times;</button>
+              {/* little pointer toward the lenses above */}
+              <span aria-hidden className="absolute left-1/2 -translate-x-1/2" style={{ top: -7, width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderBottom: '8px solid var(--th-primary)' }} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* "Answer ready" overlay — pulls the learner back to a background job that
           finished while they explored something else. Hidden while a sheet is open. */}
@@ -775,7 +846,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
           <AddContextFlow
             key="add"
             onClose={() => setAddOpen(false)}
-            onSubmit={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); setExplored(true); }}
+            onSubmit={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); setExplored(true); setShowAddedTip(true); }}
           />
         )}
         {liveFull && (
