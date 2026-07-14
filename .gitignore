@@ -44,6 +44,6 @@ next-env.d.ts
 .~lock.*#
 ~$*
 
-# ProRes 4444 logo animations — ~190MB, regenerable, and only needed locally for CapCut.
-# The WebM (alpha) and MP4 alongside them are committed.
-docs/logo_final/animation/*.mov
+# ProRes 4444 logo masters — ~190MB, regenerable, and superseded by the QTRLE cuts
+# (same alpha, ~10x smaller, and decodable without a ProRes codec). Kept locally only.
+docs/logo_final/animation/*-alpha.mov
