@@ -456,7 +456,7 @@ export default function Home() {
 }
 
 // Aspect of the full pin glyph (width / height of the source PNG mask).
-const PIN_GLYPH_ASPECT = 319 / 450;
+const PIN_GLYPH_ASPECT = 320 / 442;
 const GLYPH_MASK = {
   maskSize: 'contain',
   WebkitMaskSize: 'contain',

@@ -8,7 +8,7 @@ const CHURCH_LOCATION = { lat: 37.42700, lng: -122.17015 }; // Stanford Memorial
 const MAX_AUTO_ZOOM = 17;
 const NEAR_THRESHOLD_M = 300;
 const SHOW_PIN_RADIUS_M = 8047; // 5 miles
-const PIN_ASPECT = 319 / 450; // full logo glyph width / height
+const PIN_ASPECT = 320 / 442; // full logo glyph width / height
 const BUBBLE_ASPECT = 319 / 225; // speech-bubble glyph width / height
 const ARROW_SIZE = 46; // px — off-screen direction arrow
 

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="219 27 702 970" width="702" height="970" fill="none">
+  <!-- Map pin: the mark without the "..." dots, cropped tight to the pin so the tip
+       sits at the bottom edge and the marker can be anchored to it. -->
+  <defs>
+    <clipPath id="provenance-pin-clip">
+      <path d="M921 377.609C900.836 563.522 705.088 851.777 570.391 996.416C435.218 851.266 240.168 565.566 219.782 377.609C219.782 183.973 376.755 27 570.391 27C764.027 27 921 183.973 921 377.609Z"/>
+    </clipPath>
+  </defs>
+  <path d="M921 377.609C900.836 563.522 705.088 851.777 570.391 996.416C435.218 851.266 240.168 565.566 219.782 377.609C219.782 183.973 376.755 27 570.391 27C764.027 27 921 183.973 921 377.609Z" fill="#A33829"/>
+  <g clip-path="url(#provenance-pin-clip)">
+    <path d="M410.188 354.996C410.188 187.506 672.372 172.548 714.554 329.838C733.747 401.407 705.907 472.36 641.571 507.022C610.24 526.991 560.148 526.196 525.202 519.147C490.05 512.056 464.411 494.815 427.594 495.218C414.325 496.62 421.839 570.829 421.757 582.153C422.241 613.724 428.096 794.798 428.096 794.798V867"
+      stroke="#FAF6F1" stroke-width="80" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

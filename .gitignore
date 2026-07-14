@@ -43,3 +43,7 @@ next-env.d.ts
 # office lock files (LibreOffice / Excel leave these while a doc is open)
 .~lock.*#
 ~$*
+
+# ProRes 4444 logo animations — ~190MB, regenerable, and only needed locally for CapCut.
+# The WebM (alpha) and MP4 alongside them are committed.
+docs/logo_final/animation/*.mov

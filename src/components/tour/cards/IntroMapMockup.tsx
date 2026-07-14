@@ -17,7 +17,7 @@ import { Tour } from '@/lib/types';
 
 const FALLBACK_LOCATION = { lat: 37.42700, lng: -122.17015 }; // Stanford Memorial Church
 const MAP_ID = 'b8f339c02d8c7d5bd3f12d1b';
-const PIN_ASPECT = 319 / 450; // matches Map.tsx LogoGlyph aspect
+const PIN_ASPECT = 320 / 442; // matches Map.tsx LogoGlyph aspect
 
 const GLYPH_MASK = {
   maskSize: 'contain',
