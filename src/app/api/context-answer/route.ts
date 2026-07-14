@@ -30,6 +30,9 @@ export const maxDuration = 300;
 
 const LOG_COLLECTION = 'memorial-church-detective-responses';
 const TOP_K = 6;
+/** Cosine floor a base entry must clear to be shown to the model at all. Below this
+ *  it is not "related material", it is a distraction we have stamped as verified. */
+const MIN_SCORE = 0.45;
 
 interface Candidate {
   kind: 'entry' | 'context';
@@ -206,17 +209,28 @@ export async function POST(req: Request) {
     });
     timings.retrieve = Date.now() - tRetrieve;
 
-    const ranked = candidates
+    // Rank, then drop the weak matches entirely. Taking the top K regardless of score
+    // was actively harmful: a small base skews to whatever it happens to contain (here,
+    // the railroad), so *every* technology question was handed railroad entries stamped
+    // "curator-authored; verified" and the model anchored on them — answering about the
+    // railroad when asked about the campus. An entry the question does not actually match
+    // is worse than no entry at all, because we vouch for it. Below the floor, we say the
+    // base has nothing and let it search.
+    const scored = candidates
       .map((c) => ({ ...c, score: cosine(qVec, c.embedding) }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, TOP_K);
+      .sort((a, b) => b.score - a.score);
+    const ranked = scored.filter((c) => c.score >= MIN_SCORE).slice(0, TOP_K);
+    console.log(
+      `[detective]   retrieval: ${ranked.length}/${scored.length} above floor ${MIN_SCORE} · `
+      + (scored.slice(0, 5).map((c) => `${c.score.toFixed(2)} ${c.title.slice(0, 34)}`).join(' | ') || 'base empty'),
+    );
 
     // 2. Research + draft. The tour's preferred domains lead the list (so they
     //    survive the cap), then source links from the retrieved entries.
     const domains = Array.from(new Set([...preferredDomains, ...ranked.flatMap((c) => c.domains)])).slice(0, 16);
     const candidateBlock = ranked.length
       ? ranked.map((c) => `[${c.kind}:${c.id}] (${c.lens}) ${c.title}\n${c.summary}\n${c.explanation}\nSource links: ${c.domains.join(', ') || '—'}`).join('\n\n')
-      : '(the verified base has no entries yet)';
+      : '(nothing in the verified base matches this question — research it from the web)';
     const lensLine = requestLens ? `: ${requestLens}` : ' — not specified; determine the lead lens yourself.';
 
     const priorBlock = priorStops.length
@@ -230,13 +244,20 @@ export async function POST(req: Request) {
       + priorBlock
       + `RETRIEVED VERIFIED-BASE CANDIDATES (curator-authored; verified. Use only those that DIRECTLY answer — fit, not presence):\n${candidateBlock}\n\n`
       + `PRIORITISED DOMAINS for web search (prioritise, do not restrict to): ${domains.join(', ') || 'academic and official / university sites'}\n\n`
-      + `Follow your P.A.S.T., Research, and Grounding skills. Screen first (is this a question? is it about context?). If the verified base directly answers, use it (branch verified-base). If not, supplement with web search — first decide the specific entities, dates, or sub-questions you actually need and run targeted queries for those rather than one broad search, and issue those queries together in the SAME turn (several tool calls at once) rather than one after another, so they run in parallel and you read all the results before deciding whether you genuinely need another round; prioritise the domains above and academic / official / university sources, and mark every web source unverified (branch live). Well-established, verifiable facts (who someone was, their religion or role, key dates and events) may be answered from any reputable source — encyclopedic, news, official, or university, not only academic — as long as you cite it and mark it unverified; do not bank a question just because the best source is a general reference. Only bank (status + branch banked) when the answer genuinely cannot be established from available sources, and decide that PROMPTLY: if a couple of targeted searches turn up nothing usable, bank quickly and honestly rather than spending further searches — a fast "we could not find this" is far better than a slow one. Then call submit_answer exactly once: the draft (guiding first-person plural, it will be voiced afterwards), the branch, the lead lens, and every source you actually used as its own object in the sources array (entry/context id for verified, url for web) — never as text and never inside relevanceNote. Leave unused source sub-fields as empty strings, and relevanceNote empty unless this context is likely not relevant to what the learner is exploring.`;
+      + `Follow your P.A.S.T., Research, and Grounding skills. Screen first (is this a question? is it about context?). If the verified base directly answers, use it (branch verified-base). If not, supplement with web search — first decide the specific entities, dates, or sub-questions you actually need and run targeted queries for those rather than one broad search, and issue those queries together in the SAME turn (several tool calls at once) rather than one after another, so they run in parallel and you read all the results before deciding whether you genuinely need another round; prioritise the domains above and academic / official / university sources, and mark every web source unverified (branch live). Well-established, verifiable facts (who someone was, their religion or role, key dates and events) may be answered from any reputable source — encyclopedic, news, official, or university, not only academic — as long as you cite it and mark it unverified; do not bank a question just because the best source is a general reference. BANKING IS A LAST RESORT, NOT A SAFE DEFAULT, and banking unnecessarily is the most common way this pipeline fails the learner. Follow your Research skill §4a: if you can establish the CONDITIONS the learner is reaching for — the period, the place, the technology, the society they are asking about — then ANSWER, even when you cannot pin down one specific the question happened to name. Give what the record shows, say plainly what it does not show, and stop. A partial answer that admits its own edges is far more useful than a bank, and a question is almost never all-or-nothing. Only bank (status + branch banked) when you have found essentially nothing usable about those conditions — which should be rare. If you do reach that point, reach it PROMPTLY: bank rather than spending further searches, since a fast "we could not find this" beats a slow one. YOUR SEARCH BUDGET IS FINITE, AND RUNNING OUT OF IT IS NOT A RESEARCH FAILURE: if the web_search tool reports that you have hit its usage limit, that is a signal to STOP SEARCHING AND ANSWER FROM THE RESULTS ALREADY IN FRONT OF YOU — never bank because a tool limit stopped you, and never describe a tool limit to the learner. Do not re-issue a query you have already run; you already have its results. KNOWING SOMETHING YOURSELF IS NOT A SOURCE. You will often already know the answer — when the first cars were built, who someone was — and the temptation is to write it from memory and leave sources empty because you did not feel you "used" the search results. That is the single most common way you fail here, and an uncited answer is rejected. If you searched, you have results: attribute the claims you made to the results that establish them. Every factual claim in the draft must point at something in sources. Then call submit_answer exactly once: the draft (guiding first-person plural, it will be voiced afterwards), the branch, the lead lens, and every source you actually used as its own object in the sources array (entry/context id for verified, url for web) — never as text and never inside relevanceNote. Leave unused source sub-fields as empty strings, and relevanceNote empty unless this context is likely not relevant to what the learner is exploring.`;
 
     const tResearch = Date.now();
     const research = await researchDraft(researchSystem(), researchUser);
     timings.research = Date.now() - tResearch;
     if (!research || research.status === 'banked') {
-      console.log(`[detective] "${question.slice(0, 70)}" → banked · retrieve=${timings.retrieve}ms research=${timings.research}ms total=${Date.now() - t0}ms`);
+      // Banking is meant to be rare (see the Research skill §4a). When it happens,
+      // log the model's own account of why — otherwise an unnecessary bank is
+      // indistinguishable from a genuine one and we cannot tell which we have.
+      const why = !research ? 'no submit_answer returned' : (research.draft || '').trim().slice(0, 300) || '(no reason given)';
+      console.log(
+        `[detective] "${question.slice(0, 70)}" → banked · retrieve=${timings.retrieve}ms research=${timings.research}ms total=${Date.now() - t0}ms`
+        + `\n[detective]   bank reason: ${why}`,
+      );
       return NextResponse.json(banked(question, tourId, actId, '', originalQuestion));
     }
 
@@ -252,6 +273,21 @@ export async function POST(req: Request) {
       kind: s.kind, id: s.id || undefined, url: s.url || undefined, name: s.name || undefined,
       author: s.author || undefined, date: s.date || undefined, verified: s.verified,
     }));
+
+    // The model self-reports `branch`, and it gets it wrong: it has labelled answers
+    // `verified-base` while citing web sources it had just searched. The branch drives
+    // the unverified marks and the candidate-capture path, so trust the sources, not
+    // the label — any web source means this was a live answer.
+    if (sources.some((s) => s.kind === 'web') && research.branch !== 'live') {
+      console.log(`[detective]   branch corrected: ${research.branch} → live (web sources cited)`);
+      research.branch = 'live';
+    }
+    // An answer with no sources at all violates the Research skill (§5: every claim must
+    // trace to a returned identifier). It means the model drafted from memory or stretched
+    // a retrieved entry without citing it. Surface it loudly rather than shipping it silently.
+    if (sources.length === 0) {
+      console.warn(`[detective]   ⚠ answered with ZERO sources — "${question.slice(0, 70)}" (branch=${research.branch})`);
+    }
 
     if (research.status === 'declined') {
       const declined: DetectiveAnswer = { status: 'declined', narrative: research.draft, handout: null, branch: research.branch, sources, relevanceNote: research.relevanceNote || undefined };
