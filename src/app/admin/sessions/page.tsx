@@ -325,6 +325,15 @@ const VERDICTS: { key: NonNullable<DetectiveCorrection['verdict']>; label: strin
   { key: 'rejected', label: 'Rejected', cls: 'bg-red-600', hex: '#dc2626' },
 ];
 
+// What kind of lesson this is. The Skill Maintainer routes on it: content →
+// retrieved by question similarity; voice → a Narrative Voice skill diff, because a
+// voice lesson applies to every question, not just similar ones. See DetectiveCorrection.
+const KINDS: { key: NonNullable<DetectiveCorrection['kind']>; label: string; cls: string }[] = [
+  { key: 'voice', label: 'Voice', cls: 'bg-violet-600' },
+  { key: 'content', label: 'Content', cls: 'bg-sky-700' },
+  { key: 'both', label: 'Both', cls: 'bg-stone-600' },
+];
+
 function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
   e: ContextEntrySnapshot;
   sessionId: string;
@@ -337,6 +346,7 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
   const [editing, setEditing] = useState(false);
   const [note, setNote] = useState(correction?.note ?? '');
   const [verdict, setVerdict] = useState<DetectiveCorrection['verdict']>(correction?.verdict);
+  const [kind, setKind] = useState<DetectiveCorrection['kind']>(correction?.kind);
   const cur = correction?.edited ?? { title: e.title, shortSummary: e.shortSummary ?? '', longExplanation: e.longExplanation ?? '' };
   const [eTitle, setETitle] = useState(cur.title);
   const [eSummary, setESummary] = useState(cur.shortSummary);
@@ -352,7 +362,7 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
     const willEdit = over.edited !== undefined ? over.edited : correction?.edited;
     const next: DetectiveCorrection = {
       id: e.id, sessionId, tourId,
-      verdict, note: note.trim() || undefined,
+      verdict, kind, note: note.trim() || undefined,
       original: correction?.original ?? { title: e.title, shortSummary: e.shortSummary ?? '', longExplanation: e.longExplanation ?? '' },
       edited: willEdit,
       promotedEntryId: correction?.promotedEntryId,
@@ -402,6 +412,7 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
         <Tag color={LENS_BY_KEY[e.lens as PastCategory]?.colour}>{lensLabel(e.lens)}</Tag>
         {e.origin && <Tag>{e.origin === 'self' ? 'their own' : e.origin}</Tag>}
         {correction?.verdict && (() => { const v = VERDICTS.find((x) => x.key === correction.verdict); return v ? <Tag color={v.hex}>{v.label}</Tag> : null; })()}
+        {correction?.kind && <Tag>{KINDS.find((k) => k.key === correction.kind)?.label.toLowerCase()}</Tag>}
         {correction?.edited && <Tag>edited</Tag>}
         {correction?.promotedEntryId && <Tag>in base</Tag>}
         <span className="text-sm font-semibold text-stone-800">{shownTitle}</span>
@@ -440,9 +451,18 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
               ))}
               <button onClick={() => setReviewing(false)} className="ml-auto text-[11px] text-stone-500 hover:underline">Close</button>
             </div>
+            {/* kind — routes the lesson: voice becomes a skill diff, content a retrieved example */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-stone-500 font-semibold">Lesson about:</span>
+              {KINDS.map((k) => (
+                <button key={k.key} onClick={() => { setKind(k.key); void persist({ kind: k.key }); }}
+                  className={`px-2 py-0.5 rounded text-[11px] text-white ${k.cls} ${kind === k.key ? '' : 'opacity-40'}`}>{k.label}</button>
+              ))}
+            </div>
             {/* note */}
             <div className="flex gap-2 items-start">
-              <textarea value={note} onChange={(ev) => setNote(ev.target.value)} rows={2} placeholder="Correction note (what's wrong / what to fix)…"
+              <textarea value={note} onChange={(ev) => setNote(ev.target.value)} rows={2}
+                placeholder="The rule, not the change — the edit already shows what changed. e.g. “Don't open by restating the question; start with the fact.”"
                 className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs bg-white" />
               <button onClick={() => void persist()} disabled={busy} className="px-2 py-1 rounded bg-blue-700 text-white text-[11px] disabled:opacity-40">Save note</button>
             </div>

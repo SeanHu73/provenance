@@ -954,6 +954,26 @@ export interface DetectiveCorrection {
   sessionId: string;
   tourId: string;
   verdict?: 'approved' | 'needs_work' | 'rejected';
+  /**
+   * Which skill this correction is a lesson about. Not cosmetic — it routes the
+   * correction, and the two paths are opposites:
+   *
+   *  'content' is **local**. The lesson is about this subject, so it rides the
+   *    correction-retrieval path: embed the question, resurface on similar ones.
+   *  'voice' is **global**. A voice lesson learned on a railroad question applies to
+   *    every question ever asked, so question-similarity retrieval would bury it —
+   *    it belongs in the Narrative Voice skill, which loads on every call.
+   *
+   * Misfiling a voice lesson as content turns a rule into an anecdote, which is why
+   * the admin says so rather than the Maintainer guessing.
+   */
+  kind?: 'voice' | 'content' | 'both';
+  /**
+   * The *why*, not the *what* — `original` vs `edited` already shows what changed.
+   * The useful note states a rule that would still make sense on a different
+   * question ("Voice — don't open by restating the question; start with the fact").
+   * A note that only describes the diff ("made it less flowery") adds nothing.
+   */
   note?: string;
   /** Snapshot of the answer as the AI produced it, captured on first edit. */
   original?: { title: string; shortSummary: string; longExplanation: string };
