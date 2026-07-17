@@ -355,6 +355,14 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
   const [status, setStatus] = useState('');
   const setup = describeSetup(e);
 
+  // Clear the transient "Saved ✓" so it doesn't sit there implying the *next*
+  // edit is saved too. Failures stay up until the next attempt.
+  useEffect(() => {
+    if (!status || /fail/i.test(status)) return;
+    const t = window.setTimeout(() => setStatus(''), 2200);
+    return () => window.clearTimeout(t);
+  }, [status]);
+
   // Persist the current review state. `original` is captured the first time an
   // edit is made and never overwritten, so the AI can see what changed.
   const persist = async (over: Partial<DetectiveCorrection> = {}) => {
@@ -369,7 +377,11 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
       ...over,
       updatedAt: new Date().toISOString(),
     };
-    try { await saveCorrection(next); onSaved(); } catch (err) { console.error(err); setStatus('Save failed'); }
+    // Say so on success, not just on failure. Silence on a write is unreadable:
+    // it looks identical to a no-op, so you can't tell a saved note from a lost
+    // one and end up re-clicking or re-typing it.
+    try { await saveCorrection(next); onSaved(); setStatus('Saved ✓'); }
+    catch (err) { console.error(err); setStatus('Save failed — not saved'); }
     setBusy(false);
   };
 
@@ -464,7 +476,16 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
               <textarea value={note} onChange={(ev) => setNote(ev.target.value)} rows={2}
                 placeholder="The rule, not the change — the edit already shows what changed. e.g. “Don't open by restating the question; start with the fact.”"
                 className="flex-1 px-2 py-1 border border-stone-300 rounded text-xs bg-white" />
-              <button onClick={() => void persist()} disabled={busy} className="px-2 py-1 rounded bg-blue-700 text-white text-[11px] disabled:opacity-40">Save note</button>
+              <div className="shrink-0 flex flex-col items-end gap-1">
+                <button onClick={() => void persist()} disabled={busy} className="px-2 py-1 rounded bg-blue-700 text-white text-[11px] disabled:opacity-40">
+                  {busy ? 'Saving…' : 'Save note'}
+                </button>
+                {/* The status lived only next to Promote, at the bottom of the box —
+                    too far from this button to read as its result. */}
+                {status && (
+                  <span className={`text-[11px] ${/fail/i.test(status) ? 'text-red-700 font-semibold' : 'text-emerald-700'}`}>{status}</span>
+                )}
+              </div>
             </div>
             {/* edit answer */}
             {!editing ? (
