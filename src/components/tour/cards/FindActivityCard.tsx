@@ -29,6 +29,11 @@ import FormattedText from './FormattedText';
  *  block. */
 const PHOTO_CAP = '38vh';
 
+/** Marigold Sans — softer than the app's editorial serif; used for the FIND
+ *  briefing to make the ask feel welcoming. The `--font-marigold-sans` var is
+ *  loaded in layout.tsx. */
+const MARIGOLD = 'var(--font-marigold-sans)';
+
 interface Props {
   stop: Stop;
   /** Fires once, when the reveal happens — lets the parent mount what's below. */
@@ -89,21 +94,21 @@ export default function FindActivityCard({ stop, onFound }: Props) {
 
       {/* The instructions — the notice prompt, and deliberately nothing else.
           Set as a briefing rather than body copy: centred, ruled off, with an
-          eyebrow, so it reads as a task to go and do rather than something to
-          read past on the way down the page. */}
+          eyebrow, so it reads as a task to go and do. Marigold Sans (softer than
+          the editorial serif elsewhere) to make the ask feel welcoming. */}
       {instructions && (
-        <div className="py-2 text-center">
+        <div className="py-2 text-center" style={{ fontFamily: MARIGOLD }}>
           <div className="mx-auto mb-3 h-px w-12" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.5 }} />
           <p
-            className="text-[11px] font-semibold uppercase tracking-[0.22em] mb-3"
+            className="text-[15px] font-semibold uppercase tracking-[0.22em] mb-3"
             style={{ color: 'var(--th-primary)' }}
           >
-            Your mission
+            Your Clue
           </p>
           {/* Through FormattedText, not raw — prompts are authored with the
               app's markup (**bold**, *italic*, {{#hex}}colour{{/}}), and a plain
               <p> renders the asterisks literally. */}
-          <p className="text-[24px] leading-relaxed font-serif text-text-primary whitespace-pre-line max-w-xl mx-auto">
+          <p className="text-[29px] leading-relaxed text-text-primary whitespace-pre-line max-w-xl mx-auto">
             <FormattedText text={instructions} />
           </p>
           <div className="mx-auto mt-3 h-px w-12" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.5 }} />
@@ -131,8 +136,8 @@ export default function FindActivityCard({ stop, onFound }: Props) {
               <circle cx="12" cy="13" r="4" />
             </svg>
           </button>
-          <p className="text-[13px] text-text-secondary text-center">
-            {shot ? 'Looking…' : 'Found it? Take a photo.'}
+          <p className="text-[18px] italic text-text-secondary text-center" style={{ fontFamily: MARIGOLD }}>
+            {shot ? 'Looking…' : 'Found it? Take a photo!'}
           </p>
         </div>
       ) : (
