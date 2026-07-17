@@ -20,6 +20,20 @@ function haptic(ms = 12) {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(ms);
 }
 
+/** "P.A.S.T." inline, each letter in its lens colour. Lives here rather than in
+ *  the intro onboarding because the P.A.S.T. teaching moved to the first Context
+ *  step — this is the module both surfaces share. */
+export function PastWord() {
+  return (
+    <strong className="onb-past">
+      <span style={{ color: 'var(--onb-place)' }}>P</span>.
+      <span style={{ color: 'var(--th-secondary)' }}>A</span>.
+      <span style={{ color: 'var(--onb-society)' }}>S</span>.
+      <span style={{ color: 'var(--onb-time)' }}>T</span>.
+    </strong>
+  );
+}
+
 export default function PastFramework({ onAllRevealed }: { onAllRevealed?: () => void } = {}) {
   const [openLens, setOpenLens] = useState<LensDef | null>(null);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());

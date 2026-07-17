@@ -1,14 +1,25 @@
 'use client';
 
 /**
- * First-open contextualization onboarding — a snap-scroll teaching flow of 12
- * slides. Big editorial type, staggered reveal-on-scroll, varied alignment.
- * A fixed progress bar tracks which of the 12 the reader is on (Welcome = #1).
+ * First-open onboarding — a snap-scroll teaching flow of 13 slides. Big editorial
+ * type, staggered reveal-on-scroll, varied alignment. A fixed progress bar tracks
+ * which of the 13 the reader is on (Welcome = #1).
  *
- * Mostly free snap-scroll, with three *gates* that must be satisfied to move on:
- * slide 2 (Submit the ranking), slide 8 (Explore the P.A.S.T.), slide 9 (reveal
- * every lens). A gate simply hides the panels beyond it until satisfied, so the
- * scroll naturally ends there — no fragile scroll-locking. Skip is always there.
+ * The argument runs: you were taught history as fragments → fragments tell you
+ * what, not why → piecing them together is the bigger picture → that's what a
+ * historian reconstructs → that world is Context → places are full of it, but we
+ * only see the surface → Provenance helps you see past it → explore, contextualise,
+ * reflect. It ends by handing you off to explore, because the P.A.S.T. is taught
+ * at the first Context step, not here.
+ *
+ * **Pacing is the design.** Each panel's lines carry long `--d` delays so they
+ * arrive one at a time with a real pause between them, and they land on different
+ * sides of the page. Both are deliberate: a slide that drops four lines at once,
+ * all left-aligned, reads as homework. Keep the gaps generous when editing.
+ *
+ * Mostly free snap-scroll with one *gate* — slide 2, which needs an answer before
+ * the rest reveal. A gate simply hides the panels beyond it, so the scroll
+ * naturally ends there — no fragile scroll-locking. Skip is always there.
  *
  * The panels live in a memoized child so tracking the current slide only
  * re-renders the thin progress bar, not the whole (animation-heavy) tree.
@@ -16,12 +27,15 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import PastFramework from './PastFramework';
 import RecordButton from '@/components/tour/cards/RecordButton';
 
 const LEAVE_MS = 500;
-const TOTAL = 11;
-const GATES = [1, 7, 8]; // panel indices that block forward progress until satisfied
+const TOTAL = 13;
+// Panel indices that block forward progress until satisfied. Just the one now:
+// the P.A.S.T. teaching (and its two gates) moved out of the intro and into the
+// first Context step, where the flow now says it belongs — "before we learn to
+// contextualise, let's start by exploring".
+const GATES = [1];
 
 function haptic(ms = 10) {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(ms);
@@ -93,8 +107,6 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
 
   const onBegin = useCallback(() => { haptic(); scrollToPanel(1); }, [scrollToPanel]);
   const onSubmitRank = useCallback(() => { haptic(); satisfyGate(1, true); }, [satisfyGate]);
-  const onExplorePast = useCallback(() => { haptic(); satisfyGate(7, true); }, [satisfyGate]);
-  const onLensesDone = useCallback(() => { satisfyGate(8, true); }, [satisfyGate]);
 
   if (dismissed || onAdmin) return <>{children}</>;
 
@@ -122,8 +134,6 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
         revealedMax={revealedMax}
         onBegin={onBegin}
         onSubmitRank={onSubmitRank}
-        onExplorePast={onExplorePast}
-        onLensesDone={onLensesDone}
         onDone={dismiss}
       />
     </>
@@ -132,15 +142,13 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
 
 /* ── The panels (memoized: scroll-tracking never re-renders this) ─────── */
 const OnbPanels = memo(function OnbPanels({
-  screenRef, leaving, revealedMax, onBegin, onSubmitRank, onExplorePast, onLensesDone, onDone,
+  screenRef, leaving, revealedMax, onBegin, onSubmitRank, onDone,
 }: {
   screenRef: React.RefObject<HTMLDivElement | null>;
   leaving: boolean;
   revealedMax: number;
   onBegin: () => void;
   onSubmitRank: () => void;
-  onExplorePast: () => void;
-  onLensesDone: () => void;
   onDone: () => void;
 }) {
   const vis = (i: number): React.CSSProperties | undefined => (i <= revealedMax ? undefined : { display: 'none' });
@@ -163,71 +171,107 @@ const OnbPanels = memo(function OnbPanels({
         </div>
       </section>
 
-      {/* 3 — Thanks (paragraphs fade one at a time, sat low on the page) */}
+      {/* 3 — Thanks. Three beats, each landing in a different place on the page —
+             left, right, centre — so the eye moves and the slide doesn't read as
+             one block. The long --d gaps are the point: they're pauses, not
+             decoration. */}
       <section data-idx={2} className="onb-panel onb-bottom" style={vis(2)}>
         <p className="onb-q onb-r" style={{ '--d': '0.1s', color: 'var(--th-primary)', fontSize: 'clamp(30px, 8.5vw, 46px)' } as React.CSSProperties}>Thanks for sharing<br />what you think.</p>
-        <p className="onb-lead onb-r mt-24" style={{ '--d': '0.7s' } as React.CSSProperties}>We might have different thoughts on history&hellip;</p>
-        <p className="onb-lead onb-r mt-6 ml-auto text-right" style={{ '--d': '1.3s', maxWidth: '26ch' } as React.CSSProperties}>
-          &hellip; but most of us learned it as lists of <strong><em>people, dates, and events</em></strong> &mdash; sometimes as a story!
+        <p className="onb-lead onb-r mt-20" style={{ '--d': '0.9s' } as React.CSSProperties}>Maybe your experience was different&hellip;</p>
+        <p className="onb-lead onb-r mt-6 ml-auto text-right" style={{ '--d': '1.8s', maxWidth: '26ch' } as React.CSSProperties}>
+          &hellip; but most of us have been taught history as lists of <strong><em>people, dates, and events</em></strong>.
         </p>
+        <p className="onb-lead onb-r mt-6 text-center italic" style={{ '--d': '2.7s' } as React.CSSProperties}>Perhaps as a story!</p>
       </section>
 
-      {/* 4 — Fragments (near the top; pieces come together) */}
+      {/* 4 — Fragments. The word itself is scattered and pulled back together
+             (Pieces), which is the slide's whole argument in one image. */}
       <section data-idx={3} className="onb-panel onb-top" style={vis(3)}>
         <p className="onb-lead onb-r">But people, dates, and events are like <Pieces text="fragments" />.</p>
-        <p className="onb-lead onb-r mt-10 ml-auto text-right" style={{ '--d': '0.4s', maxWidth: '24ch' } as React.CSSProperties}>
-          To understand the past, we need to piece those fragments back into the <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>bigger picture.</strong>
+        <p className="onb-lead onb-r mt-14 text-center" style={{ '--d': '1.1s' } as React.CSSProperties}>
+          They tell you <em>what happened</em>, but not always <strong style={{ color: 'var(--th-primary)' }}>why it happened</strong>.
         </p>
       </section>
 
-      {/* 5 — Reconstruct → Context (slow, spaced reveal) */}
+      {/* 5 — The bigger picture, then the payoff line centred underneath. */}
       <section data-idx={4} className="onb-panel" style={vis(4)}>
-        <p className="onb-lead onb-r text-center" style={{ '--d': '0.1s' } as React.CSSProperties}><strong>That&rsquo;s how a historian thinks.</strong></p>
-        <p className="onb-lead onb-r mt-6" style={{ '--d': '0.7s' } as React.CSSProperties}>
-          To understand the past, they first <Reconstruct text="reconstruct" />{' '}the bigger picture &mdash; or the world around people and events.
+        <p className="onb-lead onb-r" style={{ '--d': '0.1s' } as React.CSSProperties}>
+          To understand the past, we need to piece those fragments into the{' '}
+          <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>bigger picture.</strong>
         </p>
-        <p className="onb-lead onb-r mt-20 text-center italic" style={{ '--d': '1.6s' } as React.CSSProperties}>That world is what historians call&hellip;</p>
-        <p className="onb-r mt-5 text-center" style={{ '--d': '2.3s', transitionDuration: '1.3s' } as React.CSSProperties}><span className="onb-ctx" style={{ fontSize: 'clamp(46px, 15vw, 74px)' }}>Context</span></p>
+        <p className="onb-lead onb-r mt-16 text-center" style={{ '--d': '1.4s' } as React.CSSProperties}><strong>That&rsquo;s how a historian thinks.</strong></p>
       </section>
 
-      {/* 6 — Definition (vertically centred; only the two verbs bold) */}
+      {/* 6 — Reconstruct (letters shuffle and settle), then the world it rebuilds. */}
       <section data-idx={5} className="onb-panel" style={vis(5)}>
-        <p className="onb-lead onb-r" style={{ opacity: 0.85 }}>Contextualising is&hellip;</p>
-        <p className="onb-lead onb-r mt-12" style={{ '--d': '0.3s' } as React.CSSProperties}>
-          <strong>Reconstructing</strong> a <em>time and place</em> in the past&hellip;
+        <p className="onb-lead onb-r" style={{ '--d': '0.1s' } as React.CSSProperties}>
+          To understand the past, they first <Reconstruct text="reconstruct" />{' '}the bigger picture&hellip;
         </p>
-        <p className="onb-lead onb-r mt-6 ml-auto text-right" style={{ '--d': '0.6s', maxWidth: '24ch' } as React.CSSProperties}>
-          &hellip; then using it to <strong>understand</strong> <em>people and events.</em>
+        <p className="onb-lead onb-r mt-10 ml-auto text-right" style={{ '--d': '1.2s', maxWidth: '24ch' } as React.CSSProperties}>
+          &hellip; the world around the <em>people</em> and <em>events</em>.
         </p>
       </section>
 
-      {/* 7 — So how? (phrase fades in slowly, low on the page) */}
-      <section data-idx={6} className="onb-panel onb-bottom" style={vis(6)}>
-        <SlideAsk />
+      {/* 7 — The word itself. Nothing else on the page; the long delay and slow
+             fade give it room to land. */}
+      <section data-idx={6} className="onb-panel onb-cx" style={vis(6)}>
+        <p className="onb-lead onb-r italic" style={{ '--d': '0.2s' } as React.CSSProperties}>That world is what historians call&hellip;</p>
+        <p className="onb-r mt-8" style={{ '--d': '1.4s', transitionDuration: '1.3s' } as React.CSSProperties}><span className="onb-ctx" style={{ fontSize: 'clamp(46px, 15vw, 74px)' }}>Context</span></p>
       </section>
 
-      {/* 8 — Provenance + P.A.S.T. (sits low so the button is near the bottom) */}
-      <section data-idx={7} className="onb-panel onb-bottom" style={vis(7)}>
-        <p className="onb-q onb-r" style={{ color: 'var(--th-text)', fontSize: 'clamp(28px, 7.5vw, 44px)' }}>This is where <span style={{ color: 'var(--th-primary)' }}>Provenance</span> comes in.</p>
-        <p className="onb-lead onb-r mt-12" style={{ '--d': '0.3s' } as React.CSSProperties}>
-          We use the <PastWord /> framework to help you think about <strong style={{ color: 'var(--th-primary)' }}>context</strong> in different lenses&hellip;
+      {/* 8 — The definition, in four beats. Left, left, right, right: the two
+             halves of the sentence sit on opposite sides of the page. */}
+      <section data-idx={7} className="onb-panel" style={vis(7)}>
+        <p className="onb-lead onb-r" style={{ '--d': '0.1s', opacity: 0.85 } as React.CSSProperties}>Contextualising is&hellip;</p>
+        <p className="onb-lead onb-r mt-10" style={{ '--d': '0.9s' } as React.CSSProperties}>
+          <Reconstruct text="Reconstructing" />{' '}the world during a <em>time and place</em>&hellip;
         </p>
-        <p className="onb-lead onb-r mt-5 ml-auto text-right" style={{ '--d': '0.55s' } as React.CSSProperties}>
-          &hellip; then we <strong>ask questions</strong> to <Reconstruct text="reconstruct" />{' '}the world around us.
+        <p className="onb-lead onb-r mt-8 ml-auto text-right" style={{ '--d': '1.8s', maxWidth: '24ch' } as React.CSSProperties}>
+          {/* {' '} not a plain space: a JSX text chunk containing a newline gets
+              BOTH ends trimmed, so a space after an element that runs to the end
+              of the line is silently eaten ("understandwhy"). */}
+          &hellip; then using that world to <strong>understand</strong>{' '}why people did what they did&hellip;
         </p>
-        <button onClick={onExplorePast} className="onb-r mt-9 px-8 py-3.5 rounded-full text-[16px] font-semibold self-start" style={{ '--d': '0.8s', backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' } as React.CSSProperties}>
-          Explore the P.A.S.T. &rarr;
-        </button>
+        <p className="onb-lead onb-r mt-5 ml-auto text-right" style={{ '--d': '2.5s', maxWidth: '24ch' } as React.CSSProperties}>
+          &hellip; and why <strong>events happened</strong>.
+        </p>
       </section>
 
-      {/* 9 — The lenses (reveal all to unlock the scroll) */}
-      <section data-idx={8} className="onb-panel onb-top" style={vis(8)}>
-        <SlideLenses onDone={onLensesDone} />
+      {/* 9 — Places. Centre, then left, then right — the turn at "But often" lands
+             on the opposite side from the line before it. */}
+      <section data-idx={8} className="onb-panel" style={vis(8)}>
+        <p className="onb-q onb-r text-center" style={{ '--d': '0.1s', color: 'var(--th-primary)', fontSize: 'clamp(28px, 7.5vw, 44px)' } as React.CSSProperties}>The places around us are full of history!</p>
+        <p className="onb-lead onb-r mt-14" style={{ '--d': '1.1s' } as React.CSSProperties}>It&rsquo;s where we often learn about the past.</p>
+        <p className="onb-lead onb-r mt-8 ml-auto text-right" style={{ '--d': '2.0s', maxWidth: '24ch' } as React.CSSProperties}>
+          But often, we only see <strong>what is in front of us</strong>.
+        </p>
       </section>
 
-      {/* 10 — Explore → Contextualise → Reflect */}
-      <section data-idx={9} className="onb-panel" style={vis(9)}>
-        <p className="onb-lead onb-r italic" style={{ opacity: 0.85 }}>In this experience you will&hellip;</p>
+      {/* 10 — Provenance. */}
+      <section data-idx={9} className="onb-panel onb-bottom" style={vis(9)}>
+        <p className="onb-q onb-r" style={{ '--d': '0.1s', color: 'var(--th-text)', fontSize: 'clamp(28px, 7.5vw, 44px)' } as React.CSSProperties}>
+          This is where <span style={{ color: 'var(--th-primary)' }}>Provenance</span> comes in.
+        </p>
+        <p className="onb-lead onb-r mt-14 text-center" style={{ '--d': '1.1s' } as React.CSSProperties}>
+          We want to help you see <strong style={{ color: 'var(--th-primary)' }}>beyond</strong>{' '}what&rsquo;s in front.
+        </p>
+      </section>
+
+      {/* 11 — The promise. First line centred in the middle of the page, second
+             pushed to the bottom-right corner (mt-auto against the panel's own
+             padding), so the sentence physically spans the slide. */}
+      <section data-idx={10} className="onb-panel" style={vis(10)}>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '0.2s' } as React.CSSProperties}>
+          We want to help you <strong style={{ color: 'var(--th-primary)' }}>contextualise</strong> and <Reconstruct text="reconstruct" />
+        </p>
+        <p className="onb-lead onb-r mt-auto pt-24 ml-auto text-right" style={{ '--d': '1.5s', maxWidth: '22ch' } as React.CSSProperties}>
+          the world of the past using <strong>what&rsquo;s in front of you</strong>.
+        </p>
+      </section>
+
+      {/* 12 — Explore → Contextualise → Reflect */}
+      <section data-idx={11} className="onb-panel" style={vis(11)}>
+        <p className="onb-lead onb-r italic" style={{ opacity: 0.85 }}>In this experience, you will&hellip;</p>
         <div className="mt-8 flex flex-col items-center text-center">
           {FLOW.map((f, i) => (
             <div key={f.word} className="onb-r flex flex-col items-center" style={{ '--d': `${0.25 + i * 0.5}s` } as React.CSSProperties}>
@@ -241,9 +285,9 @@ const OnbPanels = memo(function OnbPanels({
         </div>
       </section>
 
-      {/* 11 — Ready → Find a Tour */}
-      <section data-idx={10} className="onb-panel onb-cx" style={vis(10)}>
-        <SlideReady onDone={onDone} />
+      {/* 13 — Off to explore */}
+      <section data-idx={12} className="onb-panel onb-cx" style={vis(12)}>
+        <SlideExplore onDone={onDone} />
       </section>
     </div>
   );
@@ -275,67 +319,27 @@ function SlideWelcome({ onBegin }: { onBegin: () => void }) {
   );
 }
 
-/* ── 7 · So how? (the answer fades in slowly) ──────────────────────── */
-function SlideAsk() {
-  return (
-    <>
-      <p className="onb-r" style={{ fontStyle: 'italic', color: 'var(--th-text)', fontFamily: 'var(--th-font-display, "DM Serif Display"), serif', fontSize: 'clamp(30px, 8vw, 46px)', lineHeight: 1.1 }}>So how do we do it?</p>
-      <p className="onb-r mt-8 font-display leading-tight" style={{ '--d': '0.5s', transitionDuration: '1.5s', color: 'var(--th-secondary)', fontSize: 'clamp(34px, 9.5vw, 56px)' } as React.CSSProperties}>
-        By asking the right questions.
-      </p>
-    </>
-  );
-}
-
-/* ── 9 · The P.A.S.T. lenses (reveal all → unlock) ─────────────────── */
-function SlideLenses({ onDone }: { onDone: () => void }) {
-  const [all, setAll] = useState(false);
-  // Once every lens is revealed, show the closing line, then auto-scroll on.
-  useEffect(() => {
-    if (!all) return;
-    const t = window.setTimeout(onDone, 1500);
-    return () => window.clearTimeout(t);
-  }, [all, onDone]);
-  return (
-    <>
-      <p className="onb-lead onb-r mb-4" style={{ fontSize: 'clamp(23px, 6vw, 28px)' }}>Check out the lenses of the <PastWord />!</p>
-      <div className="onb-r" style={{ '--d': '0.25s' } as React.CSSProperties}>
-        <PastFramework onAllRevealed={() => setAll(true)} />
-      </div>
-      {all && (
-        <p className="mt-6 text-center font-serif animate-fade-in" style={{ fontSize: 'clamp(20px, 5.4vw, 26px)', color: 'var(--th-text)' }}>
-          Use these lenses to help ask context questions.
-        </p>
-      )}
-    </>
-  );
-}
-
-/* ── 10 · Explore → Contextualise → Reflect ────────────────────────── */
+/* ── 12 · Explore → Contextualise → Reflect ────────────────────────── */
 const FLOW = [
   { word: 'Explore', sub: 'Find stops like you are on a tour', colour: 'var(--th-primary)' },
-  { word: 'Contextualise', sub: 'Apply the P.A.S.T. and ask for more context', colour: '#E08A5F' },
+  { word: 'Contextualise', sub: 'Ask questions! Reconstruct the past.', colour: '#E08A5F' },
   { word: 'Reflect', sub: 'Share your thoughts!', colour: 'var(--th-secondary)' },
 ];
 
-/* ── 11 · Ready → Find a Tour ──────────────────────────────────────── */
-function SlideReady({ onDone }: { onDone: () => void }) {
-  const [yes, setYes] = useState(false);
+/* ── 13 · Off to explore ───────────────────────────────────────────── */
+function SlideExplore({ onDone }: { onDone: () => void }) {
   return (
     <>
-      <h2 className="onb-q onb-r" style={{ color: 'var(--th-text)', fontSize: 'clamp(32px, 9vw, 50px)' }}>You think you&rsquo;re ready to think like a <span style={{ color: 'var(--th-primary)' }}>historian?</span></h2>
-      {!yes ? (
-        <button onClick={() => { setYes(true); haptic(); }} className="onb-r mt-9 px-12 py-4 rounded-full text-[18px] font-semibold" style={{ '--d': '0.3s', backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' } as React.CSSProperties}>
-          Yes!
-        </button>
-      ) : (
-        <div className="mt-7 flex flex-col items-center animate-fade-in">
-          <p className="onb-lead" style={{ maxWidth: '24ch' }}>Let&rsquo;s go explore the world! Remember to use the <PastWord /> to ask questions along the way.</p>
-          <button onClick={() => { haptic(); onDone(); }} className="mt-9 px-12 py-4 rounded-full text-[18px] font-semibold" style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}>
-            Find a Tour &rarr;
-          </button>
-        </div>
-      )}
+      <h2 className="onb-q onb-r" style={{ '--d': '0.1s', color: 'var(--th-text)', fontSize: 'clamp(30px, 8vw, 46px)', maxWidth: '18ch' } as React.CSSProperties}>
+        But before we learn to <span style={{ color: 'var(--th-primary)' }}>contextualise</span>, let&rsquo;s start by <span style={{ color: 'var(--th-primary)' }}>exploring</span>.
+      </h2>
+      <button
+        onClick={() => { haptic(); onDone(); }}
+        className="onb-r mt-10 px-12 py-4 rounded-full text-[18px] font-semibold"
+        style={{ '--d': '1.1s', backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' } as React.CSSProperties}
+      >
+        Let&rsquo;s explore! &rarr;
+      </button>
     </>
   );
 }
@@ -368,18 +372,6 @@ function HistoryResponse({ onSubmit }: { onSubmit: () => void }) {
         Continue
       </button>
     </>
-  );
-}
-
-/* "P.A.S.T." with each letter coloured to match its lens. */
-function PastWord() {
-  return (
-    <strong className="onb-past">
-      <span style={{ color: 'var(--onb-place)' }}>P</span>.
-      <span style={{ color: 'var(--th-secondary)' }}>A</span>.
-      <span style={{ color: 'var(--onb-society)' }}>S</span>.
-      <span style={{ color: 'var(--onb-time)' }}>T</span>.
-    </strong>
   );
 }
 
