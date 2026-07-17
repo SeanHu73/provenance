@@ -41,6 +41,20 @@ interface Props {
   hideFindInstructions?: boolean;
 }
 
+/**
+ * Does this stop have a Background worth a screen of its own?
+ *
+ * Exported because FindDiscoverCard has to answer the same question to decide
+ * whether to render the Background section at all — a stop with no Background is
+ * a snap section holding a title and a scroll cue, which stops the reader in the
+ * middle of the flow for nothing. Both callers must agree, hence one predicate.
+ *
+ * Audio counts: a stop can have narration and no written text.
+ */
+export function hasBackgroundContent(stop: Stop): boolean {
+  return !!(stop.seed.text || stop.seed.audioUrl);
+}
+
 export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false, hideFindInstructions = false }: Props) {
   const [autoplayPref] = useAudioAutoplay();
   // Background narration source: uploaded voiceover → cached OpenAI narration →
@@ -153,7 +167,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false
   // collapsed behind a "Read Along" toggle.
   const backgroundContent = (
     <>
-      {(stop.seed.text || stop.seed.audioUrl) ? (
+      {hasBackgroundContent(stop) ? (
         <div>
           <SectionSubtitle className="mb-2">Background</SectionSubtitle>
           {/* Uploaded audio (voiceover, or an extra non-voiceover clip). */}

@@ -1,11 +1,12 @@
 'use client';
 
 /**
- * Merged FIND + DISCOVER screen (context tours), in three snap sections:
+ * Merged FIND + DISCOVER screen (context tours), in up to three snap sections:
  *
  *   1. FIND activity  — the notice prompt as bare instructions, a camera, then
  *                       their shot beside the real notice photo. (FindActivityCard)
- *   2. Background     — the stop's narration. (SeedCard, embedded)
+ *   2. Background     — the notice photo + the stop's narration. (SeedCard,
+ *                       embedded) Omitted when the stop has no Background.
  *   3. DISCOVER       — the reveal. (RevealCard)
  *
  * Section 1 used to be part of 2: SeedCard rendered the find instructions *and*
@@ -21,7 +22,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Stop } from '@/lib/types';
 import { pauseTourAudioWithin, resumeTourAudioWithin } from '@/lib/tour-audio';
 import FindActivityCard from './FindActivityCard';
-import SeedCard from './SeedCard';
+import SeedCard, { hasBackgroundContent } from './SeedCard';
 import RevealCard from './RevealCard';
 
 interface Props {
@@ -39,6 +40,7 @@ export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = fal
   // The Background section only appears once they've done the activity — a scroll
   // cue to it beforehand would let them skip straight past the looking.
   const [found, setFound] = useState(false);
+  const hasBackground = hasBackgroundContent(stop);
 
   // Mount DISCOVER once it scrolls in, and — since FIND and DISCOVER share one
   // snap-scroll page — pause a section's audio when it snaps out of view and
@@ -73,9 +75,14 @@ export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = fal
           narration — a worse outcome than not having the activity at all. */}
       {found && (
         <>
-          <section ref={bgRef} className="min-h-full snap-start flex flex-col justify-start px-5 py-6">
-            <SeedCard stop={stop} embedded hideFindInstructions onPeekMap={onPeekMap} />
-          </section>
+          {/* Skipped entirely when the stop has no Background — otherwise this is
+              a snap section holding a title and a scroll cue, which halts the
+              reader mid-flow for nothing. FIND then snaps straight to DISCOVER. */}
+          {hasBackground && (
+            <section ref={bgRef} className="min-h-full snap-start flex flex-col justify-start px-5 py-6">
+              <SeedCard stop={stop} embedded hideFindInstructions onPeekMap={onPeekMap} />
+            </section>
+          )}
           <section ref={discoverRef} className="min-h-full snap-start flex flex-col justify-start px-5 py-6">
             {showDiscover ? (
               <RevealCard stop={stop} onContinue={onContinue} isFinalInStop={isFinalInStop} />
