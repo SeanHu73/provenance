@@ -258,29 +258,28 @@ export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false
   if (!hasNoticeSection) {
     return (
       <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
-        <div>
-          {/* No action title when the FIND activity is the section above — it has
-              already said FIND, and this section is only the Background (which
-              carries its own "Background" subtitle). */}
-          {!hideFindInstructions && <ActionTitle action={embedded ? 'FIND' : 'DISCOVER'} />}
-          {/* In the FIND flow this section has no action title above it, so the
-              stop's name is the heading and reads as one: upright, theme red,
-              centred over the photo and Background beneath. Everywhere else it's
-              a subtitle under FIND/DISCOVER and keeps the grey italic. */}
-          {stop.title && (
-            hideFindInstructions ? (
+        {/* In the FIND flow the title and the photo are one unit — the name
+            captions the thing directly beneath it — so they group in their own
+            wrapper at space-y-2 rather than taking the container's space-y-5.
+            Everywhere else the title is a subtitle under FIND/DISCOVER. */}
+        {hideFindInstructions ? (
+          <div className="space-y-2">
+            {stop.title && (
               <p
-                className="font-serif text-[26px] leading-snug text-center"
+                className="font-serif font-bold text-[26px] leading-snug text-center"
                 style={{ color: 'var(--th-primary)' }}
               >
                 {stop.title}
               </p>
-            ) : (
-              <p className="mt-1 font-serif italic text-text-secondary text-[22px] leading-snug">{stop.title}</p>
-            )
-          )}
-        </div>
-        {hideFindInstructions && noticePhotosOnly}
+            )}
+            {noticePhotosOnly}
+          </div>
+        ) : (
+          <div>
+            <ActionTitle action={embedded ? 'FIND' : 'DISCOVER'} />
+            {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[22px] leading-snug">{stop.title}</p>}
+          </div>
+        )}
         {backgroundContent}
         {embedded ? scrollCue : footerBlock}
       </div>

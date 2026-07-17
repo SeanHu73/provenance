@@ -21,6 +21,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Stop } from '@/lib/types';
 import ActionTitle from './ActionTitle';
+import FormattedText from './FormattedText';
 
 /** Height cap for each revealed photo. The "Did you find it?" line sits above the
  *  pair and each photo carries a caption below it, so this leaves room for both
@@ -99,8 +100,11 @@ export default function FindActivityCard({ stop, onFound }: Props) {
           >
             Your mission
           </p>
+          {/* Through FormattedText, not raw — prompts are authored with the
+              app's markup (**bold**, *italic*, {{#hex}}colour{{/}}), and a plain
+              <p> renders the asterisks literally. */}
           <p className="text-[24px] leading-relaxed font-serif text-text-primary whitespace-pre-line max-w-xl mx-auto">
-            {instructions}
+            <FormattedText text={instructions} />
           </p>
           <div className="mx-auto mt-3 h-px w-12" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.5 }} />
         </div>
