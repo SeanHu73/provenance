@@ -79,7 +79,11 @@ export function DevJumpMenuItem() {
   const ctx = useTourOptional();
   const targets = useJumpTargets();
   const cur = ctx?.session?.currentPhase;
+  const curStop = ctx?.session?.currentStopIndex;
   const devJumpTo = ctx?.devJumpTo;
+  // Phase alone is ambiguous across acts — every act's Explore is `act_intro`, so
+  // matching on phase lit up Act 1 and Act 2 at once. The stop index disambiguates.
+  const isHere = (t: JumpTarget) => cur === t.phase && (t.stopIndex === undefined || t.stopIndex === curStop);
 
   // No tour running — nothing to jump between, so don't offer the control at all.
   if (!ctx?.session) return null;
@@ -117,7 +121,7 @@ export function DevJumpMenuItem() {
           {targets.length === 0 ? (
             <p className="px-4 py-3 text-xs text-text-secondary">No tour loaded.</p>
           ) : targets.map((t) => {
-            const here = cur === t.phase;
+            const here = isHere(t);
             return (
               <button
                 key={`${t.phase}:${t.stopIndex ?? '-'}`}

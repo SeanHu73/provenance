@@ -14,17 +14,15 @@ import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-goo
 import { Tour, TourSession, Stop } from '@/lib/types';
 import { getActiveStops } from '@/lib/tours-store';
 import { getContextOrderedStops } from '@/lib/tour-session';
+import { stopThumbnailPhoto } from '@/lib/stop-thumbnail';
 import SpotlightOverlay from './SpotlightOverlay';
 
-/** Establishing photo for the confirm card — seed first, then notice. */
-function pickStopThumb(stop: Stop): { url: string; focal?: { x: number; y: number } } | null {
-  const seed = (stop.seed.photos || []).find((p) => p.url);
-  if (seed) return { url: seed.url, focal: seed.thumbnailFocalPoint ?? seed.focalPoint };
-  const notice = (stop.notice.photos || []).find((p) => p.url);
-  if (notice) return { url: notice.url, focal: notice.thumbnailFocalPoint ?? notice.focalPoint };
-  if (stop.seed.photoUrl) return { url: stop.seed.photoUrl };
-  if (stop.notice.photoUrl) return { url: stop.notice.photoUrl };
-  return null;
+/** Thin wrapper over the shared resolver, keeping this file's `focal` shape.
+ *  `done` = the stop is finished, at which point the notice photo is the better
+ *  record of it; before that it would spoil the FIND activity. */
+function pickStopThumb(stop: Stop, done: boolean): { url: string; focal?: { x: number; y: number } } | null {
+  const p = stopThumbnailPhoto(stop, done);
+  return p ? { url: p.url, focal: p.thumbnailFocalPoint ?? p.focalPoint } : null;
 }
 
 const FALLBACK_LOCATION = { lat: 37.42700, lng: -122.17015 };
@@ -53,7 +51,9 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
   // Tapping the target pin opens a small confirm card (thumbnail + title)
   // so the group can be sure they're at the right spot before the stop opens.
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const targetThumb = targetStop ? pickStopThumb(targetStop) : null;
+  // Almost always the info photo: this card is the "I'm here" confirm for a stop
+  // they're about to explore. It resolves to the notice photo only on a revisit.
+  const targetThumb = targetStop ? pickStopThumb(targetStop, completed.has(targetStop.id)) : null;
   const targetNumber = ordered.findIndex((s) => s.id === targetId) + 1;
 
   // Only the very first stop's map plays the spotlight intro, and only once.

@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from 'react';
 import { Tour, TourSession, Stop } from '@/lib/types';
 import { getLogicalStops, getContextOrderedStops, hasOpeningFrameContent } from '@/lib/tour-session';
 import { getActiveStops, getTourMode } from '@/lib/tours-store';
+import { stopThumbnailPhoto } from '@/lib/stop-thumbnail';
 
 interface Props {
   tour: Tour;
@@ -392,12 +393,11 @@ export function StopTrackerOverlay({ tour, session, onClose, onPreviewStop }: { 
   const exploredMain = mainStops.filter((s) => completedIds.has(s.id)).length;
   const inStopPhase = !['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end', 'unstructured_map', 'midway_checkin'].includes(session.currentPhase);
   const activeStopId = session.currentStopIndex >= 0 ? getActiveStops(tour)[session.currentStopIndex]?.id ?? null : null;
-  const photoFor = (stop: Stop) =>
-    (stop.notice.photos || []).find((p) => p.url) ||
-    (stop.notice.photoUrl ? { url: stop.notice.photoUrl, caption: stop.notice.photoCaption } : null) ||
-    (stop.seed.photos || []).find((p) => p.url) ||
-    (stop.seed.photoUrl ? { url: stop.seed.photoUrl, caption: stop.seed.photoCaption } : null) ||
-    null;
+  // The DISCOVER photo until the stop is finished, the notice photo after — the
+  // notice photo is what the FIND activity sends them to look for, so showing it
+  // in this dropdown beforehand hands over the answer. See lib/stop-thumbnail.ts.
+  // (`completedIds` is already in scope from the component body above.)
+  const photoFor = (stop: Stop) => stopThumbnailPhoto(stop, completedIds.has(stop.id));
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col" onClick={onClose}>

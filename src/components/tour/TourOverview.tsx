@@ -14,6 +14,7 @@ import { APIProvider, Map as GoogleMap, AdvancedMarker, useMap } from '@vis.gl/r
 import { Tour, Stop } from '@/lib/types';
 import { guidePhotoStyle } from '@/lib/guide-photo';
 import { getGuidedStops } from '@/lib/tours-store';
+import { stopThumbnailPhoto } from '@/lib/stop-thumbnail';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
 const MAP_ID = 'b8f339c02d8c7d5bd3f12d1b';
@@ -126,16 +127,12 @@ function TourMapBanner({ tour }: { tour: Tour }) {
   );
 }
 
-/** Pick a representative thumbnail for a stop — establishing (seed) photo
- *  first, then the observation (notice) photo, with legacy fallbacks. */
+/** Representative thumbnail for a stop. This screen is the pre-tour overview, so
+ *  nothing is completed yet — always the DISCOVER photo, never the notice photo
+ *  the FIND activity sends them to look for. See lib/stop-thumbnail.ts. */
 function pickStopThumb(stop: Stop): { url: string; focal?: { x: number; y: number } } | null {
-  const seed = (stop.seed.photos || []).find((p) => p.url);
-  if (seed) return { url: seed.url, focal: seed.thumbnailFocalPoint ?? seed.focalPoint };
-  const notice = (stop.notice.photos || []).find((p) => p.url);
-  if (notice) return { url: notice.url, focal: notice.thumbnailFocalPoint ?? notice.focalPoint };
-  if (stop.seed.photoUrl) return { url: stop.seed.photoUrl };
-  if (stop.notice.photoUrl) return { url: stop.notice.photoUrl };
-  return null;
+  const p = stopThumbnailPhoto(stop, false);
+  return p ? { url: p.url, focal: p.thumbnailFocalPoint ?? p.focalPoint } : null;
 }
 
 function StopRow({ stop, index }: { stop: Stop; index: number }) {

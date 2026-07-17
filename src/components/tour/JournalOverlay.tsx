@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { Tour, TourSession } from '@/lib/types';
 import { getActiveStops, getGuidedStops, getTourMode } from '@/lib/tours-store';
+import { stopThumbnailPhoto } from '@/lib/stop-thumbnail';
 import PhotoContent from './cards/PhotoContent';
 import FullscreenPhoto from './cards/FullscreenPhoto';
 import FormattedText from './cards/FormattedText';
@@ -28,15 +29,9 @@ interface Props {
 
 type ThumbPhoto = { url: string; thumbnailFocalPoint?: { x: number; y: number } };
 
-function getStopThumbnailPhoto(stop: Tour['stops'][number]): ThumbPhoto | null {
-  const np = (stop.notice.photos || []).find(p => p.url);
-  if (np) return np;
-  if (stop.notice.photoUrl) return { url: stop.notice.photoUrl };
-  const sp = (stop.seed.photos || []).find(p => p.url);
-  if (sp) return sp;
-  if (stop.seed.photoUrl) return { url: stop.seed.photoUrl };
-  return null;
-}
+// Was a local copy that preferred the notice photo — which spoiled the FIND
+// activity, since the notice photo is the thing they're sent to look for. Now
+// shared, and keyed on whether the stop is finished. See lib/stop-thumbnail.ts.
 
 export default function JournalOverlay({ tour, session, onClose, closingPeek = false }: Props) {
   const [tab, setTab] = useState<Tab>(closingPeek ? 'theory' : 'stops');
@@ -146,7 +141,7 @@ export default function JournalOverlay({ tour, session, onClose, closingPeek = f
                 const isCurrent = stop.id === currentStopId && isInStop;
                 const isUpcoming = !isCompleted && !isCurrent;
                 const isExpanded = expandedStopId === stop.id;
-                const thumbPhoto = getStopThumbnailPhoto(stop);
+                const thumbPhoto = stopThumbnailPhoto(stop, completedIds.has(stop.id));
 
                 // Visit-order number for unstructured mode
                 let visitNum: number | null = null;

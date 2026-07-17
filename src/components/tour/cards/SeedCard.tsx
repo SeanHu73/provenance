@@ -33,9 +33,15 @@ interface Props {
    *  footer/continue button (the reader snap-scrolls down to DISCOVER); a
    *  "scroll to discover" cue replaces it. */
   embedded?: boolean;
+  /** Drop the find instructions + notice photos, leaving Background only. Set by
+   *  FindDiscoverCard, where FindActivityCard is now its own snap section above
+   *  and has already given the instructions — and, crucially, controls when the
+   *  notice photo is allowed to appear. Rendering them here too would both repeat
+   *  the prompt and spoil the activity. */
+  hideFindInstructions?: boolean;
 }
 
-export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false }: Props) {
+export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false, hideFindInstructions = false }: Props) {
   const [autoplayPref] = useAudioAutoplay();
   // Background narration source: uploaded voiceover → cached OpenAI narration →
   // free browser voice. The narration takes autoplay priority — a non-voiceover
@@ -57,7 +63,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false
   const hasBgNarration = seedNar.hasNarration;
   const [bgReadAlong, setBgReadAlong] = useState(readMode || !hasBgNarration);
 
-  const hasNoticeSection = !!(
+  const hasNoticeSection = !hideFindInstructions && !!(
     stop.notice.prompt
     || stop.notice.audioUrl
     || stop.notice.noticeMap?.url
@@ -225,7 +231,10 @@ export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false
     return (
       <div className="animate-fade-in space-y-5 min-h-full flex flex-col justify-center">
         <div>
-          <ActionTitle action={embedded ? 'FIND' : 'DISCOVER'} />
+          {/* No action title when the FIND activity is the section above — it has
+              already said FIND, and this section is only the Background (which
+              carries its own "Background" subtitle). */}
+          {!hideFindInstructions && <ActionTitle action={embedded ? 'FIND' : 'DISCOVER'} />}
           {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[22px] leading-snug">{stop.title}</p>}
         </div>
         {backgroundContent}

@@ -1,18 +1,26 @@
 'use client';
 
 /**
- * Merged FIND + DISCOVER screen (context tours). FIND (look-around + Background)
- * is the first snap section; the reader snap-scrolls down to DISCOVER (the
- * reveal) as the second. No "next" button between them — the bottom button of
- * DISCOVER advances the tour ("Explore more" when it heads back to the map).
+ * Merged FIND + DISCOVER screen (context tours), in three snap sections:
  *
- * DISCOVER mounts only once it's scrolled into view, so its narration doesn't
- * autoplay while the reader is still on FIND.
+ *   1. FIND activity  — the notice prompt as bare instructions, a camera, then
+ *                       their shot beside the real notice photo. (FindActivityCard)
+ *   2. Background     — the stop's narration. (SeedCard, embedded)
+ *   3. DISCOVER       — the reveal. (RevealCard)
+ *
+ * Section 1 used to be part of 2: SeedCard rendered the find instructions *and*
+ * the notice photos above the Background. Splitting it is what lets the photo stay
+ * hidden until they've actually looked — so SeedCard is now passed
+ * `hideFindInstructions`, since section 1 has said all that.
+ *
+ * Each section mounts only once scrolled into view, so its narration doesn't
+ * autoplay over the section above it.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { Stop } from '@/lib/types';
 import { pauseTourAudioWithin, resumeTourAudioWithin } from '@/lib/tour-audio';
+import FindActivityCard from './FindActivityCard';
 import SeedCard from './SeedCard';
 import RevealCard from './RevealCard';
 
@@ -25,8 +33,12 @@ interface Props {
 
 export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = false, onPeekMap }: Props) {
   const findRef = useRef<HTMLElement | null>(null);
+  const bgRef = useRef<HTMLElement | null>(null);
   const discoverRef = useRef<HTMLElement | null>(null);
   const [showDiscover, setShowDiscover] = useState(false);
+  // The Background section only appears once they've done the activity — a scroll
+  // cue to it beforehand would let them skip straight past the looking.
+  const [found, setFound] = useState(false);
 
   // Mount DISCOVER once it scrolls in, and — since FIND and DISCOVER share one
   // snap-scroll page — pause a section's audio when it snaps out of view and
@@ -34,7 +46,7 @@ export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = fal
   // over each other. The 0.35–0.7 gap is hysteresis: mid-scroll (both ~0.5)
   // nothing toggles, avoiding a play/pause stutter.
   useEffect(() => {
-    const find = findRef.current, discover = discoverRef.current;
+    const find = findRef.current, bg = bgRef.current, discover = discoverRef.current;
     if (!find || !discover) return;
     const root = find.closest('.tour-scroll');
     const io = new IntersectionObserver(
@@ -46,24 +58,35 @@ export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = fal
       { root, threshold: [0.2, 0.35, 0.7] },
     );
     io.observe(find);
+    if (bg) io.observe(bg);
     io.observe(discover);
     return () => io.disconnect();
-  }, [showDiscover]);
+  }, [showDiscover, found]);
 
   return (
     <>
       <section ref={findRef} className="min-h-full snap-start flex flex-col justify-start px-5 py-6">
-        <SeedCard stop={stop} embedded onPeekMap={onPeekMap} />
+        <FindActivityCard stop={stop} onFound={() => setFound(true)} />
       </section>
-      <section ref={discoverRef} className="min-h-full snap-start flex flex-col justify-start px-5 py-6">
-        {showDiscover ? (
-          <RevealCard stop={stop} onContinue={onContinue} isFinalInStop={isFinalInStop} />
-        ) : (
-          <div className="min-h-full flex items-center justify-center" style={{ color: 'var(--th-primary)', opacity: 0.4 }} aria-hidden="true">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-          </div>
-        )}
-      </section>
+      {/* Both later sections wait on the activity. Gating only the Background left
+          DISCOVER reachable by scrolling, which skipped the activity *and* the
+          narration — a worse outcome than not having the activity at all. */}
+      {found && (
+        <>
+          <section ref={bgRef} className="min-h-full snap-start flex flex-col justify-start px-5 py-6">
+            <SeedCard stop={stop} embedded hideFindInstructions onPeekMap={onPeekMap} />
+          </section>
+          <section ref={discoverRef} className="min-h-full snap-start flex flex-col justify-start px-5 py-6">
+            {showDiscover ? (
+              <RevealCard stop={stop} onContinue={onContinue} isFinalInStop={isFinalInStop} />
+            ) : (
+              <div className="min-h-full flex items-center justify-center" style={{ color: 'var(--th-primary)', opacity: 0.4 }} aria-hidden="true">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </>
   );
 }
