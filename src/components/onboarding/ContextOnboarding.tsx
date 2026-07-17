@@ -28,6 +28,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import RecordButton from '@/components/tour/cards/RecordButton';
+import AnimatedMark from './AnimatedMark';
 
 const LEAVE_MS = 500;
 const TOTAL = 13;
@@ -312,11 +313,10 @@ function SlideWelcome({ onBegin }: { onBegin: () => void }) {
   }, []);
   return (
     <div className="flex flex-col items-center">
-      <div className="relative flex items-center justify-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo_transparent.png" alt="" width={200} height={200} className="splash-pin block w-44 h-auto select-none" draggable={false} />
-        <div className="splash-shadow absolute left-1/2 -bottom-3 h-3 w-36 rounded-[50%]" style={{ backgroundColor: 'rgba(0,0,0,0.1)', filter: 'blur(5px)' }} />
-      </div>
+      {/* The mark draws itself — "…" dots, then the P writes — rather than dropping
+          in as a flat image. The wordmark below still fades at 1.7s, which is about
+          when the P finishes, so the two land in sequence. */}
+      <AnimatedMark size={176} className="block select-none" />
       <p className="splash-wordmark onb-title mt-6">Welcome to Provenance!</p>
       {/* "Ready…" fades in first, the button follows. */}
       <p className="onb-lead mt-5 transition-opacity duration-700" style={{ opacity: showReady ? 1 : 0 }}>Ready to think like a historian?</p>

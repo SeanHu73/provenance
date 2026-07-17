@@ -187,6 +187,29 @@ body {
   transition: opacity 0.8s ease-out;
 }
 
+/* ── Animated mark (AnimatedMark.tsx): pin settles → "…" dots pop → P writes ── */
+@keyframes markPinIn {
+  from { opacity: 0; transform: scale(0.84); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes markDotIn {
+  0%   { opacity: 0; transform: scale(0); }
+  70%  { transform: scale(1.18); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes markPWrite {
+  to { stroke-dashoffset: 0; }
+}
+/* fill-box origin so scale pivots on each shape's own centre, not the SVG's. */
+.mark-pin { opacity: 0; transform-box: fill-box; transform-origin: center;
+  animation: markPinIn 0.5s cubic-bezier(0.22, 1.5, 0.36, 1) both; }
+.mark-dot { opacity: 0; transform-box: fill-box; transform-origin: center;
+  animation: markDotIn 0.45s cubic-bezier(0.22, 1.7, 0.36, 1) both; }
+/* offset starts at the path's full (normalised) length, so nothing shows, then
+   sweeps to 0. Held until 0.85s so the dots land first. */
+.mark-p { stroke-dasharray: 1; stroke-dashoffset: 1;
+  animation: markPWrite 1.2s ease-in-out 0.85s both; }
+
 /* ── First-open contextualization onboarding (.onb-*) ─────────────────────
    Snap-scroll teaching flow shown on every page load. Calm Provenance palette
    + fonts, with a little character (the CONTEXT chip, colour-coded P.A.S.T.,
@@ -408,6 +431,9 @@ body {
   .onb-scrollhint, .onb-pf-arrow { animation: none; }
   .onb-panel.onb-in .onb-logo-pop { animation: none; opacity: 1; }
   .splash-pin { animation: none; }
+  /* show the finished mark, no draw. */
+  .mark-pin, .mark-dot { animation: none; opacity: 1; transform: none; }
+  .mark-p { animation: none; stroke-dashoffset: 0; }
 }
 
 @keyframes slideUp {
