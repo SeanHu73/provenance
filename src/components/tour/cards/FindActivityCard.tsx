@@ -85,11 +85,24 @@ export default function FindActivityCard({ stop, onFound }: Props) {
         {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[22px] leading-snug">{stop.title}</p>}
       </div>
 
-      {/* The instructions — the notice prompt, and deliberately nothing else. */}
+      {/* The instructions — the notice prompt, and deliberately nothing else.
+          Set as a briefing rather than body copy: centred, ruled off, with an
+          eyebrow, so it reads as a task to go and do rather than something to
+          read past on the way down the page. */}
       {instructions && (
-        <p className="text-[23px] leading-relaxed font-serif text-text-primary whitespace-pre-line">
-          {instructions}
-        </p>
+        <div className="py-2 text-center">
+          <div className="mx-auto mb-3 h-px w-12" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.5 }} />
+          <p
+            className="text-[11px] font-semibold uppercase tracking-[0.22em] mb-3"
+            style={{ color: 'var(--th-primary)' }}
+          >
+            Your mission
+          </p>
+          <p className="text-[24px] leading-relaxed font-serif text-text-primary whitespace-pre-line max-w-xl mx-auto">
+            {instructions}
+          </p>
+          <div className="mx-auto mt-3 h-px w-12" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.5 }} />
+        </div>
       )}
 
       {!revealed ? (
@@ -118,7 +131,10 @@ export default function FindActivityCard({ stop, onFound }: Props) {
           </p>
         </div>
       ) : (
-        <div className="animate-fade-in space-y-4">
+        // pb clears the Journal's "keep scrolling" pill, which is absolutely
+        // positioned at the bottom centre and otherwise lands right on top of
+        // "Did you find it?".
+        <div className="animate-fade-in space-y-4 pb-20">
           {/* The cap lives on the <img> in vh, not on a wrapper as a percentage.
               A percentage max-height resolves against the parent's *definite*
               height; these wrappers size to their content, so `max-h-full` was
@@ -152,7 +168,12 @@ export default function FindActivityCard({ stop, onFound }: Props) {
               </figure>
             )}
           </div>
-          <p className="text-center font-serif text-[24px] text-text-primary">Did you find it?</p>
+          <p
+            className="text-center font-serif italic text-[32px] leading-snug"
+            style={{ color: 'var(--th-primary)' }}
+          >
+            Did you find it?
+          </p>
         </div>
       )}
     </div>

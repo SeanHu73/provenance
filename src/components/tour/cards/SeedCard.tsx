@@ -134,6 +134,20 @@ export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false
     </>
   );
 
+  // The notice photos with no prompt — what the Background section shows once the
+  // FIND activity above has been done. The prompt is spent by then (they've read
+  // it, shot it, and compared); the photo stays because it's what the Background
+  // is about. Empty `text` makes PhotoContent render photos only.
+  const noticePhotosOnly = (stop.notice.photos?.some((p) => p.url) || stop.notice.photoUrl) ? (
+    <PhotoContent
+      text=""
+      photos={stop.notice.photos || []}
+      legacyPhotoUrl={stop.notice.photoUrl}
+      legacyPhotoCaption={stop.notice.photoCaption}
+      highlightedUrl={noticeCues.highlightedUrl}
+    />
+  ) : null;
+
   // Background reading — sits BELOW the find instructions. The audio narration
   // box sits directly under the "Background" title, and the reading itself is
   // collapsed behind a "Read Along" toggle.
@@ -237,6 +251,7 @@ export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false
           {!hideFindInstructions && <ActionTitle action={embedded ? 'FIND' : 'DISCOVER'} />}
           {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[22px] leading-snug">{stop.title}</p>}
         </div>
+        {hideFindInstructions && noticePhotosOnly}
         {backgroundContent}
         {embedded ? scrollCue : footerBlock}
       </div>
