@@ -15,7 +15,7 @@ import { useState } from 'react';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useAutoplayHint } from '@/lib/autoplay-hint';
 import { useDevJump } from '@/lib/dev-jump';
-import { useTour } from '@/context/TourContext';
+import { useTourOptional } from '@/context/TourContext';
 import { getActs } from '@/lib/tour-session';
 import { getActiveStops } from '@/lib/tours-store';
 import type { Stop, TourPhase } from '@/lib/types';
@@ -31,7 +31,10 @@ type JumpTarget = { label: string; phase: TourPhase; stopIndex?: number };
  *
  * Onboarding starts at `meet_guide`, not `intro`: `intro` is a pass-through that
  * auto-completes on mount (Journal.tsx:124), so jumping there just bounces you to
- * `meet_guide` anyway.
+ * `meet_guide` anyway. `eq_discuss` and `eq_opening` are deliberately absent — the
+ * phases still exist in the union and still render, but this tour's onboarding does
+ * not use them, so offering them would jump you somewhere the tour never goes. Add
+ * rows here if onboarding grows steps.
  *
  * Each act offers its three stages using the app's own grouping (PhaseHeader's
  * `phaseGroup`): Explore is everything before Context, so the act's entry splash
@@ -39,7 +42,7 @@ type JumpTarget = { label: string; phase: TourPhase; stopIndex?: number };
  * Intro phases (not the bodies) are the targets so each stage plays from its start.
  */
 function useJumpTargets(): JumpTarget[] {
-  const { tour } = useTour();
+  const tour = useTourOptional()?.tour;
   if (!tour) return [];
   const stops = getActiveStops(tour);
   const indexOf = (stopId: string) => stops.findIndex((s: Stop) => s.id === stopId);
@@ -47,8 +50,6 @@ function useJumpTargets(): JumpTarget[] {
   const targets: JumpTarget[] = [
     { label: 'Onboarding — meet the guide', phase: 'meet_guide' },
     { label: 'Onboarding — the scene', phase: 'eq_scene' },
-    { label: 'Onboarding — discuss', phase: 'eq_discuss' },
-    { label: 'Onboarding — opening question', phase: 'eq_opening' },
   ];
 
   getActs(tour).forEach((act, i) => {
@@ -67,12 +68,21 @@ function useJumpTargets(): JumpTarget[] {
 }
 
 /** The Dev Jump toggle + (when on) the stage list. Admin-only escape hatch: it
- *  disables the tour's gates, so it is off by default and says so. */
+ *  disables the tour's gates, so it is off by default and says so.
+ *
+ *  Rendered in two menus — TourMenu (the tour's own) and the Context Journal's,
+ *  because `act_context` portals over the tour chrome at z-55 and takes the tour
+ *  menu with it. Optional context throughout: the Journal also mounts standalone
+ *  at `/context-journal` with no provider, where there is no session to jump. */
 export function DevJumpMenuItem() {
   const [on, setOn] = useDevJump();
-  const { session, devJumpTo } = useTour();
+  const ctx = useTourOptional();
   const targets = useJumpTargets();
-  const cur = session?.currentPhase;
+  const cur = ctx?.session?.currentPhase;
+  const devJumpTo = ctx?.devJumpTo;
+
+  // No tour running — nothing to jump between, so don't offer the control at all.
+  if (!ctx?.session) return null;
 
   return (
     <div className="border-t" style={{ borderColor: 'var(--th-border)' }}>
@@ -111,7 +121,7 @@ export function DevJumpMenuItem() {
             return (
               <button
                 key={`${t.phase}:${t.stopIndex ?? '-'}`}
-                onClick={() => devJumpTo(t.phase, t.stopIndex)}
+                onClick={() => devJumpTo?.(t.phase, t.stopIndex)}
                 className={`w-full px-4 py-2 text-left text-[13px] flex items-center gap-2 transition-colors ${here ? 'font-semibold' : 'hover:bg-black/[0.03]'}`}
                 style={here ? { backgroundColor: 'rgba(124,58,237,0.08)', color: '#7c3aed' } : { color: 'var(--text-secondary)' }}
               >

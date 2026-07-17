@@ -135,6 +135,14 @@ export function useTour(): TourContextValue {
   return ctx;
 }
 
+/** `null` outside a TourProvider instead of throwing — for components that render
+ *  both inside the tour and standalone. ContextJournal is the case: in-tour it
+ *  portals from Journal (portals keep context, so this resolves), but the
+ *  `/context-journal` route mounts it with no provider at all. */
+export function useTourOptional(): TourContextValue | null {
+  return useContext(TourCtx);
+}
+
 export function TourProvider({ children }: { children: ReactNode }) {
   const [tour, setTour] = useState<Tour | null>(null);
   const [session, setSession] = useState<TourSession | null>(null);
