@@ -187,28 +187,29 @@ body {
   transition: opacity 0.8s ease-out;
 }
 
-/* ── Animated mark (AnimatedMark.tsx): pin settles → "…" dots pop → P writes ── */
+/* ── Animated mark (AnimatedMark.tsx): "…" dots pop → pin fades → P writes ──
+   Order matters: dots first, then the pin fades in behind them, then the P is
+   drawn. No overshoot on either — a plain fade/grow, no bounce. */
 @keyframes markPinIn {
-  from { opacity: 0; transform: scale(0.84); }
-  to   { opacity: 1; transform: scale(1); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 @keyframes markDotIn {
-  0%   { opacity: 0; transform: scale(0); }
-  70%  { transform: scale(1.18); }
-  100% { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 1; transform: scale(1); }
 }
 @keyframes markPWrite {
   to { stroke-dashoffset: 0; }
 }
-/* fill-box origin so scale pivots on each shape's own centre, not the SVG's. */
-.mark-pin { opacity: 0; transform-box: fill-box; transform-origin: center;
-  animation: markPinIn 0.5s cubic-bezier(0.22, 1.5, 0.36, 1) both; }
+/* fill-box origin so the dot's grow pivots on its own centre, not the SVG's. */
 .mark-dot { opacity: 0; transform-box: fill-box; transform-origin: center;
-  animation: markDotIn 0.45s cubic-bezier(0.22, 1.7, 0.36, 1) both; }
+  animation: markDotIn 0.32s ease-out both; }
+/* pin fades in after the last dot (done ~0.58s), a pure opacity fade. */
+.mark-pin { opacity: 0; animation: markPinIn 0.45s ease-out 0.6s both; }
 /* offset starts at the path's full (normalised) length, so nothing shows, then
-   sweeps to 0. Held until 0.85s so the dots land first. */
+   sweeps to 0 — the draw. Held until 1.1s so it follows the pin. */
 .mark-p { stroke-dasharray: 1; stroke-dashoffset: 1;
-  animation: markPWrite 1.2s ease-in-out 0.85s both; }
+  animation: markPWrite 1.05s ease-in-out 1.1s both; }
 
 /* ── First-open contextualization onboarding (.onb-*) ─────────────────────
    Snap-scroll teaching flow shown on every page load. Calm Provenance palette

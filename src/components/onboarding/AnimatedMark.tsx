@@ -57,11 +57,12 @@ export default function AnimatedMark({ size = 240, className = '' }: Props) {
         />
       </g>
 
-      {/* "…" — pop in left → right, so the trail builds toward the pin. Delays are
-          inline because they're the one per-element value the shared class can't carry. */}
-      <circle className="mark-dot" style={{ animationDelay: '0.15s' }} cx="149.532" cy="881.932" r="47.5315" fill="#A33829" />
-      <circle className="mark-dot" style={{ animationDelay: '0.30s' }} cx="273.216" cy="881.932" r="47.5315" fill="#A33829" />
-      <circle className="mark-dot" style={{ animationDelay: '0.45s' }} cx="396.9" cy="881.932" r="47.5315" fill="#A33829" />
+      {/* "…" — first, popping left → right so the trail builds toward the pin
+          (which fades in behind them afterward). Delays are inline because they're
+          the one per-element value the shared class can't carry. */}
+      <circle className="mark-dot" style={{ animationDelay: '0s' }} cx="149.532" cy="881.932" r="47.5315" fill="#A33829" />
+      <circle className="mark-dot" style={{ animationDelay: '0.13s' }} cx="273.216" cy="881.932" r="47.5315" fill="#A33829" />
+      <circle className="mark-dot" style={{ animationDelay: '0.26s' }} cx="396.9" cy="881.932" r="47.5315" fill="#A33829" />
     </svg>
   );
 }
