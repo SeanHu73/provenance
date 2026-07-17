@@ -83,18 +83,7 @@ export default function FindActivityCard({ stop, onFound }: Props) {
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
       <div>
         <ActionTitle action="FIND" />
-        {/* The stop's name. Upright and in the theme red rather than the grey
-            italic the other cards use — on this screen it's the target being
-            named, not a subtitle, and it centres to sit with the mission block
-            below. */}
-        {stop.title && (
-          <p
-            className="mt-1 font-serif text-[26px] leading-snug text-center"
-            style={{ color: 'var(--th-primary)' }}
-          >
-            {stop.title}
-          </p>
-        )}
+        {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[22px] leading-snug">{stop.title}</p>}
       </div>
 
       {/* The instructions — the notice prompt, and deliberately nothing else.

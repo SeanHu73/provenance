@@ -263,7 +263,22 @@ export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false
               already said FIND, and this section is only the Background (which
               carries its own "Background" subtitle). */}
           {!hideFindInstructions && <ActionTitle action={embedded ? 'FIND' : 'DISCOVER'} />}
-          {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[22px] leading-snug">{stop.title}</p>}
+          {/* In the FIND flow this section has no action title above it, so the
+              stop's name is the heading and reads as one: upright, theme red,
+              centred over the photo and Background beneath. Everywhere else it's
+              a subtitle under FIND/DISCOVER and keeps the grey italic. */}
+          {stop.title && (
+            hideFindInstructions ? (
+              <p
+                className="font-serif text-[26px] leading-snug text-center"
+                style={{ color: 'var(--th-primary)' }}
+              >
+                {stop.title}
+              </p>
+            ) : (
+              <p className="mt-1 font-serif italic text-text-secondary text-[22px] leading-snug">{stop.title}</p>
+            )
+          )}
         </div>
         {hideFindInstructions && noticePhotosOnly}
         {backgroundContent}
