@@ -8,12 +8,16 @@
 
 import { useResearchJobs, cancelJob, isPending } from '@/features/context-journal/research-store';
 import { useTour } from '@/context/TourContext';
+import { useDevJumpOn } from '@/lib/dev-jump';
 
 export default function ReflectGate({ tourId, children }: { tourId: string; children: React.ReactNode }) {
   const jobs = useResearchJobs();
   const { goBack, canGoBack } = useTour();
+  // Dev Jump walks straight through: an admin jumping to Reflect doesn't care that
+  // a search is still running, and the wait screen would just block inspection.
+  const devJump = useDevJumpOn();
   const pending = jobs.filter((j) => j.tourId === tourId && isPending(j));
-  if (pending.length === 0) return <>{children}</>;
+  if (pending.length === 0 || devJump) return <>{children}</>;
 
   return (
     <div className="animate-fade-in min-h-full flex flex-col justify-center gap-6 px-2 text-center">

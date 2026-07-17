@@ -12,6 +12,7 @@ import { useRoom } from '@/context/RoomContext';
 import RoomMenu from '@/components/room/RoomMenu';
 import ContextJournal from '@/features/context-journal/ContextJournal';
 import { authoredToEntry } from '@/features/context-journal/adapters';
+import { useDevJumpOn } from '@/lib/dev-jump';
 
 /**
  * Phases at or after an act's Context step. Used by the base (revisit) journal to
@@ -37,6 +38,7 @@ interface Props {
 export default function TourFooter({ tour, session, pointAtQuestion = false }: Props) {
   const [showQuestionInput, setShowQuestionInput] = useState(false);
   const [showRoomMenu, setShowRoomMenu] = useState(false);
+  const devJump = useDevJumpOn(); // admin escape hatch — unlocks the journal button
   const { room, isInRoom } = useRoom();
   const { recordContextViewed } = useTour();
   // Context-Prototype hides the Inquiries (ask a question) affordance and
@@ -73,7 +75,7 @@ export default function TourFooter({ tour, session, pointAtQuestion = false }: P
   // The bottom-right Context Journal is locked until the learner reaches their
   // first act's Context step naturally (`contextIntroSeen`). Non-context tours are
   // never locked. Once unlocked it stays open for the rest of the tour.
-  const journalUnlocked = !isContext || !!session.contextIntroSeen;
+  const journalUnlocked = devJump || !isContext || !!session.contextIntroSeen;
   // The current act's guiding (framing) question only appears in the revisit
   // journal once that act's Context step has been reached naturally.
   const journalGuiding = currentActContextReached ? (journalAct?.guidingQuestion?.trim() || undefined) : undefined;

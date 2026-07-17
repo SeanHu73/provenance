@@ -122,6 +122,9 @@ interface TourContextValue {
   completeMidwayCheckin: (responseText: string) => void;
   selectedUnstructuredStopId: string | null;
   setSelectedUnstructuredStopId: (id: string | null) => void;
+  /** Dev Jump only (see `lib/dev-jump.ts`) — drop the session onto any phase,
+   *  bypassing the completer chain. Never call this from tour flow. */
+  devJumpTo: (phase: TourPhase, stopIndex?: number) => void;
 }
 
 const TourCtx = createContext<TourContextValue | null>(null);
@@ -170,6 +173,27 @@ export function TourProvider({ children }: { children: ReactNode }) {
     // Fire-and-forget write to Firestore for analytics
     persistTourSession(s);
   }, []);
+
+  /**
+   * Dev Jump's write. Every real transition goes through a `complete*` fn that
+   * computes its own successor; this deliberately skips all of that and drops the
+   * session wherever asked.
+   *
+   * `currentRound` resets to 0 because the in-stop loop (seed → wonder → reveal →
+   * reflect) uses it to decide whether a stop has more rounds left — landing on a
+   * fresh phase with a stale round number replays or skips content. `phaseHistory`
+   * still gets the push, so Back works normally after a jump.
+   */
+  const devJumpTo = useCallback((phase: TourPhase, stopIndex?: number) => {
+    if (!session) return;
+    persist({
+      ...session,
+      phaseHistory: [...session.phaseHistory, { phase: session.currentPhase, round: session.currentRound, stopIndex: session.currentStopIndex }],
+      currentPhase: phase,
+      currentStopIndex: stopIndex ?? session.currentStopIndex,
+      currentRound: 0,
+    });
+  }, [session, persist]);
 
   const currentStop = tour && session
     ? getActiveStops(tour)[session.currentStopIndex] ?? null
@@ -746,6 +770,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       isActive: tour !== null && session !== null && !['end'].includes(session.currentPhase),
       isLastStop,
       startTour,
+      devJumpTo,
       goBack: goBackFn,
       canGoBack,
       advancePhase,

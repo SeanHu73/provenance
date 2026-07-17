@@ -37,6 +37,7 @@ import { captureExploredContext, subscribeExploredContexts, updateExploredContex
 import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
 import { contextNarrationText } from '@/lib/tts-narration';
 import { AutoPlayMenuItem } from '@/components/tour/TourMenu';
+import { useDevJumpOn } from '@/lib/dev-jump';
 
 /** Comic ink shared with the P.A.S.T. lens buttons, for the "Ask" CTA's border
  *  + hard offset shadow (see PastLens). */
@@ -121,6 +122,10 @@ interface Props {
 
 export default function ContextJournal({ tourId, actId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false, requireAskToContinue = false, onContextQuestion, exploreLabel, onOpenStops, onBack, alreadyAsked = false }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
+  // Dev Jump (admin, off by default) unlocks this screen's three gates — ask-first,
+  // continue, and the shared-contexts pool. They are the pedagogy, not plumbing, so
+  // this is only for inspecting a stage without playing the tour to reach it.
+  const devJump = useDevJumpOn();
   // Both the in-tour flow and the revisit overlay read/write the learner's
   // guest-local contexts (sessionStorage); only a bare standalone visit uses
   // Firestore.
@@ -168,7 +173,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   // act (via back-nav) doesn't re-lock the gates once they've engaged.
   const [askedOwnActId, setAskedOwnActId] = useState<string | null>(alreadyAsked ? (actId ?? null) : null);
   const [lockNudge, setLockNudge] = useState(false);
-  const exploredUnlocked = !!actId && askedOwnActId === actId;
+  const exploredUnlocked = devJump || (!!actId && askedOwnActId === actId);
   // A prior response opened full-screen from the menu (previews are clamped, so
   // long reflections don't blow out the dropdown).
   const [viewResponse, setViewResponse] = useState<{ actTitle: string; promptText: string; text: string } | null>(null);
@@ -403,7 +408,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   // context question and see a response before the journal opens. Replaces the
   // whole screen (no journal access) with a framed prompt + the question flow
   // ready to go. Additional stops and act 1 pass askFirst=false and skip this.
-  if (askFirst && !askedOwn) {
+  if (askFirst && !askedOwn && !devJump) {
     return (
       <div
         className="fixed inset-0 z-[55] flex flex-col items-center justify-center text-center px-8 select-none"
@@ -454,7 +459,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   // keeps the old "opened/asked a context" rule. Act 1 (requireAskToContinue) also
   // requires posing your own question.
   const engaged = lensVariant === 'slider' ? allLensesSeen : explored;
-  const canContinue = requireAskToContinue ? engaged && exploredUnlocked : engaged;
+  const canContinue = devJump || (requireAskToContinue ? engaged && exploredUnlocked : engaged);
   // The floating "Ask your own" CTA is suppressed in the gated in-tour flow until
   // a premature Continue reveals it (then it stays). Standalone / revisit keep it.
   const gatedFlow = !!inTour && !revisit;

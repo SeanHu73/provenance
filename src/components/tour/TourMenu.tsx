@@ -14,6 +14,117 @@
 import { useState } from 'react';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useAutoplayHint } from '@/lib/autoplay-hint';
+import { useDevJump } from '@/lib/dev-jump';
+import { useTour } from '@/context/TourContext';
+import { getActs } from '@/lib/tour-session';
+import { getActiveStops } from '@/lib/tours-store';
+import type { Stop, TourPhase } from '@/lib/types';
+
+/** One jumpable destination. `stopIndex` is required for anything inside an act —
+ *  the act is derived from the stop the session is parked on, so a phase alone is
+ *  not enough to say *which* act's Context step you meant. */
+type JumpTarget = { label: string; phase: TourPhase; stopIndex?: number };
+
+/**
+ * The jump list, built from the tour's real acts rather than hardcoded — acts are
+ * authored content and a tour can have any number.
+ *
+ * Onboarding starts at `meet_guide`, not `intro`: `intro` is a pass-through that
+ * auto-completes on mount (Journal.tsx:124), so jumping there just bounces you to
+ * `meet_guide` anyway.
+ *
+ * Each act offers its three stages using the app's own grouping (PhaseHeader's
+ * `phaseGroup`): Explore is everything before Context, so the act's entry splash
+ * `act_intro` is its head; then `act_context_intro` and `act_reflection_intro`.
+ * Intro phases (not the bodies) are the targets so each stage plays from its start.
+ */
+function useJumpTargets(): JumpTarget[] {
+  const { tour } = useTour();
+  if (!tour) return [];
+  const stops = getActiveStops(tour);
+  const indexOf = (stopId: string) => stops.findIndex((s: Stop) => s.id === stopId);
+
+  const targets: JumpTarget[] = [
+    { label: 'Onboarding — meet the guide', phase: 'meet_guide' },
+    { label: 'Onboarding — the scene', phase: 'eq_scene' },
+    { label: 'Onboarding — discuss', phase: 'eq_discuss' },
+    { label: 'Onboarding — opening question', phase: 'eq_opening' },
+  ];
+
+  getActs(tour).forEach((act, i) => {
+    const at = indexOf(act.stopIds[0]);
+    if (at < 0) return; // act's stops no longer resolve — skip rather than jump blind
+    const n = i + 1;
+    targets.push(
+      { label: `Act ${n} — Explore`, phase: 'act_intro', stopIndex: at },
+      { label: `Act ${n} — Context`, phase: 'act_context_intro', stopIndex: at },
+      { label: `Act ${n} — Reflection`, phase: 'act_reflection_intro', stopIndex: at },
+    );
+  });
+
+  targets.push({ label: 'Closing — questions', phase: 'eq_questions' });
+  return targets;
+}
+
+/** The Dev Jump toggle + (when on) the stage list. Admin-only escape hatch: it
+ *  disables the tour's gates, so it is off by default and says so. */
+export function DevJumpMenuItem() {
+  const [on, setOn] = useDevJump();
+  const { session, devJumpTo } = useTour();
+  const targets = useJumpTargets();
+  const cur = session?.currentPhase;
+
+  return (
+    <div className="border-t" style={{ borderColor: 'var(--th-border)' }}>
+      <button
+        onClick={() => setOn(!on)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-black/[0.03]"
+        aria-pressed={on}
+      >
+        <span
+          className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+          style={{ backgroundColor: on ? '#7c3aed' : 'var(--th-border)', color: on ? '#fff' : 'var(--text-secondary)' }}
+        >
+          {/* compass icon */}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="12" cy="12" r="9" />
+            <path d="m15.5 8.5-2 5-5 2 2-5z" />
+          </svg>
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block font-semibold text-text-primary">Dev Jump {on ? 'on' : 'off'}</span>
+          <span className="block text-xs text-text-secondary leading-snug">
+            {on ? 'Gates are off. Jump to any stage below.' : 'Admin only — skip between stages, ignore gates.'}
+          </span>
+        </span>
+        <span className="shrink-0 w-10 h-6 rounded-full p-0.5 transition-colors" style={{ backgroundColor: on ? '#7c3aed' : 'var(--th-border)' }}>
+          <span className="block w-5 h-5 rounded-full bg-white shadow transition-transform" style={{ transform: on ? 'translateX(16px)' : 'translateX(0)' }} />
+        </span>
+      </button>
+
+      {on && (
+        <div className="max-h-64 overflow-y-auto border-t" style={{ borderColor: 'var(--th-border)' }}>
+          {targets.length === 0 ? (
+            <p className="px-4 py-3 text-xs text-text-secondary">No tour loaded.</p>
+          ) : targets.map((t) => {
+            const here = cur === t.phase;
+            return (
+              <button
+                key={`${t.phase}:${t.stopIndex ?? '-'}`}
+                onClick={() => devJumpTo(t.phase, t.stopIndex)}
+                className={`w-full px-4 py-2 text-left text-[13px] flex items-center gap-2 transition-colors ${here ? 'font-semibold' : 'hover:bg-black/[0.03]'}`}
+                style={here ? { backgroundColor: 'rgba(124,58,237,0.08)', color: '#7c3aed' } : { color: 'var(--text-secondary)' }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: here ? '#7c3aed' : 'var(--th-border)' }} />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** The Auto-Play on/off row — a headphone icon, a label, and a switch. Shared by
  *  this menu and the Context Journal's menu so it looks/behaves identically. */
@@ -89,6 +200,7 @@ export default function TourMenu({ inline = false }: { inline?: boolean }) {
                 Audio plays automatically. Turn it off here to control when it plays.
               </div>
             )}
+            <DevJumpMenuItem />
           </div>
         </>
       )}
