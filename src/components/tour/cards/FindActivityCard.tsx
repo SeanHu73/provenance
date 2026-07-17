@@ -22,9 +22,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Stop } from '@/lib/types';
 import ActionTitle from './ActionTitle';
 
-/** Height cap for each revealed photo. Both layouts stack a caption and the
- *  "Did you find it?" line under the pair, so this leaves room for those on a
- *  phone. `vh` (not `%`) so the cap actually resolves — see the reveal block. */
+/** Height cap for each revealed photo. The "Did you find it?" line sits above the
+ *  pair and each photo carries a caption below it, so this leaves room for both
+ *  on a phone. `vh` (not `%`) so the cap actually resolves — see the reveal
+ *  block. */
 const PHOTO_CAP = '38vh';
 
 interface Props {
@@ -131,10 +132,15 @@ export default function FindActivityCard({ stop, onFound }: Props) {
           </p>
         </div>
       ) : (
-        // pb clears the Journal's "keep scrolling" pill, which is absolutely
-        // positioned at the bottom centre and otherwise lands right on top of
-        // "Did you find it?".
+        // pb keeps the photo captions clear of the Journal's "keep scrolling"
+        // pill, which is absolutely positioned over the bottom centre.
         <div className="animate-fade-in space-y-4 pb-20">
+          <p
+            className="text-center font-serif italic text-[32px] leading-snug"
+            style={{ color: 'var(--th-primary)' }}
+          >
+            Did you find it?
+          </p>
           {/* The cap lives on the <img> in vh, not on a wrapper as a percentage.
               A percentage max-height resolves against the parent's *definite*
               height; these wrappers size to their content, so `max-h-full` was
@@ -168,12 +174,6 @@ export default function FindActivityCard({ stop, onFound }: Props) {
               </figure>
             )}
           </div>
-          <p
-            className="text-center font-serif italic text-[32px] leading-snug"
-            style={{ color: 'var(--th-primary)' }}
-          >
-            Did you find it?
-          </p>
         </div>
       )}
     </div>
