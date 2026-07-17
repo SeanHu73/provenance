@@ -68,7 +68,7 @@ export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = fal
   return (
     <>
       <section ref={findRef} className="min-h-full snap-start flex flex-col justify-start px-5 py-6">
-        <FindActivityCard stop={stop} onFound={() => setFound(true)} />
+        <FindActivityCard stop={stop} onFound={() => setFound(true)} onPeekMap={onPeekMap} />
       </section>
       {/* Both later sections wait on the activity. Gating only the Background left
           DISCOVER reachable by scrolling, which skipped the activity *and* the

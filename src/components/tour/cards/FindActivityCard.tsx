@@ -38,6 +38,9 @@ interface Props {
   stop: Stop;
   /** Fires once, when the reveal happens — lets the parent mount what's below. */
   onFound?: () => void;
+  /** Opens the map peek so the explorer can locate the stop. Present only when a
+   *  location exists (gated upstream in page.tsx), so no extra location check here. */
+  onPeekMap?: () => void;
 }
 
 type Shot = { url: string; portrait: boolean };
@@ -51,7 +54,7 @@ function stripPhotoMarkers(text: string): string {
   return text.replace(/\[photo:\d+\]/gi, '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-export default function FindActivityCard({ stop, onFound }: Props) {
+export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [shot, setShot] = useState<Shot | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -112,6 +115,26 @@ export default function FindActivityCard({ stop, onFound }: Props) {
             <FormattedText text={instructions} />
           </p>
           <div className="mx-auto mt-3 h-px w-12" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.5 }} />
+        </div>
+      )}
+
+      {/* Locate the stop. Sized as a real button (not the old 11px pill) — the ask
+          is "go find this thing", so the way to find it has to be obvious. Gone
+          once they've taken the photo. */}
+      {!revealed && onPeekMap && (
+        <div className="flex justify-center">
+          <button
+            onClick={onPeekMap}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-[16px] font-semibold shadow-sm active:scale-95 transition-transform"
+            style={{ fontFamily: MARIGOLD, color: 'var(--th-primary)', border: '2px solid var(--th-primary)', backgroundColor: 'color-mix(in srgb, var(--th-primary) 8%, transparent)' }}
+            aria-label="Find this stop on the map"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 21s-7-7.5-7-13a7 7 0 0 1 14 0c0 5.5-7 13-7 13z" />
+              <circle cx="12" cy="9" r="2" fill="currentColor" stroke="none" />
+            </svg>
+            Find on map
+          </button>
         </div>
       )}
 
