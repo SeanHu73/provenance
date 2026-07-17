@@ -31,11 +31,18 @@ import PastReveal from '@/components/onboarding/PastReveal';
 export const CONTEXT_ACCENT = '#E08A5F';
 
 /**
- * The four lenses as swipeable cards. The track is padded in from both edges so
- * the neighbouring cards always peek — that peek is the affordance; without it a
- * single centred card reads as the whole content and nobody swipes. The P.A.S.T.
- * indicator above tracks whichever card is centred, so the acronym just taught on
- * the previous slide stays connected to the card being read.
+ * The four lenses as swipeable cards, built to match the Context Journal's own
+ * lens card (PastLensCard): coloured header band with the big lens name, category
+ * icons, then every sample question in a tinted row. Not a reduced preview — the
+ * point is that what you learn here is the thing you'll meet in the journal.
+ *
+ * The track is padded in from both edges so the neighbouring cards always peek —
+ * that peek is the affordance; without it a single centred card reads as the whole
+ * content and nobody swipes. Each card scrolls internally when its questions don't
+ * fit, so the card is never clipped and the page never grows past the viewport.
+ *
+ * The indicator carries the magnifier over whichever letter is centred, matching
+ * the lens metaphor the cards use.
  */
 function LensSlider() {
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -57,51 +64,67 @@ function LensSlider() {
   };
 
   return (
-    <div className="mt-7">
-      {/* P.A.S.T. indicator — the active letter lights up, its lens named above. */}
-      <div className="flex flex-col items-center gap-1">
-        <span className="font-display leading-none" style={{ fontSize: 'clamp(17px, 4.4vw, 22px)', color: LENSES[active].colour }}>
-          {LENSES[active].label}
-        </span>
-        <div className="font-display leading-none flex" style={{ fontSize: 'clamp(22px, 6vw, 30px)' }}>
-          {LENSES.map((l, i) => (
-            <span
-              key={l.key}
-              style={{
-                color: i === active ? l.colour : 'var(--th-surface)',
-                opacity: i === active ? 1 : 0.28,
-                transition: 'color 300ms ease, opacity 300ms ease',
-              }}
-            >
-              {l.label[0]}.
+    <div className="mt-5">
+      {/* P.A.S.T. indicator — the active letter grows and wears the magnifier. */}
+      <div className="flex items-end justify-center gap-0.5">
+        {LENSES.map((l, i) => {
+          const on = i === active;
+          return (
+            <span key={l.key} className="relative flex flex-col items-center">
+              <svg
+                width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={l.colour}
+                strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+                style={{ opacity: on ? 1 : 0, transform: on ? 'translateY(0)' : 'translateY(4px)', transition: 'opacity 250ms ease, transform 250ms ease' }}
+              >
+                <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+              </svg>
+              <span
+                className="font-display leading-none"
+                style={{
+                  color: on ? l.colour : 'var(--th-surface)',
+                  opacity: on ? 1 : 0.3,
+                  fontSize: on ? 'clamp(34px, 9vw, 44px)' : 'clamp(22px, 6vw, 30px)',
+                  transition: 'color 300ms ease, opacity 300ms ease, font-size 300ms ease',
+                }}
+              >
+                {l.label[0]}.
+              </span>
             </span>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       <div
         ref={trackRef}
         onScroll={onScroll}
         className="mt-4 flex gap-4 overflow-x-auto tour-scroll"
-        style={{ scrollSnapType: 'x mandatory', paddingLeft: '12%', paddingRight: '12%' }}
+        style={{ scrollSnapType: 'x mandatory', paddingLeft: '10%', paddingRight: '10%' }}
       >
         {LENSES.map((l) => (
           <div
             key={l.key}
-            className="shrink-0 rounded-2xl p-5"
-            style={{
-              width: '76%', scrollSnapAlign: 'center',
-              backgroundColor: 'var(--th-surface)', borderLeft: `4px solid ${l.colour}`,
-            }}
+            className="shrink-0 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+            style={{ width: '80%', maxWidth: 420, maxHeight: '58vh', scrollSnapAlign: 'center', backgroundColor: 'var(--th-surface)' }}
           >
-            <p className="font-display leading-none" style={{ color: l.colour, fontSize: 'clamp(28px, 8vw, 38px)' }}>{l.label}</p>
-            <p className="font-serif mt-2 leading-snug" style={{ color: 'var(--th-text)', fontSize: 14, opacity: 0.85 }}>{l.definition}</p>
-            <p className="font-semibold mt-4 text-[11px] uppercase tracking-[0.14em]" style={{ color: l.colour }}>Ask things like</p>
-            <ul className="mt-1.5 space-y-1.5">
-              {l.questions.slice(0, 2).map((q) => (
-                <li key={q} className="font-serif italic leading-snug" style={{ color: 'var(--th-text)', fontSize: 15 }}>&ldquo;{q}&rdquo;</li>
-              ))}
-            </ul>
+            <div className="px-5 py-4 shrink-0" style={{ backgroundColor: l.colour }}>
+              <h3 className="font-display font-bold leading-none" style={{ color: 'var(--th-surface)', fontSize: 'clamp(34px, 9vw, 46px)' }}>{l.label}</h3>
+            </div>
+            <div className="overflow-y-auto tour-scroll px-5 py-4">
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {l.categories.map((c) => (
+                  <span key={c} className="text-[15px] font-semibold" style={{ color: l.colour }}>{c}</span>
+                ))}
+              </div>
+              <p className="mt-4 text-[11px] uppercase tracking-[0.16em] font-semibold" style={{ color: 'var(--th-text)', opacity: 0.6 }}>Sample context questions</p>
+              <ul className="mt-2.5 space-y-2.5">
+                {[...l.questions, ...(l.specificQuestions ?? [])].map((q, i) => (
+                  <li key={i} className="flex items-start gap-2.5 rounded-xl px-3.5 py-2.5" style={{ backgroundColor: `${l.colour}14` }}>
+                    <span className="mt-2 w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: l.colour }} />
+                    <span className="font-serif leading-snug" style={{ color: 'var(--th-text)', fontSize: 16 }}>{q}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         ))}
       </div>
@@ -204,7 +227,7 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
         <p
           className="font-display leading-none mt-1"
           style={{
-            fontSize: 'clamp(46px, 15vw, 88px)', color: 'var(--th-surface)',
+            fontSize: 'clamp(46px, 15vw, 88px)', color: CONTEXT_ACCENT,
             opacity: sitIn ? 1 : 0, transform: sitIn ? 'translateY(0)' : 'translateY(12px)',
             transition: 'opacity 800ms ease-out 350ms, transform 800ms ease-out 350ms',
           }}
@@ -257,7 +280,7 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
         </p>
         {!returning && (
           <p
-            className="font-serif leading-snug mt-5"
+            className="font-serif leading-snug mt-5 ml-auto text-right"
             style={{
               fontSize: 'clamp(21px, 5.6vw, 30px)',
               color: 'var(--th-surface)',
@@ -267,20 +290,22 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
               maxWidth: '22ch',
             }}
           >
-            Let&rsquo;s <span className="italic font-display" style={{ color: CONTEXT_ACCENT }}>reconstruct</span> the world behind it.
+            &hellip;let&rsquo;s <span className="italic font-display" style={{ color: CONTEXT_ACCENT }}>reconstruct</span> the world behind it.
           </p>
         )}
 
+        {/* "the CONTEXT" on one line. Centred, but sized to fill the width, so the
+            centring shouldn't read as centring — it should just look placed. */}
         <div
-          className="mt-8 text-right"
+          className="mt-8 flex items-baseline justify-center gap-3"
           style={{
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(18px)',
             transition: 'opacity 900ms ease-out 1800ms, transform 900ms ease-out 1800ms',
           }}
         >
-          <span className="font-serif block" style={{ fontSize: 'clamp(18px, 4.6vw, 24px)', color: 'var(--th-surface)', opacity: 0.75 }}>the</span>
-          <span className="font-display leading-[0.95] tracking-tight block" style={{ fontSize: 'clamp(56px, 21vw, 132px)', color: 'var(--th-surface)' }}>
+          <span className="font-serif" style={{ fontSize: 'clamp(16px, 4.2vw, 22px)', color: 'var(--th-surface)', opacity: 0.75 }}>the</span>
+          <span className="font-display leading-[0.95] tracking-tight" style={{ fontSize: 'clamp(44px, 16vw, 104px)', color: 'var(--th-surface)' }}>
             CONTEXT
           </span>
         </div>
@@ -314,14 +339,16 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
           So how do we do it?
         </p>
         <p
-          className="font-serif leading-snug mt-10"
+          className="font-serif leading-snug mt-24"
           style={{
-            fontSize: 'clamp(26px, 7vw, 40px)', color: 'var(--th-surface)', maxWidth: '18ch',
+            fontSize: 'clamp(30px, 8vw, 46px)', color: 'var(--th-surface)', maxWidth: '16ch',
             opacity: howIn ? 1 : 0, transform: howIn ? 'translateY(0)' : 'translateY(12px)',
             transition: 'opacity 800ms ease-out 1100ms, transform 800ms ease-out 1100ms',
           }}
         >
-          Let&rsquo;s start by <strong style={{ color: CONTEXT_ACCENT }}>asking context questions!</strong>
+          Let&rsquo;s start by
+          <br />
+          <strong style={{ color: CONTEXT_ACCENT }}>asking context questions!</strong>
         </p>
       </section>
       )}

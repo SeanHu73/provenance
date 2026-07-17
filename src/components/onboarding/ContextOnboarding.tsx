@@ -171,44 +171,49 @@ const OnbPanels = memo(function OnbPanels({
         </div>
       </section>
 
-      {/* 3 — Thanks. Three beats, each landing in a different place on the page —
-             left, right, centre — so the eye moves and the slide doesn't read as
-             one block. The long --d gaps are the point: they're pauses, not
-             decoration. */}
+      {/* 3 — Thanks, then the two beats that set up the whole flow. */}
       <section data-idx={2} className="onb-panel onb-bottom" style={vis(2)}>
         <p className="onb-q onb-r" style={{ '--d': '0.1s', color: 'var(--th-primary)', fontSize: 'clamp(30px, 8.5vw, 46px)' } as React.CSSProperties}>Thanks for sharing<br />what you think.</p>
-        <p className="onb-lead onb-r mt-20" style={{ '--d': '0.9s' } as React.CSSProperties}>Maybe your experience was different&hellip;</p>
-        <p className="onb-lead onb-r mt-6 ml-auto text-right" style={{ '--d': '1.8s', maxWidth: '26ch' } as React.CSSProperties}>
-          &hellip; but most of us have been taught history as lists of <strong><em>people, dates, and events</em></strong>.
+        <p className="onb-lead onb-r mt-20" style={{ '--d': '0.9s', maxWidth: '26ch' } as React.CSSProperties}>
+          Most people have been taught history as lists of{' '}
+          <strong style={{ color: 'var(--th-secondary)' }}>people, dates, and events.</strong>
         </p>
-        <p className="onb-lead onb-r mt-6 text-center italic" style={{ '--d': '2.7s' } as React.CSSProperties}>Perhaps as a story!</p>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '1.8s', marginTop: 40 } as React.CSSProperties}><strong>Perhaps as a story!</strong></p>
       </section>
 
       {/* 4 — Fragments. The word itself is scattered and pulled back together
-             (Pieces), which is the slide's whole argument in one image. */}
+             (Pieces), which is the slide's whole argument in one image. The second
+             line sits at the vertical middle: my-auto centres it in the space left
+             under the first, which onb-top pins to the top. */}
       <section data-idx={3} className="onb-panel onb-top" style={vis(3)}>
         <p className="onb-lead onb-r">But people, dates, and events are like <Pieces text="fragments" />.</p>
-        <p className="onb-lead onb-r mt-14 text-center" style={{ '--d': '1.1s' } as React.CSSProperties}>
-          They tell you <em>what happened</em>, but not always <strong style={{ color: 'var(--th-primary)' }}>why it happened</strong>.
+        <p className="onb-lead onb-r text-center" style={{ '--d': '1.1s', marginTop: 'auto', marginBottom: 'auto' } as React.CSSProperties}>
+          They tell you <em>what happened</em>, but not always
+          <br />
+          <strong style={{ color: 'var(--th-primary)' }}>why it happened</strong>.
         </p>
       </section>
 
-      {/* 5 — The bigger picture, then the payoff line centred underneath. */}
+      {/* 5 — The bigger picture, then the payoff line centred well underneath. */}
       <section data-idx={4} className="onb-panel" style={vis(4)}>
         <p className="onb-lead onb-r" style={{ '--d': '0.1s' } as React.CSSProperties}>
           To understand the past, we need to piece those fragments into the{' '}
           <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>bigger picture.</strong>
         </p>
-        <p className="onb-lead onb-r mt-16 text-center" style={{ '--d': '1.4s' } as React.CSSProperties}><strong>That&rsquo;s how a historian thinks.</strong></p>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '1.4s', marginTop: 128 } as React.CSSProperties}>
+          <strong>That&rsquo;s how a <span style={{ color: 'var(--th-primary)' }}>historian</span> thinks.</strong>
+        </p>
       </section>
 
-      {/* 6 — Reconstruct (letters shuffle and settle), then the world it rebuilds. */}
+      {/* 6 — Reconstruct (letters shuffle and settle), then the world it rebuilds.
+             The em dashes carry the break across the two halves; the ellipses used
+             to, and read as a trailing-off rather than a hinge. */}
       <section data-idx={5} className="onb-panel" style={vis(5)}>
         <p className="onb-lead onb-r" style={{ '--d': '0.1s' } as React.CSSProperties}>
-          To understand the past, they first <Reconstruct text="reconstruct" />{' '}the bigger picture&hellip;
+          To understand the past, historians first <Reconstruct text="reconstruct" />{' '}the bigger picture &mdash;
         </p>
-        <p className="onb-lead onb-r mt-10 ml-auto text-right" style={{ '--d': '1.2s', maxWidth: '24ch' } as React.CSSProperties}>
-          &hellip; the world around the <em>people</em> and <em>events</em>.
+        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.2s', maxWidth: '24ch', marginTop: 56 } as React.CSSProperties}>
+          &mdash; the world around the <em>people</em> and <em>events</em>.
         </p>
       </section>
 
@@ -219,31 +224,31 @@ const OnbPanels = memo(function OnbPanels({
         <p className="onb-r mt-8" style={{ '--d': '1.4s', transitionDuration: '1.3s' } as React.CSSProperties}><span className="onb-ctx" style={{ fontSize: 'clamp(46px, 15vw, 74px)' }}>Context</span></p>
       </section>
 
-      {/* 8 — The definition, in four beats. Left, left, right, right: the two
-             halves of the sentence sit on opposite sides of the page. */}
+      {/* 8 — The definition, in three beats. Left, left, right. */}
       <section data-idx={7} className="onb-panel" style={vis(7)}>
-        <p className="onb-lead onb-r" style={{ '--d': '0.1s', opacity: 0.85 } as React.CSSProperties}>Contextualising is&hellip;</p>
-        <p className="onb-lead onb-r mt-10" style={{ '--d': '0.9s' } as React.CSSProperties}>
+        <p className="onb-lead onb-r" style={{ '--d': '0.1s', opacity: 0.85 } as React.CSSProperties}>
+          <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>Contextualising</strong>{' '}is&hellip;
+        </p>
+        <p className="onb-lead onb-r" style={{ '--d': '0.9s', marginTop: 48 } as React.CSSProperties}>
           <Reconstruct text="Reconstructing" />{' '}the world during a <em>time and place</em>&hellip;
         </p>
-        <p className="onb-lead onb-r mt-8 ml-auto text-right" style={{ '--d': '1.8s', maxWidth: '24ch' } as React.CSSProperties}>
+        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.8s', maxWidth: '24ch', marginTop: 104 } as React.CSSProperties}>
           {/* {' '} not a plain space: a JSX text chunk containing a newline gets
               BOTH ends trimmed, so a space after an element that runs to the end
               of the line is silently eaten ("understandwhy"). */}
-          &hellip; then using that world to <strong>understand</strong>{' '}why people did what they did&hellip;
-        </p>
-        <p className="onb-lead onb-r mt-5 ml-auto text-right" style={{ '--d': '2.5s', maxWidth: '24ch' } as React.CSSProperties}>
-          &hellip; and why <strong>events happened</strong>.
+          &hellip; then using that world to understand{' '}
+          <strong>why people did what they did</strong>&hellip; and why events happened.
         </p>
       </section>
 
-      {/* 9 — Places. Centre, then left, then right — the turn at "But often" lands
-             on the opposite side from the line before it. */}
+      {/* 9 — Places. Centre, left, then centre again. */}
       <section data-idx={8} className="onb-panel" style={vis(8)}>
         <p className="onb-q onb-r text-center" style={{ '--d': '0.1s', color: 'var(--th-primary)', fontSize: 'clamp(28px, 7.5vw, 44px)' } as React.CSSProperties}>The places around us are full of history!</p>
-        <p className="onb-lead onb-r mt-14" style={{ '--d': '1.1s' } as React.CSSProperties}>It&rsquo;s where we often learn about the past.</p>
-        <p className="onb-lead onb-r mt-8 ml-auto text-right" style={{ '--d': '2.0s', maxWidth: '24ch' } as React.CSSProperties}>
-          But often, we only see <strong>what is in front of us</strong>.
+        <p className="onb-lead onb-r mt-24" style={{ '--d': '1.1s' } as React.CSSProperties}>It&rsquo;s often where we learn about the past.</p>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '2.0s', marginTop: 56 } as React.CSSProperties}>
+          {/* nowrap so the phrase can't break across lines — it's the point of the
+              sentence and reads badly split. */}
+          But usually, we only see <strong className="whitespace-nowrap">what is in front of us.</strong>
         </p>
       </section>
 
@@ -253,7 +258,7 @@ const OnbPanels = memo(function OnbPanels({
           This is where <span style={{ color: 'var(--th-primary)' }}>Provenance</span> comes in.
         </p>
         <p className="onb-lead onb-r mt-14 text-center" style={{ '--d': '1.1s' } as React.CSSProperties}>
-          We want to help you see <strong style={{ color: 'var(--th-primary)' }}>beyond</strong>{' '}what&rsquo;s in front.
+          We want to help you see <strong style={{ color: 'var(--th-primary)' }}>BEYOND</strong>{' '}what&rsquo;s in front.
         </p>
       </section>
 
@@ -262,10 +267,13 @@ const OnbPanels = memo(function OnbPanels({
              padding), so the sentence physically spans the slide. */}
       <section data-idx={10} className="onb-panel" style={vis(10)}>
         <p className="onb-lead onb-r text-center" style={{ '--d': '0.2s' } as React.CSSProperties}>
-          We want to help you <strong style={{ color: 'var(--th-primary)' }}>contextualise</strong> and <Reconstruct text="reconstruct" />
+          We want to help you{' '}
+          <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>contextualise</strong>
         </p>
-        <p className="onb-lead onb-r mt-auto pt-24 ml-auto text-right" style={{ '--d': '1.5s', maxWidth: '22ch' } as React.CSSProperties}>
-          the world of the past using <strong>what&rsquo;s in front of you</strong>.
+        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.5s', maxWidth: '22ch', marginTop: 'auto', paddingTop: 96 } as React.CSSProperties}>
+          &hellip; and <Reconstruct text="reconstruct" />{' '}the world of the past using
+          <br />
+          <strong>what&rsquo;s in front of you</strong>.
         </p>
       </section>
 
@@ -331,7 +339,8 @@ function SlideExplore({ onDone }: { onDone: () => void }) {
   return (
     <>
       <h2 className="onb-q onb-r" style={{ '--d': '0.1s', color: 'var(--th-text)', fontSize: 'clamp(30px, 8vw, 46px)', maxWidth: '18ch' } as React.CSSProperties}>
-        But before we learn to <span style={{ color: 'var(--th-primary)' }}>contextualise</span>, let&rsquo;s start by <span style={{ color: 'var(--th-primary)' }}>exploring</span>.
+        But before we learn to <span style={{ color: 'var(--th-primary)' }}>contextualise</span>, let&rsquo;s start by{' '}
+        <span style={{ color: 'var(--th-primary)', fontSize: 'clamp(46px, 14vw, 74px)', display: 'inline-block', lineHeight: 1.02 }}>exploring</span>.
       </h2>
       <button
         onClick={() => { haptic(); onDone(); }}

@@ -265,6 +265,11 @@ body {
   font-family: var(--th-font-body, 'Newsreader'), serif;
   font-size: clamp(25px, 7vw, 33px); line-height: 1.42; color: var(--th-text);
 }
+/* Default rhythm between stacked lead paragraphs. NOTE: this is two classes
+   (0,2,0), so it BEATS every Tailwind `mt-*` utility (0,1,0) — a `mt-32` on the
+   second of two adjacent .onb-lead paragraphs silently collapses to 18px. To set
+   a bigger gap, use an inline style (`style={{ marginTop: 128 }}`), which outranks
+   both. ContextOnboarding does exactly that wherever the pacing matters. */
 .onb-lead + .onb-lead { margin-top: 18px; }
 .onb-q {
   font-family: var(--th-font-display, 'DM Serif Display'), serif;
