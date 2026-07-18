@@ -30,26 +30,43 @@ import PastReveal from '@/components/onboarding/PastReveal';
  *  CTA don't clash with the coloured P·A·S·T lenses. A warm coral, no lens uses it. */
 export const CONTEXT_ACCENT = '#E08A5F';
 
+/** The glassy magnifying lens worn over the active initial — same treatment as the
+ *  Context Journal's indicator, so the lens metaphor is consistent across both. */
+function LensGlass({ colour, size }: { colour: string; size: number }) {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute left-1/2 top-1/2"
+      style={{
+        width: size, height: size, transform: 'translate(-50%, -50%)', borderRadius: '999px',
+        background: `radial-gradient(circle at 34% 28%, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.16) 42%, ${colour}22 78%, ${colour}33 100%)`,
+        border: `3px solid ${colour}`,
+        boxShadow: `inset 0 3px 8px rgba(255,255,255,0.55), inset 0 -5px 10px ${colour}40, 0 4px 10px rgba(26,20,14,0.28)`,
+      }}
+    >
+      <span className="absolute" style={{ left: '18%', top: '14%', width: '46%', height: '30%', borderRadius: '999px', background: 'linear-gradient(140deg, rgba(255,255,255,0.85), rgba(255,255,255,0))', transform: 'rotate(-18deg)' }} />
+    </span>
+  );
+}
+
 /**
- * The four lenses as swipeable cards, built to match the Context Journal's own
- * lens card (PastLensCard): coloured header band with the big lens name, category
- * icons, then every sample question in a tinted row. Not a reduced preview — the
- * point is that what you learn here is the thing you'll meet in the journal.
+ * The four lenses as swipeable cards. The indicator matches the Context Journal's
+ * exactly — the active P·A·S·T initial swells and wears the lens glass (same
+ * big/small sizing) — so the two surfaces read as one thing. Each card leads with
+ * a sentence definition ("Recreate the past using Place by asking about…" + the
+ * lens's sub-topics stacked), then this tour's *authored* questions for that lens
+ * (the sample questions live on the journal's lens card instead).
  *
- * The track is padded in from both edges so the neighbouring cards always peek —
- * that peek is the affordance; without it a single centred card reads as the whole
- * content and nobody swipes. Each card scrolls internally when its questions don't
- * fit, so the card is never clipped and the page never grows past the viewport.
- *
- * The indicator carries the magnifier over whichever letter is centred, matching
- * the lens metaphor the cards use.
+ * The track snaps left↔right, one card at a time, padded in from both edges so
+ * the neighbours peek — that peek is the swipe affordance. Cards scroll internally
+ * when the questions don't fit, so the card is never clipped.
  */
-function LensSlider() {
+function LensSlider({ questionsByLens }: { questionsByLens: Record<string, string[]> }) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [active, setActive] = useState(0);
 
-  // Nearest card to the track's centre wins — more forgiving than scroll maths,
-  // and correct at both ends where a card can't actually reach the middle.
+  // Nearest card to the track's centre wins — forgiving, and correct at both ends
+  // where a card can't reach the middle.
   const onScroll = () => {
     const track = trackRef.current;
     if (!track) return;
@@ -63,33 +80,36 @@ function LensSlider() {
     setActive((a) => (a === best ? a : best));
   };
 
+  const scrollToCard = (i: number) => {
+    const track = trackRef.current;
+    const card = track?.children[i] as HTMLElement | undefined;
+    if (!track || !card) return;
+    track.scrollTo({ left: card.offsetLeft + card.offsetWidth / 2 - track.clientWidth / 2, behavior: 'smooth' });
+  };
+
   return (
     <div className="mt-5">
-      {/* P.A.S.T. indicator — the active letter grows and wears the magnifier. */}
-      <div className="flex items-end justify-center gap-0.5">
+      {/* P·A·S·T indicator — journal-style: active initial swells + wears the glass. */}
+      <div className="flex items-end justify-center gap-1.5 select-none">
         {LENSES.map((l, i) => {
           const on = i === active;
           return (
-            <span key={l.key} className="relative flex flex-col items-center">
-              <svg
-                width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={l.colour}
-                strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
-                style={{ opacity: on ? 1 : 0, transform: on ? 'translateY(0)' : 'translateY(4px)', transition: 'opacity 250ms ease, transform 250ms ease' }}
+            <div key={l.key} className="flex items-end gap-1.5">
+              <button
+                onClick={() => scrollToCard(i)}
+                aria-label={`Show the ${l.label} lens`}
+                className="relative flex items-center justify-center bg-transparent border-0 p-0"
+                style={{ width: on ? 58 : 30, height: 58 }}
               >
-                <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
-              </svg>
-              <span
-                className="font-display leading-none"
-                style={{
-                  color: on ? l.colour : 'var(--th-surface)',
-                  opacity: on ? 1 : 0.3,
-                  fontSize: on ? 'clamp(34px, 9vw, 44px)' : 'clamp(22px, 6vw, 30px)',
-                  transition: 'color 300ms ease, opacity 300ms ease, font-size 300ms ease',
-                }}
-              >
-                {l.label[0]}.
-              </span>
-            </span>
+                <span className="font-display font-bold leading-none transition-all duration-200" style={{ fontSize: on ? 46 : 24, color: l.colour, opacity: on ? 1 : 0.4 }}>
+                  {l.label[0]}
+                </span>
+                {on && <LensGlass colour={l.colour} size={62} />}
+              </button>
+              {i < LENSES.length - 1 && (
+                <span className="font-display font-bold mb-1.5" style={{ fontSize: 20, opacity: 0.45, color: 'var(--th-surface)' }}>·</span>
+              )}
+            </div>
           );
         })}
       </div>
@@ -98,35 +118,47 @@ function LensSlider() {
         ref={trackRef}
         onScroll={onScroll}
         className="mt-4 flex gap-4 overflow-x-auto tour-scroll"
-        style={{ scrollSnapType: 'x mandatory', paddingLeft: '10%', paddingRight: '10%' }}
+        style={{ scrollSnapType: 'x mandatory', paddingLeft: '7%', paddingRight: '7%' }}
       >
-        {LENSES.map((l) => (
-          <div
-            key={l.key}
-            className="shrink-0 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
-            style={{ width: '80%', maxWidth: 420, maxHeight: '58vh', scrollSnapAlign: 'center', backgroundColor: 'var(--th-surface)' }}
-          >
-            <div className="px-5 py-4 shrink-0" style={{ backgroundColor: l.colour }}>
-              <h3 className="font-display font-bold leading-none" style={{ color: 'var(--th-surface)', fontSize: 'clamp(34px, 9vw, 46px)' }}>{l.label}</h3>
-            </div>
-            <div className="overflow-y-auto tour-scroll px-5 py-4">
-              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {l.categories.map((c) => (
-                  <span key={c} className="text-[15px] font-semibold" style={{ color: l.colour }}>{c}</span>
-                ))}
+        {LENSES.map((l) => {
+          const authored = questionsByLens[l.key] ?? [];
+          return (
+            <div
+              key={l.key}
+              className="shrink-0 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+              style={{ width: '86%', maxWidth: 460, maxHeight: '62vh', scrollSnapAlign: 'center', backgroundColor: 'var(--th-surface)' }}
+            >
+              <div className="px-5 py-4 shrink-0" style={{ backgroundColor: l.colour }}>
+                <h3 className="font-display font-bold leading-none" style={{ color: 'var(--th-surface)', fontSize: 'clamp(36px, 9.5vw, 50px)' }}>{l.label}</h3>
               </div>
-              <p className="mt-4 text-[11px] uppercase tracking-[0.16em] font-semibold" style={{ color: 'var(--th-text)', opacity: 0.6 }}>Sample context questions</p>
-              <ul className="mt-2.5 space-y-2.5">
-                {[...l.questions, ...(l.specificQuestions ?? [])].map((q, i) => (
-                  <li key={i} className="flex items-start gap-2.5 rounded-xl px-3.5 py-2.5" style={{ backgroundColor: `${l.colour}14` }}>
-                    <span className="mt-2 w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: l.colour }} />
-                    <span className="font-serif leading-snug" style={{ color: 'var(--th-text)', fontSize: 16 }}>{q}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="overflow-y-auto tour-scroll px-5 py-4">
+                {/* Sentence definition + stacked sub-topics. */}
+                <p className="font-serif leading-snug" style={{ color: 'var(--th-text)', fontSize: 17 }}>
+                  Recreate the past using <span className="font-bold" style={{ color: l.colour }}>{l.label}</span>{' '}by asking about&hellip;
+                </p>
+                <ul className="mt-2.5 space-y-1">
+                  {l.categories.map((c) => (
+                    <li key={c} className="font-display font-semibold leading-tight" style={{ color: l.colour, fontSize: 18 }}>{c}</li>
+                  ))}
+                </ul>
+
+                {authored.length > 0 && (
+                  <>
+                    <p className="mt-5 text-[11px] uppercase tracking-[0.16em] font-semibold" style={{ color: 'var(--th-text)', opacity: 0.6 }}>Questions to explore</p>
+                    <ul className="mt-2.5 space-y-2.5">
+                      {authored.map((q, i) => (
+                        <li key={i} className="flex items-start gap-2.5 rounded-xl px-3.5 py-2.5" style={{ backgroundColor: `${l.colour}14` }}>
+                          <span className="mt-2 w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: l.colour }} />
+                          <span className="font-serif leading-snug" style={{ color: 'var(--th-text)', fontSize: 16 }}>{q}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-4 flex items-center justify-center gap-2" style={{ color: 'var(--th-surface)', opacity: 0.6 }}>
@@ -146,6 +178,9 @@ interface Props {
   returning?: boolean;
   /** The act's guiding theme — framed on the splash before the journal. */
   guidingQuestion?: string;
+  /** This act's authored context questions, grouped by lens key, shown on the
+   *  lens cards (the generic sample questions live on the journal's lens card). */
+  questionsByLens?: Record<string, string[]>;
 }
 
 /** The framing splash before the journal: reconstruct → look through the P.A.S.T.
@@ -159,7 +194,7 @@ function GuidingSplash({ theme, visible }: { theme: string; visible: boolean }) 
   return (
     <>
       <p className="font-serif leading-snug" style={{ fontSize: 'clamp(21px, 5.6vw, 30px)', color: 'var(--th-surface)', maxWidth: '20ch', ...fade(200) }}>
-        Let&rsquo;s reconstruct the world around us&hellip;
+        Let&rsquo;s recreate the world around us&hellip;
       </p>
       <p className="font-serif leading-snug mt-5" style={{ fontSize: 'clamp(17px, 4.6vw, 22px)', color: 'var(--th-surface)', maxWidth: '24ch', ...fade(1000, 0.9) }}>
         {/* {' '} — a JSX text chunk touching a newline gets trimmed both ends, so a
@@ -173,12 +208,14 @@ function GuidingSplash({ theme, visible }: { theme: string; visible: boolean }) 
   );
 }
 
-export default function ContextIntroCard({ onComplete, returning = false, guidingQuestion }: Props) {
+export default function ContextIntroCard({ onComplete, returning = false, guidingQuestion, questionsByLens = {} }: Props) {
   const [mounted, setMounted] = useState(false);
   const [sitIn, setSitIn] = useState(false);
   const [howIn, setHowIn] = useState(false);
+  const [themeIn, setThemeIn] = useState(false);
   const sitRef = useRef<HTMLElement | null>(null);
   const howRef = useRef<HTMLElement | null>(null);
+  const themeRef = useRef<HTMLElement | null>(null);
   const enterRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -202,6 +239,14 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
     return () => obs.disconnect();
   }, []);
 
+  useEffect(() => {
+    const el = themeRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setThemeIn(true); }, { threshold: 0.4 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   // Scrolling past the sentinel enters the Context Journal.
   useEffect(() => {
     const el = enterRef.current;
@@ -211,13 +256,44 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
     return () => obs.disconnect();
   }, [onComplete]);
 
+  // Progress counter (N of total). Observe the real section elements so the count
+  // matches whatever the current path renders (first-time vs returning), and the
+  // sentinel isn't counted as a page.
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [step, setStep] = useState(0);
+  const [total, setTotal] = useState(0);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const sections = Array.from(root.querySelectorAll('section')) as HTMLElement[];
+    setTotal(sections.length);
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => {
+        if (e.isIntersecting && e.intersectionRatio >= 0.5) {
+          const i = sections.indexOf(e.target as HTMLElement);
+          if (i >= 0) setStep(i);
+        }
+      }),
+      { root, threshold: 0.5 },
+    );
+    sections.forEach((s) => io.observe(s));
+    return () => io.disconnect();
+  }, [returning, guidingQuestion]);
+
   if (typeof document === 'undefined') return null;
 
   return createPortal(
     <div
+      ref={rootRef}
       className="fixed inset-0 z-[60] overflow-y-auto select-none"
       style={{ backgroundColor: 'var(--th-journal)', scrollSnapType: 'y mandatory' }}
     >
+      {/* Page counter, top-left — like the intro onboarding's. */}
+      {total > 0 && (
+        <p className="fixed top-3 left-4 z-[61] text-[11px] font-semibold tracking-wide" style={{ color: 'var(--th-surface)', opacity: 0.7 }}>
+          {Math.min(step + 1, total)} of {total}
+        </p>
+      )}
       {/* 1 — Sit down. First now, not last: it's the invitation to settle before
              the teaching, so it has to come before the teaching. */}
       <section
@@ -313,7 +389,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
               <p
                 className="font-serif leading-snug mt-5 ml-auto text-right"
                 style={{
-                  fontSize: 'clamp(21px, 5.6vw, 30px)',
+                  fontSize: 'clamp(23px, 6vw, 33px)',
                   color: 'var(--th-surface)',
                   opacity: mounted ? 1 : 0,
                   transform: mounted ? 'translateY(0)' : 'translateY(14px)',
@@ -321,22 +397,20 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
                   maxWidth: '22ch',
                 }}
               >
-                &hellip;let&rsquo;s <span className="italic font-display" style={{ color: CONTEXT_ACCENT }}>reconstruct</span> the world behind it.
+                &hellip;let&rsquo;s <span className="italic font-display" style={{ color: CONTEXT_ACCENT }}>uncover</span>{' '}the world behind it&hellip;
               </p>
             )}
 
-            {/* "the CONTEXT" on one line. Centred, but sized to fill the width, so
-                the centring shouldn't read as centring — it should just look placed. */}
+            {/* Just "CONTEXT", sized to fill the line, sitting lower on the page. */}
             <div
-              className="mt-8 flex items-baseline justify-center gap-3"
+              className="mt-20 text-center"
               style={{
                 opacity: mounted ? 1 : 0,
                 transform: mounted ? 'translateY(0)' : 'translateY(18px)',
                 transition: 'opacity 900ms ease-out 1800ms, transform 900ms ease-out 1800ms',
               }}
             >
-              <span className="font-serif" style={{ fontSize: 'clamp(16px, 4.2vw, 22px)', color: 'var(--th-surface)', opacity: 0.75 }}>the</span>
-              <span className="font-display leading-[0.95] tracking-tight" style={{ fontSize: 'clamp(44px, 16vw, 104px)', color: 'var(--th-surface)' }}>
+              <span className="font-display leading-[0.9] tracking-tight block" style={{ fontSize: 'clamp(52px, 20vw, 128px)', color: 'var(--th-surface)' }}>
                 CONTEXT
               </span>
             </div>
@@ -410,7 +484,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
             Check out the lenses!
           </p>
         </div>
-        <LensSlider />
+        <LensSlider questionsByLens={questionsByLens} />
       </section>
       )}
 
@@ -423,38 +497,49 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
         <p className="font-serif" style={{ fontSize: 'clamp(20px, 5.2vw, 27px)', color: 'var(--th-surface)', opacity: 0.9 }}>
           Now let&rsquo;s try it out for this tour!
         </p>
-        {/* The first act's guiding theme, so Act 1 is framed like every later one
-            (which get the standalone GuidingSplash). */}
-        {guidingQuestion && (
-          <p className="font-display font-bold leading-tight mt-6" style={{ fontSize: 'clamp(28px, 8vw, 46px)', color: CONTEXT_ACCENT, maxWidth: '16ch' }}>
-            {guidingQuestion}
-          </p>
-        )}
-        <p className="font-display leading-tight mt-6" style={{ fontSize: 'clamp(26px, 7vw, 40px)', color: 'var(--th-surface)', fontWeight: 700, maxWidth: '15ch' }}>
-          Ready to think like a historian?
+        <p className="font-display leading-tight mt-6" style={{ fontSize: 'clamp(28px, 8vw, 46px)', color: 'var(--th-surface)', fontWeight: 700, maxWidth: '15ch' }}>
+          Ready to recreate the past?
         </p>
+        {/* Scrolls on to the guiding-theme splash (which then enters the journal),
+            rather than completing here — the flow continues below. Falls back to
+            the sentinel if there's no guiding theme to show. */}
         <button
-          onClick={onComplete}
+          onClick={() => (themeRef.current ?? enterRef.current)?.scrollIntoView({ behavior: 'smooth' })}
           className="mt-10 px-12 py-4 rounded-full text-[18px] font-semibold"
           style={{ backgroundColor: CONTEXT_ACCENT, color: 'var(--th-journal)' }}
         >
-          Yes!
+          Ask my own question
         </button>
       </section>
       )}
 
-
-      {/* Sentinel — scrolling into it enters the Context Journal. Only on the
-          return intro: the first one ends on a "Yes!" button, and leaving the
-          sentinel in would let a scroll past slide 6 fire onComplete a second
-          time (and skip the button entirely). */}
-      {returning && (
-        <div ref={enterRef} className="h-[55vh] flex items-end justify-center pb-10" style={{ scrollSnapAlign: 'end' }}>
-          <span className="font-serif italic text-[15px]" style={{ color: 'var(--th-surface)', opacity: 0.6 }}>
-            Opening the Context Journal&hellip;
-          </span>
-        </div>
+      {/* First-time only: after "try it out", the guiding-theme splash — same as
+          the returning path's, so Act 1 is framed like every later act. Then the
+          shared sentinel enters the journal. */}
+      {!returning && guidingQuestion && (
+        <section
+          ref={themeRef}
+          className="relative min-h-[100dvh] flex flex-col justify-center px-7"
+          style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+        >
+          <GuidingSplash theme={guidingQuestion} visible={themeIn} />
+          <div className="absolute bottom-7 left-0 right-0 flex flex-col items-center gap-1.5" style={{ opacity: themeIn ? 0.65 : 0, transition: 'opacity 700ms ease-out 1200ms' }}>
+            <span className="text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--th-surface)' }}>Scroll</span>
+            <svg className="animate-bounce" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--th-surface)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+          </div>
+        </section>
       )}
+
+
+      {/* Sentinel — scrolling into it enters the Context Journal. Both paths now
+          end by scrolling into it: returning after its guiding-theme beat, first
+          time after the try-it-out → guiding-theme beats (the button scrolls on
+          rather than completing), so neither ends on a completing button. */}
+      <div ref={enterRef} className="h-[55vh] flex items-end justify-center pb-10" style={{ scrollSnapAlign: 'end' }}>
+        <span className="font-serif italic text-[15px]" style={{ color: 'var(--th-surface)', opacity: 0.6 }}>
+          Opening the Context Journal&hellip;
+        </span>
+      </div>
     </div>,
     document.body,
   );

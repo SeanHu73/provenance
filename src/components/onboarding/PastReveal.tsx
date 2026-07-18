@@ -28,7 +28,7 @@ import { LENSES } from '@/features/context-journal/constants';
 const CHARS = ['P', '.', 'A', '.', 'S', '.', 'T', '.'];
 const LETTER_AT = [0, 2, 4, 6]; // indices in CHARS that are lens initials
 
-const START_MS = 1000;    // sit still for a beat before the typing starts
+const START_MS = 0;       // typing starts as soon as the beat is on screen
 const TYPE_MS = 170;      // per character
 const FRAMEWORK_MS = 420; // beat before "framework." lands
 const HOLD_MS = 3500;     // the pause, before anything moves
@@ -138,13 +138,12 @@ export default function PastReveal({ onDone }: { onDone?: () => void }) {
       </div>
 
       {/* The diagonal. Rendered only once the drift starts, so the letters have a
-          real destination to be measured against. */}
+          real destination to be measured against. Centred as one block (mx-auto)
+          with a wider step per row so it reads as a diagram, not a list. */}
       {diagonal && (
-        <div className="w-fit">
+        <div className="w-fit mx-auto">
           {LENSES.map((lens, i) => (
-            // Starts further in and steps further per line than the acronym's own
-            // width would suggest — the diagonal reads as a diagram, not a list.
-            <div key={lens.key} className="flex items-baseline" style={{ marginLeft: `${10 + i * 15}%` }}>
+            <div key={lens.key} className="flex items-baseline" style={{ marginLeft: `${i * 20}%` }}>
               <span
                 ref={(el) => { bigRefs.current[i] = el; }}
                 className="font-display leading-none"
@@ -169,15 +168,15 @@ export default function PastReveal({ onDone }: { onDone?: () => void }) {
       )}
 
       <p
-        className="font-serif mt-8 leading-snug"
+        className="font-serif mt-8 leading-snug text-center"
         style={{
-          fontSize: 'clamp(20px, 5.4vw, 27px)', color: 'var(--th-surface)', maxWidth: '24ch',
+          fontSize: 'clamp(20px, 5.4vw, 27px)', color: 'var(--th-surface)', maxWidth: '26ch', marginInline: 'auto',
           opacity: tail ? 0.92 : 0,
           transform: tail ? 'translateY(0)' : 'translateY(10px)',
           transition: 'opacity 700ms ease-out, transform 700ms ease-out',
         }}
       >
-        These help you <strong style={{ fontSize: '1.25em' }}>ASK</strong> about the world through big picture lenses.
+        These lenses help you <strong style={{ fontSize: '1.25em' }}>ASK</strong> about the world through the big picture.
       </p>
     </div>
   );

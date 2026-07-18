@@ -109,9 +109,9 @@ function PastIndicator({ active, onJump }: { active: number; onJump: (i: number)
               <span
                 className="font-display font-bold leading-none transition-all duration-200"
                 style={{
-                  // the ✱ sits a touch smaller than a letter at the same slot so
-                  // the asterisk's arms don't overpower the P/A/S/T beside it.
-                  fontSize: isActive ? (i === 0 ? 40 : 46) : (i === 0 ? 21 : 24),
+                  // the ✱ sits smaller than a letter at the same slot so the
+                  // asterisk's arms don't overpower the P/A/S/T beside it.
+                  fontSize: isActive ? (i === 0 ? 30 : 46) : (i === 0 ? 16 : 24),
                   color: it.colour,
                   opacity: isActive ? 1 : 0.4,
                 }}
@@ -134,7 +134,7 @@ function PastIndicator({ active, onJump }: { active: number; onJump: (i: number)
 function InstructionsSlide({ onNext }: { onNext: () => void }) {
   return (
     <div className="rounded-[20px] overflow-hidden bg-warm-white flex flex-col items-center text-center px-6 py-10" style={{ border: `3px solid ${INK}`, boxShadow: `5px 5px 0 ${SHADOW}` }}>
-      <span className="font-display font-bold leading-none" style={{ fontSize: 52, color: STAR_COLOUR }}>✱</span>
+      <span className="font-display font-bold leading-none" style={{ fontSize: 38, color: STAR_COLOUR }}>✱</span>
       <p className="mt-5 font-serif text-[21px] leading-snug text-text-primary max-w-[22ch]">
         Pick a lens you want to look through to ask your question.
       </p>

@@ -211,7 +211,7 @@ const OnbPanels = memo(function OnbPanels({
              to, and read as a trailing-off rather than a hinge. */}
       <section data-idx={5} className="onb-panel" style={vis(5)}>
         <p className="onb-lead onb-r" style={{ '--d': '0.1s' } as React.CSSProperties}>
-          To understand the past, historians first <Reconstruct text="reconstruct" />{' '}the bigger picture &mdash;
+          To understand the past, historians first <Reconstruct text="recreate" />{' '}the bigger picture &mdash;
         </p>
         <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.2s', maxWidth: '24ch', marginTop: 56 } as React.CSSProperties}>
           &mdash; the world around the <em>people</em> and <em>events</em>.
@@ -231,7 +231,7 @@ const OnbPanels = memo(function OnbPanels({
           <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>Contextualising</strong>{' '}is&hellip;
         </p>
         <p className="onb-lead onb-r" style={{ '--d': '0.9s', marginTop: 48 } as React.CSSProperties}>
-          <Reconstruct text="Reconstructing" />{' '}the world during a <em>time and place</em>&hellip;
+          <Reconstruct text="Recreating" />{' '}the world during a <em>time and place</em>&hellip;
         </p>
         <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.8s', maxWidth: '24ch', marginTop: 104 } as React.CSSProperties}>
           {/* {' '} not a plain space: a JSX text chunk containing a newline gets
@@ -272,7 +272,7 @@ const OnbPanels = memo(function OnbPanels({
           <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>contextualise</strong>
         </p>
         <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.5s', maxWidth: '22ch', marginTop: 'auto', paddingTop: 96 } as React.CSSProperties}>
-          &hellip; and <Reconstruct text="reconstruct" />{' '}the world of the past using
+          &hellip; and <Reconstruct text="recreate" />{' '}the world of the past using
           <br />
           <strong>what&rsquo;s in front of you</strong>.
         </p>
@@ -330,7 +330,7 @@ function SlideWelcome({ onBegin }: { onBegin: () => void }) {
 /* ── 12 · Explore → Contextualise → Reflect ────────────────────────── */
 const FLOW = [
   { word: 'Explore', sub: 'Find stops like you are on a tour', colour: 'var(--th-primary)' },
-  { word: 'Contextualise', sub: 'Ask questions! Reconstruct the past.', colour: '#E08A5F' },
+  { word: 'Contextualise', sub: 'Ask questions! Recreate the past.', colour: '#E08A5F' },
   { word: 'Reflect', sub: 'Share your thoughts!', colour: 'var(--th-secondary)' },
 ];
 

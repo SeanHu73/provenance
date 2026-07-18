@@ -402,10 +402,19 @@ export default function Journal({ onMapPeek }: JournalProps) {
         {/* End-of-act chain: Context intro → Context → Context questions → Reflection → Community */}
         {phase === 'act_context_intro' && currentStop && (() => {
           // The upcoming context step belongs to this stop's act; show its guiding
-          // theme on the intro splash so the section is framed before the journal.
-          const introGuiding = findActOfStop(tour, currentStop.id)?.guidingQuestion?.trim() || undefined;
+          // theme on the intro splash and this act's authored questions on the lens
+          // cards, both framed before the journal.
+          const introAct = findActOfStop(tour, currentStop.id);
+          const introGuiding = introAct?.guidingQuestion?.trim() || undefined;
+          const questionsByLens: Record<string, string[]> = {};
+          for (const c of getActContexts(introAct)) {
+            const e = authoredToEntry(c, tour.id);
+            const q = e.question?.trim();
+            if (!q) continue;
+            (questionsByLens[e.pastCategory] ??= []).push(q);
+          }
           return (
-            <ContextIntroCard onComplete={completeContextIntro} returning={!!session.contextIntroSeen} guidingQuestion={introGuiding} />
+            <ContextIntroCard onComplete={completeContextIntro} returning={!!session.contextIntroSeen} guidingQuestion={introGuiding} questionsByLens={questionsByLens} />
           );
         })()}
 

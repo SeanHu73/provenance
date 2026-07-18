@@ -113,8 +113,8 @@ export const LENSES: LensDef[] = [
   },
   {
     key: 'attitudes', label: 'Affairs', colour: '#B8752B',
-    categories: ['Relevant events of the time', 'Natural disasters'],
-    definition: 'Relevant events of the time | Natural disasters',
+    categories: ['Relevant events of the time'],
+    definition: 'Relevant events of the time',
     questions: ['How did an election affect policy decisions?'],
     specificQuestions: ['How did COVID-19 change public opinion?'],
   },
