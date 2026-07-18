@@ -133,7 +133,7 @@ function LensSlider({ questionsByLens }: { questionsByLens: Record<string, strin
             <div
               key={l.key}
               className="shrink-0 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
-              style={{ width: '86%', maxWidth: 460, maxHeight: '62vh', scrollSnapAlign: 'center', backgroundColor: 'var(--th-surface)' }}
+              style={{ width: '86%', maxWidth: 460, maxHeight: '62vh', scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-surface)' }}
             >
               <div className="px-5 py-4 shrink-0" style={{ backgroundColor: l.colour }}>
                 <h3 className="font-display font-bold leading-none" style={{ color: '#fff', fontSize: 'clamp(36px, 9.5vw, 50px)' }}>{l.label}</h3>
@@ -291,6 +291,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
   return createPortal(
     <div
       ref={rootRef}
+      data-cj-intro-scroll
       className="fixed inset-0 z-[60] overflow-y-auto select-none"
       style={{ backgroundColor: LIGHT_RED, scrollSnapType: 'y mandatory' }}
     >

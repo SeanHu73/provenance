@@ -5,14 +5,16 @@
  *
  * The sequence, and why it's shaped this way: the acronym is *typed* letter by
  * letter so the reader reads it as a word before it becomes a diagram. Then it
- * WAITS — there's no timed pause anymore. The reader's next swipe-down doesn't
- * advance the onboarding; it's captured here and plays the reveal instead: the
- * four letters physically travel out of the sentence and grow into the diagonal,
- * then each meaning fades in, then the closing line. Only once the reveal has
- * finished does a swipe-down move on to the next slide.
+ * WAITS — there's no timed pause. Once the beat is on screen the whole intro
+ * scroller is *locked* (overflow hidden), so the reader can't page past it; their
+ * next down-gesture is read as "reveal", not "next slide", and plays the drift:
+ * the four letters travel out of the sentence and grow into the diagonal, then
+ * each meaning fades in, then the closing line. Only once the reveal has finished
+ * is the scroller unlocked, so the swipe after that advances as usual.
  *
- *   type P.A.S.T. → "framework." → [wait for swipe] → letters drift + grow into
- *   the diagonal → each meaning fades in → closing line
+ * Locking the scroller (rather than preventing wheel/touch events) is what makes
+ * this reliable: an overflow-hidden element simply can't be scrolled by the user,
+ * on trackpad or touch, so there's no gesture to lose.
  *
  * The drift is a FLIP: the inline letters' positions are measured *before* the
  * layout changes, then each big letter is placed back at its old spot (translated
@@ -36,7 +38,7 @@ const DRIFT_MS = 950;
 export default function PastReveal({ onDone }: { onDone?: () => void }) {
   const [typed, setTyped] = useState(0);
   const [framework, setFramework] = useState(false);
-  const [ready, setReady] = useState(false);   // sentence has landed; swipe now reveals
+  const [ready, setReady] = useState(false);   // sentence has landed; a swipe now reveals
   const [diagonal, setDiagonal] = useState(false);
   const [meanings, setMeanings] = useState(false);
   const [tail, setTail] = useState(false);
@@ -46,19 +48,23 @@ export default function PastReveal({ onDone }: { onDone?: () => void }) {
   const bigRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const firstRects = useRef<(DOMRect | null)[]>([]);
   const triggered = useRef(false);
+  const readyRef = useRef(false);
+  useEffect(() => { readyRef.current = ready; }, [ready]);
 
-  // `armed` latches once the beat is first seen (drives the type-out). `inView`
-  // tracks live visibility so the swipe-capture only runs while this slide is up.
+  // Both latch (never unset): `armed` once the beat is first seen (drives the
+  // type-out); `settled` once this slide is essentially snapped into place, which
+  // is when it's safe to lock the scroller. Latching `settled` matters — the
+  // diagonal can grow taller than the viewport, and a live flag would drop and
+  // wrongly unlock the scroller mid-reveal.
   const [armed, setArmed] = useState(false);
-  const [inView, setInView] = useState(false);
+  const [settled, setSettled] = useState(false);
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
     const io = new IntersectionObserver(([e]) => {
-      const vis = e.isIntersecting && e.intersectionRatio >= 0.5;
-      setInView(vis);
-      if (vis) setArmed(true);
-    }, { threshold: [0, 0.5, 1] });
+      if (e.intersectionRatio >= 0.5) setArmed(true);
+      if (e.isIntersecting && e.intersectionRatio >= 0.85) setSettled(true);
+    }, { threshold: [0, 0.5, 0.85, 1] });
     io.observe(el);
     return () => io.disconnect();
   }, []);
@@ -96,37 +102,48 @@ export default function PastReveal({ onDone }: { onDone?: () => void }) {
     return () => timers.forEach(clearTimeout);
   }, [diagonal, onDone]);
 
-  // Capture the down-swipe. While the slide is up and the sentence has landed but
-  // the reveal hasn't finished, a downward gesture is swallowed (it does not
-  // advance the onboarding): the first one plays the reveal; the rest are held
-  // until it's done. Upward gestures pass through so they can scroll back.
+  // Lock the intro scroller while this beat is up and the reveal hasn't finished,
+  // and read any down-gesture as "reveal". The lock (overflow hidden) is what
+  // guarantees the page can't turn past the beat — event handlers only *detect*
+  // the intent; they don't have to fight the browser's scrolling.
   useEffect(() => {
-    if (!inView || !ready || tail) return;
-    const advance = (e: Event) => {
-      e.preventDefault();
-      if (!diagonal) triggerReveal();
-    };
-    const onWheel = (e: WheelEvent) => { if (e.deltaY > 0) advance(e); };
-    let touchY = 0;
-    const onTouchStart = (e: TouchEvent) => { touchY = e.touches[0]?.clientY ?? 0; };
-    const onTouchMove = (e: TouchEvent) => {
-      const y = e.touches[0]?.clientY ?? 0;
-      if (touchY - y > 10) advance(e);
-    };
+    if (!settled || tail) return;
+    const scroller = rootRef.current?.closest('[data-cj-intro-scroll]') as HTMLElement | null;
+    const section = rootRef.current?.closest('section') as HTMLElement | null;
+    let prevOverflow = '';
+    let prevTouch = '';
+    let locked = false;
+    if (scroller) {
+      if (section) scroller.scrollTop = section.offsetTop; // finish the snap, exactly
+      prevOverflow = scroller.style.overflowY;
+      prevTouch = scroller.style.touchAction;
+      scroller.style.overflowY = 'hidden';
+      scroller.style.touchAction = 'none';
+      locked = true;
+    }
+    const onIntent = () => { if (readyRef.current) triggerReveal(); };
+    const onWheel = (e: WheelEvent) => { if (e.deltaY > 0) onIntent(); };
+    let ty = 0;
+    const onTouchStart = (e: TouchEvent) => { ty = e.touches[0]?.clientY ?? 0; };
+    const onTouchMove = (e: TouchEvent) => { if (ty - (e.touches[0]?.clientY ?? 0) > 8) onIntent(); };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Spacebar') advance(e);
+      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Spacebar') onIntent();
     };
-    window.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('wheel', onWheel, { passive: true });
     window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
     window.addEventListener('keydown', onKey);
     return () => {
+      if (locked && scroller) {
+        scroller.style.overflowY = prevOverflow;
+        scroller.style.touchAction = prevTouch;
+      }
       window.removeEventListener('wheel', onWheel);
       window.removeEventListener('touchstart', onTouchStart);
       window.removeEventListener('touchmove', onTouchMove);
       window.removeEventListener('keydown', onKey);
     };
-  }, [inView, ready, tail, diagonal, triggerReveal]);
+  }, [settled, tail, triggerReveal]);
 
   // FLIP: put each big letter back where its inline twin was, then release it.
   useEffect(() => {
@@ -189,18 +206,20 @@ export default function PastReveal({ onDone }: { onDone?: () => void }) {
         </p>
       </div>
 
-      {/* Before the reveal: a swipe-down cue, since the swipe now plays the
-          animation rather than turning the page. Fades out once it fires. */}
+      {/* Before the reveal: a swipe-down cue (also tappable), since the down-swipe
+          now plays the animation rather than turning the page. Fades once it fires. */}
       {ready && !diagonal && (
-        <div
-          className="flex flex-col items-center gap-1.5 mt-16"
-          style={{ opacity: 0.7, transition: 'opacity 300ms ease-out' }}
+        <button
+          onClick={triggerReveal}
+          className="flex flex-col items-center gap-1.5 mt-16 mx-auto bg-transparent border-0"
+          style={{ opacity: 0.7 }}
+          aria-label="Reveal the P.A.S.T. lenses"
         >
           <span className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--th-journal)' }}>Swipe down</span>
           <svg className="animate-bounce" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--th-journal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 9l6 6 6-6" />
           </svg>
-        </div>
+        </button>
       )}
 
       {/* The diagonal. Rendered only once the drift starts, so the letters have a
