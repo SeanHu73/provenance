@@ -29,10 +29,10 @@ import FormattedText from './FormattedText';
  *  block. */
 const PHOTO_CAP = '38vh';
 
-/** Marigold Sans — softer than the app's editorial serif; used for the FIND
- *  briefing to make the ask feel welcoming. The `--font-marigold-sans` var is
- *  loaded in layout.tsx. */
-const MARIGOLD = 'var(--font-marigold-sans)';
+/** The FIND briefing's font. Montserrat — a clean, highly legible sans (already
+ *  the app's nav/label face) — rather than the editorial serif elsewhere, so the
+ *  ask reads friendly *and* readable. `--font-montserrat` is loaded in layout.tsx. */
+const CLUE_FONT = 'var(--font-montserrat)';
 
 interface Props {
   stop: Stop;
@@ -97,10 +97,10 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
 
       {/* The instructions — the notice prompt, and deliberately nothing else.
           Set as a briefing rather than body copy: centred, ruled off, with an
-          eyebrow, so it reads as a task to go and do. Marigold Sans (softer than
-          the editorial serif elsewhere) to make the ask feel welcoming. */}
+          eyebrow, so it reads as a task to go and do. Montserrat (see CLUE_FONT)
+          so the ask reads friendly and legible. */}
       {instructions && (
-        <div className="py-2 text-center" style={{ fontFamily: MARIGOLD }}>
+        <div className="py-2 text-center" style={{ fontFamily: CLUE_FONT }}>
           <div className="mx-auto mb-3 h-px w-12" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.5 }} />
           <p
             className="text-[15px] font-semibold uppercase tracking-[0.22em] mb-3"
@@ -126,7 +126,7 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
           <button
             onClick={onPeekMap}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-[16px] font-semibold shadow-sm active:scale-95 transition-transform"
-            style={{ fontFamily: MARIGOLD, color: 'var(--th-primary)', border: '2px solid var(--th-primary)', backgroundColor: 'color-mix(in srgb, var(--th-primary) 8%, transparent)' }}
+            style={{ fontFamily: CLUE_FONT, color: 'var(--th-primary)', border: '2px solid var(--th-primary)', backgroundColor: 'color-mix(in srgb, var(--th-primary) 8%, transparent)' }}
             aria-label="Find this stop on the map"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -159,7 +159,7 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
               <circle cx="12" cy="13" r="4" />
             </svg>
           </button>
-          <p className="text-[18px] italic text-text-secondary text-center" style={{ fontFamily: MARIGOLD }}>
+          <p className="text-[18px] italic text-text-secondary text-center" style={{ fontFamily: CLUE_FONT }}>
             {shot ? 'Looking…' : 'Found it? Take a photo!'}
           </p>
         </div>
