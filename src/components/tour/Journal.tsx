@@ -400,9 +400,14 @@ export default function Journal({ onMapPeek }: JournalProps) {
         )}
 
         {/* End-of-act chain: Context intro → Context → Context questions → Reflection → Community */}
-        {phase === 'act_context_intro' && currentStop && (
-          <ContextIntroCard onComplete={completeContextIntro} returning={!!session.contextIntroSeen} />
-        )}
+        {phase === 'act_context_intro' && currentStop && (() => {
+          // The upcoming context step belongs to this stop's act; show its guiding
+          // theme on the intro splash so the section is framed before the journal.
+          const introGuiding = findActOfStop(tour, currentStop.id)?.guidingQuestion?.trim() || undefined;
+          return (
+            <ContextIntroCard onComplete={completeContextIntro} returning={!!session.contextIntroSeen} guidingQuestion={introGuiding} />
+          );
+        })()}
 
         {phase === 'act_context' && currentStop && typeof document !== 'undefined' && createPortal(
           (() => {

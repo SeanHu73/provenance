@@ -2101,17 +2101,19 @@ export default function TourEditorPage() {
                       <button onClick={() => removeAct(act.id)} className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200" title="Remove act">&times;</button>
                     </div>
 
-                    {/* Guiding question — shown to learners in place of the title */}
+                    {/* Guiding theme — shown to learners in place of the title.
+                        Field stays `guidingQuestion`; only the admin label reframes
+                        it from a question to a theme. */}
                     <label className="block">
-                      <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Guiding question</span>
+                      <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Guiding theme</span>
                       <textarea
                         value={act.guidingQuestion || ''}
                         onChange={(e) => updateAct(act.id, { guidingQuestion: e.target.value })}
-                        placeholder="e.g. How did the railroad reshape who lived here?"
+                        placeholder="e.g. The railroad and who got to live here"
                         rows={2}
                         className="mt-1 w-full px-2 py-1.5 border border-amber-300 rounded text-sm bg-white"
                       />
-                      <span className="text-[10px] text-stone-400">Replaces the act title for learners (act intro, footer, and the act&apos;s Context Journal).</span>
+                      <span className="text-[10px] text-stone-400">A theme, not a question. Replaces the act title for learners (act intro, footer, and the act&apos;s Context Journal).</span>
                     </label>
 
                     {/* Stops in this act */}
@@ -2267,13 +2269,14 @@ export default function TourEditorPage() {
                             })}
                           </ul>
 
-                          {/* Guiding question — shown atop this stop's Context Journal */}
+                          {/* Guiding theme — shown atop this stop's Context Journal.
+                              Field stays `guidingQuestion`; admin label only. */}
                           <label className="block px-1">
-                            <span className="text-[10px] font-semibold text-indigo-700 uppercase tracking-wide">Guiding question</span>
+                            <span className="text-[10px] font-semibold text-indigo-700 uppercase tracking-wide">Guiding theme</span>
                             <textarea
                               value={entry.guidingQuestion || ''}
                               onChange={(e) => updateAdditionalStop(entry.stopId, { guidingQuestion: e.target.value })}
-                              placeholder="e.g. What else shaped this place?"
+                              placeholder="e.g. What else shaped this place"
                               rows={2}
                               className="mt-1 w-full px-2 py-1.5 border border-indigo-200 rounded text-sm bg-white"
                             />

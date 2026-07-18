@@ -144,9 +144,36 @@ interface Props {
    *  big CONTEXT title with a "let's explore the P.A.S.T. again" line, then scroll
    *  straight into the journal (no ASK / P·A·S·T reveal beat). */
   returning?: boolean;
+  /** The act's guiding theme — framed on the splash before the journal. */
+  guidingQuestion?: string;
 }
 
-export default function ContextIntroCard({ onComplete, returning = false }: Props) {
+/** The framing splash before the journal: reconstruct → look through the P.A.S.T.
+ *  → the act's guiding theme, large. `visible` drives the staggered fade-in. */
+function GuidingSplash({ theme, visible }: { theme: string; visible: boolean }) {
+  const fade = (delayMs: number, op = 1): React.CSSProperties => ({
+    opacity: visible ? op : 0,
+    transform: visible ? 'translateY(0)' : 'translateY(14px)',
+    transition: `opacity 800ms ease-out ${delayMs}ms, transform 800ms ease-out ${delayMs}ms`,
+  });
+  return (
+    <>
+      <p className="font-serif leading-snug" style={{ fontSize: 'clamp(21px, 5.6vw, 30px)', color: 'var(--th-surface)', maxWidth: '20ch', ...fade(200) }}>
+        Let&rsquo;s reconstruct the world around us&hellip;
+      </p>
+      <p className="font-serif leading-snug mt-5" style={{ fontSize: 'clamp(17px, 4.6vw, 22px)', color: 'var(--th-surface)', maxWidth: '24ch', ...fade(1000, 0.9) }}>
+        {/* {' '} — a JSX text chunk touching a newline gets trimmed both ends, so a
+            bare space after the span is eaten ("P.A.S.T.to"). */}
+        Look through the <span className="font-bold">P.A.S.T.</span>{' '}to contextualise&hellip;
+      </p>
+      <p className="font-display font-bold leading-tight mt-9" style={{ fontSize: 'clamp(34px, 10vw, 60px)', color: CONTEXT_ACCENT, ...fade(1800) }}>
+        {theme}
+      </p>
+    </>
+  );
+}
+
+export default function ContextIntroCard({ onComplete, returning = false, guidingQuestion }: Props) {
   const [mounted, setMounted] = useState(false);
   const [sitIn, setSitIn] = useState(false);
   const [howIn, setHowIn] = useState(false);
@@ -256,59 +283,65 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
         </div>
       </section>
 
-      {/* 2 — "…the CONTEXT". The lead sits above the title now, and the title is
-             right-aligned so the slide reads as a turn: what you explored on the
-             left, what's behind it on the right. */}
+      {/* 2 — Returning (every context page after the first): the guiding-theme
+             splash, then scroll into the journal. First time: the "…the CONTEXT"
+             reveal, since the P.A.S.T. teaching still follows. */}
       <section
         className="relative min-h-[100dvh] flex flex-col justify-center px-7"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        <p
-          className="font-serif leading-snug"
-          style={{
-            fontSize: 'clamp(19px, 5.2vw, 28px)',
-            color: 'var(--th-surface)',
-            opacity: mounted ? 0.92 : 0,
-            transform: mounted ? 'translateY(0)' : 'translateY(14px)',
-            transition: 'opacity 800ms ease-out 200ms, transform 800ms ease-out 200ms',
-            maxWidth: '24ch',
-          }}
-        >
-          {returning
-            ? <>Now that you&rsquo;ve learned more, let&rsquo;s explore the <span className="font-bold">P.A.S.T.</span> again&hellip;</>
-            : <>Now that you have explored <em>what&rsquo;s in front of you</em>&hellip;</>}
-        </p>
-        {!returning && (
-          <p
-            className="font-serif leading-snug mt-5 ml-auto text-right"
-            style={{
-              fontSize: 'clamp(21px, 5.6vw, 30px)',
-              color: 'var(--th-surface)',
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? 'translateY(0)' : 'translateY(14px)',
-              transition: 'opacity 900ms ease-out 1000ms, transform 900ms ease-out 1000ms',
-              maxWidth: '22ch',
-            }}
-          >
-            &hellip;let&rsquo;s <span className="italic font-display" style={{ color: CONTEXT_ACCENT }}>reconstruct</span> the world behind it.
-          </p>
-        )}
+        {returning && guidingQuestion ? (
+          <GuidingSplash theme={guidingQuestion} visible={mounted} />
+        ) : (
+          <>
+            <p
+              className="font-serif leading-snug"
+              style={{
+                fontSize: 'clamp(19px, 5.2vw, 28px)',
+                color: 'var(--th-surface)',
+                opacity: mounted ? 0.92 : 0,
+                transform: mounted ? 'translateY(0)' : 'translateY(14px)',
+                transition: 'opacity 800ms ease-out 200ms, transform 800ms ease-out 200ms',
+                maxWidth: '24ch',
+              }}
+            >
+              {returning
+                ? <>Now that you&rsquo;ve learned more, let&rsquo;s explore the <span className="font-bold">P.A.S.T.</span> again&hellip;</>
+                : <>Now that you have explored <em>what&rsquo;s in front of you</em>&hellip;</>}
+            </p>
+            {!returning && (
+              <p
+                className="font-serif leading-snug mt-5 ml-auto text-right"
+                style={{
+                  fontSize: 'clamp(21px, 5.6vw, 30px)',
+                  color: 'var(--th-surface)',
+                  opacity: mounted ? 1 : 0,
+                  transform: mounted ? 'translateY(0)' : 'translateY(14px)',
+                  transition: 'opacity 900ms ease-out 1000ms, transform 900ms ease-out 1000ms',
+                  maxWidth: '22ch',
+                }}
+              >
+                &hellip;let&rsquo;s <span className="italic font-display" style={{ color: CONTEXT_ACCENT }}>reconstruct</span> the world behind it.
+              </p>
+            )}
 
-        {/* "the CONTEXT" on one line. Centred, but sized to fill the width, so the
-            centring shouldn't read as centring — it should just look placed. */}
-        <div
-          className="mt-8 flex items-baseline justify-center gap-3"
-          style={{
-            opacity: mounted ? 1 : 0,
-            transform: mounted ? 'translateY(0)' : 'translateY(18px)',
-            transition: 'opacity 900ms ease-out 1800ms, transform 900ms ease-out 1800ms',
-          }}
-        >
-          <span className="font-serif" style={{ fontSize: 'clamp(16px, 4.2vw, 22px)', color: 'var(--th-surface)', opacity: 0.75 }}>the</span>
-          <span className="font-display leading-[0.95] tracking-tight" style={{ fontSize: 'clamp(44px, 16vw, 104px)', color: 'var(--th-surface)' }}>
-            CONTEXT
-          </span>
-        </div>
+            {/* "the CONTEXT" on one line. Centred, but sized to fill the width, so
+                the centring shouldn't read as centring — it should just look placed. */}
+            <div
+              className="mt-8 flex items-baseline justify-center gap-3"
+              style={{
+                opacity: mounted ? 1 : 0,
+                transform: mounted ? 'translateY(0)' : 'translateY(18px)',
+                transition: 'opacity 900ms ease-out 1800ms, transform 900ms ease-out 1800ms',
+              }}
+            >
+              <span className="font-serif" style={{ fontSize: 'clamp(16px, 4.2vw, 22px)', color: 'var(--th-surface)', opacity: 0.75 }}>the</span>
+              <span className="font-display leading-[0.95] tracking-tight" style={{ fontSize: 'clamp(44px, 16vw, 104px)', color: 'var(--th-surface)' }}>
+                CONTEXT
+              </span>
+            </div>
+          </>
+        )}
 
         <div
           className="absolute bottom-7 left-0 right-0 flex flex-col items-center gap-1.5"
@@ -390,7 +423,14 @@ export default function ContextIntroCard({ onComplete, returning = false }: Prop
         <p className="font-serif" style={{ fontSize: 'clamp(20px, 5.2vw, 27px)', color: 'var(--th-surface)', opacity: 0.9 }}>
           Now let&rsquo;s try it out for this tour!
         </p>
-        <p className="font-display leading-tight mt-4" style={{ fontSize: 'clamp(30px, 8vw, 46px)', color: 'var(--th-surface)', fontWeight: 700, maxWidth: '15ch' }}>
+        {/* The first act's guiding theme, so Act 1 is framed like every later one
+            (which get the standalone GuidingSplash). */}
+        {guidingQuestion && (
+          <p className="font-display font-bold leading-tight mt-6" style={{ fontSize: 'clamp(28px, 8vw, 46px)', color: CONTEXT_ACCENT, maxWidth: '16ch' }}>
+            {guidingQuestion}
+          </p>
+        )}
+        <p className="font-display leading-tight mt-6" style={{ fontSize: 'clamp(26px, 7vw, 40px)', color: 'var(--th-surface)', fontWeight: 700, maxWidth: '15ch' }}>
           Ready to think like a historian?
         </p>
         <button

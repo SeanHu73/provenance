@@ -86,18 +86,22 @@ function LensGlass({ colour, size }: { colour: string; size: number }) {
   );
 }
 
-/** The P·A·S·T row. The active initial swells and wears the lens glass; the rest
- *  sit small and dimmed in their own lens colour. Tapping a letter jumps to it. */
+/** The indicator row: an instructions panel (★) then the four lenses, so it reads
+ *  ✱·P·A·S·T. `active` is 0 for the instructions panel, 1–4 for the lenses. The
+ *  active glyph swells and wears the lens glass (centred over it — the ✱ uses a
+ *  neutral colour); the rest sit small and dimmed. Tapping a glyph jumps to it. */
+const STAR_COLOUR = 'var(--th-primary)';
 function PastIndicator({ active, onJump }: { active: number; onJump: (i: number) => void }) {
+  const items = [{ glyph: '✱', label: 'instructions', colour: STAR_COLOUR }, ...LENSES.map((l) => ({ glyph: l.label[0], label: l.label, colour: l.colour }))];
   return (
     <div className="flex items-end justify-center gap-1.5 select-none">
-      {LENSES.map((lens, i) => {
+      {items.map((it, i) => {
         const isActive = i === active;
         return (
-          <div key={lens.key} className="flex items-end gap-1.5">
+          <div key={it.label} className="flex items-end gap-1.5">
             <button
               onClick={() => onJump(i)}
-              aria-label={`Show the ${lens.label} lens`}
+              aria-label={i === 0 ? 'Show the instructions' : `Show the ${it.label} lens`}
               aria-current={isActive}
               className="relative flex items-center justify-center bg-transparent border-0 p-0 cursor-pointer"
               style={{ width: isActive ? 58 : 30, height: 58 }}
@@ -105,21 +109,46 @@ function PastIndicator({ active, onJump }: { active: number; onJump: (i: number)
               <span
                 className="font-display font-bold leading-none transition-all duration-200"
                 style={{
-                  fontSize: isActive ? 46 : 24,
-                  color: lens.colour,
+                  // the ✱ sits a touch smaller than a letter at the same slot so
+                  // the asterisk's arms don't overpower the P/A/S/T beside it.
+                  fontSize: isActive ? (i === 0 ? 40 : 46) : (i === 0 ? 21 : 24),
+                  color: it.colour,
                   opacity: isActive ? 1 : 0.4,
                 }}
               >
-                {lens.label[0]}
+                {it.glyph}
               </span>
-              {isActive && <LensGlass colour={lens.colour} size={62} />}
+              {isActive && <LensGlass colour={it.colour} size={62} />}
             </button>
-            {i < LENSES.length - 1 && (
+            {i < items.length - 1 && (
               <span className="font-display font-bold text-text-muted mb-1.5" style={{ fontSize: 20, opacity: 0.5 }}>·</span>
             )}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** The ✱ instructions slide — the first thing in the deck: pick a lens, then swipe. */
+function InstructionsSlide({ onNext }: { onNext: () => void }) {
+  return (
+    <div className="rounded-[20px] overflow-hidden bg-warm-white flex flex-col items-center text-center px-6 py-10" style={{ border: `3px solid ${INK}`, boxShadow: `5px 5px 0 ${SHADOW}` }}>
+      <span className="font-display font-bold leading-none" style={{ fontSize: 52, color: STAR_COLOUR }}>✱</span>
+      <p className="mt-5 font-serif text-[21px] leading-snug text-text-primary max-w-[22ch]">
+        Pick a lens you want to look through to ask your question.
+      </p>
+      <button
+        onClick={onNext}
+        aria-label="Swipe to the first lens"
+        className="mt-8 flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.14em]"
+        style={{ color: 'var(--th-primary)' }}
+      >
+        Swipe
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="animate-bounce-x">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </button>
     </div>
   );
 }
@@ -136,16 +165,19 @@ export default function PastPanelSlider({
   entries, selectedRange, savedIds, focusedId, guidingQuestion, lockInfoById,
   onFocus, onToggleSave, onOpenFull, onAskLens, onAllSeenChange, initiallyAllSeen = false,
 }: Props) {
+  // Deck index. 0 is the ✱ instructions panel; 1–4 are the lenses. Starts on the
+  // instructions so "pick a lens" is the first thing they read.
   const [active, setActive] = useState(0);
   const [dir, setDir] = useState(0);
   const [cardOpen, setCardOpen] = useState(false);
-  // Which lenses the learner has swiped/jumped to. Seed with the first (shown)
-  // one, or all when a returning learner has already engaged this act.
-  const [seen, setSeen] = useState<Set<number>>(
-    () => (initiallyAllSeen ? new Set(LENSES.map((_, i) => i)) : new Set([0])),
+  const LAST = LENSES.length; // max index (4)
+  // Which LENS indices (1–4) have been swiped to. The gate is "all four lenses
+  // seen"; the instructions panel doesn't count. A returning learner is all-seen.
+  const [seenLenses, setSeenLenses] = useState<Set<number>>(
+    () => (initiallyAllSeen ? new Set(LENSES.map((_, i) => i + 1)) : new Set()),
   );
 
-  const allSeen = seen.size >= LENSES.length;
+  const allSeen = seenLenses.size >= LENSES.length;
   useEffect(() => { onAllSeenChange?.(allSeen); }, [allSeen, onAllSeenChange]);
 
   const byLens = useMemo(() => {
@@ -153,60 +185,46 @@ export default function PastPanelSlider({
     return LENSES.map((lens) => ({ lens, items: inRange.filter((e) => e.pastCategory === lens.key) }));
   }, [entries, selectedRange]);
 
-  const go = (next: number) => {
-    const clamped = Math.max(0, Math.min(LENSES.length - 1, next));
+  const goTo = (i: number) => {
+    const clamped = Math.max(0, Math.min(LAST, i));
     if (clamped === active) return;
     haptic(8);
     setDir(clamped > active ? 1 : -1);
     setActive(clamped);
-    setSeen((prev) => (prev.has(clamped) ? prev : new Set(prev).add(clamped)));
-  };
-
-  const jump = (i: number) => {
-    if (i === active) return;
-    setDir(i > active ? 1 : -1);
-    setActive(i);
-    setSeen((prev) => (prev.has(i) ? prev : new Set(prev).add(i)));
-    haptic(8);
+    if (clamped >= 1) setSeenLenses((prev) => (prev.has(clamped) ? prev : new Set(prev).add(clamped)));
   };
 
   const onDragEnd = (_e: unknown, info: PanInfo) => {
     const swipe = info.offset.x + info.velocity.x * 0.2;
-    if (swipe < -70) go(active + 1);
-    else if (swipe > 70) go(active - 1);
+    if (swipe < -70) goTo(active + 1);
+    else if (swipe > 70) goTo(active - 1);
   };
 
-  const { lens, items } = byLens[active];
+  const onInstructions = active === 0;
+  const { lens, items } = byLens[Math.max(0, active - 1)];
   const questions = items.filter((e) => e.origin === 'authored');
   const added = items.filter((e) => e.origin !== 'authored');
 
   return (
     <div className="px-4 pb-5">
-      {/* intro */}
-      <div className="px-1 pt-6 pb-1">
-        {guidingQuestion ? (
-          <>
-            <h2 className="font-serif text-[17px] leading-snug text-text-secondary">Look through the P.A.S.T. to contextualise&hellip;</h2>
-            <p className="mt-2.5 mb-1 font-display font-bold text-[28px] leading-tight text-center" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>
-          </>
-        ) : (
-          <h2 className="font-display text-[24px] leading-tight text-text-primary">Look through the P.A.S.T.</h2>
-        )}
-        <p className="mt-2 font-serif italic text-[16px] text-text-secondary leading-snug">
-          Swipe through the lenses to find a question you want to ask &mdash; or ask your own!
-        </p>
-      </div>
+      {/* Top: the guiding theme alone, centred. The "look through the P.A.S.T."
+          framing now lives on the intro splash before this page. */}
+      {guidingQuestion && (
+        <div className="px-1 pt-6 pb-1">
+          <p className="font-display font-bold text-[28px] leading-tight text-center" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>
+        </div>
+      )}
 
-      {/* P·A·S·T indicator */}
+      {/* ✱·P·A·S·T indicator */}
       <div className="pt-2 pb-3.5">
-        <PastIndicator active={active} onJump={jump} />
+        <PastIndicator active={active} onJump={goTo} />
       </div>
 
-      {/* the swipeable single-lens deck */}
+      {/* the swipeable deck: instructions, then one lens at a time */}
       <div className="relative overflow-hidden">
         <AnimatePresence initial={false} custom={dir} mode="popLayout">
           <motion.div
-            key={lens.key}
+            key={onInstructions ? '__instructions__' : lens.key}
             custom={dir}
             variants={slideVariants}
             initial="enter"
@@ -219,35 +237,39 @@ export default function PastPanelSlider({
             onDragEnd={onDragEnd}
             className="touch-pan-y"
           >
-            <LensSlide
-              lens={lens}
-              questions={questions}
-              added={added}
-              savedIds={savedIds}
-              focusedId={focusedId}
-              lockInfoById={lockInfoById}
-              onOpenCard={() => { haptic(6); setCardOpen(true); }}
-              onAsk={onAskLens ? () => onAskLens(lens.key) : undefined}
-              onFocus={onFocus}
-              onToggleSave={onToggleSave}
-              onOpenFull={onOpenFull}
-            />
+            {onInstructions ? (
+              <InstructionsSlide onNext={() => goTo(1)} />
+            ) : (
+              <LensSlide
+                lens={lens}
+                questions={questions}
+                added={added}
+                savedIds={savedIds}
+                focusedId={focusedId}
+                lockInfoById={lockInfoById}
+                onOpenCard={() => { haptic(6); setCardOpen(true); }}
+                onAsk={onAskLens ? () => onAskLens(lens.key) : undefined}
+                onFocus={onFocus}
+                onToggleSave={onToggleSave}
+                onOpenFull={onOpenFull}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* swipe affordance: dots + a hint until they've been through them all */}
+      {/* swipe affordance: a dot per panel (✱ + four lenses), + a hint until seen */}
       <div className="mt-4 flex flex-col items-center gap-2">
         <div className="flex items-center gap-2">
-          {LENSES.map((l, i) => (
+          {[{ key: '__star__', colour: STAR_COLOUR }, ...LENSES].map((l, i) => (
             <button
               key={l.key}
-              onClick={() => jump(i)}
-              aria-label={`Go to ${l.label}`}
+              onClick={() => goTo(i)}
+              aria-label={i === 0 ? 'Go to instructions' : `Go to lens ${i}`}
               className="rounded-full transition-all"
               style={{
                 width: i === active ? 22 : 8, height: 8,
-                backgroundColor: i === active ? l.colour : seen.has(i) ? `${l.colour}66` : 'var(--th-border)',
+                backgroundColor: i === active ? l.colour : (i >= 1 && seenLenses.has(i)) ? `${l.colour}66` : 'var(--th-border)',
               }}
             />
           ))}
@@ -257,7 +279,7 @@ export default function PastPanelSlider({
         )}
       </div>
 
-      <AnimatePresence>{cardOpen && <PastLensCard lens={lens} onClose={() => setCardOpen(false)} />}</AnimatePresence>
+      <AnimatePresence>{cardOpen && !onInstructions && <PastLensCard lens={lens} onClose={() => setCardOpen(false)} />}</AnimatePresence>
     </div>
   );
 }

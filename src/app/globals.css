@@ -187,6 +187,20 @@ body {
   transition: opacity 0.8s ease-out;
 }
 
+/* Horizontal nudge for "swipe" arrows. */
+@keyframes bounceX { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
+.animate-bounce-x { animation: bounceX 1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .animate-bounce-x { animation: none; } }
+
+/* ── FIND submit cue: the green check pulses a widening ring to say "tap me". ── */
+@keyframes submitPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5); }
+  70%  { box-shadow: 0 0 0 16px rgba(22, 163, 74, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+}
+.submit-pulse { animation: submitPulse 1.5s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .submit-pulse { animation: none; } }
+
 /* ── Animated mark (AnimatedMark.tsx): "…" dots pop → pin fades → P writes ──
    Order matters: dots first, then the pin fades in behind them, then the P is
    drawn. No overshoot on either — a plain fade/grow, no bounce. */

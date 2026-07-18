@@ -74,17 +74,16 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
     const url = URL.createObjectURL(file);
     objectUrl.current = url;
     // Read the shot's orientation off the decoded bitmap — it decides the reveal
-    // layout (portrait shots sit side by side, landscape ones stack).
+    // layout (portrait shots sit side by side, landscape ones stack). Taking the
+    // photo no longer auto-advances: the button turns into a green pulsing check
+    // and they tap it to submit, so the compare is a choice, not a jump cut.
     const img = new Image();
-    img.onload = () => {
-      setShot({ url, portrait: img.naturalHeight >= img.naturalWidth });
-      // One frame of the bare shot before the reveal, so the transition reads as
-      // a response to their submission rather than a jump cut.
-      window.setTimeout(() => { setRevealed(true); onFound?.(); }, 450);
-    };
-    img.onerror = () => { setShot({ url, portrait: true }); setRevealed(true); onFound?.(); };
+    img.onload = () => setShot({ url, portrait: img.naturalHeight >= img.naturalWidth });
+    img.onerror = () => setShot({ url, portrait: true });
     img.src = url;
   };
+
+  const submit = () => { setRevealed(true); onFound?.(); };
 
   const sideBySide = shot?.portrait ?? true;
 
@@ -148,20 +147,44 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
             className="hidden"
             onChange={(e) => onPick(e.target.files?.[0])}
           />
-          <button
-            onClick={() => inputRef.current?.click()}
-            className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95"
-            style={{ backgroundColor: 'var(--th-primary)', color: '#fff' }}
-            aria-label="Take a photo of what you found"
-          >
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-              <circle cx="12" cy="13" r="4" />
-            </svg>
-          </button>
-          <p className="text-[18px] italic text-text-secondary text-center" style={{ fontFamily: CLUE_FONT }}>
-            {shot ? 'Looking…' : 'Found it? Take a photo!'}
+          {!shot ? (
+            <button
+              onClick={() => inputRef.current?.click()}
+              className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95"
+              style={{ backgroundColor: 'var(--th-primary)', color: '#fff' }}
+              aria-label="Take a photo of what you found"
+            >
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+            </button>
+          ) : (
+            /* Photo taken → green pulsing check. The pulse is the submit cue; a
+               big obvious tick, not a subtle state change. Tap to compare. */
+            <button
+              onClick={submit}
+              className="submit-pulse w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95"
+              style={{ backgroundColor: '#16A34A', color: '#fff' }}
+              aria-label="Submit your photo"
+            >
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </button>
+          )}
+          <p className="text-[18px] italic text-center" style={{ fontFamily: CLUE_FONT, color: shot ? '#16A34A' : 'var(--text-secondary)' }}>
+            {shot ? 'Tap to submit your photo' : 'Found it? Take a photo!'}
           </p>
+          {shot && (
+            <button
+              onClick={() => inputRef.current?.click()}
+              className="text-[13px] underline"
+              style={{ fontFamily: CLUE_FONT, color: 'var(--text-secondary)' }}
+            >
+              Retake
+            </button>
+          )}
         </div>
       ) : (
         // pb keeps the photo captions clear of the Journal's "keep scrolling"
