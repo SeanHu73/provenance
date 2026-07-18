@@ -14,6 +14,7 @@ import { APIProvider, Map as GoogleMap, AdvancedMarker, useMap } from '@vis.gl/r
 import { Tour, Stop } from '@/lib/types';
 import { guidePhotoStyle } from '@/lib/guide-photo';
 import { getGuidedStops } from '@/lib/tours-store';
+import { getActs } from '@/lib/tour-session';
 import { stopThumbnailPhoto } from '@/lib/stop-thumbnail';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 
@@ -135,22 +136,25 @@ function pickStopThumb(stop: Stop): { url: string; focal?: { x: number; y: numbe
   return p ? { url: p.url, focal: p.thumbnailFocalPoint ?? p.focalPoint } : null;
 }
 
-function StopRow({ stop, index }: { stop: Stop; index: number }) {
+/** One stop in the itinerary. Styled as a printed index entry, NOT a control:
+ *  a plain serif numeral (no filled pin-like badge), a small image, and the
+ *  title — nothing that invites a tap, since this list is a preview, not a menu. */
+function StopRow({ stop, number }: { stop: Stop; number: number }) {
   const thumb = pickStopThumb(stop);
 
   return (
-    <div className="border-b flex items-center gap-3 py-3" style={{ borderColor: 'var(--th-border)' }}>
-      {/* Number badge */}
-      <div
-        className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-bold"
-        style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}
+    <div className="flex items-center gap-3.5 py-2.5">
+      {/* Plain numeral — deliberately not a coloured chip (that read as tappable). */}
+      <span
+        className="shrink-0 w-5 text-right font-display leading-none tabular-nums"
+        style={{ color: 'var(--th-primary)', opacity: 0.55, fontSize: 18 }}
       >
-        {index + 1}
-      </div>
+        {number}
+      </span>
 
       {/* Thumbnail */}
       <div
-        className="shrink-0 w-14 h-14 rounded-lg overflow-hidden"
+        className="shrink-0 w-12 h-12 rounded-md overflow-hidden"
         style={{ backgroundColor: 'var(--th-border)' }}
       >
         {thumb && (
@@ -166,8 +170,8 @@ function StopRow({ stop, index }: { stop: Stop; index: number }) {
 
       {/* Title + optional location tag */}
       <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>
-          {stop.title || `Stop ${index + 1}`}
+        <p className="text-[15px] font-medium leading-snug" style={{ color: 'var(--text-primary)' }}>
+          {stop.title || `Stop ${number}`}
         </p>
         {stop.mergeGroup && (
           <p className="text-xs italic mt-0.5" style={{ color: 'var(--text-secondary)' }}>
@@ -189,6 +193,37 @@ export default function TourOverview({ tour, onBegin, onDismiss }: Props) {
   const minutes = count * 5;
 
   const longDesc = (tour.description || '').length > 180;
+
+  // Group the stops under the Acts they belong to, so the overview reads as the
+  // tour's structure and not just a flat run of stops. Numbering stays continuous
+  // top-to-bottom. When the tour has no authored acts (implicit single act), fall
+  // back to a flat, header-less list.
+  const acts = getActs(tour);
+  const byId = new Map(stops.map((s) => [s.id, s] as const));
+  const isImplicit = acts.length === 1 && acts[0].id === '__implicit_act__';
+
+  let running = 0;
+  const groups: { eyebrow: string | null; label: string | null; rows: { stop: Stop; number: number }[] }[] = [];
+  if (isImplicit) {
+    groups.push({ eyebrow: null, label: null, rows: stops.map((s) => ({ stop: s, number: ++running })) });
+  } else {
+    acts.forEach((act) => {
+      const rows = act.stopIds
+        .map((id) => byId.get(id))
+        .filter((s): s is Stop => !!s)
+        .map((s) => ({ stop: s, number: ++running }));
+      if (rows.length === 0) return;
+      groups.push({
+        eyebrow: `Act ${groups.length + 1}`,
+        label: act.title?.trim() || act.guidingQuestion?.trim() || null,
+        rows,
+      });
+    });
+    // Safety net: any guided stop not placed in an act trails at the end.
+    const placed = new Set(groups.flatMap((g) => g.rows.map((r) => r.stop.id)));
+    const orphans = stops.filter((s) => !placed.has(s.id));
+    if (orphans.length) groups.push({ eyebrow: null, label: null, rows: orphans.map((s) => ({ stop: s, number: ++running })) });
+  }
 
   return (
     <div
@@ -298,14 +333,32 @@ export default function TourOverview({ tour, onBegin, onDismiss }: Props) {
             </div>
           )}
 
-          {/* Stop list */}
+          {/* Itinerary — stops grouped under their Acts */}
           <div className="pt-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--th-primary)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--th-primary)' }}>
               {count} stop{count !== 1 ? 's' : ''} on this tour
             </p>
-            <div className="border-t" style={{ borderColor: 'var(--th-border)' }}>
-              {stops.map((stop, i) => (
-                <StopRow key={stop.id} stop={stop} index={i} />
+            <div className="space-y-1">
+              {groups.map((group, gi) => (
+                <div key={gi}>
+                  {(group.eyebrow || group.label) && (
+                    <div className="pt-4 pb-1.5" style={{ borderTop: gi > 0 ? '1px solid var(--th-border)' : undefined, marginTop: gi > 0 ? 8 : 0 }}>
+                      {group.eyebrow && (
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--th-primary)', opacity: 0.7 }}>
+                          {group.eyebrow}
+                        </p>
+                      )}
+                      {group.label && (
+                        <p className="font-display font-bold text-[19px] leading-tight mt-0.5" style={{ color: 'var(--text-primary)' }}>
+                          {group.label}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {group.rows.map(({ stop, number }) => (
+                    <StopRow key={stop.id} stop={stop} number={number} />
+                  ))}
+                </div>
               ))}
             </div>
           </div>
