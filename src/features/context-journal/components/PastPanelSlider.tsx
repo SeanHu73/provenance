@@ -304,6 +304,12 @@ function LensSlide({ lens, questions, added, savedIds, focusedId, lockInfoById, 
     if (focusedId === entry.id) onOpenFull(entry);
     else onFocus(entry);
   };
+  // Locked questions (an unlock dependency not yet met) always sink below the
+  // available ones; order is otherwise preserved (the authored order).
+  const orderedQuestions = [
+    ...questions.filter((q) => !lockInfoById?.has(q.id)),
+    ...questions.filter((q) => lockInfoById?.has(q.id)),
+  ];
   return (
     <div className="rounded-[20px] overflow-hidden" style={{ border: `3px solid ${INK}`, boxShadow: `5px 5px 0 ${SHADOW}` }}>
       {/* coloured name bar — big name + truncated description with an (i) that
@@ -327,25 +333,41 @@ function LensSlide({ lens, questions, added, savedIds, focusedId, lockInfoById, 
         </button>
       </div>
 
-      {/* body — questions + added contexts + ask your own */}
+      {/* body — ask your own (first + prominent), then the model questions others
+          have asked, then any contexts already added here. */}
       <div className="bg-warm-white px-4 py-4 space-y-3">
-        {questions.length === 0 && added.length === 0 && (
-          <p className="text-sm text-text-muted py-1">No context here yet — try asking your own question.</p>
-        )}
-
-        {questions.map((entry) => (
-          <QuestionRow key={entry.id} entry={entry} colour={colour} lock={lockInfoById?.get(entry.id) ?? null} onTap={() => onOpenFull(entry)} />
-        ))}
-
+        {/* The ask-your-own CTA leads: a clear, filled invitation (title + hint),
+            not a subtle pill, so it's obvious the learner can pose their own. */}
         {onAsk && (
           <button
             onClick={onAsk}
-            className="w-full flex items-center justify-center gap-2 rounded-[14px] py-2.5 font-display text-[16px] text-warm-white"
-            style={{ backgroundColor: 'var(--th-primary)', border: `2.5px solid ${INK}`, boxShadow: `3px 3px 0 ${SHADOW}` }}
+            className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-warm-white shadow-md"
+            style={{ backgroundColor: 'var(--th-primary)' }}
           >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z" /></svg>
-            Ask your own question
+            <span className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-white/20">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+              </svg>
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block font-display text-[20px] leading-tight">Ask your own question</span>
+              <span className="block font-serif text-[13.5px] leading-snug text-warm-white/85 mt-0.5">What are you curious about?</span>
+            </span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-90"><path d="M9 6l6 6-6 6" /></svg>
           </button>
+        )}
+
+        {orderedQuestions.length > 0 && (
+          <div className="pt-1.5 space-y-3">
+            <p className="text-[13px] font-semibold text-text-secondary">Explore questions others have asked</p>
+            {orderedQuestions.map((entry) => (
+              <QuestionRow key={entry.id} entry={entry} colour={colour} lock={lockInfoById?.get(entry.id) ?? null} onTap={() => onOpenFull(entry)} />
+            ))}
+          </div>
+        )}
+
+        {orderedQuestions.length === 0 && added.length === 0 && !onAsk && (
+          <p className="text-sm text-text-muted py-1">No context here yet.</p>
         )}
 
         {added.length > 0 && (

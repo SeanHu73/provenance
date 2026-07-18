@@ -45,6 +45,11 @@ export default function TourFooter({ tour, session, pointAtQuestion = false }: P
   // surfaces the current Act's title on the footer bar, next to Journal.
   const isContext = getTourMode(tour) === 'context';
   const showInquiries = !isContext;
+  // On the reflection page the learner often wants to look back at what they
+  // explored — so there the Context Journal button grows a label and takes the
+  // whole footer, instead of sitting as a small icon.
+  const journalProminent = isContext && session.currentPhase === 'act_reflection';
+  const journalLabelled = !isContext || journalProminent;
   let actNumLabel: string | null = null;
   let actTitleText = '';
   const inActPhase = ['act_intro', 'act_opening', 'act_closing', 'act_questions', 'community_forum', 'stop_map', 'seed', 'notice', 'wonder', 'reveal', 'reflect', 'whats_next', 'branch'].includes(session.currentPhase);
@@ -111,10 +116,10 @@ export default function TourFooter({ tour, session, pointAtQuestion = false }: P
   return (
     <>
       <div
-        className={`shrink-0 px-4 py-3 border-t flex items-center gap-3 ${isContext ? 'justify-between' : 'justify-center'}`}
+        className={`shrink-0 px-4 py-3 border-t flex items-center gap-3 ${isContext && !journalProminent ? 'justify-between' : 'justify-center'}`}
         style={{ backgroundColor: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
       >
-        <div className="relative shrink-0">
+        <div className={`relative shrink-0 ${journalProminent ? 'w-full max-w-md' : ''}`}>
           <button
             onClick={openJournal}
             disabled={!journalUnlocked}
@@ -124,14 +129,14 @@ export default function TourFooter({ tour, session, pointAtQuestion = false }: P
               journalUnlocked
                 ? 'bg-white/25 hover:bg-white/35 border-white/50'
                 : 'bg-white/10 border-white/25 opacity-45 cursor-not-allowed'
-            } ${isContext ? 'w-11 h-11' : 'gap-2 px-5 py-3.5 text-base font-semibold'}`}
+            } ${journalLabelled ? `gap-2 px-5 py-3.5 text-base font-semibold${journalProminent ? ' w-full' : ''}` : 'w-11 h-11'}`}
             style={{ boxShadow: journalUnlocked ? '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' : 'none' }}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
             </svg>
-            {!isContext && 'Context Journal'}
+            {journalLabelled && (journalProminent ? 'Look back at your Context Journal' : 'Context Journal')}
             {/* lock badge until it's unlocked */}
             {!journalUnlocked && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-warm-white text-journal flex items-center justify-center shadow" aria-hidden>

@@ -412,6 +412,23 @@ export default function TourEditorPage() {
   const patchContextItem = (t: CtxTarget, itemId: string, patch: Partial<ActContextItem>) => {
     setTargetContexts(t, getTargetContexts(t).map((c) => (c.id === itemId ? { ...c, ...patch } : c)));
   };
+  // Reorder a context within its own lens: swap it with the nearest same-lens
+  // neighbour in the chosen direction (the learner shows one lens at a time, so
+  // only same-lens order is meaningful). dir: -1 up, +1 down.
+  const moveContextItem = (t: CtxTarget, itemId: string, dir: -1 | 1) => {
+    const items = getTargetContexts(t);
+    const idx = items.findIndex((c) => c.id === itemId);
+    if (idx < 0) return;
+    const lens = items[idx].pastCategory;
+    let swap = -1;
+    for (let j = idx + dir; j >= 0 && j < items.length; j += dir) {
+      if (items[j].pastCategory === lens) { swap = j; break; }
+    }
+    if (swap < 0) return;
+    const next = [...items];
+    [next[idx], next[swap]] = [next[swap], next[idx]];
+    setTargetContexts(t, next);
+  };
   const addReflectionPrompt = (actId: string) => {
     const act = (tour?.acts || []).find((a) => a.id === actId);
     updateAct(actId, { reflectionPrompts: [...(act?.reflectionPrompts ?? []), { id: makeCtxId(), prompt: '' }] });
@@ -2161,6 +2178,7 @@ export default function TourEditorPage() {
                       onEdit={(itemId) => setCtxEditor({ target: { kind: 'act', actId: act.id }, itemId })}
                       onRemove={(itemId) => removeContextItem({ kind: 'act', actId: act.id }, itemId)}
                       onPatch={(itemId, patch) => patchContextItem({ kind: 'act', actId: act.id }, itemId, patch)}
+                      onMove={(itemId, dir) => moveContextItem({ kind: 'act', actId: act.id }, itemId, dir)}
                       onGenerate={(item) => generateContextNarration({ kind: 'act', actId: act.id }, item)}
                       legacy={act.context && (act.context.question?.trim() || act.context.context?.trim() || act.context.audioUrl || (act.context.photos?.length ?? 0) > 0) ? (
                         <div className="rounded border border-amber-300 bg-amber-50 p-2 flex items-start gap-2">
@@ -2292,6 +2310,7 @@ export default function TourEditorPage() {
                             onEdit={(itemId) => setCtxEditor({ target: { kind: 'additional', stopId: entry.stopId }, itemId })}
                             onRemove={(itemId) => removeContextItem({ kind: 'additional', stopId: entry.stopId }, itemId)}
                             onPatch={(itemId, patch) => patchContextItem({ kind: 'additional', stopId: entry.stopId }, itemId, patch)}
+                            onMove={(itemId, dir) => moveContextItem({ kind: 'additional', stopId: entry.stopId }, itemId, dir)}
                             onGenerate={(item) => generateContextNarration({ kind: 'additional', stopId: entry.stopId }, item)}
                           />
                         </div>
@@ -2379,7 +2398,7 @@ export default function TourEditorPage() {
 // additional stop so the two never drift.
 
 function ContextItemsEditor({
-  contexts, tourId, ctxNarrBusy, uploadPhoto, onAdd, onEdit, onRemove, onPatch, onGenerate, legacy,
+  contexts, tourId, ctxNarrBusy, uploadPhoto, onAdd, onEdit, onRemove, onPatch, onMove, onGenerate, legacy,
 }: {
   contexts: ActContextItem[];
   tourId: string;
@@ -2389,6 +2408,7 @@ function ContextItemsEditor({
   onEdit: (itemId: string) => void;
   onRemove: (itemId: string) => void;
   onPatch: (itemId: string, patch: Partial<ActContextItem>) => void;
+  onMove: (itemId: string, dir: -1 | 1) => void;
   onGenerate: (ctx: ActContextItem) => void;
   legacy?: React.ReactNode;
 }) {
@@ -2406,13 +2426,44 @@ function ContextItemsEditor({
         <ul className="space-y-2">
           {contexts.map((item) => {
             const lens = LENS_BY_KEY[item.pastCategory];
+            // Order controls act within the lens (that's all the learner sees).
+            const sameLens = contexts.filter((c) => c.pastCategory === item.pastCategory);
+            const lensPos = sameLens.findIndex((c) => c.id === item.id);
+            const canUp = lensPos > 0;
+            const canDown = lensPos >= 0 && lensPos < sameLens.length - 1;
+            const isLocked = !!item.unlockAfterContextId;
             return (
               <li key={item.id} className="rounded border-l-4 border border-stone-200 p-2 space-y-2" style={{ borderLeftColor: lens?.colour ?? '#bbb' }}>
                 <div className="flex items-start gap-2">
+                  {/* reorder within the lens: up / down */}
+                  <div className="flex flex-col shrink-0 -mt-0.5">
+                    <button
+                      onClick={() => onMove(item.id, -1)}
+                      disabled={!canUp}
+                      title="Move up within this lens"
+                      className="w-5 h-4 flex items-center justify-center text-stone-500 hover:text-stone-800 disabled:opacity-25 disabled:cursor-default"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6" /></svg>
+                    </button>
+                    <button
+                      onClick={() => onMove(item.id, 1)}
+                      disabled={!canDown}
+                      title="Move down within this lens"
+                      className="w-5 h-4 flex items-center justify-center text-stone-500 hover:text-stone-800 disabled:opacity-25 disabled:cursor-default"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                    </button>
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: lens?.colour ?? '#bbb' }} />
                       <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: lens?.colour ?? '#777' }}>{lens?.label ?? item.pastCategory}</span>
+                      {isLocked && (
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold uppercase tracking-wide text-stone-400" title="Locked until its unlock context is heard — always shown below the others in this lens">
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                          Locked
+                        </span>
+                      )}
                     </div>
                     {item.question && <div className="text-xs italic text-stone-500 truncate mt-0.5">{item.question}</div>}
                     <div className="text-sm font-semibold text-stone-800 truncate">{item.title || <span className="text-stone-400 italic">Untitled</span>}</div>
