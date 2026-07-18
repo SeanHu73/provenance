@@ -343,16 +343,16 @@ export default function TourOverview({ tour, onBegin, onDismiss }: Props) {
                 <div key={gi}>
                   {(group.eyebrow || group.label) && (
                     <div className="pt-4 pb-1.5" style={{ borderTop: gi > 0 ? '1px solid var(--th-border)' : undefined, marginTop: gi > 0 ? 8 : 0 }}>
-                      {group.eyebrow && (
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--th-primary)', opacity: 0.7 }}>
-                          {group.eyebrow}
-                        </p>
-                      )}
-                      {group.label && (
-                        <p className="font-display font-bold text-[19px] leading-tight mt-0.5" style={{ color: 'var(--text-primary)' }}>
-                          {group.label}
-                        </p>
-                      )}
+                      {/* "Act N:" and the act title on one line, same size, the act
+                          number in the brand colour to set it off. */}
+                      <p className="font-display font-bold text-[19px] leading-tight">
+                        {group.eyebrow && (
+                          <span style={{ color: 'var(--th-primary)' }}>{group.eyebrow}{group.label ? ': ' : ''}</span>
+                        )}
+                        {group.label && (
+                          <span style={{ color: 'var(--text-primary)' }}>{group.label}</span>
+                        )}
+                      </p>
                     </div>
                   )}
                   {group.rows.map(({ stop, number }) => (

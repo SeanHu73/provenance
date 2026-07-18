@@ -1,19 +1,18 @@
 'use client';
 
 /**
- * The P.A.S.T. reveal — the first Context step's teaching beat. It plays itself;
- * there is nothing to tap.
+ * The P.A.S.T. reveal — the first Context step's teaching beat.
  *
  * The sequence, and why it's shaped this way: the acronym is *typed* letter by
- * letter so the reader reads it as a word before it becomes a diagram, then holds
- * for a beat so the sentence lands, then the four letters physically travel out of
- * the sentence and grow into the diagonal. That travel is the point — it's what
- * makes "P.A.S.T." and the four lenses register as the same object rather than two
- * unrelated slides. Their meanings arrive after, so the reader isn't decoding a
- * diagram while it's still moving.
+ * letter so the reader reads it as a word before it becomes a diagram. Then it
+ * WAITS — there's no timed pause anymore. The reader's next swipe-down doesn't
+ * advance the onboarding; it's captured here and plays the reveal instead: the
+ * four letters physically travel out of the sentence and grow into the diagonal,
+ * then each meaning fades in, then the closing line. Only once the reveal has
+ * finished does a swipe-down move on to the next slide.
  *
- *   type P.A.S.T. → "framework." → hold 2.5s → letters drift + grow into the
- *   diagonal → each meaning fades in → closing line
+ *   type P.A.S.T. → "framework." → [wait for swipe] → letters drift + grow into
+ *   the diagonal → each meaning fades in → closing line
  *
  * The drift is a FLIP: the inline letters' positions are measured *before* the
  * layout changes, then each big letter is placed back at its old spot (translated
@@ -21,7 +20,7 @@
  * layout and animate from nowhere.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LENSES } from '@/features/context-journal/constants';
 
 /** "P.A.S.T." as typed characters; the letters (not the dots) map to LENSES. */
@@ -31,12 +30,13 @@ const LETTER_AT = [0, 2, 4, 6]; // indices in CHARS that are lens initials
 const START_MS = 0;       // typing starts as soon as the beat is on screen
 const TYPE_MS = 170;      // per character
 const FRAMEWORK_MS = 420; // beat before "framework." lands
-const HOLD_MS = 2500;     // the pause, before anything moves
+const READY_MS = 250;     // after the sentence lands, before the swipe is armed
 const DRIFT_MS = 950;
 
 export default function PastReveal({ onDone }: { onDone?: () => void }) {
   const [typed, setTyped] = useState(0);
   const [framework, setFramework] = useState(false);
+  const [ready, setReady] = useState(false);   // sentence has landed; swipe now reveals
   const [diagonal, setDiagonal] = useState(false);
   const [meanings, setMeanings] = useState(false);
   const [tail, setTail] = useState(false);
@@ -45,36 +45,88 @@ export default function PastReveal({ onDone }: { onDone?: () => void }) {
   const inlineRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const bigRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const firstRects = useRef<(DOMRect | null)[]>([]);
+  const triggered = useRef(false);
 
-  // Only start once the beat is actually on screen — otherwise it plays out while
-  // the reader is still a slide above and they arrive at a finished diagram.
+  // `armed` latches once the beat is first seen (drives the type-out). `inView`
+  // tracks live visibility so the swipe-capture only runs while this slide is up.
   const [armed, setArmed] = useState(false);
+  const [inView, setInView] = useState(false);
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting && e.intersectionRatio >= 0.5) setArmed(true); }, { threshold: 0.5 });
+    const io = new IntersectionObserver(([e]) => {
+      const vis = e.isIntersecting && e.intersectionRatio >= 0.5;
+      setInView(vis);
+      if (vis) setArmed(true);
+    }, { threshold: [0, 0.5, 1] });
     io.observe(el);
     return () => io.disconnect();
   }, []);
 
-  // The timeline. Every stage is a timer off the same start, cleared together.
+  // Type the acronym, land "framework.", then arm the swipe. No drift on a timer.
   useEffect(() => {
     if (!armed) return;
     const timers: number[] = [];
     CHARS.forEach((_, i) => timers.push(window.setTimeout(() => setTyped(i + 1), START_MS + i * TYPE_MS)));
     const typedDone = START_MS + CHARS.length * TYPE_MS;
     timers.push(window.setTimeout(() => setFramework(true), typedDone + FRAMEWORK_MS));
+    timers.push(window.setTimeout(() => setReady(true), typedDone + FRAMEWORK_MS + READY_MS));
+    return () => timers.forEach(clearTimeout);
+  }, [armed]);
 
-    // Measure the inline letters *before* the layout changes, then swap.
-    timers.push(window.setTimeout(() => {
+  // Kick off the drift: complete the sentence (in case they swiped mid-type),
+  // measure the inline letters *before* the layout changes, then swap.
+  const triggerReveal = useCallback(() => {
+    if (triggered.current) return;
+    triggered.current = true;
+    setTyped(CHARS.length);
+    setFramework(true);
+    requestAnimationFrame(() => {
       firstRects.current = LETTER_AT.map((_, i) => inlineRefs.current[i]?.getBoundingClientRect() ?? null);
       setDiagonal(true);
-    }, typedDone + FRAMEWORK_MS + HOLD_MS));
+    });
+  }, []);
 
-    timers.push(window.setTimeout(() => setMeanings(true), typedDone + FRAMEWORK_MS + HOLD_MS + DRIFT_MS * 0.7));
-    timers.push(window.setTimeout(() => { setTail(true); onDone?.(); }, typedDone + FRAMEWORK_MS + HOLD_MS + DRIFT_MS + 350));
+  // Once the reveal starts, stagger the meanings and the closing line off it.
+  useEffect(() => {
+    if (!diagonal) return;
+    const timers: number[] = [];
+    timers.push(window.setTimeout(() => setMeanings(true), DRIFT_MS * 0.7));
+    timers.push(window.setTimeout(() => { setTail(true); onDone?.(); }, DRIFT_MS + 350));
     return () => timers.forEach(clearTimeout);
-  }, [armed, onDone]);
+  }, [diagonal, onDone]);
+
+  // Capture the down-swipe. While the slide is up and the sentence has landed but
+  // the reveal hasn't finished, a downward gesture is swallowed (it does not
+  // advance the onboarding): the first one plays the reveal; the rest are held
+  // until it's done. Upward gestures pass through so they can scroll back.
+  useEffect(() => {
+    if (!inView || !ready || tail) return;
+    const advance = (e: Event) => {
+      e.preventDefault();
+      if (!diagonal) triggerReveal();
+    };
+    const onWheel = (e: WheelEvent) => { if (e.deltaY > 0) advance(e); };
+    let touchY = 0;
+    const onTouchStart = (e: TouchEvent) => { touchY = e.touches[0]?.clientY ?? 0; };
+    const onTouchMove = (e: TouchEvent) => {
+      const y = e.touches[0]?.clientY ?? 0;
+      if (touchY - y > 10) advance(e);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Spacebar') advance(e);
+    };
+    window.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [inView, ready, tail, diagonal, triggerReveal]);
 
   // FLIP: put each big letter back where its inline twin was, then release it.
   useEffect(() => {
@@ -137,13 +189,24 @@ export default function PastReveal({ onDone }: { onDone?: () => void }) {
         </p>
       </div>
 
+      {/* Before the reveal: a swipe-down cue, since the swipe now plays the
+          animation rather than turning the page. Fades out once it fires. */}
+      {ready && !diagonal && (
+        <div
+          className="flex flex-col items-center gap-1.5 mt-16"
+          style={{ opacity: 0.7, transition: 'opacity 300ms ease-out' }}
+        >
+          <span className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--th-journal)' }}>Swipe down</span>
+          <svg className="animate-bounce" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--th-journal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+      )}
+
       {/* The diagonal. Rendered only once the drift starts, so the letters have a
-          real destination to be measured against. Centred as one block (mx-auto)
-          with a wider step per row so it reads as a diagram, not a list. */}
+          real destination to be measured against. vw-based indent (not %) so
+          w-fit measures the true box and mx-auto centres it. */}
       {diagonal && (
-        // vw-based indent (not %) so w-fit measures the true box and mx-auto
-        // centres it — Place's left margin then equals Technology's right margin,
-        // and the widest row can't run off the edge.
         <div className="w-fit mx-auto">
           {LENSES.map((lens, i) => (
             <div key={lens.key} className="flex items-baseline" style={{ marginLeft: `${i * 6}vw` }}>
