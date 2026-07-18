@@ -2,7 +2,7 @@
 
 /**
  * Context intro — an immersive snap-scroll shown at the start of the context step
- * (`act_context_intro`), on the rich dark journal surface.
+ * (`act_context_intro`), on a soft light-red surface.
  *
  * **First time** (six beats, and the only place the P.A.S.T. is ever taught now —
  * the intro onboarding hands it over):
@@ -11,10 +11,11 @@
  *   3. So how? — ask context questions.
  *   4. The P.A.S.T. reveal — plays itself; see PastReveal.
  *   5. The lenses as swipeable cards.
- *   6. Ready to think like a historian? → Yes! (ends on a button, no sentinel)
+ *   6. Try it out → the button fades to the guiding-theme splash, which ushers
+ *      into the journal (no scroll sentinel on this path).
  *
- * **Returning** (`returning`): the short version — sit down, the CONTEXT title,
- * then scroll past the sentinel into the journal. No teaching, no button.
+ * **Returning** (`returning`): the short version — sit down, the guiding-theme
+ * splash, then scroll past the sentinel into the journal. No teaching, no button.
  *
  * Portaled to document.body so the fixed overlay escapes the Journal's
  * transformed (framer-motion) ancestor (Build_State §7).
@@ -29,6 +30,11 @@ import PastReveal from '@/components/onboarding/PastReveal';
  *  --th-secondary (which equals the Attitudes lens colour), so CONTEXT and the
  *  CTA don't clash with the coloured P·A·S·T lenses. A warm coral, no lens uses it. */
 export const CONTEXT_ACCENT = '#E08A5F';
+
+/** The intro rides on a soft light-red surface (was the dark journal cover) so the
+ *  copy stays legible; INK is the dark journal red that reads as text on it. */
+const LIGHT_RED = '#F6DEDB';
+const INK = 'var(--th-journal)';
 
 /** The glassy magnifying lens worn over the active initial — same treatment as the
  *  Context Journal's indicator, so the lens metaphor is consistent across both. */
@@ -107,7 +113,7 @@ function LensSlider({ questionsByLens }: { questionsByLens: Record<string, strin
                 {on && <LensGlass colour={l.colour} size={62} />}
               </button>
               {i < LENSES.length - 1 && (
-                <span className="font-display font-bold mb-1.5" style={{ fontSize: 20, opacity: 0.45, color: 'var(--th-surface)' }}>·</span>
+                <span className="font-display font-bold mb-1.5" style={{ fontSize: 20, opacity: 0.4, color: INK }}>·</span>
               )}
             </div>
           );
@@ -129,12 +135,12 @@ function LensSlider({ questionsByLens }: { questionsByLens: Record<string, strin
               style={{ width: '86%', maxWidth: 460, maxHeight: '62vh', scrollSnapAlign: 'center', backgroundColor: 'var(--th-surface)' }}
             >
               <div className="px-5 py-4 shrink-0" style={{ backgroundColor: l.colour }}>
-                <h3 className="font-display font-bold leading-none" style={{ color: 'var(--th-surface)', fontSize: 'clamp(36px, 9.5vw, 50px)' }}>{l.label}</h3>
+                <h3 className="font-display font-bold leading-none" style={{ color: '#fff', fontSize: 'clamp(36px, 9.5vw, 50px)' }}>{l.label}</h3>
               </div>
               <div className="overflow-y-auto tour-scroll px-5 py-4">
                 {/* Sentence definition + stacked sub-topics. */}
-                <p className="font-serif leading-snug" style={{ color: 'var(--th-text)', fontSize: 17 }}>
-                  Recreate the past using <span className="font-bold" style={{ color: l.colour }}>{l.label}</span>{' '}by asking about&hellip;
+                <p className="font-serif leading-snug" style={{ color: 'var(--th-text)', fontSize: 20 }}>
+                  Recreate the past using <span className="font-bold" style={{ color: l.colour }}>{l.label.toUpperCase()}</span>{' '}by asking about&hellip;
                 </p>
                 <ul className="mt-2.5 space-y-1">
                   {l.categories.map((c) => (
@@ -161,7 +167,7 @@ function LensSlider({ questionsByLens }: { questionsByLens: Record<string, strin
         })}
       </div>
 
-      <div className="mt-4 flex items-center justify-center gap-2" style={{ color: 'var(--th-surface)', opacity: 0.6 }}>
+      <div className="mt-4 flex items-center justify-center gap-2" style={{ color: INK, opacity: 0.55 }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         <span className="text-[10px] uppercase tracking-[0.22em]">Swipe the lenses</span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
@@ -183,8 +189,8 @@ interface Props {
   questionsByLens?: Record<string, string[]>;
 }
 
-/** The framing splash before the journal: reconstruct → look through the P.A.S.T.
- *  → the act's guiding theme, large. `visible` drives the staggered fade-in. */
+/** The framing splash that ushers in the journal: "look through the P.A.S.T." then
+ *  the act's guiding theme, large — both centred. `visible` staggers the fade-in. */
 function GuidingSplash({ theme, visible }: { theme: string; visible: boolean }) {
   const fade = (delayMs: number, op = 1): React.CSSProperties => ({
     opacity: visible ? op : 0,
@@ -192,19 +198,16 @@ function GuidingSplash({ theme, visible }: { theme: string; visible: boolean }) 
     transition: `opacity 800ms ease-out ${delayMs}ms, transform 800ms ease-out ${delayMs}ms`,
   });
   return (
-    <>
-      <p className="font-serif leading-snug" style={{ fontSize: 'clamp(21px, 5.6vw, 30px)', color: 'var(--th-surface)', maxWidth: '20ch', ...fade(200) }}>
-        Let&rsquo;s recreate the world around us&hellip;
-      </p>
-      <p className="font-serif leading-snug mt-5" style={{ fontSize: 'clamp(17px, 4.6vw, 22px)', color: 'var(--th-surface)', maxWidth: '24ch', ...fade(1000, 0.9) }}>
+    <div className="flex flex-col items-center text-center">
+      <p className="font-serif leading-snug" style={{ fontSize: 'clamp(17px, 4.6vw, 22px)', color: INK, maxWidth: '24ch', ...fade(200, 0.9) }}>
         {/* {' '} — a JSX text chunk touching a newline gets trimmed both ends, so a
             bare space after the span is eaten ("P.A.S.T.to"). */}
         Look through the <span className="font-bold">P.A.S.T.</span>{' '}to contextualise&hellip;
       </p>
-      <p className="font-display font-bold leading-tight mt-9" style={{ fontSize: 'clamp(34px, 10vw, 60px)', color: CONTEXT_ACCENT, ...fade(1800) }}>
+      <p className="font-display font-bold leading-tight mt-9" style={{ fontSize: 'clamp(34px, 10vw, 60px)', color: CONTEXT_ACCENT, maxWidth: '18ch', ...fade(1000) }}>
         {theme}
       </p>
-    </>
+    </div>
   );
 }
 
@@ -212,10 +215,12 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
   const [mounted, setMounted] = useState(false);
   const [sitIn, setSitIn] = useState(false);
   const [howIn, setHowIn] = useState(false);
-  const [themeIn, setThemeIn] = useState(false);
+  // First-time only: the button fades to a full-screen guiding-theme splash that
+  // ushers into the journal, rather than scrolling on to another section.
+  const [entering, setEntering] = useState(false);
+  const [enterVisible, setEnterVisible] = useState(false);
   const sitRef = useRef<HTMLElement | null>(null);
   const howRef = useRef<HTMLElement | null>(null);
-  const themeRef = useRef<HTMLElement | null>(null);
   const enterRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -239,15 +244,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
     return () => obs.disconnect();
   }, []);
 
-  useEffect(() => {
-    const el = themeRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setThemeIn(true); }, { threshold: 0.4 });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  // Scrolling past the sentinel enters the Context Journal.
+  // Returning path only: scrolling past the sentinel enters the Context Journal.
   useEffect(() => {
     const el = enterRef.current;
     if (!el) return;
@@ -255,6 +252,15 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
     obs.observe(el);
     return () => obs.disconnect();
   }, [onComplete]);
+
+  // First-time: once the button triggers the splash, fade it in, hold, then hand
+  // off to the journal.
+  useEffect(() => {
+    if (!entering) return;
+    const id = requestAnimationFrame(() => setEnterVisible(true));
+    const t = window.setTimeout(onComplete, 2600);
+    return () => { cancelAnimationFrame(id); clearTimeout(t); };
+  }, [entering, onComplete]);
 
   // Progress counter (N of total). Observe the real section elements so the count
   // matches whatever the current path renders (first-time vs returning), and the
@@ -286,11 +292,11 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
     <div
       ref={rootRef}
       className="fixed inset-0 z-[60] overflow-y-auto select-none"
-      style={{ backgroundColor: 'var(--th-journal)', scrollSnapType: 'y mandatory' }}
+      style={{ backgroundColor: LIGHT_RED, scrollSnapType: 'y mandatory' }}
     >
       {/* Page counter, top-left — like the intro onboarding's. */}
       {total > 0 && (
-        <p className="fixed top-3 left-4 z-[61] text-[11px] font-semibold tracking-wide" style={{ color: 'var(--th-surface)', opacity: 0.7 }}>
+        <p className="fixed top-3 left-4 z-[61] text-[11px] font-semibold tracking-wide" style={{ color: INK, opacity: 0.7 }}>
           {Math.min(step + 1, total)} of {total}
         </p>
       )}
@@ -302,7 +308,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <svg
-          width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="var(--th-surface)"
+          width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="var(--th-journal)"
           strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
           style={{
             opacity: sitIn ? 0.9 : 0,
@@ -320,7 +326,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
         <p
           className="font-serif mt-7"
           style={{
-            fontSize: 'clamp(18px, 4.8vw, 24px)', color: 'var(--th-surface)',
+            fontSize: 'clamp(18px, 4.8vw, 24px)', color: INK,
             opacity: sitIn ? 0.85 : 0, transform: sitIn ? 'translateY(0)' : 'translateY(12px)',
             transition: 'opacity 700ms ease-out 150ms, transform 700ms ease-out 150ms',
           }}
@@ -340,7 +346,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
         <p
           className="font-serif mt-7"
           style={{
-            fontSize: 'clamp(18px, 4.8vw, 24px)', color: 'var(--th-surface)', maxWidth: '22ch',
+            fontSize: 'clamp(18px, 4.8vw, 24px)', color: INK, maxWidth: '22ch',
             opacity: sitIn ? 0.9 : 0, transform: sitIn ? 'translateY(0)' : 'translateY(12px)',
             transition: 'opacity 800ms ease-out 750ms, transform 800ms ease-out 750ms',
           }}
@@ -352,8 +358,8 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
           className="absolute bottom-7 left-0 right-0 flex flex-col items-center gap-1.5"
           style={{ opacity: sitIn ? 0.65 : 0, transition: 'opacity 700ms ease-out 1200ms' }}
         >
-          <span className="text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--th-surface)' }}>Scroll</span>
-          <svg className="animate-bounce" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--th-surface)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <span className="text-[10px] uppercase tracking-[0.22em]" style={{ color: INK }}>Scroll</span>
+          <svg className="animate-bounce" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--th-journal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 9l6 6 6-6" />
           </svg>
         </div>
@@ -374,7 +380,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
               className="font-serif leading-snug"
               style={{
                 fontSize: 'clamp(19px, 5.2vw, 28px)',
-                color: 'var(--th-surface)',
+                color: INK,
                 opacity: mounted ? 0.92 : 0,
                 transform: mounted ? 'translateY(0)' : 'translateY(14px)',
                 transition: 'opacity 800ms ease-out 200ms, transform 800ms ease-out 200ms',
@@ -390,7 +396,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
                 className="font-serif leading-snug mt-5 ml-auto text-right"
                 style={{
                   fontSize: 'clamp(23px, 6vw, 33px)',
-                  color: 'var(--th-surface)',
+                  color: INK,
                   opacity: mounted ? 1 : 0,
                   transform: mounted ? 'translateY(0)' : 'translateY(14px)',
                   transition: 'opacity 900ms ease-out 1000ms, transform 900ms ease-out 1000ms',
@@ -410,7 +416,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
                 transition: 'opacity 900ms ease-out 1800ms, transform 900ms ease-out 1800ms',
               }}
             >
-              <span className="font-display leading-[0.9] tracking-tight block" style={{ fontSize: 'clamp(52px, 20vw, 128px)', color: 'var(--th-surface)' }}>
+              <span className="font-display leading-[0.9] tracking-tight block" style={{ fontSize: 'clamp(52px, 20vw, 128px)', color: INK }}>
                 CONTEXT
               </span>
             </div>
@@ -421,8 +427,8 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
           className="absolute bottom-7 left-0 right-0 flex flex-col items-center gap-1.5"
           style={{ opacity: mounted ? 0.7 : 0, transition: 'opacity 700ms ease-out 2600ms' }}
         >
-          <span className="text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--th-surface)' }}>Scroll</span>
-          <svg className="animate-bounce" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--th-surface)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <span className="text-[10px] uppercase tracking-[0.22em]" style={{ color: INK }}>Scroll</span>
+          <svg className="animate-bounce" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--th-journal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 9l6 6 6-6" />
           </svg>
         </div>
@@ -438,7 +444,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
         <p
           className="font-display italic leading-tight"
           style={{
-            fontSize: 'clamp(30px, 8vw, 46px)', color: 'var(--th-surface)',
+            fontSize: 'clamp(30px, 8vw, 46px)', color: INK,
             opacity: howIn ? 1 : 0, transform: howIn ? 'translateY(0)' : 'translateY(12px)',
             transition: 'opacity 700ms ease-out, transform 700ms ease-out',
           }}
@@ -448,7 +454,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
         <p
           className="font-serif leading-snug mt-24"
           style={{
-            fontSize: 'clamp(30px, 8vw, 46px)', color: 'var(--th-surface)', maxWidth: '16ch',
+            fontSize: 'clamp(30px, 8vw, 46px)', color: INK, maxWidth: '16ch',
             opacity: howIn ? 1 : 0, transform: howIn ? 'translateY(0)' : 'translateY(12px)',
             transition: 'opacity 800ms ease-out 1100ms, transform 800ms ease-out 1100ms',
           }}
@@ -477,7 +483,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <div className="px-7">
-          <p className="font-serif leading-snug" style={{ fontSize: 'clamp(21px, 5.6vw, 30px)', color: 'var(--th-surface)', maxWidth: '20ch' }}>
+          <p className="font-serif italic leading-snug" style={{ fontSize: 'clamp(21px, 5.6vw, 30px)', color: INK, maxWidth: '20ch' }}>
             Use the <span className="font-bold">P.A.S.T.</span> to frame your questions.
           </p>
           <p className="font-display mt-2" style={{ fontSize: 'clamp(24px, 6.4vw, 34px)', color: CONTEXT_ACCENT }}>
@@ -494,17 +500,17 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
         className="relative min-h-[100dvh] flex flex-col items-center justify-center text-center px-8"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        <p className="font-serif" style={{ fontSize: 'clamp(20px, 5.2vw, 27px)', color: 'var(--th-surface)', opacity: 0.9 }}>
+        <p className="font-serif" style={{ fontSize: 'clamp(20px, 5.2vw, 27px)', color: INK, opacity: 0.9 }}>
           Now let&rsquo;s try it out for this tour!
         </p>
-        <p className="font-display leading-tight mt-6" style={{ fontSize: 'clamp(28px, 8vw, 46px)', color: 'var(--th-surface)', fontWeight: 700, maxWidth: '15ch' }}>
-          Ready to recreate the past?
+        <p className="font-display leading-tight mt-6" style={{ fontSize: 'clamp(28px, 8vw, 46px)', color: INK, fontWeight: 700, maxWidth: '18ch' }}>
+          Ready to <span className="italic">recreate</span> the past?
         </p>
-        {/* Scrolls on to the guiding-theme splash (which then enters the journal),
-            rather than completing here — the flow continues below. Falls back to
-            the sentinel if there's no guiding theme to show. */}
+        {/* Fades to the guiding-theme splash, which ushers into the journal — no
+            further scroll section. Falls back to completing straight away if there's
+            no guiding theme to show. */}
         <button
-          onClick={() => (themeRef.current ?? enterRef.current)?.scrollIntoView({ behavior: 'smooth' })}
+          onClick={() => (guidingQuestion ? setEntering(true) : onComplete())}
           className="mt-10 px-12 py-4 rounded-full text-[18px] font-semibold"
           style={{ backgroundColor: CONTEXT_ACCENT, color: 'var(--th-journal)' }}
         >
@@ -513,33 +519,27 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
       </section>
       )}
 
-      {/* First-time only: after "try it out", the guiding-theme splash — same as
-          the returning path's, so Act 1 is framed like every later act. Then the
-          shared sentinel enters the journal. */}
-      {!returning && guidingQuestion && (
-        <section
-          ref={themeRef}
-          className="relative min-h-[100dvh] flex flex-col justify-center px-7"
-          style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
-        >
-          <GuidingSplash theme={guidingQuestion} visible={themeIn} />
-          <div className="absolute bottom-7 left-0 right-0 flex flex-col items-center gap-1.5" style={{ opacity: themeIn ? 0.65 : 0, transition: 'opacity 700ms ease-out 1200ms' }}>
-            <span className="text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--th-surface)' }}>Scroll</span>
-            <svg className="animate-bounce" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--th-surface)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
-          </div>
-        </section>
+      {/* Returning path only: after its guiding-theme beat, scrolling into this
+          sentinel enters the Context Journal. First-time uses the button-driven
+          fade below instead. */}
+      {returning && (
+        <div ref={enterRef} className="h-[55vh] flex items-end justify-center pb-10" style={{ scrollSnapAlign: 'end' }}>
+          <span className="font-serif italic text-[15px]" style={{ color: INK, opacity: 0.6 }}>
+            Opening the Context Journal&hellip;
+          </span>
+        </div>
       )}
 
-
-      {/* Sentinel — scrolling into it enters the Context Journal. Both paths now
-          end by scrolling into it: returning after its guiding-theme beat, first
-          time after the try-it-out → guiding-theme beats (the button scrolls on
-          rather than completing), so neither ends on a completing button. */}
-      <div ref={enterRef} className="h-[55vh] flex items-end justify-center pb-10" style={{ scrollSnapAlign: 'end' }}>
-        <span className="font-serif italic text-[15px]" style={{ color: 'var(--th-surface)', opacity: 0.6 }}>
-          Opening the Context Journal&hellip;
-        </span>
-      </div>
+      {/* First-time: the button fades to this full-screen guiding-theme splash,
+          which ushers into the journal (auto-advances after the beat lands). */}
+      {entering && guidingQuestion && (
+        <div
+          className="fixed inset-0 z-[62] flex flex-col items-center justify-center px-7"
+          style={{ backgroundColor: LIGHT_RED, opacity: enterVisible ? 1 : 0, transition: 'opacity 650ms ease-out' }}
+        >
+          <GuidingSplash theme={guidingQuestion} visible={enterVisible} />
+        </div>
+      )}
     </div>,
     document.body,
   );

@@ -31,7 +31,7 @@ const LETTER_AT = [0, 2, 4, 6]; // indices in CHARS that are lens initials
 const START_MS = 0;       // typing starts as soon as the beat is on screen
 const TYPE_MS = 170;      // per character
 const FRAMEWORK_MS = 420; // beat before "framework." lands
-const HOLD_MS = 3500;     // the pause, before anything moves
+const HOLD_MS = 2500;     // the pause, before anything moves
 const DRIFT_MS = 950;
 
 export default function PastReveal({ onDone }: { onDone?: () => void }) {
@@ -109,7 +109,7 @@ export default function PastReveal({ onDone }: { onDone?: () => void }) {
           using…". The swap is invisible because the big letters appear at the exact
           pixels the inline ones occupied. */}
       <div className="mb-8">
-        <p className="font-serif leading-snug" style={{ fontSize: 'clamp(26px, 7vw, 38px)', color: 'var(--th-surface)', maxWidth: '17ch' }}>
+        <p className="font-serif leading-snug" style={{ fontSize: 'clamp(26px, 7vw, 38px)', color: 'var(--th-journal)', maxWidth: '17ch' }}>
           We break down context by using
           {!diagonal ? (
             <>
@@ -117,7 +117,7 @@ export default function PastReveal({ onDone }: { onDone?: () => void }) {
               <span className="font-display whitespace-nowrap" style={{ fontWeight: 700 }}>
                 {CHARS.map((c, i) => {
                   const lensIdx = LETTER_AT.indexOf(i);
-                  const colour = lensIdx >= 0 ? LENSES[lensIdx].colour : 'var(--th-surface)';
+                  const colour = lensIdx >= 0 ? LENSES[lensIdx].colour : 'var(--th-journal)';
                   return (
                     <span
                       key={i}
@@ -143,7 +143,7 @@ export default function PastReveal({ onDone }: { onDone?: () => void }) {
       {diagonal && (
         <div className="w-fit mx-auto">
           {LENSES.map((lens, i) => (
-            <div key={lens.key} className="flex items-baseline" style={{ marginLeft: `${i * 20}%` }}>
+            <div key={lens.key} className="flex items-baseline" style={{ marginLeft: `${i * 25}%` }}>
               <span
                 ref={(el) => { bigRefs.current[i] = el; }}
                 className="font-display leading-none"
@@ -170,13 +170,13 @@ export default function PastReveal({ onDone }: { onDone?: () => void }) {
       <p
         className="font-serif mt-8 leading-snug text-center"
         style={{
-          fontSize: 'clamp(20px, 5.4vw, 27px)', color: 'var(--th-surface)', maxWidth: '26ch', marginInline: 'auto',
+          fontSize: 'clamp(20px, 5.4vw, 27px)', color: 'var(--th-journal)', maxWidth: '26ch', marginInline: 'auto',
           opacity: tail ? 0.92 : 0,
           transform: tail ? 'translateY(0)' : 'translateY(10px)',
           transition: 'opacity 700ms ease-out, transform 700ms ease-out',
         }}
       >
-        These lenses help you <strong style={{ fontSize: '1.25em' }}>ASK</strong> about the world through the big picture.
+        These lenses help you <strong style={{ fontSize: '1.25em' }}>ASK</strong> about the world in big pictures.
       </p>
     </div>
   );
