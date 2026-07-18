@@ -11,8 +11,9 @@
  *   3. So how? — ask context questions.
  *   4. The P.A.S.T. reveal — plays itself; see PastReveal.
  *   5. The lenses as swipeable cards.
- *   6. Try it out → the button fades to the guiding-theme splash, which ushers
- *      into the journal (no scroll sentinel on this path).
+ *   6. Try it out → the button scrolls on to the guiding-theme splash.
+ *   7. The guiding-theme splash — a scroll section; swipe down past the sentinel
+ *      to enter the journal (and back up to return to it).
  *
  * **Returning** (`returning`): the short version — sit down, the guiding-theme
  * splash, then scroll past the sentinel into the journal. No teaching, no button.
@@ -215,12 +216,10 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
   const [mounted, setMounted] = useState(false);
   const [sitIn, setSitIn] = useState(false);
   const [howIn, setHowIn] = useState(false);
-  // First-time only: the button fades to a full-screen guiding-theme splash that
-  // ushers into the journal, rather than scrolling on to another section.
-  const [entering, setEntering] = useState(false);
-  const [enterVisible, setEnterVisible] = useState(false);
+  const [themeIn, setThemeIn] = useState(false);
   const sitRef = useRef<HTMLElement | null>(null);
   const howRef = useRef<HTMLElement | null>(null);
+  const themeRef = useRef<HTMLElement | null>(null);
   const enterRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -244,7 +243,17 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
     return () => obs.disconnect();
   }, []);
 
-  // Returning path only: scrolling past the sentinel enters the Context Journal.
+  useEffect(() => {
+    const el = themeRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setThemeIn(true); }, { threshold: 0.4 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // Both paths end by scrolling past the sentinel into the Context Journal — a
+  // real scroll, so the guiding-theme splash above it stays put and can be
+  // scrolled back up to.
   useEffect(() => {
     const el = enterRef.current;
     if (!el) return;
@@ -252,15 +261,6 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
     obs.observe(el);
     return () => obs.disconnect();
   }, [onComplete]);
-
-  // First-time: once the button triggers the splash, fade it in, hold, then hand
-  // off to the journal.
-  useEffect(() => {
-    if (!entering) return;
-    const id = requestAnimationFrame(() => setEnterVisible(true));
-    const t = window.setTimeout(onComplete, 2600);
-    return () => { cancelAnimationFrame(id); clearTimeout(t); };
-  }, [entering, onComplete]);
 
   // Progress counter (N of total). Observe the real section elements so the count
   // matches whatever the current path renders (first-time vs returning), and the
@@ -506,11 +506,11 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
         <p className="font-display leading-tight mt-6" style={{ fontSize: 'clamp(28px, 8vw, 46px)', color: INK, fontWeight: 700, maxWidth: '18ch' }}>
           Ready to <span className="italic">recreate</span> the past?
         </p>
-        {/* Fades to the guiding-theme splash, which ushers into the journal — no
-            further scroll section. Falls back to completing straight away if there's
-            no guiding theme to show. */}
+        {/* Scrolls on to the guiding-theme splash — a real section, so they can
+            swipe down into the journal from it and back up if they want. Falls
+            back to the sentinel if there's no guiding theme to show. */}
         <button
-          onClick={() => (guidingQuestion ? setEntering(true) : onComplete())}
+          onClick={() => (themeRef.current ?? enterRef.current)?.scrollIntoView({ behavior: 'smooth' })}
           className="mt-10 px-12 py-4 rounded-full text-[18px] font-semibold"
           style={{ backgroundColor: CONTEXT_ACCENT, color: 'var(--th-journal)' }}
         >
@@ -519,27 +519,31 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
       </section>
       )}
 
-      {/* Returning path only: after its guiding-theme beat, scrolling into this
-          sentinel enters the Context Journal. First-time uses the button-driven
-          fade below instead. */}
-      {returning && (
-        <div ref={enterRef} className="h-[55vh] flex items-end justify-center pb-10" style={{ scrollSnapAlign: 'end' }}>
-          <span className="font-serif italic text-[15px]" style={{ color: INK, opacity: 0.6 }}>
-            Opening the Context Journal&hellip;
-          </span>
-        </div>
+      {/* First-time only: after "try it out", the guiding-theme splash — a real
+          scroll section (not an auto-fade), so it stays put until they swipe down
+          into the journal, and they can scroll back up to it. */}
+      {!returning && guidingQuestion && (
+        <section
+          ref={themeRef}
+          className="relative min-h-[100dvh] flex flex-col items-center justify-center px-7"
+          style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+        >
+          <GuidingSplash theme={guidingQuestion} visible={themeIn} />
+          <div className="absolute bottom-7 left-0 right-0 flex flex-col items-center gap-1.5" style={{ opacity: themeIn ? 0.65 : 0, transition: 'opacity 700ms ease-out 1200ms' }}>
+            <span className="text-[10px] uppercase tracking-[0.22em]" style={{ color: INK }}>Scroll</span>
+            <svg className="animate-bounce" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--th-journal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+          </div>
+        </section>
       )}
 
-      {/* First-time: the button fades to this full-screen guiding-theme splash,
-          which ushers into the journal (auto-advances after the beat lands). */}
-      {entering && guidingQuestion && (
-        <div
-          className="fixed inset-0 z-[62] flex flex-col items-center justify-center px-7"
-          style={{ backgroundColor: LIGHT_RED, opacity: enterVisible ? 1 : 0, transition: 'opacity 650ms ease-out' }}
-        >
-          <GuidingSplash theme={guidingQuestion} visible={enterVisible} />
-        </div>
-      )}
+      {/* Sentinel — scrolling into it enters the Context Journal. Both paths reach
+          it by scroll (returning after its guiding-theme beat, first time after the
+          splash section), so nothing auto-advances and the splash stays scrollable. */}
+      <div ref={enterRef} className="h-[55vh] flex items-end justify-center pb-10" style={{ scrollSnapAlign: 'end' }}>
+        <span className="font-serif italic text-[15px]" style={{ color: INK, opacity: 0.6 }}>
+          Opening the Context Journal&hellip;
+        </span>
+      </div>
     </div>,
     document.body,
   );

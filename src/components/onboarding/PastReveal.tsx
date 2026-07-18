@@ -141,9 +141,12 @@ export default function PastReveal({ onDone }: { onDone?: () => void }) {
           real destination to be measured against. Centred as one block (mx-auto)
           with a wider step per row so it reads as a diagram, not a list. */}
       {diagonal && (
+        // vw-based indent (not %) so w-fit measures the true box and mx-auto
+        // centres it — Place's left margin then equals Technology's right margin,
+        // and the widest row can't run off the edge.
         <div className="w-fit mx-auto">
           {LENSES.map((lens, i) => (
-            <div key={lens.key} className="flex items-baseline" style={{ marginLeft: `${i * 25}%` }}>
+            <div key={lens.key} className="flex items-baseline" style={{ marginLeft: `${i * 6}vw` }}>
               <span
                 ref={(el) => { bigRefs.current[i] = el; }}
                 className="font-display leading-none"
