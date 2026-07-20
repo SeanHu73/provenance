@@ -47,6 +47,10 @@ const INK_SHADOW = 'rgba(26,20,14,0.9)';
  *  CONTEXT_ACCENT) — used on the ask-first gate's kicker. No P.A.S.T. lens uses it. */
 const CONTEXT_ACCENT = '#E08A5F';
 
+/** The collapsible Map & timeline panel is hidden for now (it distracted from the
+ *  lenses). Flip to re-enable — the panel and its wiring are otherwise intact. */
+const SHOW_MAP_TIMELINE = false;
+
 /** Optional light haptic tick (matches the repo pattern). */
 function haptic(ms = 8) {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(ms);
@@ -463,7 +467,9 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   // The floating "Ask your own" CTA is suppressed in the gated in-tour flow until
   // a premature Continue reveals it (then it stays). Standalone / revisit keep it.
   const gatedFlow = !!inTour && !revisit;
-  const floatingAskHidden = (gatedFlow && !askCtaRevealed) || (anyLensOpen && !continueNudge);
+  // The slider redesign carries its own ask-your-own on every lens card, so the
+  // floating global ask is redundant there and stays hidden.
+  const floatingAskHidden = lensVariant === 'slider' || (gatedFlow && !askCtaRevealed) || (anyLensOpen && !continueNudge);
 
   return (
     <div className="flex flex-col" style={{ height: '100dvh', backgroundColor: 'var(--th-bg)' }}>
@@ -595,7 +601,8 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
         </div>
       )}
 
-      {/* 1 — collapsible map + timeline (collapsed by default) */}
+      {/* 1 — collapsible map + timeline (collapsed by default) — hidden for now */}
+      {SHOW_MAP_TIMELINE && (
       <div data-cj-keep className="shrink-0 border-b" style={{ borderColor: 'var(--th-border)', backgroundColor: 'var(--th-surface)' }}>
         <button
           onClick={() => setShowMapPanel((v) => !v)}
@@ -633,6 +640,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
           </>
         )}
       </div>
+      )}
 
       {/* 2 — P.A.S.T. framework (the main space). Three A/B variants of the lens UI. */}
       <div className="flex-1 overflow-y-auto">

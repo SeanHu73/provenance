@@ -25,10 +25,6 @@ import type { ContextEntry, PastCategory, TimeRange } from '../types';
 import BookmarkButton from './BookmarkButton';
 import PastLensCard from './PastLensCard';
 
-/** The comic ink used for question-bubble borders + offset shadows. */
-const INK = '#241f1b';
-const SHADOW = 'rgba(26,20,14,0.9)';
-
 function haptic(ms = 8) {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(ms);
 }
@@ -133,7 +129,7 @@ function PastIndicator({ active, onJump }: { active: number; onJump: (i: number)
 /** The ✱ instructions slide — the first thing in the deck: pick a lens, then swipe. */
 function InstructionsSlide({ onNext }: { onNext: () => void }) {
   return (
-    <div className="rounded-[20px] overflow-hidden bg-warm-white flex flex-col items-center text-center px-6 py-10" style={{ border: `3px solid ${INK}`, boxShadow: `5px 5px 0 ${SHADOW}` }}>
+    <div className="rounded-3xl bg-warm-white flex flex-col items-center text-center px-6 py-10" style={{ border: '1px solid var(--th-border)', boxShadow: '0 6px 24px rgba(26,20,14,0.10)' }}>
       <span className="font-display font-bold leading-none" style={{ fontSize: 38, color: STAR_COLOUR }}>✱</span>
       <p className="mt-5 font-serif text-[21px] leading-snug text-text-primary max-w-[22ch]">
         Pick a lens you want to look through to ask your question.
@@ -284,8 +280,10 @@ export default function PastPanelSlider({
   );
 }
 
-/** One lens' contents: the coloured name bar, its questions, an in-lens ask, and
- *  any contexts added here. */
+/** One lens' contents (redesign): a clean white card — the lens name in its own
+ *  colour with an (i) and its sub-topics, a "what are you curious about?" prompt
+ *  leading the ask-your-own pill, then the model questions (locked ones last) and
+ *  any contexts already added here. */
 function LensSlide({ lens, questions, added, savedIds, focusedId, lockInfoById, onOpenCard, onAsk, onFocus, onToggleSave, onOpenFull }: {
   lens: LensDef;
   questions: ContextEntry[];
@@ -311,81 +309,66 @@ function LensSlide({ lens, questions, added, savedIds, focusedId, lockInfoById, 
     ...questions.filter((q) => lockInfoById?.has(q.id)),
   ];
   return (
-    <div className="rounded-[20px] overflow-hidden" style={{ border: `3px solid ${INK}`, boxShadow: `5px 5px 0 ${SHADOW}` }}>
-      {/* coloured name bar — big name + truncated description with an (i) that
-          opens the full lens page. */}
-      <div className="relative px-4 pt-3 pb-3.5" style={{ backgroundColor: colour }}>
-        <span className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-black/20 pointer-events-none" />
-        <div className="relative flex items-center gap-2">
-          <h3 className="font-display font-bold text-warm-white leading-none" style={{ fontSize: 34 }}>{lens.label}</h3>
-          <button
-            onClick={onOpenCard}
-            aria-label={`See ${lens.label} details`}
-            className="ml-auto shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-warm-white bg-white/20 hover:bg-white/30 border border-white/40"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><circle cx="12" cy="7.6" r="0.6" fill="currentColor" /></svg>
-          </button>
-        </div>
-        <button onClick={onOpenCard} className="relative mt-1.5 block w-full text-left">
-          <p className="font-serif italic text-warm-white/90 text-[14px] leading-snug truncate">
-            {lens.definition} <span className="not-italic font-bold">&hellip;</span>
-          </p>
+    <div className="rounded-3xl bg-warm-white px-5 py-5" style={{ border: '1px solid var(--th-border)', boxShadow: '0 6px 24px rgba(26,20,14,0.10)' }}>
+      {/* lens identity — the name in its lens colour, an (i) to open the full lens
+          page, and the sub-topics beneath. */}
+      <div className="flex items-center gap-1.5">
+        <h3 className="font-display font-bold leading-none" style={{ fontSize: 26, color: colour }}>{lens.label}</h3>
+        <button onClick={onOpenCard} aria-label={`See ${lens.label} details`} className="shrink-0 flex items-center justify-center" style={{ color: colour }}>
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><circle cx="12" cy="7.6" r="0.6" fill="currentColor" /></svg>
         </button>
       </div>
+      <p className="mt-1.5 text-[13px] leading-snug text-text-secondary">{lens.categories.join('   |   ')}</p>
 
-      {/* body — ask your own (first + prominent), then the model questions others
-          have asked, then any contexts already added here. */}
-      <div className="bg-warm-white px-4 py-4 space-y-3">
-        {/* The ask-your-own CTA leads: a clear, filled invitation (title + hint),
-            not a subtle pill, so it's obvious the learner can pose their own. */}
-        {onAsk && (
-          <button
-            onClick={onAsk}
-            className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-warm-white shadow-md"
-            style={{ backgroundColor: 'var(--th-primary)' }}
-          >
-            <span className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-white/20">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-              </svg>
-            </span>
-            <span className="flex-1 min-w-0">
-              <span className="block font-display text-[20px] leading-tight">Ask your own question</span>
-              <span className="block font-serif text-[13.5px] leading-snug text-warm-white/85 mt-0.5">What are you curious about?</span>
-            </span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-90"><path d="M9 6l6 6-6 6" /></svg>
-          </button>
-        )}
+      {/* the prompt + ask-your-own — the primary action on the card. */}
+      <h2 className="mt-5 font-display font-bold leading-tight text-text-primary" style={{ fontSize: 'clamp(24px, 6.8vw, 30px)' }}>
+        What are you curious about?
+      </h2>
+      {onAsk && (
+        <button
+          onClick={onAsk}
+          className="mt-3 w-full flex items-center gap-3 rounded-full bg-warm-white px-3 py-2.5 text-left"
+          style={{ border: '1.5px solid var(--th-primary)' }}
+        >
+          <span className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-warm-white" style={{ backgroundColor: 'var(--th-primary)' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.4-3 4" /><line x1="12" y1="17.5" x2="12.01" y2="17.5" />
+            </svg>
+          </span>
+          <span className="flex-1 font-semibold text-[15px]" style={{ color: 'var(--text-primary)' }}>Ask your own question</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" style={{ color: 'var(--th-primary)' }}><path d="M9 6l6 6-6 6" /></svg>
+        </button>
+      )}
 
-        {orderedQuestions.length > 0 && (
-          <div className="pt-1.5 space-y-3">
-            <p className="text-[13px] font-semibold text-text-secondary">Explore questions others have asked</p>
-            {orderedQuestions.map((entry) => (
-              <QuestionRow key={entry.id} entry={entry} colour={colour} lock={lockInfoById?.get(entry.id) ?? null} onTap={() => onOpenFull(entry)} />
-            ))}
-          </div>
-        )}
+      {/* model questions (locked last) */}
+      {orderedQuestions.length > 0 && (
+        <div className="mt-4 space-y-2.5">
+          <p className="text-[12px] font-semibold text-text-secondary">Explore questions others have asked</p>
+          {orderedQuestions.map((entry) => (
+            <QuestionRow key={entry.id} entry={entry} colour={colour} lock={lockInfoById?.get(entry.id) ?? null} onTap={() => onOpenFull(entry)} />
+          ))}
+        </div>
+      )}
 
-        {orderedQuestions.length === 0 && added.length === 0 && !onAsk && (
-          <p className="text-sm text-text-muted py-1">No context here yet.</p>
-        )}
+      {orderedQuestions.length === 0 && added.length === 0 && !onAsk && (
+        <p className="mt-4 text-sm text-text-muted">No context here yet.</p>
+      )}
 
-        {added.length > 0 && (
-          <div data-cj-keep className="flex gap-3 overflow-x-auto cj-hscroll -mx-1 px-1 py-0.5">
-            {added.map((entry) => (
-              <ContextCard
-                key={entry.id}
-                entry={entry}
-                colour={colour}
-                active={focusedId === entry.id}
-                saved={savedIds.has(entry.id)}
-                onTap={() => handleThumb(entry)}
-                onToggleSave={() => onToggleSave(entry.id)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {added.length > 0 && (
+        <div data-cj-keep className="mt-4 flex gap-3 overflow-x-auto cj-hscroll -mx-1 px-1 py-0.5">
+          {added.map((entry) => (
+            <ContextCard
+              key={entry.id}
+              entry={entry}
+              colour={colour}
+              active={focusedId === entry.id}
+              saved={savedIds.has(entry.id)}
+              onTap={() => handleThumb(entry)}
+              onToggleSave={() => onToggleSave(entry.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -404,26 +387,31 @@ function QuestionRow({ entry, colour, lock, onTap }: {
   const label = entry.question?.trim() || entry.title?.trim() || 'Explore this context';
   const photo = thumbnailPhotoUrl(entry);
 
+  // A compact row: a small thumbnail (or a lens-tinted icon) leads, the question
+  // reads beside it, a chevron trails. Locked ones swap the thumbnail for a lock,
+  // dim the text, and toggle a hint naming the lens to explore first.
   if (lock) {
     return (
       <div>
         <button
           onClick={() => { haptic(6); setShowHint((v) => !v); }}
           aria-expanded={showHint}
-          className="w-full flex items-center gap-3 text-left rounded-xl border bg-black/[0.02] px-4 py-3"
-          style={{ borderColor: 'var(--th-border)' }}
+          className="w-full flex items-center gap-3 text-left rounded-2xl px-3 py-3"
+          style={{ backgroundColor: 'var(--th-surface-alt)', opacity: 0.75 }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-text-muted">
-            <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-          <span className="flex-1 min-w-0 font-serif text-[16px] text-text-muted leading-snug">{label}</span>
+          <span className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--th-border)' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted">
+              <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </span>
+          <span className="flex-1 min-w-0 font-serif text-[15px] text-text-muted leading-snug">{label}</span>
         </button>
         <AnimatePresence initial={false}>
           {showHint && (
             <motion.p
               initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="overflow-hidden px-4 pt-1.5 text-[13px] text-text-secondary leading-snug"
+              className="overflow-hidden px-3 pt-1.5 text-[13px] text-text-secondary leading-snug"
             >
               <span className="inline-flex items-center gap-1.5">
                 Explore the
@@ -443,22 +431,23 @@ function QuestionRow({ entry, colour, lock, onTap }: {
   return (
     <button
       onClick={onTap}
-      className="relative w-full text-left rounded-2xl"
-      style={{ backgroundColor: 'var(--th-bg)', border: `2.5px solid ${colour}`, padding: '13px 15px', boxShadow: `3px 3px 0 color-mix(in srgb, ${colour} 45%, ${SHADOW})` }}
+      className="w-full flex items-center gap-3 text-left rounded-2xl px-3 py-3"
+      style={{ backgroundColor: 'var(--th-surface-alt)' }}
     >
-      <span className="flex items-start gap-2">
-        <span className="flex-1 min-w-0 font-serif text-[19.5px] text-text-primary leading-snug">{label}</span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-1.5">
-          <path d="M9 6l6 6-6 6" />
-        </svg>
-      </span>
-      {photo && (
+      {photo ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo} alt="" className="block mx-auto mt-2.5 rounded-lg max-w-full" style={{ maxHeight: 150, border: `1.5px solid ${colour}55` }} />
+        <img src={photo} alt="" className="shrink-0 w-11 h-11 rounded-xl object-cover" />
+      ) : (
+        <span className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${colour}1f` }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z" />
+          </svg>
+        </span>
       )}
-      {/* speech-bubble tail on the left */}
-      <span aria-hidden className="absolute" style={{ left: -13, top: 16, width: 0, height: 0, borderTop: '10px solid transparent', borderBottom: '10px solid transparent', borderRight: `13px solid ${colour}` }} />
-      <span aria-hidden className="absolute" style={{ left: -9, top: 19.5, width: 0, height: 0, borderTop: '6.5px solid transparent', borderBottom: '6.5px solid transparent', borderRight: '9px solid var(--th-bg)' }} />
+      <span className="flex-1 min-w-0 font-serif text-[15px] leading-snug text-text-primary">{label}</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+        <path d="M9 6l6 6-6 6" />
+      </svg>
     </button>
   );
 }
