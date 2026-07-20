@@ -49,8 +49,10 @@ interface Props {
   initiallyAllSeen?: boolean;
 }
 
-/** A glassy magnifying lens — a shaded circle, no handle — worn over the active
- *  P·A·S·T initial. Translucent so the enlarged letter reads *through* it. */
+/** A soft "lens" halo worn over the active P·A·S·T initial (the redesign's style):
+ *  a pale tinted disc ringed in the lens colour, with a faint outer glow. Flat and
+ *  clean — it sits *behind* the letter (which carries `z-10`) so the letter reads
+ *  crisply on top. */
 function LensGlass({ colour, size }: { colour: string; size: number }) {
   return (
     <span
@@ -61,24 +63,11 @@ function LensGlass({ colour, size }: { colour: string; size: number }) {
         height: size,
         transform: 'translate(-50%, -50%)',
         borderRadius: '999px',
-        // glassy dome: bright top-left, sinking to a faint tint at the rim
-        background:
-          `radial-gradient(circle at 34% 28%, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.16) 42%, ${colour}22 78%, ${colour}33 100%)`,
-        border: `3px solid ${colour}`,
-        boxShadow: `inset 0 3px 8px rgba(255,255,255,0.55), inset 0 -5px 10px ${colour}40, 0 4px 10px rgba(26,20,14,0.28)`,
+        backgroundColor: `color-mix(in srgb, ${colour} 15%, #fff)`,
+        border: `2px solid ${colour}`,
+        boxShadow: `0 0 0 5px color-mix(in srgb, ${colour} 12%, transparent), 0 1px 6px color-mix(in srgb, ${colour} 22%, transparent)`,
       }}
-    >
-      {/* crescent glare */}
-      <span
-        className="absolute"
-        style={{
-          left: '18%', top: '14%', width: '46%', height: '30%',
-          borderRadius: '999px',
-          background: 'linear-gradient(140deg, rgba(255,255,255,0.85), rgba(255,255,255,0))',
-          transform: 'rotate(-18deg)',
-        }}
-      />
-    </span>
+    />
   );
 }
 
@@ -103,7 +92,7 @@ function PastIndicator({ active, onJump }: { active: number; onJump: (i: number)
               style={{ width: isActive ? 58 : 30, height: 58 }}
             >
               <span
-                className="font-display font-bold leading-none transition-all duration-200"
+                className="relative z-10 font-display font-bold leading-none transition-all duration-200"
                 style={{
                   // the ✱ sits smaller than a letter at the same slot so the
                   // asterisk's arms don't overpower the P/A/S/T beside it.
@@ -320,23 +309,27 @@ function LensSlide({ lens, questions, added, savedIds, focusedId, lockInfoById, 
       </div>
       <p className="mt-1.5 text-[13px] leading-snug text-text-secondary">{lens.categories.join('   |   ')}</p>
 
-      {/* the prompt + ask-your-own — the primary action on the card. */}
-      <h2 className="mt-5 font-display font-bold leading-tight text-text-primary" style={{ fontSize: 'clamp(24px, 6.8vw, 30px)' }}>
+      {/* the prompt + ask-your-own — the primary action on the card, centred, with
+          a soft halo so it reads as the focal point. */}
+      <h2 className="mt-5 text-center font-display font-bold leading-tight text-text-primary" style={{ fontSize: 'clamp(24px, 6.8vw, 30px)' }}>
         What are you curious about?
       </h2>
       {onAsk && (
         <button
           onClick={onAsk}
-          className="mt-3 w-full flex items-center gap-3 rounded-full bg-warm-white px-3 py-2.5 text-left"
-          style={{ border: '1.5px solid var(--th-primary)' }}
+          className="mt-4 w-full flex items-center gap-3 rounded-full bg-warm-white px-4 py-3.5 text-left"
+          style={{
+            border: '1.5px solid var(--th-primary)',
+            boxShadow: '0 0 0 5px color-mix(in srgb, var(--th-primary) 9%, transparent), 0 4px 16px color-mix(in srgb, var(--th-primary) 16%, transparent)',
+          }}
         >
-          <span className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-warm-white" style={{ backgroundColor: 'var(--th-primary)' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <span className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-warm-white" style={{ backgroundColor: 'var(--th-primary)' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.4-3 4" /><line x1="12" y1="17.5" x2="12.01" y2="17.5" />
             </svg>
           </span>
-          <span className="flex-1 font-semibold text-[15px]" style={{ color: 'var(--text-primary)' }}>Ask your own question</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" style={{ color: 'var(--th-primary)' }}><path d="M9 6l6 6-6 6" /></svg>
+          <span className="flex-1 font-semibold text-[16.5px]" style={{ color: 'var(--text-primary)' }}>Ask your own question</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" style={{ color: 'var(--th-primary)' }}><path d="M9 6l6 6-6 6" /></svg>
         </button>
       )}
 
@@ -396,15 +389,15 @@ function QuestionRow({ entry, colour, lock, onTap }: {
         <button
           onClick={() => { haptic(6); setShowHint((v) => !v); }}
           aria-expanded={showHint}
-          className="w-full flex items-center gap-3 text-left rounded-2xl px-3 py-3"
+          className="w-full flex items-center gap-3.5 text-left rounded-2xl px-3.5 py-3.5"
           style={{ backgroundColor: 'var(--th-surface-alt)', opacity: 0.75 }}
         >
-          <span className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--th-border)' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted">
+          <span className="shrink-0 w-16 h-16 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--th-border)' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted">
               <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
           </span>
-          <span className="flex-1 min-w-0 font-serif text-[15px] text-text-muted leading-snug">{label}</span>
+          <span className="flex-1 min-w-0 font-serif text-[16.5px] text-text-muted leading-snug">{label}</span>
         </button>
         <AnimatePresence initial={false}>
           {showHint && (
@@ -431,21 +424,21 @@ function QuestionRow({ entry, colour, lock, onTap }: {
   return (
     <button
       onClick={onTap}
-      className="w-full flex items-center gap-3 text-left rounded-2xl px-3 py-3"
+      className="w-full flex items-center gap-3.5 text-left rounded-2xl px-3.5 py-3.5"
       style={{ backgroundColor: 'var(--th-surface-alt)' }}
     >
       {photo ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo} alt="" className="shrink-0 w-11 h-11 rounded-xl object-cover" />
+        <img src={photo} alt="" className="shrink-0 w-16 h-16 rounded-xl object-cover" />
       ) : (
-        <span className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${colour}1f` }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <span className="shrink-0 w-16 h-16 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${colour}1f` }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z" />
           </svg>
         </span>
       )}
-      <span className="flex-1 min-w-0 font-serif text-[15px] leading-snug text-text-primary">{label}</span>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+      <span className="flex-1 min-w-0 font-serif text-[17px] leading-snug text-text-primary">{label}</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
         <path d="M9 6l6 6-6 6" />
       </svg>
     </button>

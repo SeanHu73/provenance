@@ -37,8 +37,10 @@ export const CONTEXT_ACCENT = '#E08A5F';
 const LIGHT_RED = '#F6DEDB';
 const INK = 'var(--th-journal)';
 
-/** The glassy magnifying lens worn over the active initial — same treatment as the
- *  Context Journal's indicator, so the lens metaphor is consistent across both. */
+/** The soft lens halo worn over the active initial — same treatment as the Context
+ *  Journal's indicator, so the lens metaphor is consistent across both: a pale
+ *  tinted disc ringed in the lens colour, with a faint outer glow. Sits behind the
+ *  letter (which carries z-10). */
 function LensGlass({ colour, size }: { colour: string; size: number }) {
   return (
     <span
@@ -46,13 +48,11 @@ function LensGlass({ colour, size }: { colour: string; size: number }) {
       className="pointer-events-none absolute left-1/2 top-1/2"
       style={{
         width: size, height: size, transform: 'translate(-50%, -50%)', borderRadius: '999px',
-        background: `radial-gradient(circle at 34% 28%, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.16) 42%, ${colour}22 78%, ${colour}33 100%)`,
-        border: `3px solid ${colour}`,
-        boxShadow: `inset 0 3px 8px rgba(255,255,255,0.55), inset 0 -5px 10px ${colour}40, 0 4px 10px rgba(26,20,14,0.28)`,
+        backgroundColor: `color-mix(in srgb, ${colour} 15%, #fff)`,
+        border: `2px solid ${colour}`,
+        boxShadow: `0 0 0 5px color-mix(in srgb, ${colour} 12%, transparent), 0 1px 6px color-mix(in srgb, ${colour} 22%, transparent)`,
       }}
-    >
-      <span className="absolute" style={{ left: '18%', top: '14%', width: '46%', height: '30%', borderRadius: '999px', background: 'linear-gradient(140deg, rgba(255,255,255,0.85), rgba(255,255,255,0))', transform: 'rotate(-18deg)' }} />
-    </span>
+    />
   );
 }
 
@@ -108,7 +108,7 @@ function LensSlider({ questionsByLens }: { questionsByLens: Record<string, strin
                 className="relative flex items-center justify-center bg-transparent border-0 p-0"
                 style={{ width: on ? 58 : 30, height: 58 }}
               >
-                <span className="font-display font-bold leading-none transition-all duration-200" style={{ fontSize: on ? 46 : 24, color: l.colour, opacity: on ? 1 : 0.4 }}>
+                <span className="relative z-10 font-display font-bold leading-none transition-all duration-200" style={{ fontSize: on ? 46 : 24, color: l.colour, opacity: on ? 1 : 0.4 }}>
                   {l.label[0]}
                 </span>
                 {on && <LensGlass colour={l.colour} size={62} />}
