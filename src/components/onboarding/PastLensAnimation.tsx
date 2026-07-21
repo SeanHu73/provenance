@@ -24,8 +24,8 @@ export type PastLens = 'place' | 'affairs' | 'society' | 'technology';
 
 const STROKE = '#A33829';       // rust — the line-art colour
 const SW = 8;                   // uniform stroke width
-const RIVER_COLOR = '#2C3E3A';  // brand deep teal (fallback #3D6B7A if too dark)
-const RIVER_SW = 20;            // ~2.5× the house stroke: a body of water, not a road
+const RIVER_COLOR = '#5E93AE';  // a lighter water-blue that reads clearly against the cream
+const RIVER_SW = 28;            // ~3.5× the house stroke: unmistakably a body of water
 const VB_W = 1024;
 const VB_H = 560;
 
