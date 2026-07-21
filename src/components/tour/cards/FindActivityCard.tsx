@@ -29,10 +29,10 @@ import FormattedText from './FormattedText';
  *  block. */
 const PHOTO_CAP = '38vh';
 
-/** The FIND briefing's font. Montserrat — a clean, highly legible sans (already
- *  the app's nav/label face) — rather than the editorial serif elsewhere, so the
- *  ask reads friendly *and* readable. `--font-montserrat` is loaded in layout.tsx. */
-const CLUE_FONT = 'var(--font-montserrat)';
+/** The FIND briefing's font — the app's body serif (Newsreader), the face used
+ *  for reading copy everywhere else, so the FIND page sits with the rest of the
+ *  tour instead of jarring against it. */
+const CLUE_FONT = 'var(--th-font-body)';
 
 interface Props {
   stop: Stop;
@@ -148,42 +148,50 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
             onChange={(e) => onPick(e.target.files?.[0])}
           />
           {!shot ? (
-            <button
-              onClick={() => inputRef.current?.click()}
-              className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95"
-              style={{ backgroundColor: 'var(--th-primary)', color: '#fff' }}
-              aria-label="Take a photo of what you found"
-            >
-              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-            </button>
+            <>
+              <button
+                onClick={() => inputRef.current?.click()}
+                className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95"
+                style={{ backgroundColor: 'var(--th-primary)', color: '#fff' }}
+                aria-label="Take a photo of what you found"
+              >
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </button>
+              <p className="text-[18px] italic text-center" style={{ fontFamily: CLUE_FONT, color: 'var(--text-secondary)' }}>
+                Found it? Take a photo!
+              </p>
+            </>
           ) : (
-            /* Photo taken → green pulsing check. The pulse is the submit cue; a
-               big obvious tick, not a subtle state change. Tap to compare. */
-            <button
-              onClick={submit}
-              className="submit-pulse w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95"
-              style={{ backgroundColor: '#16A34A', color: '#fff' }}
-              aria-label="Submit your photo"
-            >
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M20 6 9 17l-5-5" />
-              </svg>
-            </button>
-          )}
-          <p className="text-[18px] italic text-center" style={{ fontFamily: CLUE_FONT, color: shot ? '#16A34A' : 'var(--text-secondary)' }}>
-            {shot ? 'Tap to submit your photo' : 'Found it? Take a photo!'}
-          </p>
-          {shot && (
-            <button
-              onClick={() => inputRef.current?.click()}
-              className="text-[13px] underline"
-              style={{ fontFamily: CLUE_FONT, color: 'var(--text-secondary)' }}
-            >
-              Retake
-            </button>
+            /* Photo taken → show it here on the camera screen with a single green
+               "Submit" button. Seeing the shot means the button is a clear submit
+               of what they just took, not a blind second approval. Tap to compare. */
+            <>
+              <div className="rounded-xl overflow-hidden bg-black/[0.04]" style={{ maxWidth: '72%' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- object URL, not a served asset */}
+                <img src={shot.url} alt="The photo you took" className="block object-contain" style={{ maxHeight: '32vh', maxWidth: '100%' }} />
+              </div>
+              <button
+                onClick={submit}
+                className="submit-pulse inline-flex items-center gap-2 px-8 py-3.5 rounded-full shadow-lg transition-transform active:scale-95 text-[17px] font-semibold"
+                style={{ backgroundColor: '#16A34A', color: '#fff', fontFamily: CLUE_FONT }}
+                aria-label="Submit your photo"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+                Submit
+              </button>
+              <button
+                onClick={() => inputRef.current?.click()}
+                className="text-[13px] underline"
+                style={{ fontFamily: CLUE_FONT, color: 'var(--text-secondary)' }}
+              >
+                Retake
+              </button>
+            </>
           )}
         </div>
       ) : (

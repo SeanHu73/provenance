@@ -29,6 +29,10 @@ import { hashText, ttsSanitize } from '@/lib/tts-text';
 /** localStorage flag: the one-time "you can edit this context" nudge was seen. */
 const EDIT_HINT_KEY = 'cj-edit-hint-seen';
 
+/** The context reader's pinned map + timeline is hidden for now — too much
+ *  information alongside the read. Flip to re-enable; the wiring stays intact. */
+const SHOW_CONTEXT_MAP_TIMELINE = false;
+
 interface Props {
   entry: ContextEntry;
   saved: boolean;
@@ -163,8 +167,9 @@ export default function ContextOverlay({
 
         {/* scroll body — map/timeline pinned at the top, scrolls away as you read */}
         <div className="flex-1 overflow-y-auto">
-          {/* 1 — the context's map + timeline (only when the editor opted in) */}
-          {(entry.includePlaceTime ?? !!entry.geometry) && (
+          {/* 1 — the context's map + timeline (only when the editor opted in) —
+              hidden for now (too much information alongside the read). */}
+          {SHOW_CONTEXT_MAP_TIMELINE && (entry.includePlaceTime ?? !!entry.geometry) && (
             <>
               <div style={{ height: '34vh', minHeight: 220 }}>
                 <ContextMapLoader
