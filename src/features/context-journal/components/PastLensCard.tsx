@@ -12,6 +12,12 @@ import { motion } from 'framer-motion';
 import type { LensDef } from '../constants';
 import PastLensAnimation, { hasPastLensAnimation, type PastLens } from '@/components/onboarding/PastLensAnimation';
 
+/** Maps a lens's data key to the animation's lens value (the A lens is keyed
+ *  'attitudes' in the data but 'affairs' in the animation). */
+const LENS_ANIM_KEY: Record<string, PastLens | undefined> = {
+  place: 'place', attitudes: 'affairs', society: 'society', technology: 'technology',
+};
+
 export default function PastLensCard({ lens, onClose }: { lens: LensDef; onClose: () => void }) {
   if (typeof document === 'undefined') return null;
   return createPortal(
@@ -33,12 +39,17 @@ export default function PastLensCard({ lens, onClose }: { lens: LensDef; onClose
       >
         {/* Animated line-art intro for the lens, on its cream canvas. Plays once
             when the card opens (becomes active). Only lenses with an animation get
-            the band; the others show nothing here for now. */}
-        {hasPastLensAnimation(lens.key as PastLens) && (
-          <div className="w-full" style={{ backgroundColor: '#F8F8EC' }}>
-            <PastLensAnimation lens={lens.key as PastLens} />
-          </div>
-        )}
+            the band; the others show nothing here for now. (The A lens's data key
+            is 'attitudes'; the animation's is 'affairs'.) */}
+        {(() => {
+          const animLens = LENS_ANIM_KEY[lens.key];
+          if (!animLens || !hasPastLensAnimation(animLens)) return null;
+          return (
+            <div className="w-full" style={{ backgroundColor: '#F8F8EC' }}>
+              <PastLensAnimation lens={animLens} />
+            </div>
+          );
+        })()}
 
         {/* header — coloured band with just the (enlarged) lens title; the
             sub-topics are shown once below, beside their icons. */}
