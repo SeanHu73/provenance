@@ -648,8 +648,12 @@ function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession
 }
 
 /** After a stop's positioned contexts are exhausted: advance to the next stop,
- *  or (if this was the act's last stop) begin the end-of-act chain
- *  (act_context_questions → [act_reflection] → community_share). */
+ *  or (if this was the act's last stop) enter the act's Contextualise step —
+ *  the current end-of-act chain: act_context_intro → act_context → reflection →
+ *  community. (It used to route to `act_context_questions`, the retired
+ *  ContextQuestionsCard "group discussion / response" screen, which skipped the
+ *  redesigned reflection — reachable only on this no-positioned-contexts path, so
+ *  it surfaced the old sequence intermittently.) */
 function resumeAfterContexts(
   session: TourSession, tour: Tour, act: Act, currentStop: Stop, completedStops: string[],
 ): TourSession {
@@ -671,7 +675,7 @@ function resumeAfterContexts(
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: 'act_context_questions',
+    currentPhase: 'act_context_intro',
     currentRound: 0,
     completedStops,
     currentContextId: null,
@@ -930,9 +934,11 @@ export function completeCommunityForum(session: TourSession, tour: Tour): TourSe
   return advanceToNextActOrClosing(session, tour, act);
 }
 
-// ── End-of-act chain (new): act_context → act_context_questions →
-//    act_reflection → community_share → next act. Each step's completer routes
-//    to the next applicable phase, skipping unauthored ones. ──────────────
+// ── End-of-act chain: act_context_intro → act_context → act_reflection_intro →
+//    act_reflection → community_share → next act. Each step's completer routes to
+//    the next applicable phase. (`act_context_questions` is retired — nothing
+//    routes to it now; its completer/render are kept only for in-flight sessions.)
+
 
 /** Context mode: the "Context" intro splash ("So what context do we need?")
  *  finished → the Context page itself. */
