@@ -3,10 +3,9 @@
 /**
  * Immersive reader for a single context (Slice 2). Replaces the old
  * ContextFullScreen: the context's **map + timeline are pinned at the top** of a
- * scroll-unlocked sheet, TTS **auto-reads Title → ~1s pause → Long explanation**
- * (autoplay attempted; a play/stop button always shows), the long explanation is
- * hidden behind an **"expand to read along"** control sitting between the map and
- * the photos, then photos, audio, and related questions follow.
+ * scroll-unlocked sheet, the narration is **labelled with the question it answers**,
+ * the **photos come before** the long explanation, which is hidden behind an
+ * **"expand to read along"** control, then audio and related questions follow.
  *
  * Serves both entry points:
  *   • authored *question* → pass `onAdd` (adds a learner copy, closes the overlay)
@@ -181,12 +180,10 @@ export default function ContextOverlay({
             </>
           )}
 
-          {/* 2 — title, question, quick answer */}
+          {/* 2 — title, then the narration labelled with the question it answers
+              (the question no longer repeats as an italic line under the title). */}
           <div className="px-5 pt-4">
             <h2 className="font-display text-[26px] leading-tight text-text-primary">{entry.title}</h2>
-            {entry.question && (
-              <p className="mt-1 font-serif italic text-[15px] text-text-secondary leading-snug">{entry.question}</p>
-            )}
             {/* Narration. An uploaded voiceover wins outright — it's played
                 directly. Otherwise OpenAI narration (Title + Full Explanation),
                 reusing the cached authored-context audio when the hash matches or
@@ -194,11 +191,11 @@ export default function ContextOverlay({
             {(entry.voiceoverUrl || entry.longExplanation.trim()) && (
               <div className="mt-3">
                 {entry.voiceoverUrl ? (
-                  <AudioButton audioUrl={entry.voiceoverUrl} title={entry.voiceoverTitle || entry.title || 'Narration'} />
+                  <AudioButton audioUrl={entry.voiceoverUrl} title={entry.question?.trim() || entry.voiceoverTitle || entry.title || 'Narration'} />
                 ) : (
                   <OpenAiSpeechBar
                     text={contextNarrationText(entry)}
-                    title={entry.title}
+                    title={entry.question?.trim() || entry.title}
                     cachedUrl={entry.ttsAudioHash && entry.ttsAudioHash === hashText(ttsSanitize(contextNarrationText(entry))) ? entry.ttsAudioUrl : null}
                   />
                 )}
@@ -206,7 +203,20 @@ export default function ContextOverlay({
             )}
           </div>
 
-          {/* 3 — expand to read along (the long explanation), between map and photos */}
+          {/* 3 — photos, above the full explanation */}
+          {photos.length > 0 && (
+            <div className={`px-5 pt-4 ${photos.length > 1 ? 'flex gap-3 overflow-x-auto cj-hscroll' : ''}`}>
+              {photos.map((p) => (
+                <figure key={p.id} className={photos.length > 1 ? 'shrink-0 w-[80%]' : ''} style={{ scrollSnapAlign: 'start' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.url} alt={p.title} className="w-full max-h-[42vh] object-cover rounded-xl" />
+                  {p.title && <figcaption className="mt-1 text-xs text-text-muted">{p.title}</figcaption>}
+                </figure>
+              ))}
+            </div>
+          )}
+
+          {/* 4 — expand to read along (the long explanation), below the photos */}
           {entry.longExplanation.trim() && (
             <div className="px-5 pt-3">
               <button
@@ -230,19 +240,6 @@ export default function ContextOverlay({
                   ))}
                 </p>
               )}
-            </div>
-          )}
-
-          {/* 4 — photos */}
-          {photos.length > 0 && (
-            <div className={`px-5 pt-4 ${photos.length > 1 ? 'flex gap-3 overflow-x-auto cj-hscroll' : ''}`}>
-              {photos.map((p) => (
-                <figure key={p.id} className={photos.length > 1 ? 'shrink-0 w-[80%]' : ''} style={{ scrollSnapAlign: 'start' }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={p.url} alt={p.title} className="w-full max-h-[42vh] object-cover rounded-xl" />
-                  {p.title && <figcaption className="mt-1 text-xs text-text-muted">{p.title}</figcaption>}
-                </figure>
-              ))}
             </div>
           )}
 

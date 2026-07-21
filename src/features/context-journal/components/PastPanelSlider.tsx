@@ -192,11 +192,11 @@ export default function PastPanelSlider({
 
   return (
     <div className="px-4 pb-5">
-      {/* Top: the guiding theme alone, centred. The "look through the P.A.S.T."
-          framing now lives on the intro splash before this page. */}
+      {/* Top: a "Contextualise…" kicker over the guiding theme, centred. */}
       {guidingQuestion && (
-        <div className="px-1 pt-6 pb-1">
-          <p className="font-display font-bold text-[28px] leading-tight text-center" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>
+        <div className="px-1 pt-5 pb-1 text-center">
+          <p className="font-serif italic text-[14px] leading-none" style={{ color: 'var(--text-secondary)' }}>Contextualise&hellip;</p>
+          <p className="mt-1 font-display font-bold text-[22px] leading-tight" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>
         </div>
       )}
 
@@ -328,7 +328,7 @@ function LensSlide({ lens, questions, added, savedIds, focusedId, lockInfoById, 
               <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.4-3 4" /><line x1="12" y1="17.5" x2="12.01" y2="17.5" />
             </svg>
           </span>
-          <span className="flex-1 font-semibold text-[16.5px]" style={{ color: 'var(--text-primary)' }}>Ask your own question</span>
+          <span className="flex-1 font-semibold text-[18.5px]" style={{ color: 'var(--text-primary)' }}>Ask your own question</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" style={{ color: 'var(--th-primary)' }}><path d="M9 6l6 6-6 6" /></svg>
         </button>
       )}

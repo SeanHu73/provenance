@@ -132,6 +132,7 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
   useEffect(() => { if (jobId) setJobTheory(jobId, theory); }, [jobId, theory]);
 
   const lensLabel = LENS_BY_KEY[lens]?.label ?? 'this';
+  const lensColour = LENS_BY_KEY[lens]?.colour ?? 'var(--th-primary)';
 
   // Pulse + a firm haptic the moment the background answer lands, to draw the
   // learner back from writing their theory.
@@ -267,9 +268,9 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
   };
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="w-full sm:max-w-2xl h-[92vh] sm:h-auto sm:max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-6"
+        className="w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-3xl p-5 shadow-2xl"
         style={{ backgroundColor: 'var(--th-surface)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -298,10 +299,14 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
 
         {phase === 'compose' && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-[13px]">
-              <span style={{ color: 'var(--text-secondary)' }}>Asking through</span>
-              <span className="px-2.5 py-1 rounded-full text-white font-semibold" style={{ backgroundColor: LENS_BY_KEY[lens]?.colour }}>{LENS_BY_KEY[lens]?.label}</span>
-              {!presetLens && <button onClick={() => setPhase('lens')} className="underline" style={{ color: 'var(--text-secondary)' }}>change</button>}
+            {/* Which lens they're asking through — a prominent, lens-coloured banner. */}
+            <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ backgroundColor: `${lensColour}14`, border: `1.5px solid ${lensColour}` }}>
+              <span className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-display font-bold text-[20px]" style={{ backgroundColor: lensColour }}>{lensLabel[0]}</span>
+              <span className="flex-1 min-w-0 leading-tight">
+                <span className="block text-[11px] uppercase tracking-[0.12em]" style={{ color: 'var(--text-secondary)' }}>Asking through the</span>
+                <span className="block font-display font-bold text-[19px]" style={{ color: lensColour }}>{lensLabel} lens</span>
+              </span>
+              {!presetLens && <button onClick={() => setPhase('lens')} className="shrink-0 text-[13px] underline" style={{ color: 'var(--text-secondary)' }}>change</button>}
             </div>
             <RecordButton onTranscript={(t) => setText((prev) => (prev ? `${prev} ${t}` : t))} />
             <textarea
