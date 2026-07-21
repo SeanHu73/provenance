@@ -10,6 +10,7 @@
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import type { LensDef } from '../constants';
+import PastLensAnimation, { hasPastLensAnimation, type PastLens } from '@/components/onboarding/PastLensAnimation';
 
 export default function PastLensCard({ lens, onClose }: { lens: LensDef; onClose: () => void }) {
   if (typeof document === 'undefined') return null;
@@ -30,6 +31,15 @@ export default function PastLensCard({ lens, onClose }: { lens: LensDef; onClose
         transition={{ type: 'spring', stiffness: 320, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Animated line-art intro for the lens, on its cream canvas. Plays once
+            when the card opens (becomes active). Only lenses with an animation get
+            the band; the others show nothing here for now. */}
+        {hasPastLensAnimation(lens.key as PastLens) && (
+          <div className="w-full" style={{ backgroundColor: '#F8F8EC' }}>
+            <PastLensAnimation lens={lens.key as PastLens} />
+          </div>
+        )}
+
         {/* header — coloured band with just the (enlarged) lens title; the
             sub-topics are shown once below, beside their icons. */}
         <div className="px-6 pt-6 pb-6" style={{ backgroundColor: lens.colour }}>
