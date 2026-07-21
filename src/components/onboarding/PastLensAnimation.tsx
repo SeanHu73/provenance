@@ -9,32 +9,60 @@
  * Style (all lenses): rust (#A33829) stroke-only line art on a transparent
  * background — the parent supplies the cream (#F8F8EC) canvas — with a uniform
  * ~8px stroke in a 1024×560 frame, round caps and joins, no fills and no text.
- * The draw-on is Framer Motion's `pathLength` sweep (the stroke-dasharray /
- * stroke-dashoffset technique). Each animation is two beats: Beat 1 draws the
- * cause; Beat 2 staggers in the effect. It plays once on mount, holds the final
- * frame, and calls `onComplete`. prefers-reduced-motion renders the final frame
- * with no motion. The SVG scales to its container's width.
+ * The river is the one exception: a thicker deep-teal stroke so it reads as a body
+ * of water. The draw-on is Framer Motion's `pathLength` sweep (the
+ * stroke-dasharray / stroke-dashoffset technique). Each animation is two beats:
+ * Beat 1 draws the cause; Beat 2 staggers in the effect. It plays once on mount,
+ * holds the final frame, and calls `onComplete`. prefers-reduced-motion renders
+ * the final frame with no motion. The SVG scales to its container's width.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 export type PastLens = 'place' | 'affairs' | 'society' | 'technology';
 
-const STROKE = '#A33829';
-const SW = 8;          // uniform stroke width
-const RIVER_SW = 16;   // the river reads as a thick channel, not a line
+const STROKE = '#A33829';       // rust — the line-art colour
+const SW = 8;                   // uniform stroke width
+const RIVER_COLOR = '#2C3E3A';  // brand deep teal (fallback #3D6B7A if too dark)
+const RIVER_SW = 20;            // ~2.5× the house stroke: a body of water, not a road
 const VB_W = 1024;
 const VB_H = 560;
+
+// place geometry
+const HOUSE_W = 52;                        // uniform house width
+const HOUSE_TOTAL_H = HOUSE_W * 1.62;      // body + roof
+const WHEAT_H = HOUSE_TOTAL_H * 0.4;       // stalks ~40% of house height
+const WHEAT_SW = SW * 0.4;                 // line weight scaled to match at the smaller size
 
 // place timeline (seconds)
 const BEAT1 = 1.2;             // the river draws on
 const BEAT2 = BEAT1 + 0.05;    // houses begin as the river lands
-const HOUSE_STAGGER = 0.12;
+const HOUSE_STAGGER = 0.1;
+const WHEAT_STAGGER = 0.05;
+const WHEAT_FADE = 0.5;
 
 /** One thick winding river — an S-curve running the full frame, top to bottom. */
 const RIVER_D =
   'M 720 -20 C 700 110 470 130 450 250 C 432 360 690 370 640 470 C 606 535 360 520 300 580';
+
+/**
+ * House centres, hand-placed and pre-verified (see below): no two are closer than
+ * 1.5× house width, none crosses the river stroke, and all sit inside the frame
+ * with at least half a house width of margin. They hug both banks, ordered
+ * top→bottom so they pop in following the river's flow.
+ */
+const HOUSES: [number, number][] = [
+  [559, 46], [766, 68], [462, 107], [670, 157], [577, 212], [380, 215],
+  [634, 319], [410, 355], [719, 416], [504, 422], [385, 466],
+];
+
+/** Ten wheat stalks clustered in the open land bottom-right, clear of the river
+ *  and the houses. (x, y) is each stalk's base. */
+const WHEAT: [number, number][] = [
+  [900, 435], [880, 475], [860, 435], [920, 475], [940, 435],
+  [840, 475], [880, 395], [900, 515], [920, 395], [860, 515],
+];
 
 /** Which lenses have an animation implemented (the rest render nothing for now). */
 export function hasPastLensAnimation(lens: PastLens): boolean {
@@ -64,14 +92,15 @@ export function House({ x, y, size }: { x: number; y: number; size: number }) {
   );
 }
 
-/** A single wheat stalk: a vertical stem with three short angled strokes per side. */
-function Wheat({ x, yBottom, height }: { x: number; yBottom: number; height: number }) {
+/** A single wheat stalk: a vertical stem with three short angled strokes per side,
+ *  drawn at its own (reduced) stroke width so it reads consistently at this size. */
+function Wheat({ x, yBottom, height, strokeWidth }: { x: number; yBottom: number; height: number; strokeWidth: number }) {
   const top = yBottom - height;
-  const grains = [0.28, 0.5, 0.72].map((t) => yBottom - height * t);
-  const len = 30;
-  const rise = 24;
+  const grains = [0.5, 0.68, 0.86].map((t) => yBottom - height * t);
+  const len = height * 0.42;
+  const rise = height * 0.34;
   return (
-    <>
+    <g strokeWidth={strokeWidth}>
       <line x1={x} y1={yBottom} x2={x} y2={top} />
       {grains.map((gy, i) => (
         <g key={i}>
@@ -79,7 +108,7 @@ function Wheat({ x, yBottom, height }: { x: number; yBottom: number; height: num
           <line x1={x} y1={gy} x2={x - len} y2={gy - rise} />
         </g>
       ))}
-    </>
+    </g>
   );
 }
 
@@ -90,43 +119,19 @@ interface Props {
 
 export default function PastLensAnimation({ lens, onComplete }: Props) {
   const reduce = useReducedMotion();
-  const riverRef = useRef<SVGPathElement>(null);
-  const [houses, setHouses] = useState<{ x: number; y: number; size: number }[]>([]);
   const isPlace = lens === 'place';
 
-  // Place the houses by sampling the river path, so they hug its banks and follow
-  // its curves rather than being hand-placed against a shape that might change.
+  // Dev-only guard: verify the hardcoded houses keep the 1.5×-width minimum, so a
+  // future edit to the array can't silently reintroduce overlaps.
   useEffect(() => {
-    if (!isPlace) return;
-    const path = riverRef.current;
-    if (!path) return;
-    let total = 0;
-    try { total = path.getTotalLength(); } catch { return; }
-    if (!total) return;
-    const N = 6;        // sample points → up to 2N candidates, trimmed to the frame
-    const OFFSET = 64;  // how far off the river's centre each bank sits
-    const out: { x: number; y: number; size: number }[] = [];
-    for (let i = 0; i < N; i++) {
-      const at = ((i + 0.5) / N) * total;
-      const p = path.getPointAtLength(at);
-      const ahead = path.getPointAtLength(Math.min(total, at + 8));
-      let tx = ahead.x - p.x;
-      let ty = ahead.y - p.y;
-      const m = Math.hypot(tx, ty) || 1;
-      tx /= m; ty /= m;
-      const nx = -ty;   // unit normal to the flow
-      const ny = tx;
-      const size = 44 + (i % 3) * 8;
-      out.push({ x: p.x + nx * OFFSET, y: p.y + ny * OFFSET, size });
-      out.push({ x: p.x - nx * OFFSET, y: p.y - ny * OFFSET, size: size - 4 });
+    if (process.env.NODE_ENV === 'production' || !isPlace) return;
+    const min = 1.5 * HOUSE_W;
+    for (let i = 0; i < HOUSES.length; i++) {
+      for (let j = i + 1; j < HOUSES.length; j++) {
+        const d = Math.hypot(HOUSES[i][0] - HOUSES[j][0], HOUSES[i][1] - HOUSES[j][1]);
+        if (d < min) console.warn(`[PastLensAnimation] houses ${i} & ${j} are ${d.toFixed(0)}px apart (< ${min})`);
+      }
     }
-    // Keep the ones comfortably inside the frame, then order top→bottom so they pop
-    // in following the river's flow.
-    const inFrame = out
-      .filter((h) => h.x > 46 && h.x < VB_W - 46 && h.y > 42 && h.y < VB_H - 42)
-      .sort((a, b) => a.y - b.y)
-      .slice(0, 12);
-    setHouses(inFrame);
   }, [isPlace]);
 
   // Fire onComplete once, after the whole sequence. Non-place lenses (and reduced
@@ -135,16 +140,16 @@ export default function PastLensAnimation({ lens, onComplete }: Props) {
   useEffect(() => {
     if (doneRef.current) return;
     if (!isPlace || reduce) { doneRef.current = true; onComplete?.(); return; }
-    if (houses.length === 0) return; // wait until the houses have been placed
     doneRef.current = true;
-    const end = BEAT2 + houses.length * HOUSE_STAGGER + 0.25 /* wheat delay */ + 0.6 /* wheat fade */ + 0.2;
-    const t = window.setTimeout(() => onComplete?.(), end * 1000);
+    const wheatStart = BEAT2 + HOUSES.length * HOUSE_STAGGER + 0.15;
+    const total = wheatStart + (WHEAT.length - 1) * WHEAT_STAGGER + WHEAT_FADE + 0.15;
+    const t = window.setTimeout(() => onComplete?.(), total * 1000);
     return () => clearTimeout(t);
-  }, [isPlace, reduce, houses.length, onComplete]);
+  }, [isPlace, reduce, onComplete]);
 
   if (!isPlace) return null;
 
-  const wheatDelay = BEAT2 + houses.length * HOUSE_STAGGER + 0.25;
+  const wheatStart = BEAT2 + HOUSES.length * HOUSE_STAGGER + 0.15;
 
   return (
     <svg
@@ -156,20 +161,20 @@ export default function PastLensAnimation({ lens, onComplete }: Props) {
       strokeLinecap="round"
       strokeLinejoin="round"
       role="img"
-      aria-label="A map seen from above: a river with houses along its banks"
+      aria-label="A map seen from above: a river with houses along its banks and a field of wheat"
     >
       {/* Beat 1 — the river draws on, top to bottom. */}
       <motion.path
-        ref={riverRef}
         d={RIVER_D}
+        stroke={RIVER_COLOR}
         strokeWidth={RIVER_SW}
         initial={reduce ? false : { pathLength: 0 }}
         animate={{ pathLength: 1 }}
         transition={reduce ? { duration: 0 } : { duration: BEAT1, ease: 'easeInOut' }}
       />
 
-      {/* Beat 2 — houses pop in one by one along both banks. */}
-      {houses.map((h, i) => (
+      {/* Beat 2a — houses pop in one by one along both banks. */}
+      {HOUSES.map(([hx, hy], i) => (
         <motion.g
           key={i}
           style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
@@ -179,18 +184,21 @@ export default function PastLensAnimation({ lens, onComplete }: Props) {
             ? { duration: 0 }
             : { delay: BEAT2 + i * HOUSE_STAGGER, type: 'spring', stiffness: 520, damping: 15 }}
         >
-          <House x={h.x} y={h.y} size={h.size} />
+          <House x={hx} y={hy} size={HOUSE_W} />
         </motion.g>
       ))}
 
-      {/* One wheat stalk out in the empty land, fading in last. */}
-      <motion.g
-        initial={reduce ? false : { opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={reduce ? { duration: 0 } : { delay: wheatDelay, duration: 0.6 }}
-      >
-        <Wheat x={880} yBottom={498} height={150} />
-      </motion.g>
+      {/* Beat 2b — the wheat field fades in as the final stagger group. */}
+      {WHEAT.map(([wx, wy], i) => (
+        <motion.g
+          key={i}
+          initial={reduce ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={reduce ? { duration: 0 } : { delay: wheatStart + i * WHEAT_STAGGER, duration: WHEAT_FADE }}
+        >
+          <Wheat x={wx} yBottom={wy} height={WHEAT_H} strokeWidth={WHEAT_SW} />
+        </motion.g>
+      ))}
     </svg>
   );
 }
