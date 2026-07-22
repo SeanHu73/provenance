@@ -34,6 +34,12 @@ const LENS_ANIM_KEY: Record<string, PastLens | undefined> = {
   place: 'place', attitudes: 'affairs', society: 'society', technology: 'technology',
 };
 
+/** Per-lens override of the descriptor's term list (otherwise the lens's own
+ *  categories, lower-cased). */
+const DESC_TERMS: Record<string, string> = {
+  technology: 'tools, infrastructure, new inventions',
+};
+
 /** A distinct "context" accent for these immersive splashes — deliberately NOT
  *  --th-secondary (which equals the Attitudes lens colour), so CONTEXT and the
  *  CTA don't clash with the coloured P·A·S·T lenses. A warm coral, no lens uses it. */
@@ -137,6 +143,7 @@ function LensSlider({ questionsByLens }: { questionsByLens: Record<string, strin
         {LENSES.map((l, i) => {
           const authored = questionsByLens[l.key] ?? [];
           const animLens = LENS_ANIM_KEY[l.key];
+          const terms = DESC_TERMS[l.key] ?? l.categories.map((c) => c.toLowerCase()).join(', ');
           return (
             <div
               key={l.key}
@@ -154,15 +161,12 @@ function LensSlider({ questionsByLens }: { questionsByLens: Record<string, strin
                 <h3 className="font-display font-bold leading-none" style={{ color: '#fff', fontSize: 'clamp(36px, 9.5vw, 50px)' }}>{l.label}</h3>
               </div>
               <div className="overflow-y-auto tour-scroll px-5 py-4">
-                {/* Sentence definition + stacked sub-topics. */}
+                {/* Definition as a question: "How did <terms> shape the past?" */}
                 <p className="font-serif leading-snug" style={{ color: 'var(--th-text)', fontSize: 20 }}>
-                  Recreate the past using <span className="font-bold" style={{ color: l.colour }}>{l.label.toUpperCase()}</span>{' '}by asking about&hellip;
+                  How did&hellip;
+                  <br />
+                  <span className="font-bold" style={{ color: l.colour }}>{terms}</span>{' '}&hellip;shape the past?
                 </p>
-                <ul className="mt-2.5 space-y-1">
-                  {l.categories.map((c) => (
-                    <li key={c} className="font-display font-semibold leading-tight" style={{ color: l.colour, fontSize: 18 }}>{c}</li>
-                  ))}
-                </ul>
 
                 {authored.length > 0 && (
                   <>

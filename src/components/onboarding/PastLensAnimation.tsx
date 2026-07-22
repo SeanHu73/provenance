@@ -81,16 +81,25 @@ function LensVideo({ src, plays = 3, autoplay = true, onComplete }: { src: strin
     const v = ref.current;
     if (!v) return;
     let n = 0;
+    let timer = 0;
     const onEnded = () => {
       n += 1;
-      if (n < plays) { v.currentTime = 0; v.play().catch(() => {}); }
+      // Hold the last frame for 2s, then replay — up to `plays` times.
+      if (n < plays) timer = window.setTimeout(() => { v.currentTime = 0; v.play().catch(() => {}); }, 2000);
       else doneRef.current?.();
     };
     v.addEventListener('ended', onEnded);
     if (autoplay) { v.currentTime = 0; v.play().catch(() => {}); }
-    return () => v.removeEventListener('ended', onEnded);
+    return () => { v.removeEventListener('ended', onEnded); if (timer) clearTimeout(timer); };
   }, [src, plays, autoplay]);
-  return <video ref={ref} src={src} muted playsInline preload="auto" style={{ width: '100%', height: 'auto', display: 'block' }} />;
+  // Fixed 854×480 (16:9) box so every lens video is the same size; a 4:3 source
+  // (technology) is letterboxed on the cream band instead of rendering taller.
+  return (
+    <video
+      ref={ref} src={src} muted playsInline preload="auto"
+      style={{ width: '100%', aspectRatio: '854 / 480', objectFit: 'contain', display: 'block', backgroundColor: '#F8F8EC' }}
+    />
+  );
 }
 
 export default function PastLensAnimation({ lens, active = true, onComplete }: Props) {
