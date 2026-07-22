@@ -216,10 +216,14 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
   const [mounted, setMounted] = useState(false);
   const [sitIn, setSitIn] = useState(false);
   const [howIn, setHowIn] = useState(false);
-  const [themeIn, setThemeIn] = useState(false);
+  const [pastRevealed, setPastRevealed] = useState(false);
+  // First-time: after "Ask my own question", the guiding-theme splash rides in as
+  // a full-screen screen ABOVE the journal (not another scroll slide) before onComplete.
+  const [showGuiding, setShowGuiding] = useState(false);
+  const [guidingIn, setGuidingIn] = useState(false);
   const sitRef = useRef<HTMLElement | null>(null);
   const howRef = useRef<HTMLElement | null>(null);
-  const themeRef = useRef<HTMLElement | null>(null);
+  const lensRef = useRef<HTMLElement | null>(null);
   const enterRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -244,12 +248,10 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
   }, []);
 
   useEffect(() => {
-    const el = themeRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setThemeIn(true); }, { threshold: 0.4 });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
+    if (!showGuiding) return;
+    const id = requestAnimationFrame(() => setGuidingIn(true));
+    return () => cancelAnimationFrame(id);
+  }, [showGuiding]);
 
   // Both paths end by scrolling past the sentinel into the Context Journal — a
   // real scroll, so the guiding-theme splash above it stays put and can be
@@ -295,11 +297,20 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
       className="fixed inset-0 z-[60] overflow-y-auto select-none"
       style={{ backgroundColor: LIGHT_RED, scrollSnapType: 'y mandatory' }}
     >
-      {/* Page counter, top-left — like the intro onboarding's. */}
+      {/* Segmented progress bar — the same chrome as the intro onboarding, on the
+          light-red surface. */}
       {total > 0 && (
-        <p className="fixed top-3 left-4 z-[61] text-[11px] font-semibold tracking-wide" style={{ color: INK, opacity: 0.7 }}>
-          {Math.min(step + 1, total)} of {total}
-        </p>
+        <div
+          className="fixed top-0 left-0 right-0 z-[61] px-5 pt-3 pb-2"
+          style={{ background: `linear-gradient(${LIGHT_RED}, color-mix(in srgb, ${LIGHT_RED} 55%, transparent) 70%, transparent)` }}
+        >
+          <div className="flex items-center gap-1">
+            {Array.from({ length: total }).map((_, i) => (
+              <div key={i} className="flex-1 h-1.5 rounded-full transition-colors" style={{ backgroundColor: i <= step ? INK : 'color-mix(in srgb, var(--th-journal) 22%, transparent)' }} />
+            ))}
+          </div>
+          <p className="mt-1 text-[11px] font-semibold tracking-wide" style={{ color: INK, opacity: 0.7 }}>{Math.min(step + 1, total)} of {total}</p>
+        </div>
       )}
       {/* 1 — Sit down. First now, not last: it's the invitation to settle before
              the teaching, so it has to come before the teaching. */}
@@ -417,6 +428,7 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
                 transition: 'opacity 900ms ease-out 1800ms, transform 900ms ease-out 1800ms',
               }}
             >
+              <span className="font-serif italic block leading-none" style={{ fontSize: 'clamp(20px, 5.2vw, 30px)', color: INK, opacity: 0.72 }}>the</span>
               <span className="font-display leading-[0.9] tracking-tight block" style={{ fontSize: 'clamp(52px, 20vw, 128px)', color: INK }}>
                 CONTEXT
               </span>
@@ -455,31 +467,50 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
         <p
           className="font-serif leading-snug mt-24"
           style={{
-            fontSize: 'clamp(30px, 8vw, 46px)', color: INK, maxWidth: '16ch',
+            fontSize: 'clamp(20px, 6.2vw, 34px)', color: INK,
             opacity: howIn ? 1 : 0, transform: howIn ? 'translateY(0)' : 'translateY(12px)',
             transition: 'opacity 800ms ease-out 1100ms, transform 800ms ease-out 1100ms',
           }}
         >
           Let&rsquo;s start by
           <br />
-          <strong style={{ color: CONTEXT_ACCENT }}>asking context questions!</strong>
+          <strong className="whitespace-nowrap" style={{ color: CONTEXT_ACCENT }}>asking context questions!</strong>
         </p>
       </section>
       )}
 
-      {/* 4 — The P.A.S.T. reveal. Plays itself; see PastReveal. */}
+      {/* 4 — The P.A.S.T. reveal. Plays itself; see PastReveal. Once the reveal has
+             finished, a button carries them on to the lenses (no extra scroll). */}
       {!returning && (
       <section
         className="relative min-h-[100dvh] flex flex-col justify-center px-7"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        <PastReveal />
+        <PastReveal onDone={() => setPastRevealed(true)} />
+        <div
+          className="mt-10 flex justify-center"
+          style={{
+            opacity: pastRevealed ? 1 : 0,
+            transform: pastRevealed ? 'translateY(0)' : 'translateY(10px)',
+            transition: 'opacity 600ms ease-out 200ms, transform 600ms ease-out 200ms',
+            pointerEvents: pastRevealed ? 'auto' : 'none',
+          }}
+        >
+          <button
+            onClick={() => lensRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            className="px-11 py-4 rounded-full text-[17px] font-semibold"
+            style={{ backgroundColor: CONTEXT_ACCENT, color: 'var(--th-journal)' }}
+          >
+            Explore the P.A.S.T. &rarr;
+          </button>
+        </div>
       </section>
       )}
 
       {/* 5 — The lenses, as swipeable cards. */}
       {!returning && (
       <section
+        ref={lensRef}
         className="relative min-h-[100dvh] flex flex-col justify-center"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
@@ -507,11 +538,11 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
         <p className="font-display leading-tight mt-6" style={{ fontSize: 'clamp(28px, 8vw, 46px)', color: INK, fontWeight: 700, maxWidth: '18ch' }}>
           Ready to <span className="italic">recreate</span> the past?
         </p>
-        {/* Scrolls on to the guiding-theme splash — a real section, so they can
-            swipe down into the journal from it and back up if they want. Falls
-            back to the sentinel if there's no guiding theme to show. */}
+        {/* Brings up the guiding-theme splash as a screen above the journal, then
+            into the journal — no extra scroll slide. Straight to the journal if
+            there's no guiding theme to frame. */}
         <button
-          onClick={() => (themeRef.current ?? enterRef.current)?.scrollIntoView({ behavior: 'smooth' })}
+          onClick={() => (guidingQuestion ? setShowGuiding(true) : onComplete())}
           className="mt-10 px-12 py-4 rounded-full text-[18px] font-semibold"
           style={{ backgroundColor: CONTEXT_ACCENT, color: 'var(--th-journal)' }}
         >
@@ -520,31 +551,38 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
       </section>
       )}
 
-      {/* First-time only: after "try it out", the guiding-theme splash — a real
-          scroll section (not an auto-fade), so it stays put until they swipe down
-          into the journal, and they can scroll back up to it. */}
-      {!returning && guidingQuestion && (
-        <section
-          ref={themeRef}
-          className="relative min-h-[100dvh] flex flex-col items-center justify-center px-7"
-          style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
-        >
-          <GuidingSplash theme={guidingQuestion} visible={themeIn} />
-          <div className="absolute bottom-7 left-0 right-0 flex flex-col items-center gap-1.5" style={{ opacity: themeIn ? 0.65 : 0, transition: 'opacity 700ms ease-out 1200ms' }}>
-            <span className="text-[10px] uppercase tracking-[0.22em]" style={{ color: INK }}>Scroll</span>
-            <svg className="animate-bounce" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--th-journal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
-          </div>
-        </section>
+      {/* Returning only: the guiding-theme splash is shown inline (section 2) and
+          they scroll into this sentinel to enter the journal. First-time enters via
+          the guiding screen below instead, so the sentinel isn't rendered for it. */}
+      {returning && (
+        <div ref={enterRef} className="h-[55vh] flex items-end justify-center pb-10" style={{ scrollSnapAlign: 'end' }}>
+          <span className="font-serif italic text-[15px]" style={{ color: INK, opacity: 0.6 }}>
+            Opening the Context Journal&hellip;
+          </span>
+        </div>
       )}
 
-      {/* Sentinel — scrolling into it enters the Context Journal. Both paths reach
-          it by scroll (returning after its guiding-theme beat, first time after the
-          splash section), so nothing auto-advances and the splash stays scrollable. */}
-      <div ref={enterRef} className="h-[55vh] flex items-end justify-center pb-10" style={{ scrollSnapAlign: 'end' }}>
-        <span className="font-serif italic text-[15px]" style={{ color: INK, opacity: 0.6 }}>
-          Opening the Context Journal&hellip;
-        </span>
-      </div>
+      {/* First-time: the guiding-theme splash as a full-screen screen ABOVE the
+          journal — it fades in, then "Enter" opens the journal. */}
+      {showGuiding && guidingQuestion && (
+        <div
+          className="fixed inset-0 z-[62] flex flex-col items-center justify-center px-7"
+          style={{ backgroundColor: LIGHT_RED, opacity: guidingIn ? 1 : 0, transition: 'opacity 400ms ease-out' }}
+        >
+          <GuidingSplash theme={guidingQuestion} visible={guidingIn} />
+          <button
+            onClick={onComplete}
+            className="mt-14 px-12 py-4 rounded-full text-[18px] font-semibold"
+            style={{
+              backgroundColor: CONTEXT_ACCENT, color: 'var(--th-journal)',
+              opacity: guidingIn ? 1 : 0, transform: guidingIn ? 'translateY(0)' : 'translateY(10px)',
+              transition: 'opacity 700ms ease-out 1400ms, transform 700ms ease-out 1400ms',
+            }}
+          >
+            Enter the Context Journal &rarr;
+          </button>
+        </div>
+      )}
     </div>,
     document.body,
   );

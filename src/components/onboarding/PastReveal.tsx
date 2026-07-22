@@ -30,9 +30,9 @@ const CHARS = ['P', '.', 'A', '.', 'S', '.', 'T', '.'];
 const LETTER_AT = [0, 2, 4, 6]; // indices in CHARS that are lens initials
 
 const START_MS = 0;       // typing starts as soon as the beat is on screen
-const TYPE_MS = 170;      // per character
-const FRAMEWORK_MS = 420; // beat before "framework." lands
-const READY_MS = 250;     // after the sentence lands, before the swipe is armed
+const TYPE_MS = 85;       // per character
+const FRAMEWORK_MS = 280; // beat before "framework." lands
+const READY_MS = 180;     // after the sentence lands, before the swipe is armed
 const DRIFT_MS = 950;
 
 export default function PastReveal({ onDone }: { onDone?: () => void }) {
