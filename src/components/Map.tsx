@@ -272,6 +272,33 @@ function UserLocationTracker({ following, onLocationUpdate }: { following: boole
   return null;
 }
 
+/** Keeps the GPS "on" whenever the tour map is (re-)shown: each time it becomes
+ *  active it re-acquires the user's location and centres on it, so the location
+ *  dot is up without needing the locate button (the initial fetch only runs once
+ *  on mount, so returns to the map otherwise showed nothing). The always-on
+ *  UserLocationTracker then keeps the dot following the user. */
+function MapAutoLocate({ active, tourLocs, onLocationUpdate }: { active: boolean; tourLocs: Loc[]; onLocationUpdate: (pos: Loc | null) => void }) {
+  const map = useMap();
+  const handled = useRef(false); // acquired once for the current active period
+
+  useEffect(() => {
+    if (!active) { handled.current = false; return; } // reset so returning re-acquires
+    if (handled.current || !map || !navigator.geolocation) return;
+    handled.current = true;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        onLocationUpdate(userPos);
+        fitToNearestTourPin(map as MapInstance, userPos, tourLocs);
+      },
+      () => { handled.current = false; }, // let it retry (e.g. on next render) if it failed
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, [active, map, tourLocs, onLocationUpdate]);
+
+  return null;
+}
+
 /** Applies/removes POI + transit styles at runtime via setOptions (works with mapId). */
 function PoiStyler({ isTourActive }: { isTourActive: boolean }) {
   const map = useMap();
@@ -1044,6 +1071,7 @@ export default function MapContainer({
           <TiltController tilt={mapTilt} />
           <MapInitializer tourPins={tourPins} onLocationUpdate={handleLocationUpdate} />
           <UserLocationTracker following={following} onLocationUpdate={handleLocationUpdate} />
+          <MapAutoLocate active={!!isUnstructuredMap} tourLocs={tourLocs} onLocationUpdate={handleLocationUpdate} />
           <BoundsTracker onChange={handleBoundsChange} />
           <MapZoomer
             isUnstructuredMap={!!isUnstructuredMap}
