@@ -29,6 +29,8 @@ export interface ResearchJob {
   actId?: string;
   priorStops?: string[];
   theory: string;
+  /** What made the learner ask this (their reason), captured while it researches. */
+  motivation: string;
   status: 'researching' | 'ready' | 'error';
   result: DetectiveResp | null;
   /** True once the learner has opened the finished result (stops the overlay nagging). */
@@ -66,7 +68,7 @@ export function startResearch(input: {
   jobs = [...jobs, {
     id, question: input.question, originalQuestion: input.originalQuestion, lens: input.lens,
     tourId: input.tourId, actId: input.actId, priorStops: input.priorStops,
-    theory: input.theory ?? '', status: 'researching', result: null, seen: false, startedAt: Date.now(),
+    theory: input.theory ?? '', motivation: '', status: 'researching', result: null, seen: false, startedAt: Date.now(),
   }];
   emit();
 
@@ -92,6 +94,8 @@ export function startResearch(input: {
 
 /** Keep the learner's evolving theory on the job so it survives closing the sheet. */
 export function setJobTheory(id: string, theory: string) { patch(id, { theory }); }
+/** Same, for their "what made you ask this" reason. */
+export function setJobMotivation(id: string, motivation: string) { patch(id, { motivation }); }
 /** Mark a finished job opened — the ready overlay stops flagging it. */
 export function markSeen(id: string) { patch(id, { seen: true }); }
 /** Abort an in-flight job and forget it (learner chose to change the question). */

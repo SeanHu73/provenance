@@ -94,6 +94,8 @@ export interface ContextEntry {
    *  Detective's answer (the predict-then-reveal step). Shown at the bottom of the
    *  context page for comparison. Absent for authored contexts. */
   learnerPrediction?: string;
+  /** What made the learner ask this — their reason, captured while it researched. */
+  motivation?: string;
   /** The learner's FIRST question, before the Framing Coach reframe — only set when
    *  it differs from `question` (they adopted a suggested reframe). For admin review. */
   originalQuestion?: string;

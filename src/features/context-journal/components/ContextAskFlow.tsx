@@ -19,11 +19,10 @@ import type { ContextDraft, ContextSource, PastCategory, TimeRange } from '../ty
 import ContextTimeline from './ContextTimeline';
 import RecordButton from '@/components/tour/cards/RecordButton';
 import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
-import ContextAskLoading from '@/components/tour/cards/ContextAskLoading';
 import ImageSearchModal from '@/components/ImageSearchModal';
 import { contextNarrationText } from '@/lib/tts-narration';
 import { uploadSharePhoto } from '@/lib/community-store';
-import { startResearch, cancelJob, setJobTheory, markSeen, useResearchJobs } from '../research-store';
+import { startResearch, cancelJob, setJobTheory, setJobMotivation, markSeen, useResearchJobs } from '../research-store';
 import { sendQuestionToGuide } from '../shared-store';
 
 /** A firm two-buzz haptic to draw the learner back when the answer is ready. */
@@ -103,6 +102,10 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
   const [asked, setAsked] = useState(job?.question ?? '');
   const [coach, setCoach] = useState<FrameResp | null>(null);
   const [theory, setTheory] = useState(job?.theory ?? '');
+  // While it researches: first "what made you ask this?" (+ surroundings photos),
+  // then their own theory. `waitStep2` flips from the first step to the theory.
+  const [motivation, setMotivation] = useState(job?.motivation ?? '');
+  const [waitStep2, setWaitStep2] = useState(!!(job?.motivation));
   const [photos, setPhotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -112,9 +115,6 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
   const [timed, setTimed] = useState(false);
   const [range, setRange] = useState<TimeRange>(() => defaultRange(DEFAULT_DOMAIN));
   const [tlDomain, setTlDomain] = useState(DEFAULT_DOMAIN);
-  // Predict-then-reveal: "submitting" the theory is a UX affordance (it's already
-  // saved live) — it just makes the learner feel their answer is locked in.
-  const [submitted, setSubmitted] = useState(false);
   // The learner's first-asked question, captured before any coach reframe.
   const originalQuestionRef = useRef(job?.originalQuestion ?? '');
 
@@ -128,8 +128,10 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingJobId]);
 
-  // Keep the learner's evolving theory on the job so it's there if they reopen it.
+  // Keep the learner's evolving theory + reason on the job so they're there if they
+  // reopen it.
   useEffect(() => { if (jobId) setJobTheory(jobId, theory); }, [jobId, theory]);
+  useEffect(() => { if (jobId) setJobMotivation(jobId, motivation); }, [jobId, motivation]);
 
   const lensLabel = LENS_BY_KEY[lens]?.label ?? 'this';
   const lensColour = LENS_BY_KEY[lens]?.colour ?? 'var(--th-primary)';
@@ -217,6 +219,7 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
       lens, tourId, actId, priorStops, theory,
     });
     setJobId(id);
+    setWaitStep2(false);
     setPhase('researching');
   };
 
@@ -255,6 +258,7 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
       thumbnailMediaId: photos.length ? 'ph_0' : null,
       sources,
       learnerPrediction: theory.trim() || undefined,
+      motivation: motivation.trim() || undefined,
       // Record the pre-coach question only when they actually took a reframe.
       originalQuestion: (originalQuestionRef.current && originalQuestionRef.current !== asked)
         ? originalQuestionRef.current : undefined,
@@ -371,60 +375,63 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
         )}
 
         {phase === 'researching' && (
-          <div className="space-y-4">
-            <p className="font-serif italic text-[16px] leading-snug" style={{ color: 'var(--text-secondary)' }}>&ldquo;{asked}&rdquo;</p>
+          <div className="space-y-5">
+            <p className="text-[15px] leading-snug" style={{ color: 'var(--text-secondary)' }}>&ldquo;{asked}&rdquo;</p>
 
-            {/* Predict-then-reveal: scaffold the learner's own theory while the
-                Detective researches in the background. */}
-            <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--th-bg)' }}>
-              <p className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>While it researches — what&apos;s your own theory?</p>
-              <p className="mt-1 text-[13px] leading-snug" style={{ color: 'var(--text-secondary)' }}>
-                There&apos;s no wrong answer. Think through the <span className="font-semibold" style={{ color: LENS_BY_KEY[lens]?.colour }}>{lensLabel}</span> lens:
-                what conditions, people, or changes might explain this? Say or jot a sentence or two — you&apos;ll compare it to what the Detective finds.
-              </p>
-            </div>
-            <RecordButton onTranscript={(t) => setTheory((prev) => (prev ? `${prev} ${t}` : t))} />
-            <textarea
-              value={theory}
-              onChange={(e) => setTheory(e.target.value)}
-              rows={4}
-              placeholder="…or type your theory"
-              className="w-full px-4 py-3 rounded-xl border-2 bg-white text-[17px] font-serif text-text-primary focus:outline-none transition-shadow"
-              style={submitted
-                ? { borderColor: '#16a34a', boxShadow: '0 0 0 4px rgba(22,163,74,0.22)' }
-                : { borderColor: 'var(--th-border)' }}
-            />
-
-            {/* Submit their theory — purely reassurance that it's saved; they can
-                still edit afterwards, and it auto-submits when they reveal. */}
-            {theory.trim() && (
-              <button
-                onClick={() => { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(12); setSubmitted(true); }}
-                className="w-full py-2.5 rounded-xl text-[14px] font-semibold border-2 flex items-center justify-center gap-2"
-                style={submitted
-                  ? { color: '#16a34a', borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.08)' }
-                  : { color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
-              >
-                {submitted ? (
-                  <>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg>
-                    Response saved — you can still edit
-                  </>
-                ) : 'Submit response'}
-              </button>
+            {!waitStep2 ? (
+              /* Step 1 — what made you ask, and a look at where you are. */
+              <div className="space-y-3">
+                <p className="text-[18px] font-semibold" style={{ color: 'var(--text-primary)' }}>What made you ask this?</p>
+                <RecordButton onTranscript={(t) => setMotivation((prev) => (prev ? `${prev} ${t}` : t))} />
+                <textarea
+                  value={motivation}
+                  onChange={(e) => setMotivation(e.target.value)}
+                  rows={3}
+                  placeholder="…or type"
+                  className="w-full px-4 py-3 rounded-xl border-2 bg-white text-[17px] font-serif text-text-primary focus:outline-none"
+                  style={{ borderColor: 'var(--th-border)' }}
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  {photos.map((url, i) => (
+                    <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt="" className="w-full h-full object-cover" />
+                      <button onClick={() => setPhotos((p) => p.filter((_, j) => j !== i))} aria-label="Remove photo" className="absolute top-0 right-0 w-5 h-5 bg-black/60 text-white text-xs flex items-center justify-center rounded-bl">×</button>
+                    </div>
+                  ))}
+                  <label className="w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer" style={{ borderColor: 'var(--th-border)', color: 'var(--text-secondary)' }} aria-label="Take a photo of your surroundings">
+                    {uploading ? '…' : (
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
+                    )}
+                    <input type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={(e) => addPhotos(e.target.files)} />
+                  </label>
+                </div>
+                <button onClick={() => setWaitStep2(true)} className="w-full py-3.5 rounded-xl text-base font-semibold text-white" style={{ backgroundColor: 'var(--th-primary)' }}>Continue</button>
+              </div>
+            ) : (
+              /* Step 2 — their own theory. */
+              <div className="space-y-3">
+                <p className="text-[18px] font-semibold" style={{ color: 'var(--text-primary)' }}>What&apos;s your theory?</p>
+                <RecordButton onTranscript={(t) => setTheory((prev) => (prev ? `${prev} ${t}` : t))} />
+                <textarea
+                  value={theory}
+                  onChange={(e) => setTheory(e.target.value)}
+                  rows={3}
+                  placeholder="…or type"
+                  className="w-full px-4 py-3 rounded-xl border-2 bg-white text-[17px] font-serif text-text-primary focus:outline-none"
+                  style={{ borderColor: 'var(--th-border)' }}
+                />
+              </div>
             )}
 
             {researchReady ? (
-              // Ready: a bright, distinct colour (green = "go") with a pulsing ring
-              // — clearly different from the researching state.
               <motion.button
-                onClick={() => { setSubmitted(true); if (jobId) markSeen(jobId); setPhase('result'); }}
+                onClick={() => { if (jobId) markSeen(jobId); setPhase('result'); }}
                 className="relative w-full py-3.5 rounded-xl text-base font-semibold text-white overflow-visible"
                 style={{ backgroundColor: '#16a34a' }}
                 animate={{ scale: [1, 1.04, 1] }}
                 transition={{ duration: 1.05, repeat: Infinity, ease: 'easeInOut' }}
               >
-                {/* pulsing ring cueing that the answer is ready */}
                 <span className="pointer-events-none absolute inset-0 rounded-xl animate-ping" style={{ boxShadow: '0 0 0 3px #16a34a', opacity: 0.35 }} aria-hidden />
                 <span className="relative inline-flex items-center justify-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
@@ -432,24 +439,13 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
                 </span>
               </motion.button>
             ) : (
-              <div className="space-y-3">
-                {/* Once they've written their theory they needn't wait on this
-                    screen — reassure them they can keep exploring meanwhile. Only
-                    shown while researching (not during compose). */}
-                <p className="text-[13px] font-semibold leading-snug text-center" style={{ color: '#16a34a' }}>
-                  Done proposing your own theory? Feel free to keep looking around while you wait — we&apos;ll let you know the moment your answer&apos;s ready.
-                </p>
-                {/* the research animation, back while it's being looked up */}
-                <ContextAskLoading />
-                {/* the primary button starts as a plain outline "Researching…"
-                    and only flips to the filled green button above once ready. */}
-                <div className="w-full py-3.5 rounded-xl text-base font-semibold border-2 flex items-center justify-center gap-2" style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
+              <div className="space-y-2.5">
+                <p className="text-[13px] text-center leading-snug" style={{ color: 'var(--text-secondary)' }}>You can keep exploring — we&apos;ll let you know when it&apos;s ready.</p>
+                <div className="w-full py-3 rounded-xl text-[15px] font-semibold border-2 flex items-center justify-center gap-2" style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
                   <span className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--th-primary)', borderTopColor: 'transparent' }} />
                   Researching…
                 </div>
-                <button onClick={cancelSearch} className="w-full py-2.5 rounded-xl text-[14px] font-semibold border-2" style={{ color: 'var(--text-secondary)', borderColor: 'var(--th-border)' }}>
-                  Cancel search / change question
-                </button>
+                <button onClick={cancelSearch} className="w-full py-2 text-[13px] underline" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
               </div>
             )}
           </div>
