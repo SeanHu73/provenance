@@ -108,6 +108,8 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
 
   const onBegin = useCallback(() => { haptic(); scrollToPanel(1); }, [scrollToPanel]);
   const onSubmitRank = useCallback(() => { haptic(); satisfyGate(1, true); }, [satisfyGate]);
+  // Slide 7 advances by pressing the "Context" button rather than swiping.
+  const onContextTap = useCallback(() => { haptic(14); scrollToPanel(7); }, [scrollToPanel]);
 
   if (dismissed || onAdmin) return <>{children}</>;
 
@@ -135,6 +137,7 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
         revealedMax={revealedMax}
         onBegin={onBegin}
         onSubmitRank={onSubmitRank}
+        onContextTap={onContextTap}
         onDone={dismiss}
       />
     </>
@@ -143,13 +146,14 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
 
 /* ── The panels (memoized: scroll-tracking never re-renders this) ─────── */
 const OnbPanels = memo(function OnbPanels({
-  screenRef, leaving, revealedMax, onBegin, onSubmitRank, onDone,
+  screenRef, leaving, revealedMax, onBegin, onSubmitRank, onContextTap, onDone,
 }: {
   screenRef: React.RefObject<HTMLDivElement | null>;
   leaving: boolean;
   revealedMax: number;
   onBegin: () => void;
   onSubmitRank: () => void;
+  onContextTap: () => void;
   onDone: () => void;
 }) {
   const vis = (i: number): React.CSSProperties | undefined => (i <= revealedMax ? undefined : { display: 'none' });
@@ -164,10 +168,9 @@ const OnbPanels = memo(function OnbPanels({
       <section data-idx={1} className="onb-panel onb-top" style={vis(1)}>
         <p className="onb-q onb-r" style={{ color: 'var(--th-secondary)' }}>But first&hellip;</p>
         <h2 className="onb-r mt-4 font-display" style={{ '--d': '0.18s', fontSize: 'clamp(28px, 7vw, 40px)', lineHeight: 1.08, color: 'var(--th-text)' } as React.CSSProperties}>
-          How have you been taught <span style={{ color: 'var(--th-primary)' }}>history</span>?
+          How did you learn <span style={{ color: 'var(--th-primary)' }}>history</span>?
         </h2>
-        <p className="onb-r text-[15px] italic mt-2" style={{ '--d': '0.3s', color: 'var(--th-text)', opacity: 0.65 } as React.CSSProperties}>Record or type &mdash; no wrong answer.</p>
-        <div className="onb-r mt-5" style={{ '--d': '0.4s' } as React.CSSProperties}>
+        <div className="onb-r mt-6" style={{ '--d': '0.34s' } as React.CSSProperties}>
           <HistoryResponse onSubmit={onSubmitRank} />
         </div>
       </section>
@@ -198,8 +201,8 @@ const OnbPanels = memo(function OnbPanels({
       {/* 5 — The bigger picture, then the payoff line centred well underneath. */}
       <section data-idx={4} className="onb-panel" style={vis(4)}>
         <p className="onb-lead onb-r" style={{ '--d': '0.1s' } as React.CSSProperties}>
-          To understand the past, we need to piece those fragments into the{' '}
-          <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>bigger picture.</strong>
+          To understand why things happened, we need to piece those fragments into the{' '}
+          <Expand>bigger picture.</Expand>
         </p>
         <p className="onb-lead onb-r text-center" style={{ '--d': '1.4s', marginTop: 128 } as React.CSSProperties}>
           <strong>That&rsquo;s how a <span style={{ color: 'var(--th-primary)' }}>historian</span> thinks.</strong>
@@ -214,39 +217,40 @@ const OnbPanels = memo(function OnbPanels({
           To understand the past, historians first <Reconstruct text="recreate" />{' '}the bigger picture &mdash;
         </p>
         <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.2s', maxWidth: '24ch', marginTop: 56 } as React.CSSProperties}>
-          &mdash; the world around the <em>people</em> and <em>events</em>.
+          &mdash; or the world around the <em>people</em> and <em>events</em>.
         </p>
       </section>
 
-      {/* 7 — The word itself. Nothing else on the page; the long delay and slow
-             fade give it room to land. */}
+      {/* 7 — The word itself. It's a button: it pulses to invite a press, and
+             pressing it (rather than swiping) carries the reader to the definition. */}
       <section data-idx={6} className="onb-panel onb-cx" style={vis(6)}>
         <p className="onb-lead onb-r italic" style={{ '--d': '0.2s' } as React.CSSProperties}>That world is what historians call&hellip;</p>
-        <p className="onb-r mt-8" style={{ '--d': '1.4s', transitionDuration: '1.3s' } as React.CSSProperties}><span className="onb-ctx" style={{ fontSize: 'clamp(46px, 15vw, 74px)' }}>Context</span></p>
+        <div className="onb-r mt-8" style={{ '--d': '1.4s', transitionDuration: '1.3s' } as React.CSSProperties}>
+          <button type="button" onClick={onContextTap} className="onb-ctx-btn" aria-label="Context — tap to continue">
+            <span className="onb-ctx" style={{ fontSize: 'clamp(46px, 15vw, 74px)' }}>Context</span>
+          </button>
+          <span className="onb-ctx-hint">tap to continue &rarr;</span>
+        </div>
       </section>
 
-      {/* 8 — The definition, in three beats. Left, left, right. */}
+      {/* 8 — The definition, in two beats. Left, then right. */}
       <section data-idx={7} className="onb-panel" style={vis(7)}>
         <p className="onb-lead onb-r" style={{ '--d': '0.1s', opacity: 0.85 } as React.CSSProperties}>
-          <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>Contextualising</strong>{' '}is&hellip;
+          <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>Contextualising</strong>{' '}is <Reconstruct text="recreating" />{' '}the world of the past&hellip;
         </p>
-        <p className="onb-lead onb-r" style={{ '--d': '0.9s', marginTop: 48 } as React.CSSProperties}>
-          <Reconstruct text="Recreating" />{' '}the world during a <em>time and place</em>&hellip;
-        </p>
-        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.8s', maxWidth: '24ch', marginTop: 104 } as React.CSSProperties}>
+        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.4s', maxWidth: '24ch', marginTop: 104 } as React.CSSProperties}>
           {/* {' '} not a plain space: a JSX text chunk containing a newline gets
               BOTH ends trimmed, so a space after an element that runs to the end
               of the line is silently eaten ("understandwhy"). */}
           &hellip; then using that world to understand{' '}
-          <strong>why people did what they did</strong>&hellip; and why events happened.
+          <strong>why people acted</strong>&hellip; and why events happened.
         </p>
       </section>
 
       {/* 9 — Places. Centre, left, then centre again. */}
       <section data-idx={8} className="onb-panel" style={vis(8)}>
-        <p className="onb-q onb-r text-center" style={{ '--d': '0.1s', color: 'var(--th-primary)', fontSize: 'clamp(28px, 7.5vw, 44px)' } as React.CSSProperties}>The places around us are full of history!</p>
-        <p className="onb-lead onb-r mt-24" style={{ '--d': '1.1s' } as React.CSSProperties}>It&rsquo;s often where we learn about the past.</p>
-        <p className="onb-lead onb-r text-center" style={{ '--d': '2.0s', marginTop: 56 } as React.CSSProperties}>
+        <p className="onb-q onb-r text-center" style={{ '--d': '0.1s', color: 'var(--th-primary)', fontSize: 'clamp(28px, 7.5vw, 44px)' } as React.CSSProperties}>History is hidden in the places around us!</p>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '1.3s', marginTop: 72 } as React.CSSProperties}>
           {/* nowrap so the phrase can't break across lines — it's the point of the
               sentence and reads badly split. */}
           But usually, we only see <strong className="whitespace-nowrap">what is in front of us.</strong>
@@ -381,6 +385,42 @@ function HistoryResponse({ onSubmit }: { onSubmit: () => void }) {
         Continue
       </button>
     </>
+  );
+}
+
+/* Starts at the surrounding body size, then swells to the display size once it
+   scrolls in — "the bigger picture" literally getting bigger. Reduced motion just
+   renders it large. Inline-block so the growth reflows the one word, not the line. */
+function Expand({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      el.style.fontSize = 'clamp(34px, 10vw, 56px)';
+      return;
+    }
+    let done = false;
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (!e.isIntersecting || done) return;
+      done = true;
+      // Let the reader see it at body size for a beat, then grow.
+      window.setTimeout(() => { el.style.fontSize = 'clamp(34px, 10vw, 56px)'; }, 650);
+    }), { threshold: 0.6 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <strong
+      ref={ref}
+      style={{
+        color: 'var(--th-primary)', display: 'inline-block', lineHeight: 1.05,
+        fontSize: '1em', transformOrigin: 'left center', willChange: 'font-size',
+        transition: 'font-size 0.9s cubic-bezier(.34,1.28,.5,1)',
+      }}
+    >
+      {children}
+    </strong>
   );
 }
 

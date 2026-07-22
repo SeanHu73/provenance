@@ -325,6 +325,33 @@ body {
   box-shadow: 4px 4px 0 var(--th-accent-dark);
 }
 
+/* Slide 7 — the "Context" word is a button. It keeps the tilted-block look but
+   gently pulses to read as pressable, and depresses on tap. */
+.onb-ctx-btn {
+  display: inline-block; border: 0; background: none; padding: 0; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  animation: onbCtxPulse 1.9s ease-in-out infinite;
+}
+.onb-ctx-btn .onb-ctx { transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.onb-ctx-btn:active .onb-ctx {
+  transform: rotate(-1.8deg) translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--th-accent-dark);
+}
+@keyframes onbCtxPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.045); }
+}
+.onb-ctx-hint {
+  display: block; margin-top: 20px; text-align: center;
+  font-family: var(--th-font-body, 'Newsreader'), serif; font-style: italic;
+  font-size: 16px; color: var(--th-text); opacity: 0.55;
+  animation: onbBob 1.7s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .onb-ctx-btn { animation: none; }
+  .onb-ctx-hint { animation: none; }
+}
+
 /* colour-coded emphasis */
 .onb-em      { color: var(--th-primary); font-weight: 600; font-style: italic; }
 .onb-em-red  { color: var(--th-primary); font-weight: 600; }
