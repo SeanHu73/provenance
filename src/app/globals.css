@@ -286,12 +286,14 @@ body {
 .onb-panel.onb-cx .onb-rule { margin-left: auto; margin-right: auto; }
 
 /* reveal-on-scroll: children with .onb-r animate in when the panel is .onb-in */
+/* --onb-dx / --onb-dy are the baked position nudges from the layout editor
+   (?edit=1); they compose with the drop-in so a moved block still animates in. */
 .onb-r {
-  opacity: 0; transform: translateY(24px);
+  opacity: 0; transform: translate(var(--onb-dx, 0px), calc(24px + var(--onb-dy, 0px)));
   transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
   transition-delay: var(--d, 0s);
 }
-.onb-panel.onb-in .onb-r { opacity: 1; transform: translateY(0); }
+.onb-panel.onb-in .onb-r { opacity: 1; transform: translate(var(--onb-dx, 0px), var(--onb-dy, 0px)); }
 
 /* typography — bigger, more editorial */
 .onb-title {
@@ -496,7 +498,7 @@ body {
 .onb-past { font-weight: 700; white-space: nowrap; }
 
 @media (prefers-reduced-motion: reduce) {
-  .onb-r { transition: opacity 0.3s; transform: none !important; }
+  .onb-r { transition: opacity 0.3s; transform: translate(var(--onb-dx, 0px), var(--onb-dy, 0px)) !important; }
   .onb-scrollhint, .onb-pf-arrow { animation: none; }
   .onb-panel.onb-in .onb-logo-pop { animation: none; opacity: 1; }
   .splash-pin { animation: none; }

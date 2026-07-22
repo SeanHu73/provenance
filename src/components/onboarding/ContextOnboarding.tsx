@@ -173,8 +173,13 @@ function PositionEditor({ screenRef }: { screenRef: React.RefObject<HTMLDivEleme
     // Reveal everything (gate + scroll-reveal are bypassed while editing) and tag
     // each draggable block with its stable id, applying any saved offset.
     const offsets = loadOffsets();
-    const apply = (el: HTMLElement, o?: Offset) => {
-      el.style.transform = o ? `translate(${o.x}px, ${o.y}px)` : 'translate(0px, 0px)';
+    const px = (v: string) => parseFloat(v) || 0;
+    const readOffset = (el: HTMLElement): Offset => ({ x: px(el.style.getPropertyValue('--onb-dx')), y: px(el.style.getPropertyValue('--onb-dy')) });
+    // Position rides on --onb-dx/--onb-dy — the same vars the source bakes — so a
+    // dragged block still runs the reveal drop-in and starts from its baked spot.
+    const apply = (el: HTMLElement, o: Offset) => {
+      el.style.setProperty('--onb-dx', `${o.x}px`);
+      el.style.setProperty('--onb-dy', `${o.y}px`);
     };
     const blocks: HTMLElement[] = [];
     root.querySelectorAll<HTMLElement>('.onb-panel').forEach((panel) => {
@@ -183,7 +188,8 @@ function PositionEditor({ screenRef }: { screenRef: React.RefObject<HTMLDivEleme
       panel.querySelectorAll<HTMLElement>('.onb-r').forEach((el, i) => {
         const id = `s${idx}-l${i}`;
         el.dataset.eid = id;
-        apply(el, offsets[id]);
+        const saved = offsets[id];
+        if (saved) apply(el, saved);
         blocks.push(el);
       });
     });
@@ -197,7 +203,7 @@ function PositionEditor({ screenRef }: { screenRef: React.RefObject<HTMLDivEleme
       if (!el || !root.contains(el)) return;
       active = el;
       startX = e.clientX; startY = e.clientY;
-      base = loadOffsets()[el.dataset.eid || ''] || { x: 0, y: 0 };
+      base = loadOffsets()[el.dataset.eid || ''] || readOffset(el);
       el.setPointerCapture?.(e.pointerId);
       e.preventDefault();
     };
@@ -210,9 +216,9 @@ function PositionEditor({ screenRef }: { screenRef: React.RefObject<HTMLDivEleme
     const up = () => {
       if (!active) return;
       const id = active.dataset.eid || '';
-      const t = active.style.transform.match(/-?\d+/g)?.map(Number) || [0, 0];
+      const o = readOffset(active);
       const all = loadOffsets();
-      if (t[0] === 0 && t[1] === 0) delete all[id]; else all[id] = { x: t[0], y: t[1] };
+      if (o.x === 0 && o.y === 0) delete all[id]; else all[id] = o;
       try { localStorage.setItem(EDIT_KEY, JSON.stringify(all)); } catch { /* ignore */ }
       setCount(Object.keys(all).length);
       active = null;
@@ -225,7 +231,7 @@ function PositionEditor({ screenRef }: { screenRef: React.RefObject<HTMLDivEleme
       root.removeEventListener('pointerdown', down);
       root.removeEventListener('pointermove', move);
       root.removeEventListener('pointerup', up);
-      blocks.forEach((el) => { el.style.transform = ''; delete el.dataset.eid; });
+      blocks.forEach((el) => { delete el.dataset.eid; });
     };
   }, [screenRef]);
 
@@ -299,8 +305,8 @@ const OnbPanels = memo(function OnbPanels({
              line sits at the vertical middle: my-auto centres it in the space left
              under the first, which onb-top pins to the top. */}
       <section data-idx={3} className="onb-panel onb-top" style={vis(3)}>
-        <p className="onb-lead onb-r">But people, dates, and events are like <Pieces text="fragments" />.</p>
-        <p className="onb-lead onb-r text-center" style={{ '--d': '1.1s', marginTop: 'auto', marginBottom: 'auto' } as React.CSSProperties}>
+        <p className="onb-lead onb-r" style={{ '--onb-dy': '218px' } as React.CSSProperties}>But people, dates, and events are like <Pieces text="fragments" />.</p>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '1.1s', marginTop: 'auto', marginBottom: 'auto', '--onb-dy': '95px' } as React.CSSProperties}>
           They tell you <em>what happened</em>, but not always
           <br />
           <strong style={{ color: 'var(--th-primary)' }}>why it happened</strong>.
@@ -309,11 +315,11 @@ const OnbPanels = memo(function OnbPanels({
 
       {/* 5 — The bigger picture, then the payoff line centred well underneath. */}
       <section data-idx={4} className="onb-panel" style={vis(4)}>
-        <p className="onb-lead onb-r" style={{ '--d': '0.1s' } as React.CSSProperties}>
+        <p className="onb-lead onb-r" style={{ '--d': '0.1s', '--onb-dy': '59px' } as React.CSSProperties}>
           To understand why things happened, we need to piece those fragments into the{' '}
           <Expand>bigger picture.</Expand>
         </p>
-        <p className="onb-lead onb-r text-center" style={{ '--d': '1.4s', marginTop: 128 } as React.CSSProperties}>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '1.4s', marginTop: 128, '--onb-dy': '27px' } as React.CSSProperties}>
           <strong>That&rsquo;s how a <span style={{ color: 'var(--th-primary)' }}>historian</span> thinks.</strong>
         </p>
       </section>
@@ -322,10 +328,10 @@ const OnbPanels = memo(function OnbPanels({
              The em dashes carry the break across the two halves; the ellipses used
              to, and read as a trailing-off rather than a hinge. */}
       <section data-idx={5} className="onb-panel" style={vis(5)}>
-        <p className="onb-lead onb-r" style={{ '--d': '0.1s' } as React.CSSProperties}>
+        <p className="onb-lead onb-r" style={{ '--d': '0.1s', '--onb-dy': '76px' } as React.CSSProperties}>
           To understand the past, historians first <Reconstruct text="recreate" />{' '}the bigger picture &mdash;
         </p>
-        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.2s', maxWidth: '24ch', marginTop: 56 } as React.CSSProperties}>
+        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.2s', maxWidth: '24ch', marginTop: 56, '--onb-dy': '102px' } as React.CSSProperties}>
           &mdash; or the world around the <em>people</em> and <em>events</em>.
         </p>
       </section>
@@ -333,8 +339,8 @@ const OnbPanels = memo(function OnbPanels({
       {/* 7 — The word itself. It's a button: it pulses to invite a press, and
              pressing it (rather than swiping) carries the reader to the definition. */}
       <section data-idx={6} className="onb-panel onb-cx" style={vis(6)}>
-        <p className="onb-lead onb-r italic" style={{ '--d': '0.2s' } as React.CSSProperties}>That world is what historians call&hellip;</p>
-        <div className="onb-r mt-8" style={{ '--d': '1.4s', transitionDuration: '1.3s' } as React.CSSProperties}>
+        <p className="onb-lead onb-r italic" style={{ '--d': '0.2s', '--onb-dy': '60px' } as React.CSSProperties}>That world is what historians call&hellip;</p>
+        <div className="onb-r mt-8" style={{ '--d': '1.4s', transitionDuration: '1.3s', '--onb-dy': '83px' } as React.CSSProperties}>
           <button type="button" onClick={onContextTap} className="onb-ctx-btn" aria-label="Context — tap to continue">
             <span className="onb-ctx" style={{ fontSize: 'clamp(46px, 15vw, 74px)' }}>Context</span>
           </button>
@@ -344,10 +350,10 @@ const OnbPanels = memo(function OnbPanels({
 
       {/* 8 — The definition, in two beats. Left, then right. */}
       <section data-idx={7} className="onb-panel" style={vis(7)}>
-        <p className="onb-lead onb-r" style={{ '--d': '0.1s', opacity: 0.85 } as React.CSSProperties}>
+        <p className="onb-lead onb-r" style={{ '--d': '0.1s', opacity: 0.85, '--onb-dy': '125px' } as React.CSSProperties}>
           <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>Contextualising</strong>{' '}is <Reconstruct text="recreating" />{' '}the world of the past&hellip;
         </p>
-        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.4s', maxWidth: '24ch', marginTop: 104 } as React.CSSProperties}>
+        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.4s', maxWidth: '24ch', marginTop: 104, '--onb-dy': '83px' } as React.CSSProperties}>
           {/* {' '} not a plain space: a JSX text chunk containing a newline gets
               BOTH ends trimmed, so a space after an element that runs to the end
               of the line is silently eaten ("understandwhy"). */}
@@ -358,8 +364,8 @@ const OnbPanels = memo(function OnbPanels({
 
       {/* 9 — Places. Centre, left, then centre again. */}
       <section data-idx={8} className="onb-panel" style={vis(8)}>
-        <p className="onb-q onb-r text-center" style={{ '--d': '0.1s', color: 'var(--th-primary)', fontSize: 'clamp(28px, 7.5vw, 44px)' } as React.CSSProperties}>History is hidden in the places around us!</p>
-        <p className="onb-lead onb-r text-center" style={{ '--d': '1.3s', marginTop: 72 } as React.CSSProperties}>
+        <p className="onb-q onb-r text-center" style={{ '--d': '0.1s', color: 'var(--th-primary)', fontSize: 'clamp(28px, 7.5vw, 44px)', '--onb-dy': '51px' } as React.CSSProperties}>History is hidden in the places around us!</p>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '1.3s', marginTop: 72, '--onb-dy': '37px' } as React.CSSProperties}>
           {/* nowrap so the phrase can't break across lines — it's the point of the
               sentence and reads badly split. */}
           But usually, we only see <strong className="whitespace-nowrap">what is in front of us.</strong>
@@ -380,11 +386,11 @@ const OnbPanels = memo(function OnbPanels({
              pushed to the bottom-right corner (mt-auto against the panel's own
              padding), so the sentence physically spans the slide. */}
       <section data-idx={10} className="onb-panel" style={vis(10)}>
-        <p className="onb-lead onb-r text-center" style={{ '--d': '0.2s' } as React.CSSProperties}>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '0.2s', '--onb-dy': '253px' } as React.CSSProperties}>
           We want to help you{' '}
           <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>contextualise</strong>
         </p>
-        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.5s', maxWidth: '22ch', marginTop: 'auto', paddingTop: 96 } as React.CSSProperties}>
+        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.5s', maxWidth: '22ch', marginTop: 'auto', paddingTop: 96, '--onb-dy': '-32px' } as React.CSSProperties}>
           &hellip; and <Reconstruct text="recreate" />{' '}the world of the past using
           <br />
           <strong>what&rsquo;s in front of you</strong>.
