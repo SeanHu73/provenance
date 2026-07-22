@@ -47,11 +47,15 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
   const [leaving, setLeaving] = useState(false);
   const [current, setCurrent] = useState(0);
   const [revealedMax, setRevealedMax] = useState(1); // highest panel index shown (gate at 1)
+  const [editMode, setEditMode] = useState(false);
   const screenRef = useRef<HTMLDivElement | null>(null);
   const onAdmin = usePathname()?.startsWith('/admin') ?? false;
 
   useEffect(() => {
     try { sessionStorage.setItem('splash_seen', '1'); } catch { /* ignore */ }
+    // Layout-editing mode: open the app with ?edit=1 to drag any text block into
+    // place. Off by default and never reached in normal use.
+    try { setEditMode(new URLSearchParams(window.location.search).get('edit') === '1'); } catch { /* ignore */ }
   }, []);
 
   // Reveal-on-scroll (toggle .onb-in — pure DOM) + track the visible panel for
@@ -140,7 +144,112 @@ export default function ContextOnboarding({ children }: { children: React.ReactN
         onContextTap={onContextTap}
         onDone={dismiss}
       />
+
+      {editMode && <PositionEditor screenRef={screenRef} />}
     </>
+  );
+}
+
+/* ── Layout editor (dev only, ?edit=1) ────────────────────────────────────
+   Turns every reveal-animated text block (.onb-r) into something you can drag.
+   Positions persist to localStorage so they survive reloads while you tune, and
+   the panel copies the full offset map — hand that back to bake the nudges into
+   the source. Each block gets a stable id (s{slide}-l{line}) so a copied offset
+   always points at the same line. */
+const EDIT_KEY = 'onb-edit-offsets-v1';
+type Offset = { x: number; y: number };
+function loadOffsets(): Record<string, Offset> {
+  try { return JSON.parse(localStorage.getItem(EDIT_KEY) || '{}'); } catch { return {}; }
+}
+function PositionEditor({ screenRef }: { screenRef: React.RefObject<HTMLDivElement | null> }) {
+  const [sel, setSel] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const root = screenRef.current;
+    if (!root) return;
+    root.classList.add('onb-edit');
+
+    // Reveal everything (gate + scroll-reveal are bypassed while editing) and tag
+    // each draggable block with its stable id, applying any saved offset.
+    const offsets = loadOffsets();
+    const apply = (el: HTMLElement, o?: Offset) => {
+      el.style.transform = o ? `translate(${o.x}px, ${o.y}px)` : 'translate(0px, 0px)';
+    };
+    const blocks: HTMLElement[] = [];
+    root.querySelectorAll<HTMLElement>('.onb-panel').forEach((panel) => {
+      panel.classList.add('onb-in');
+      const idx = panel.dataset.idx;
+      panel.querySelectorAll<HTMLElement>('.onb-r').forEach((el, i) => {
+        const id = `s${idx}-l${i}`;
+        el.dataset.eid = id;
+        apply(el, offsets[id]);
+        blocks.push(el);
+      });
+    });
+    setCount(Object.keys(offsets).length);
+
+    // Pointer drag with delegation off the scroll root.
+    let active: HTMLElement | null = null;
+    let startX = 0, startY = 0, base: Offset = { x: 0, y: 0 };
+    const down = (e: PointerEvent) => {
+      const el = (e.target as HTMLElement)?.closest<HTMLElement>('.onb-r');
+      if (!el || !root.contains(el)) return;
+      active = el;
+      startX = e.clientX; startY = e.clientY;
+      base = loadOffsets()[el.dataset.eid || ''] || { x: 0, y: 0 };
+      el.setPointerCapture?.(e.pointerId);
+      e.preventDefault();
+    };
+    const move = (e: PointerEvent) => {
+      if (!active) return;
+      const o = { x: Math.round(base.x + e.clientX - startX), y: Math.round(base.y + e.clientY - startY) };
+      apply(active, o);
+      setSel({ id: active.dataset.eid || '', ...o });
+    };
+    const up = () => {
+      if (!active) return;
+      const id = active.dataset.eid || '';
+      const t = active.style.transform.match(/-?\d+/g)?.map(Number) || [0, 0];
+      const all = loadOffsets();
+      if (t[0] === 0 && t[1] === 0) delete all[id]; else all[id] = { x: t[0], y: t[1] };
+      try { localStorage.setItem(EDIT_KEY, JSON.stringify(all)); } catch { /* ignore */ }
+      setCount(Object.keys(all).length);
+      active = null;
+    };
+    root.addEventListener('pointerdown', down);
+    root.addEventListener('pointermove', move);
+    root.addEventListener('pointerup', up);
+    return () => {
+      root.classList.remove('onb-edit');
+      root.removeEventListener('pointerdown', down);
+      root.removeEventListener('pointermove', move);
+      root.removeEventListener('pointerup', up);
+      blocks.forEach((el) => { el.style.transform = ''; delete el.dataset.eid; });
+    };
+  }, [screenRef]);
+
+  const copy = () => {
+    try { navigator.clipboard.writeText(localStorage.getItem(EDIT_KEY) || '{}'); } catch { /* ignore */ }
+  };
+  const reset = () => {
+    try { localStorage.removeItem(EDIT_KEY); } catch { /* ignore */ }
+    window.location.reload();
+  };
+
+  return (
+    <div className="onb-edit-panel">
+      <div className="onb-edit-title">Layout edit mode</div>
+      <div className="onb-edit-row">Drag any text to move it.</div>
+      <div className="onb-edit-row onb-edit-sel">
+        {sel ? `${sel.id}:  x ${sel.x >= 0 ? '+' : ''}${sel.x}   y ${sel.y >= 0 ? '+' : ''}${sel.y}` : 'nothing selected'}
+      </div>
+      <div className="onb-edit-row">{count} block{count === 1 ? '' : 's'} moved</div>
+      <div className="onb-edit-btns">
+        <button onClick={copy}>Copy offsets</button>
+        <button onClick={reset}>Reset all</button>
+      </div>
+    </div>
   );
 }
 
