@@ -283,9 +283,11 @@ const OnbPanels = memo(function OnbPanels({
       <section data-idx={1} className="onb-panel onb-top" style={vis(1)}>
         <p className="onb-q onb-r" style={{ color: 'var(--th-secondary)' }}>But first&hellip;</p>
         <h2 className="onb-r mt-4 font-display" style={{ '--d': '0.18s', fontSize: 'clamp(28px, 7vw, 40px)', lineHeight: 1.08, color: 'var(--th-text)' } as React.CSSProperties}>
-          How did you learn <span style={{ color: 'var(--th-primary)' }}>history</span>?
+          What do you think <span style={{ color: 'var(--th-primary)' }}>history</span> is?
         </h2>
-        <div className="onb-r mt-6" style={{ '--d': '0.34s' } as React.CSSProperties}>
+        {/* Response floats in the space below the question, so the mic lands
+            vertically centred on the page (auto margins, top slightly trimmed). */}
+        <div className="onb-r w-full" style={{ '--d': '0.34s', marginTop: 'auto', marginBottom: 'auto' } as React.CSSProperties}>
           <HistoryResponse onSubmit={onSubmitRank} />
         </div>
       </section>
