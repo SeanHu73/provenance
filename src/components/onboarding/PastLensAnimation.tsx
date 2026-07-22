@@ -3,7 +3,8 @@
 /**
  * PastLensAnimation — animated line-art illustrations for the P.A.S.T. lenses.
  *
- * Implemented: **place**, **affairs**, **society**, **technology**.
+ * Place, affairs and technology now play a designer-made MP4 (served from /public,
+ * repeated 3× then held); society keeps its drawn SVG scene.
  *
  * Style (all lenses): rust (#A33829) stroke-only line art on a transparent
  * background — the parent supplies the cream (#F8F8EC) canvas — with a uniform
@@ -56,14 +57,49 @@ function Frame({ children, label }: { children: React.ReactNode; label: string }
 
 interface Props {
   lens: PastLens;
+  /** Only autoplay the video when this panel is the active/visible one — the
+   *  onboarding lens slider passes this. Defaults true (e.g. the lens info card). */
+  active?: boolean;
   onComplete?: () => void;
 }
 
-export default function PastLensAnimation({ lens, onComplete }: Props) {
+/** Designer MP4s (in /public) that replace the line-art for these lenses. */
+const LENS_VIDEO: Partial<Record<PastLens, string>> = {
+  place: '/Place.mp4',
+  affairs: '/Affairs.mp4',
+  technology: '/Technology.mp4',
+};
+
+/** A lens video: muted, plays `plays` times then holds the last frame. It (re)plays
+ *  from the start whenever `autoplay` becomes true — so a slider card plays fresh
+ *  each time it's swiped to. prefers-reduced-motion / inactive panels hold a frame. */
+function LensVideo({ src, plays = 3, autoplay = true, onComplete }: { src: string; plays?: number; autoplay?: boolean; onComplete?: () => void }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  const doneRef = useRef(onComplete);
+  useEffect(() => { doneRef.current = onComplete; }, [onComplete]);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    let n = 0;
+    const onEnded = () => {
+      n += 1;
+      if (n < plays) { v.currentTime = 0; v.play().catch(() => {}); }
+      else doneRef.current?.();
+    };
+    v.addEventListener('ended', onEnded);
+    if (autoplay) { v.currentTime = 0; v.play().catch(() => {}); }
+    return () => v.removeEventListener('ended', onEnded);
+  }, [src, plays, autoplay]);
+  return <video ref={ref} src={src} muted playsInline preload="auto" style={{ width: '100%', height: 'auto', display: 'block' }} />;
+}
+
+export default function PastLensAnimation({ lens, active = true, onComplete }: Props) {
   const reduce = useReducedMotion();
+  const video = LENS_VIDEO[lens];
+  if (video) return <LensVideo src={video} plays={3} autoplay={active && !reduce} onComplete={onComplete} />;
+  if (lens === 'society') return <SocietyScene reduce={reduce} onComplete={onComplete} />;
   if (lens === 'place') return <PlaceScene reduce={reduce} onComplete={onComplete} />;
   if (lens === 'affairs') return <AffairsScene reduce={reduce} onComplete={onComplete} />;
-  if (lens === 'society') return <SocietyScene reduce={reduce} onComplete={onComplete} />;
   if (lens === 'technology') return <TechScene reduce={reduce} onComplete={onComplete} />;
   return <NoScene onComplete={onComplete} />;
 }

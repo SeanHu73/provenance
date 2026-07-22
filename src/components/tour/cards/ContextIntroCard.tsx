@@ -26,6 +26,13 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LENSES } from '@/features/context-journal/constants';
 import PastReveal from '@/components/onboarding/PastReveal';
+import PastLensAnimation, { hasPastLensAnimation, type PastLens } from '@/components/onboarding/PastLensAnimation';
+
+/** Maps a lens's data key to the animation's lens value (the A lens is keyed
+ *  'attitudes' in the data but 'affairs' in the animation). */
+const LENS_ANIM_KEY: Record<string, PastLens | undefined> = {
+  place: 'place', attitudes: 'affairs', society: 'society', technology: 'technology',
+};
 
 /** A distinct "context" accent for these immersive splashes — deliberately NOT
  *  --th-secondary (which equals the Attitudes lens colour), so CONTEXT and the
@@ -127,14 +134,22 @@ function LensSlider({ questionsByLens }: { questionsByLens: Record<string, strin
         className="mt-4 flex gap-4 overflow-x-auto tour-scroll"
         style={{ scrollSnapType: 'x mandatory', paddingLeft: '7%', paddingRight: '7%' }}
       >
-        {LENSES.map((l) => {
+        {LENSES.map((l, i) => {
           const authored = questionsByLens[l.key] ?? [];
+          const animLens = LENS_ANIM_KEY[l.key];
           return (
             <div
               key={l.key}
               className="shrink-0 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
               style={{ width: '86%', maxWidth: 460, maxHeight: '62vh', scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-surface)' }}
             >
+              {/* Lens animation (video for place/affairs/technology, drawn for society),
+                  on a cream band. Only the active card plays. */}
+              {animLens && hasPastLensAnimation(animLens) && (
+                <div className="w-full shrink-0" style={{ backgroundColor: '#F8F8EC' }}>
+                  <PastLensAnimation lens={animLens} active={active === i} />
+                </div>
+              )}
               <div className="px-5 py-4 shrink-0" style={{ backgroundColor: l.colour }}>
                 <h3 className="font-display font-bold leading-none" style={{ color: '#fff', fontSize: 'clamp(36px, 9.5vw, 50px)' }}>{l.label}</h3>
               </div>
