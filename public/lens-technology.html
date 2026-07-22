@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>P.A.S.T. lens animations — preview</title>
+<title>Technology lens animation</title>
 <!--
   Standalone preview of the four P.A.S.T. lens line-art animations from the
   Provenance app (src/components/onboarding/PastLensAnimation.tsx). This is a
@@ -531,41 +531,24 @@ function TechScene({ reduce, onComplete }) {
 }
 
 // ───────────────────────────── preview UI ─────────────────────────────
-const LENSES = [
-  { key: 'place', label: 'Place' },
-  { key: 'affairs', label: 'Affairs (tower collapse)' },
-  { key: 'society', label: 'Society' },
-  { key: 'technology', label: 'Technology' },
-];
-
 function App() {
-  const [lens, setLens] = useState('affairs');
   const [k, setK] = useState(0);
   return (
     <div className="wrap">
-      <h1>P.A.S.T. lens animations</h1>
-      <p className="sub">Line-art scenes from the Provenance onboarding. Plays once and holds. Pick a lens; Replay restarts it.</p>
+      <h1>Technology — the railroad builds the town</h1>
+      <p className="sub">One cluster stands alone; the rail draws out, a locomotive runs it, and only then does a second cluster spring up.</p>
       <div className="controls">
-        {LENSES.map((l) => (
-          <button
-            key={l.key}
-            className={l.key === lens ? 'active' : ''}
-            onClick={() => { setLens(l.key); setK((v) => v + 1); }}
-          >
-            {l.label}
-          </button>
-        ))}
         <button className="replay" onClick={() => setK((v) => v + 1)}>↻ Replay</button>
       </div>
       <div className="stage">
-        <PastLensAnimation key={`${lens}-${k}`} lens={lens} />
+        <PastLensAnimation key={k} lens="technology" onComplete={() => { window.__animDone = true; }} />
       </div>
-      <p className="caption">Rust #A33829 line art on cream #F8F8EC · teal #2C3E3A for ground / crack / track · water-blue #5E93AE for Place's river · 1024×560 frame.</p>
+      <p className="caption">Rust #A33829 line art on cream #F8F8EC · teal #2C3E3A for ground / crack / track · water-blue #5E93AE for Place’s river · 1024×560 frame. Faithful port of the app’s Framer Motion component.</p>
     </div>
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById("root")).render(<App />);
 </script>
 </body>
 </html>

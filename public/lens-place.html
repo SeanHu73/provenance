@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Place lens animation</title>
+<!--
+  Standalone preview of the four P.A.S.T. lens line-art animations from the
+  Provenance app (src/components/onboarding/PastLensAnimation.tsx). This is a
+  faithful port of that React + Framer Motion component — same geometry, same
+  timelines — with TypeScript types stripped so it runs in the browser with no
+  build step. Open it directly, or refine it in Gemini and the changes port
+  straight back into the app (it's the same framework and code shape).
+
+  Style rules (all lenses): rust (#A33829) stroke-only line art on a cream
+  (#F8F8EC) canvas, uniform ~8px stroke in a 1024x560 frame, round caps/joins,
+  no fills, no text. A cool accent marks each lens's "natural / structural"
+  element: Place's river is water-blue (#5E93AE); affairs, society and technology
+  draw the earth they stand on (ground line, crack, track) in teal (#2C3E3A).
+  Each animation plays once and holds its final frame.
+-->
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+    "react-dom": "https://esm.sh/react-dom@18.3.1?external=react",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?external=react",
+    "framer-motion": "https://esm.sh/framer-motion@11.11.17?external=react,react-dom"
+  }
+}
+</script>
+<script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+<style>
+  :root { color-scheme: light; }
+  body {
+    margin: 0; background: #efe7dd; color: #3e1620;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 24px 20px 60px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { font-size: 13px; opacity: 0.7; margin: 0 0 18px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  button {
+    font: inherit; font-weight: 600; font-size: 13px; padding: 8px 14px;
+    border: 1px solid #c9b8ae; border-radius: 999px; background: #fff; color: #3e1620;
+    cursor: pointer;
+  }
+  button.active { background: #8B2538; color: #fff; border-color: #8B2538; }
+  button.replay { margin-left: auto; background: #E08A5F; color: #3e1620; border-color: #E08A5F; }
+  .stage { background: #F8F8EC; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+  .caption { font-size: 12px; opacity: 0.6; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-type="module" data-presets="react">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { motion, useReducedMotion, useMotionValue, useTransform, animate } from 'framer-motion';
+const { useEffect, useRef, useState } = React;
+
+const STROKE = '#A33829';
+const SW = 8;
+const ACCENT = '#5E93AE';
+const TEAL = '#2C3E3A';
+const VB_W = 1024;
+const VB_H = 560;
+
+function Frame({ children, label }) {
+  return (
+    <svg
+      viewBox={`0 0 ${VB_W} ${VB_H}`}
+      style={{ width: '100%', height: 'auto', display: 'block' }}
+      fill="none" stroke={STROKE} strokeWidth={SW}
+      strokeLinecap="round" strokeLinejoin="round"
+      role="img" aria-label={label}
+    >
+      {children}
+    </svg>
+  );
+}
+
+function PastLensAnimation({ lens, onComplete }) {
+  const reduce = useReducedMotion();
+  if (lens === 'place') return <PlaceScene reduce={reduce} onComplete={onComplete} />;
+  if (lens === 'affairs') return <AffairsScene reduce={reduce} onComplete={onComplete} />;
+  if (lens === 'society') return <SocietyScene reduce={reduce} onComplete={onComplete} />;
+  if (lens === 'technology') return <TechScene reduce={reduce} onComplete={onComplete} />;
+  return null;
+}
+
+// ───────────────────────────── place ─────────────────────────────
+const RIVER_SW = 28;
+const HOUSE_W = 52;
+const HOUSE_TOTAL_H = HOUSE_W * 1.62;
+const WHEAT_H = HOUSE_TOTAL_H * 0.4;
+const WHEAT_SW = SW * 0.4;
+const P_BEAT1 = 1.2;
+const P_BEAT2 = P_BEAT1 + 0.05;
+const P_HOUSE_STAGGER = 0.1;
+const P_WHEAT_STAGGER = 0.05;
+const P_WHEAT_FADE = 0.5;
+const RIVER_D = 'M 720 -20 C 700 110 470 130 450 250 C 432 360 690 370 640 470 C 606 535 360 520 300 580';
+const HOUSES = [
+  [559, 46], [766, 68], [462, 107], [670, 157], [577, 212], [380, 215],
+  [634, 319], [410, 355], [719, 416], [504, 422], [385, 466],
+];
+const WHEAT = [
+  [900, 435], [880, 475], [860, 435], [920, 475], [940, 435],
+  [840, 475], [880, 395], [900, 515], [920, 395], [860, 515],
+];
+
+function House({ x, y, size }) {
+  const roofH = size * 0.62;
+  const totalH = size + roofH;
+  const left = x - size / 2;
+  const right = x + size / 2;
+  const apexY = y - totalH / 2;
+  const bodyTop = apexY + roofH;
+  const bottom = y + totalH / 2;
+  return (
+    <>
+      <path d={`M ${left} ${bodyTop} H ${right} V ${bottom} H ${left} Z`} />
+      <path d={`M ${left} ${bodyTop} L ${x} ${apexY} L ${right} ${bodyTop}`} />
+    </>
+  );
+}
+
+function Wheat({ x, yBottom, height, strokeWidth }) {
+  const top = yBottom - height;
+  const grains = [0.5, 0.68, 0.86].map((t) => yBottom - height * t);
+  const len = height * 0.42;
+  const rise = height * 0.34;
+  return (
+    <g strokeWidth={strokeWidth}>
+      <line x1={x} y1={yBottom} x2={x} y2={top} />
+      {grains.map((gy, i) => (
+        <g key={i}>
+          <line x1={x} y1={gy} x2={x + len} y2={gy - rise} />
+          <line x1={x} y1={gy} x2={x - len} y2={gy - rise} />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+function PlaceScene({ reduce, onComplete }) {
+  const doneRef = useRef(false);
+  useEffect(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    if (reduce) { onComplete && onComplete(); return; }
+    const wheatStart = P_BEAT2 + HOUSES.length * P_HOUSE_STAGGER + 0.15;
+    const total = wheatStart + (WHEAT.length - 1) * P_WHEAT_STAGGER + P_WHEAT_FADE + 0.15;
+    const t = window.setTimeout(() => onComplete && onComplete(), total * 1000);
+    return () => clearTimeout(t);
+  }, [reduce, onComplete]);
+
+  const wheatStart = P_BEAT2 + HOUSES.length * P_HOUSE_STAGGER + 0.15;
+
+  return (
+    <Frame label="A map seen from above: a river with houses along its banks and a field of wheat">
+      <motion.path
+        d={RIVER_D} stroke={ACCENT} strokeWidth={RIVER_SW}
+        initial={reduce ? false : { pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={reduce ? { duration: 0 } : { duration: P_BEAT1, ease: 'easeInOut' }}
+      />
+      {HOUSES.map(([hx, hy], i) => (
+        <motion.g
+          key={i}
+          style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+          initial={reduce ? false : { scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={reduce ? { duration: 0 } : { delay: P_BEAT2 + i * P_HOUSE_STAGGER, type: 'spring', stiffness: 520, damping: 15 }}
+        >
+          <House x={hx} y={hy} size={HOUSE_W} />
+        </motion.g>
+      ))}
+      {WHEAT.map(([wx, wy], i) => (
+        <motion.g
+          key={i}
+          initial={reduce ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={reduce ? { duration: 0 } : { delay: wheatStart + i * P_WHEAT_STAGGER, duration: P_WHEAT_FADE }}
+        >
+          <Wheat x={wx} yBottom={wy} height={WHEAT_H} strokeWidth={WHEAT_SW} />
+        </motion.g>
+      ))}
+    </Frame>
+  );
+}
+
+const BUILT_HOUSE = 64;
+function rectPath(cx, halfW, top, bottom) {
+  return `M ${(cx - halfW).toFixed(1)} ${top} H ${(cx + halfW).toFixed(1)} V ${bottom} H ${(cx - halfW).toFixed(1)} Z`;
+}
+
+// ──────────────────────────── affairs ────────────────────────────
+// A tower falls: ten blocks build a tower, the ground cracks and the scene shakes
+// violently, and the tower collapses (cap first, top-down) into rubble. No rebuild.
+const EQ_GROUND_Y = 440;
+const EQ_CRACK = [
+  [60, 0], [250, 0], [338, -16], [426, 16], [514, -16],
+  [602, 16], [690, -16], [780, 0], [964, 0],
+];
+function eqGroundPath(t) {
+  return EQ_CRACK.map(([x, off], i) => `${i ? 'L' : 'M'} ${x} ${(EQ_GROUND_Y + off * t).toFixed(1)}`).join(' ');
+}
+const EQ_COLS = [416, 512, 608];
+const EQ_ROWS = [405, 329, 253];
+const EQ_RUBBLE = [
+  [320, 410, -62], [400, 414, 29], [475, 406, -41],
+  [352, 352, 16], [548, 412, 70], [625, 408, -19],
+  [300, 404, -74], [592, 350, -33], [690, 360, 45],
+  [505, 398, -9], // cap
+];
+const EQ_FALL_ORDER = [9, 6, 7, 8, 3, 4, 5, 0, 1, 2];
+const EQ_BLOCKS = EQ_RUBBLE.map(([rx, ry, rot], i) => {
+  const cap = i === 9;
+  return {
+    cx: cap ? 512 : EQ_COLS[i % 3],
+    cy: cap ? 193 : EQ_ROWS[Math.floor(i / 3)],
+    hw: cap ? 95 : 45,
+    hh: cap ? 25 : 35,
+    rx, ry, rot, fall: EQ_FALL_ORDER.indexOf(i),
+  };
+});
+const EQ_BUILD_STAGGER = 0.06;
+const EQ_QUAKE = 0.9;
+const EQ_CRACK_DUR = 0.5;
+const EQ_JITTER_DUR = 1.0;
+const EQ_FALL_START = 1.5;
+const EQ_FALL_STAGGER = 0.08;
+const EQ_FALL_DUR = 0.5;
+const EQ_TOTAL = EQ_FALL_START + 9 * EQ_FALL_STAGGER + EQ_FALL_DUR + 0.3;
+
+function AffairsScene({ reduce, onComplete }) {
+  const crack = useMotionValue(reduce ? 1 : 0);
+  const groundD = useTransform(crack, (t) => eqGroundPath(t));
+  useEffect(() => {
+    if (reduce) return;
+    const a = animate(crack, 1, { delay: EQ_QUAKE, duration: EQ_CRACK_DUR, ease: 'easeIn' });
+    return () => a.stop();
+  }, [reduce, crack]);
+
+  const doneRef = useRef(false);
+  useEffect(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    if (reduce) { onComplete && onComplete(); return; }
+    const t = window.setTimeout(() => onComplete && onComplete(), EQ_TOTAL * 1000);
+    return () => clearTimeout(t);
+  }, [reduce, onComplete]);
+
+  return (
+    <Frame label="A tall tower of blocks on flat ground; the ground cracks, the scene shakes, and the tower collapses into rubble">
+      <motion.g
+        animate={reduce ? {} : { x: [0, -14, 15, -12, 12, -8, 5, 0], y: [0, 3, -3, 3, -2, 2, 0] }}
+        transition={reduce ? { duration: 0 } : { delay: EQ_QUAKE, duration: EQ_JITTER_DUR, ease: 'linear' }}
+      >
+        <motion.path
+          d={groundD} stroke={TEAL}
+          initial={reduce ? false : { pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={reduce ? { duration: 0 } : { duration: 0.4, ease: 'easeInOut' }}
+        />
+        {EQ_BLOCKS.map((b, i) => {
+          const dx = b.rx - b.cx;
+          const dy = b.ry - b.cy;
+          const fallAt = EQ_FALL_START + b.fall * EQ_FALL_STAGGER;
+          return (
+            <motion.g
+              key={i}
+              style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+              initial={reduce ? false : { scale: 0, x: 0, y: 0, rotate: 0 }}
+              animate={{ scale: 1, x: dx, y: reduce ? dy : [0, dy + 6, dy], rotate: b.rot }}
+              transition={reduce ? { duration: 0 } : {
+                scale: { delay: i * EQ_BUILD_STAGGER, type: 'spring', stiffness: 480, damping: i === 9 ? 12 : 15 },
+                x: { delay: fallAt, duration: EQ_FALL_DUR, ease: 'easeIn' },
+                rotate: { delay: fallAt, duration: EQ_FALL_DUR, ease: 'easeIn' },
+                y: { delay: fallAt, duration: EQ_FALL_DUR, ease: 'easeIn', times: [0, 0.85, 1] },
+              }}
+            >
+              <path d={rectPath(b.cx, b.hw, b.cy - b.hh, b.cy + b.hh)} />
+            </motion.g>
+          );
+        })}
+      </motion.g>
+    </Frame>
+  );
+}
+
+// ──────────────────────────── society ────────────────────────────
+// A three-tier pyramid of power assembles bottom-up, its symbols drop in top-down,
+// then the middle institution's spire gives way to a temple.
+const SOC_GROUND = 'M 100 420 L 924 420';
+const SOC_TIERS = [
+  [212, 812, 330],
+  [312, 712, 240],
+  [412, 612, 150],
+];
+function socTier([l, r, top]) {
+  return `M ${l} ${top} H ${r} V ${top + 90} H ${l} Z`;
+}
+const SOC_CROWN = 'M 467 218 L 467 173 L 489.5 190 L 512 173 L 534.5 190 L 557 173 L 557 218 Z';
+const SOC_SWAP = 2.05;
+const SOC_TOTAL = 2.7;
+
+function SocietyScene({ reduce, onComplete }) {
+  const doneRef = useRef(false);
+  useEffect(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    if (reduce) { onComplete && onComplete(); return; }
+    const t = window.setTimeout(() => onComplete && onComplete(), SOC_TOTAL * 1000);
+    return () => clearTimeout(t);
+  }, [reduce, onComplete]);
+
+  const drop = (delay) => (reduce ? { duration: 0 } : { delay, type: 'spring', stiffness: 420, damping: 13 });
+
+  return (
+    <Frame label="A three-tier pyramid of social order — crown, institution and people — where the institution's spire becomes a temple">
+      <motion.path
+        d={SOC_GROUND} stroke={TEAL}
+        initial={reduce ? false : { pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={reduce ? { duration: 0 } : { duration: 0.4, ease: 'easeInOut' }}
+      />
+      {SOC_TIERS.map((tier, i) => (
+        <motion.path
+          key={i}
+          d={socTier(tier)}
+          initial={reduce ? false : { pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={reduce ? { duration: 0 } : { delay: 0.15 + i * 0.3, duration: 0.3, ease: 'easeInOut' }}
+        />
+      ))}
+
+      <motion.g
+        style={{ transformBox: 'view-box' }}
+        initial={reduce ? false : { y: -40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={drop(1.05)}
+      >
+        <path d={SOC_CROWN} />
+      </motion.g>
+
+      {!reduce && (
+        <motion.g
+          style={{ transformBox: 'view-box' }}
+          initial={{ y: -40, opacity: 0 }}
+          animate={{ y: 0, opacity: [1, 1, 0] }}
+          transition={{ y: drop(1.17), opacity: { delay: SOC_SWAP, duration: 0.4, times: [0, 0.01, 1] } }}
+        >
+          <path d="M 467 285 H 557 V 315 H 467 Z" />
+          <path d="M 492 285 L 512 255 L 532 285" />
+        </motion.g>
+      )}
+      <motion.g
+        style={{ transformBox: 'view-box' }}
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={reduce ? { duration: 0 } : { delay: SOC_SWAP + 0.05, duration: 0.4 }}
+      >
+        <path d="M 467 278 L 512 255 L 557 278" />
+        <path d="M 467 278 H 557" />
+        <path d="M 485 278 V 315 M 512 278 V 315 M 539 278 V 315" />
+        <path d="M 467 315 H 557" />
+      </motion.g>
+
+      {[392, 512, 632].map((cx, i) => (
+        <motion.g
+          key={cx}
+          style={{ transformBox: 'view-box' }}
+          initial={reduce ? false : { y: -40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={drop(1.29 + i * 0.12)}
+        >
+          <circle cx={cx} cy={375} r={26} />
+        </motion.g>
+      ))}
+    </Frame>
+  );
+}
+
+// ─────────────────────────── technology ──────────────────────────
+// One cluster sits alone; the railroad draws into empty land, a locomotive runs
+// it to the terminus, and only then does the second cluster spring up around it.
+const TECH_P = [[300, 210], [450, 240], [590, 320], [740, 350]];
+function techCub(t) {
+  const mt = 1 - t;
+  return [
+    mt * mt * mt * TECH_P[0][0] + 3 * mt * mt * t * TECH_P[1][0] + 3 * mt * t * t * TECH_P[2][0] + t * t * t * TECH_P[3][0],
+    mt * mt * mt * TECH_P[0][1] + 3 * mt * mt * t * TECH_P[1][1] + 3 * mt * t * t * TECH_P[2][1] + t * t * t * TECH_P[3][1],
+  ];
+}
+function techDer(t) {
+  const mt = 1 - t;
+  return [
+    3 * mt * mt * (TECH_P[1][0] - TECH_P[0][0]) + 6 * mt * t * (TECH_P[2][0] - TECH_P[1][0]) + 3 * t * t * (TECH_P[3][0] - TECH_P[2][0]),
+    3 * mt * mt * (TECH_P[1][1] - TECH_P[0][1]) + 6 * mt * t * (TECH_P[2][1] - TECH_P[1][1]) + 3 * t * t * (TECH_P[3][1] - TECH_P[2][1]),
+  ];
+}
+function techNormal(t) {
+  const [dx, dy] = techDer(t);
+  const L = Math.hypot(dx, dy) || 1;
+  return [-dy / L, dx / L];
+}
+function techAngle(t) {
+  const [dx, dy] = techDer(t);
+  return (Math.atan2(dy, dx) * 180) / Math.PI;
+}
+const TECH_RAIL_OFF = 11;
+function techRailPath(sign) {
+  const pts = [];
+  for (let i = 0; i <= 60; i++) {
+    const t = i / 60;
+    const [x, y] = techCub(t);
+    const [nx, ny] = techNormal(t);
+    pts.push(`${i ? 'L' : 'M'} ${(x + sign * nx * TECH_RAIL_OFF).toFixed(1)} ${(y + sign * ny * TECH_RAIL_OFF).toFixed(1)}`);
+  }
+  return pts.join(' ');
+}
+const TECH_RAIL_L = techRailPath(1);
+const TECH_RAIL_R = techRailPath(-1);
+const TECH_TIE_HALF = 17;
+const TECH_TIES = Array.from({ length: 14 }, (_, i) => {
+  const t = (i + 0.5) / 14;
+  const [x, y] = techCub(t);
+  const [nx, ny] = techNormal(t);
+  return [x + nx * TECH_TIE_HALF, y + ny * TECH_TIE_HALF, x - nx * TECH_TIE_HALF, y - ny * TECH_TIE_HALF];
+});
+const TECH_CL_A = [[140, 150], [250, 130], [185, 240]];
+const TECH_CL_B = [[790, 380], [895, 400], [845, 300]];
+const TECH_LOCO = 1.2;
+const TECH_ARRIVE = TECH_LOCO + 1.4;
+const TECH_TOTAL = TECH_ARRIVE + 3 * 0.2 + 0.6;
+
+function TechScene({ reduce, onComplete }) {
+  const prog = useMotionValue(reduce ? 1 : 0);
+  const lx = useTransform(prog, (t) => techCub(t)[0]);
+  const ly = useTransform(prog, (t) => techCub(t)[1]);
+  const lrot = useTransform(prog, (t) => techAngle(t));
+  useEffect(() => {
+    if (reduce) return;
+    const a = animate(prog, 1, { delay: TECH_LOCO, duration: 1.4, ease: 'easeInOut' });
+    return () => a.stop();
+  }, [reduce, prog]);
+
+  const doneRef = useRef(false);
+  useEffect(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    if (reduce) { onComplete && onComplete(); return; }
+    const t = window.setTimeout(() => onComplete && onComplete(), TECH_TOTAL * 1000);
+    return () => clearTimeout(t);
+  }, [reduce, onComplete]);
+
+  const popHouse = (delay) => (reduce ? { duration: 0 } : { delay, type: 'spring', stiffness: 480, damping: 14 });
+
+  return (
+    <Frame label="A cluster of houses; a railroad draws into empty land and a locomotive runs it, and only then a second cluster of houses springs up around the terminus">
+      {[TECH_RAIL_L, TECH_RAIL_R].map((d, i) => (
+        <motion.path
+          key={i}
+          d={d} stroke={TEAL}
+          initial={reduce ? false : { pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={reduce ? { duration: 0 } : { delay: 0.7, duration: 1.0, ease: 'easeInOut' }}
+        />
+      ))}
+      {TECH_TIES.map((s, i) => (
+        <motion.line
+          key={i}
+          x1={s[0]} y1={s[1]} x2={s[2]} y2={s[3]} stroke={TEAL}
+          initial={reduce ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={reduce ? { duration: 0 } : { delay: 0.8 + i * 0.04, duration: 0.2 }}
+        />
+      ))}
+
+      {TECH_CL_A.map(([x, y], i) => (
+        <motion.g
+          key={`a${i}`}
+          style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+          initial={reduce ? false : { scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={popHouse(i * 0.1)}
+        >
+          <House x={x} y={y} size={BUILT_HOUSE} />
+        </motion.g>
+      ))}
+
+      {TECH_CL_B.map(([x, y], i) => (
+        <motion.g
+          key={`b${i}`}
+          style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+          initial={reduce ? false : { scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={popHouse(TECH_ARRIVE + i * 0.2)}
+        >
+          <House x={x} y={y} size={BUILT_HOUSE} />
+        </motion.g>
+      ))}
+
+      <motion.g
+        style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+        initial={reduce ? false : { scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={popHouse(TECH_ARRIVE + 3 * 0.2 + 0.1)}
+      >
+        <House x={720} y={460} size={BUILT_HOUSE} />
+      </motion.g>
+
+      <motion.g
+        style={{ x: lx, y: ly, rotate: lrot, transformBox: 'fill-box', transformOrigin: 'center' }}
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={reduce ? { duration: 0 } : { delay: TECH_LOCO, duration: 0.2 }}
+      >
+        <path d="M -35 -18 H 35 V 18 H -35 Z" />
+        <path d="M -24 -18 V -32 H -12 V -18" />
+        <circle cx={-18} cy={18} r={11} />
+        <circle cx={18} cy={18} r={11} />
+      </motion.g>
+    </Frame>
+  );
+}
+
+// ───────────────────────────── preview UI ─────────────────────────────
+function App() {
+  const [k, setK] = useState(0);
+  return (
+    <div className="wrap">
+      <h1>Place — a river and its settlements</h1>
+      <p className="sub">A river draws top-to-bottom, houses pop in along both banks, then a wheat field fades in.</p>
+      <div className="controls">
+        <button className="replay" onClick={() => setK((v) => v + 1)}>↻ Replay</button>
+      </div>
+      <div className="stage">
+        <PastLensAnimation key={k} lens="place" onComplete={() => { window.__animDone = true; }} />
+      </div>
+      <p className="caption">Rust #A33829 line art on cream #F8F8EC · teal #2C3E3A for ground / crack / track · water-blue #5E93AE for Place’s river · 1024×560 frame. Faithful port of the app’s Framer Motion component.</p>
+    </div>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
