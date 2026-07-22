@@ -206,68 +206,76 @@ function PlaceScene({ reduce, onComplete }: { reduce: boolean | null; onComplete
   );
 }
 
-// The built lenses (affairs, technology) share a house size; its base sits on the
-// scene's ground line.
+// Technology's houses share a size; the tower's blocks are stroke-only rectangles.
 const BUILT_HOUSE = 64;
-const BUILT_HOUSE_HALF_H = (BUILT_HOUSE + BUILT_HOUSE * 0.62) / 2;
-const GROUND_Y = 420;
-const HOUSE_BASE_Y = GROUND_Y - BUILT_HOUSE_HALF_H; // house centre so its base rests on the ground
 
-/** A stroke-only rectangle centred on cx, from `top` to `bottom`. Same command
- *  structure at any size, so two of these interpolate cleanly (used for the
- *  rebuilt building's morph). */
+/** A stroke-only rectangle centred on cx, from `top` to `bottom`. */
 function rectPath(cx: number, halfW: number, top: number, bottom: number): string {
   return `M ${(cx - halfW).toFixed(1)} ${top} H ${(cx + halfW).toFixed(1)} V ${bottom} H ${(cx - halfW).toFixed(1)} Z`;
 }
 
 // ──────────────────────────── affairs ────────────────────────────
-// An earthquake: a town stands on flat ground, the ground cracks and the whole
-// scene shakes, the tall building's top shears off and a house tilts — then the
-// town rebuilds, differently: a shorter, wider building and a house moved along.
+// A tower falls. Ten blocks stack into a tower; the ground cracks and the scene
+// shakes violently; the tower collapses block by block — cap first, top-down —
+// into rubble on the cracked ground. No rebuild: it holds on the wreckage.
 
-const BLDG_CX = 580;
+const EQ_GROUND_Y = 440;
 
-// The ground: flat at both ends, a zigzag crack (±14px) between x=200 and x=820.
-// [x, yOffset]; a 0→1 value scales the offset, so flat (0) morphs into the crack (1).
+// Ground: flat ends, a zigzag crack (±16px) between x=250 and x=780. A 0→1 value
+// scales the offsets, so flat morphs into the crack — and stays cracked.
 const EQ_CRACK: [number, number][] = [
-  [60, 0], [200, 0], [289, -14], [378, 14], [467, -14],
-  [556, 14], [645, -14], [734, 14], [820, 0], [964, 0],
+  [60, 0], [250, 0], [338, -16], [426, 16], [514, -16],
+  [602, 16], [690, -16], [780, 0], [964, 0],
 ];
 function eqGroundPath(t: number): string {
-  return EQ_CRACK.map(([x, off], i) => `${i ? 'L' : 'M'} ${x} ${(GROUND_Y + off * t).toFixed(1)}`).join(' ');
+  return EQ_CRACK.map(([x, off], i) => `${i ? 'L' : 'M'} ${x} ${(EQ_GROUND_Y + off * t).toFixed(1)}`).join(' ');
 }
 
+// Ten blocks: nine 90×70 in a 3×3 grid (columns 416/512/608, rows 405/329/253 —
+// 6px gaps, bottom row on y=440) plus a 190×50 cap at (512,193). Each carries its
+// tower position and a hardcoded rubble target (rx, ry, rotation — all distinct,
+// 3 elevated to sit atop others). Build order = index (bottom row first, cap last);
+// fall order = cap, then top row, middle, bottom. All verified by math.
+interface Block { cx: number; cy: number; hw: number; hh: number; rx: number; ry: number; rot: number; fall: number; }
+const EQ_COLS = [416, 512, 608];
+const EQ_ROWS = [405, 329, 253];
+const EQ_RUBBLE: [number, number, number][] = [
+  [320, 410, -62], [400, 414, 29], [475, 406, -41],
+  [352, 352, 16], [548, 412, 70], [625, 408, -19],
+  [300, 404, -74], [592, 350, -33], [690, 360, 45],
+  [505, 398, -9], // cap
+];
+const EQ_FALL_ORDER = [9, 6, 7, 8, 3, 4, 5, 0, 1, 2];
+const EQ_BLOCKS: Block[] = EQ_RUBBLE.map(([rx, ry, rot], i) => {
+  const cap = i === 9;
+  return {
+    cx: cap ? 512 : EQ_COLS[i % 3],
+    cy: cap ? 193 : EQ_ROWS[Math.floor(i / 3)],
+    hw: cap ? 95 : 45,
+    hh: cap ? 25 : 35,
+    rx, ry, rot, fall: EQ_FALL_ORDER.indexOf(i),
+  };
+});
+
 // affairs timeline (seconds)
-const EQ_HOUSE_STAGGER = 0.1;
-const EQ_BUILDING = 0.45;   // the tall building pops in last
-const EQ_SHAKE = 0.75;      // crack forms + scene jitters
-const EQ_SHAKE_DUR = 0.8;
-const EQ_CRACK_DUR = 0.6;
-const EQ_FALL = 1.55;       // the top shears off as the jitter ends
+const EQ_BUILD_STAGGER = 0.06;
+const EQ_QUAKE = 0.9;        // crack forms + the scene shakes
+const EQ_CRACK_DUR = 0.5;
+const EQ_JITTER_DUR = 1.0;
+const EQ_FALL_START = 1.5;   // blocks start falling as the jitter peaks (~60%)
+const EQ_FALL_STAGGER = 0.08;
 const EQ_FALL_DUR = 0.5;
-const EQ_B2 = 2.55;         // rebuild starts after a ~0.5s pause on the damage
-const EQ_FADE_DUR = 0.4;
-const EQ_UNCRACK = EQ_B2 + 0.1;
-const EQ_REBUILD = EQ_B2 + 0.4;
-const EQ_REBUILD_DUR = 0.6;
-const EQ_NEW_PED = EQ_REBUILD + EQ_REBUILD_DUR;
-const EQ_NEW_B = EQ_NEW_PED + 0.1;
-const EQ_TOTAL = EQ_NEW_B + 0.6;
+const EQ_TOTAL = EQ_FALL_START + 9 * EQ_FALL_STAGGER + EQ_FALL_DUR + 0.3;
 
 function AffairsScene({ reduce, onComplete }: { reduce: boolean | null; onComplete?: () => void }) {
-  // The ground morphs flat ↔ cracked; the lower building morphs 120×120 → 170×110.
-  const crack = useMotionValue(0);
+  // The ground morphs flat → cracked and stays cracked.
+  const crack = useMotionValue(reduce ? 1 : 0);
   const groundD = useTransform(crack, (t) => eqGroundPath(t));
-  const rebuild = useMotionValue(reduce ? 1 : 0);
-  const lowerD = useTransform(rebuild, (t) => rectPath(BLDG_CX, 60 + 25 * t, 300 - 10 * t, GROUND_Y));
-
   useEffect(() => {
     if (reduce) return;
-    const a1 = animate(crack, 1, { delay: EQ_SHAKE, duration: EQ_CRACK_DUR, ease: 'easeIn' });
-    const a2 = animate(crack, 0, { delay: EQ_UNCRACK, duration: 0.5, ease: 'easeInOut' });
-    const a3 = animate(rebuild, 1, { delay: EQ_REBUILD, duration: EQ_REBUILD_DUR, ease: 'easeInOut' });
-    return () => { a1.stop(); a2.stop(); a3.stop(); };
-  }, [reduce, crack, rebuild]);
+    const a = animate(crack, 1, { delay: EQ_QUAKE, duration: EQ_CRACK_DUR, ease: 'easeIn' });
+    return () => a.stop();
+  }, [reduce, crack]);
 
   const doneRef = useRef(false);
   useEffect(() => {
@@ -279,13 +287,13 @@ function AffairsScene({ reduce, onComplete }: { reduce: boolean | null; onComple
   }, [reduce, onComplete]);
 
   return (
-    <Frame label="A town on flat ground; an earthquake cracks the ground and shears the top off a building, then the town rebuilds shorter and wider">
-      {/* The whole scene jitters on the x-axis during the quake. */}
+    <Frame label="A tall tower of blocks on flat ground; the ground cracks, the scene shakes, and the tower collapses into rubble">
+      {/* The whole scene shakes violently during the quake. */}
       <motion.g
-        animate={reduce ? {} : { x: [0, -8, 9, -7, 6, -4, 2, 0] }}
-        transition={reduce ? { duration: 0 } : { delay: EQ_SHAKE, duration: EQ_SHAKE_DUR, ease: 'linear' }}
+        animate={reduce ? {} : { x: [0, -14, 15, -12, 12, -8, 5, 0], y: [0, 3, -3, 3, -2, 2, 0] }}
+        transition={reduce ? { duration: 0 } : { delay: EQ_QUAKE, duration: EQ_JITTER_DUR, ease: 'linear' }}
       >
-        {/* Ground (teal): draws on flat, cracks in Beat 1, heals in Beat 2. */}
+        {/* Ground (teal): draws on flat, then cracks and holds. */}
         <motion.path
           d={groundD}
           stroke={TEAL}
@@ -294,87 +302,29 @@ function AffairsScene({ reduce, onComplete }: { reduce: boolean | null; onComple
           transition={reduce ? { duration: 0 } : { duration: 0.4, ease: 'easeInOut' }}
         />
 
-        {/* Houses A and C — upright throughout. */}
-        {[240, 790].map((hx, i) => (
-          <motion.g
-            key={hx}
-            style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
-            initial={reduce ? false : { scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={reduce ? { duration: 0 } : { delay: i * EQ_HOUSE_STAGGER, type: 'spring', stiffness: 520, damping: 15 }}
-          >
-            <House x={hx} y={HOUSE_BASE_Y} size={BUILT_HOUSE} />
-          </motion.g>
-        ))}
-
-        {/* House B (original) — pops in, tilts 10° in the quake, fades before the rebuild. */}
-        {!reduce && (
-          <motion.g
-            style={{ transformBox: 'view-box', transformOrigin: `380px ${GROUND_Y}px` }}
-            initial={{ scale: 0, opacity: 1, rotate: 0 }}
-            animate={{ scale: 1, opacity: 0, rotate: 10 }}
-            transition={{
-              scale: { delay: EQ_HOUSE_STAGGER, type: 'spring', stiffness: 520, damping: 15 },
-              rotate: { delay: EQ_FALL, type: 'spring', stiffness: 120, damping: 12 },
-              opacity: { delay: EQ_B2, duration: EQ_FADE_DUR },
-            }}
-          >
-            <House x={380} y={HOUSE_BASE_Y} size={BUILT_HOUSE} />
-          </motion.g>
-        )}
-
-        {/* Tall building — lower section persists and rebuilds wider. */}
-        <motion.path
-          d={lowerD}
-          style={{ transformBox: 'view-box', transformOrigin: `${BLDG_CX}px ${GROUND_Y}px` }}
-          initial={reduce ? false : { scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={reduce ? { duration: 0 } : { delay: EQ_BUILDING, type: 'spring', stiffness: 420, damping: 16 }}
-        />
-
-        {/* Upper section + pediment — pops in, shears off (rotate + fall) in Beat 1,
-            fades out in Beat 2. Outer group scales/fades; inner group falls. */}
-        {!reduce && (
-          <motion.g
-            style={{ transformBox: 'view-box', transformOrigin: `${BLDG_CX}px 300px` }}
-            initial={{ scale: 0, opacity: 1 }}
-            animate={{ scale: 1, opacity: 0 }}
-            transition={{
-              scale: { delay: EQ_BUILDING, type: 'spring', stiffness: 420, damping: 16 },
-              opacity: { delay: EQ_B2, duration: EQ_FADE_DUR },
-            }}
-          >
+        {/* Blocks: pop up bottom-first to build the tower, then fall to their rubble
+            targets (top-down) with a small landing bounce. */}
+        {EQ_BLOCKS.map((b, i) => {
+          const dx = b.rx - b.cx;
+          const dy = b.ry - b.cy;
+          const fallAt = EQ_FALL_START + b.fall * EQ_FALL_STAGGER;
+          return (
             <motion.g
-              style={{ transformBox: 'view-box', transformOrigin: '520px 300px' }}
-              initial={{ rotate: 0, x: 0, y: 0 }}
-              animate={{ rotate: 18, x: 150, y: [0, 124, 120] }}
-              transition={{ delay: EQ_FALL, duration: EQ_FALL_DUR, ease: 'easeIn', y: { times: [0, 0.82, 1] } }}
+              key={i}
+              style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+              initial={reduce ? false : { scale: 0, x: 0, y: 0, rotate: 0 }}
+              animate={{ scale: 1, x: dx, y: reduce ? dy : [0, dy + 6, dy], rotate: b.rot }}
+              transition={reduce ? { duration: 0 } : {
+                scale: { delay: i * EQ_BUILD_STAGGER, type: 'spring', stiffness: 480, damping: i === 9 ? 12 : 15 },
+                x: { delay: fallAt, duration: EQ_FALL_DUR, ease: 'easeIn' },
+                rotate: { delay: fallAt, duration: EQ_FALL_DUR, ease: 'easeIn' },
+                y: { delay: fallAt, duration: EQ_FALL_DUR, ease: 'easeIn', times: [0, 0.85, 1] },
+              }}
             >
-              <path d={rectPath(BLDG_CX, 60, 220, 300)} />
-              <path d="M 520 220 L 580 170 L 640 220" />
+              <path d={rectPath(b.cx, b.hw, b.cy - b.hh, b.cy + b.hh)} />
             </motion.g>
-          </motion.g>
-        )}
-
-        {/* Rebuilt: a wider, shorter pediment pops onto the widened lower section. */}
-        <motion.g
-          style={{ transformBox: 'view-box', transformOrigin: `${BLDG_CX}px 310px` }}
-          initial={reduce ? false : { scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={reduce ? { duration: 0 } : { delay: EQ_NEW_PED, type: 'spring', stiffness: 380, damping: 12 }}
-        >
-          <path d="M 495 310 L 580 270 L 665 310" />
-        </motion.g>
-
-        {/* House B rebuilt — upright, shifted to x=410 (a wider gap from House A). */}
-        <motion.g
-          style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
-          initial={reduce ? false : { scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={reduce ? { duration: 0 } : { delay: EQ_NEW_B, type: 'spring', stiffness: 420, damping: 12 }}
-        >
-          <House x={410} y={HOUSE_BASE_Y} size={BUILT_HOUSE} />
-        </motion.g>
+          );
+        })}
       </motion.g>
     </Frame>
   );
@@ -483,9 +433,10 @@ function SocietyScene({ reduce, onComplete }: { reduce: boolean | null; onComple
 }
 
 // ─────────────────────────── technology ──────────────────────────
-// Two clusters of houses sit far apart; a railroad draws between them, a
-// locomotive runs the line, and each cluster grows a new house — connection
-// produces growth.
+// One cluster of houses sits alone; a railroad draws out into empty land and a
+// locomotive runs it to the terminus — and only then does the second cluster
+// spring up around the line, plus one more house. The town exists because the
+// railroad came.
 
 const TECH_P: [number, number][] = [[300, 210], [450, 240], [590, 320], [740, 350]];
 function techCub(t: number): [number, number] {
@@ -533,8 +484,9 @@ const TECH_TIES: [number, number, number, number][] = Array.from({ length: 14 },
 });
 const TECH_CL_A: [number, number][] = [[140, 150], [250, 130], [185, 240]];
 const TECH_CL_B: [number, number][] = [[790, 380], [895, 400], [845, 300]];
-const TECH_LOCO = 1.1;
-const TECH_TOTAL = 3.5;
+const TECH_LOCO = 1.2;             // slides for 1.4s, so it arrives at ~2.6s
+const TECH_ARRIVE = TECH_LOCO + 1.4;
+const TECH_TOTAL = TECH_ARRIVE + 3 * 0.2 + 0.6; // cluster B (staggered) then the expansion house
 
 function TechScene({ reduce, onComplete }: { reduce: boolean | null; onComplete?: () => void }) {
   // The locomotive follows the guide path (position + tangent) via a 0→1 value.
@@ -560,8 +512,8 @@ function TechScene({ reduce, onComplete }: { reduce: boolean | null; onComplete?
   const popHouse = (delay: number) => (reduce ? { duration: 0 } : { delay, type: 'spring' as const, stiffness: 480, damping: 14 });
 
   return (
-    <Frame label="Two clusters of houses joined by a railroad a locomotive runs along; each cluster then grows a new house">
-      {/* Track (teal): two rails draw on together, then ties appear along them. */}
+    <Frame label="A cluster of houses; a railroad draws into empty land and a locomotive runs it, and only then a second cluster of houses springs up around the terminus">
+      {/* Track (teal): the rails draw out from the Cluster A end, then ties appear. */}
       {[TECH_RAIL_L, TECH_RAIL_R].map((d, i) => (
         <motion.path
           key={i}
@@ -569,7 +521,7 @@ function TechScene({ reduce, onComplete }: { reduce: boolean | null; onComplete?
           stroke={TEAL}
           initial={reduce ? false : { pathLength: 0 }}
           animate={{ pathLength: 1 }}
-          transition={reduce ? { duration: 0 } : { delay: 0.9, duration: 1.0, ease: 'easeInOut' }}
+          transition={reduce ? { duration: 0 } : { delay: 0.7, duration: 1.0, ease: 'easeInOut' }}
         />
       ))}
       {TECH_TIES.map((s, i) => (
@@ -579,11 +531,11 @@ function TechScene({ reduce, onComplete }: { reduce: boolean | null; onComplete?
           stroke={TEAL}
           initial={reduce ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={reduce ? { duration: 0 } : { delay: 1.0 + i * 0.04, duration: 0.2 }}
+          transition={reduce ? { duration: 0 } : { delay: 0.8 + i * 0.04, duration: 0.2 }}
         />
       ))}
 
-      {/* Cluster A, then Cluster B — pop in. */}
+      {/* Cluster A — the origin town, alone at the start. */}
       {TECH_CL_A.map(([x, y], i) => (
         <motion.g
           key={`a${i}`}
@@ -595,32 +547,26 @@ function TechScene({ reduce, onComplete }: { reduce: boolean | null; onComplete?
           <House x={x} y={y} size={BUILT_HOUSE} />
         </motion.g>
       ))}
+
+      {/* Cluster B — springs up around the terminus only after the loco arrives. */}
       {TECH_CL_B.map(([x, y], i) => (
         <motion.g
           key={`b${i}`}
           style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
           initial={reduce ? false : { scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={popHouse(0.4 + i * 0.1)}
+          transition={popHouse(TECH_ARRIVE + i * 0.2)}
         >
           <House x={x} y={y} size={BUILT_HOUSE} />
         </motion.g>
       ))}
 
-      {/* Expansion houses — one per cluster, once the line is running. */}
+      {/* One expansion house — last, once the new town has taken root. */}
       <motion.g
         style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
         initial={reduce ? false : { scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={popHouse(2.6)}
-      >
-        <House x={320} y={90} size={BUILT_HOUSE} />
-      </motion.g>
-      <motion.g
-        style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
-        initial={reduce ? false : { scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={popHouse(2.8)}
+        transition={popHouse(TECH_ARRIVE + 3 * 0.2 + 0.1)}
       >
         <House x={720} y={460} size={BUILT_HOUSE} />
       </motion.g>
