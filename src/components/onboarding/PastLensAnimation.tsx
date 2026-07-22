@@ -3,15 +3,14 @@
 /**
  * PastLensAnimation — animated line-art illustrations for the P.A.S.T. lenses.
  *
- * Implemented: **place** and **affairs**. Society and technology render nothing
- * for now.
+ * Implemented: **place**, **affairs**, **society**, **technology**.
  *
  * Style (all lenses): rust (#A33829) stroke-only line art on a transparent
  * background — the parent supplies the cream (#F8F8EC) canvas — with a uniform
  * ~8px stroke in a 1024×560 frame, round caps and joins, no fills and no text.
- * A second, cool accent (#5E93AE — the same water-blue Place uses for its river)
- * marks the one "natural / structural" element per lens (Place's river, Affairs'
- * border), so the two-colour system stays consistent across lenses. The draw-on
+ * A cool accent marks each lens's "natural / structural" element: Place's river
+ * keeps its water-blue (#5E93AE); affairs, society and technology draw the earth
+ * they stand on — ground line, crack, track — in teal (#2C3E3A). The draw-on
  * is Framer Motion's `pathLength` sweep (or a clip reveal for dashed lines). Each
  * animation is two beats: Beat 1 draws the cause; Beat 2 staggers in the effect.
  * It plays once on mount, holds the final frame, and calls `onComplete`.
@@ -26,13 +25,14 @@ export type PastLens = 'place' | 'affairs' | 'society' | 'technology';
 
 const STROKE = '#A33829';       // rust — the line-art colour
 const SW = 8;                   // uniform stroke width
-const ACCENT = '#5E93AE';       // cool accent (shared: Place river + Affairs border)
+const ACCENT = '#5E93AE';       // cool accent — Place's river
+const TEAL = '#2C3E3A';         // the earth: affairs ground/crack, society ground, tech track
 const VB_W = 1024;
 const VB_H = 560;
 
-/** Which lenses have an animation implemented (the rest render nothing for now). */
-export function hasPastLensAnimation(lens: PastLens): boolean {
-  return lens === 'place' || lens === 'affairs';
+/** Every lens now has an animation. */
+export function hasPastLensAnimation(_lens: PastLens): boolean {
+  return true;
 }
 
 /** Shared SVG frame: the viewBox, the rust stroke defaults, round caps/joins. */
@@ -63,6 +63,8 @@ export default function PastLensAnimation({ lens, onComplete }: Props) {
   const reduce = useReducedMotion();
   if (lens === 'place') return <PlaceScene reduce={reduce} onComplete={onComplete} />;
   if (lens === 'affairs') return <AffairsScene reduce={reduce} onComplete={onComplete} />;
+  if (lens === 'society') return <SocietyScene reduce={reduce} onComplete={onComplete} />;
+  if (lens === 'technology') return <TechScene reduce={reduce} onComplete={onComplete} />;
   return <NoScene onComplete={onComplete} />;
 }
 
@@ -204,131 +206,436 @@ function PlaceScene({ reduce, onComplete }: { reduce: boolean | null; onComplete
   );
 }
 
-// ──────────────────────────── affairs ────────────────────────────
-// Two sides in conflict: a dashed border draws down the middle, flags plant, the
-// crossed swords draw and clash — then the border kinks rightward past the swords
-// and the losing (left) flag tilts.
+// The built lenses (affairs, technology) share a house size; its base sits on the
+// scene's ground line.
+const BUILT_HOUSE = 64;
+const BUILT_HOUSE_HALF_H = (BUILT_HOUSE + BUILT_HOUSE * 0.62) / 2;
+const GROUND_Y = 420;
+const HOUSE_BASE_Y = GROUND_Y - BUILT_HOUSE_HALF_H; // house centre so its base rests on the ground
 
-// verified geometry (see scratchpad/affairs.js): centre (512,280), blades 110,
-// guards 36, all inside the frame, blades crossing at their midpoints.
-const SWORD1_D = 'M 480.5 325.1 L 543.5 234.9 M 481.5 292.2 L 511 312.9';
-const SWORD2_D = 'M 543.5 325.1 L 480.5 234.9 M 513 312.9 L 542.5 292.2';
-
-// timeline (seconds)
-const A_CLIP = 0.9;      // border reveal (Beat 1)
-const A_FLAG_L = 0.15;
-const A_FLAG_R = 0.30;
-const A_SWORD1 = 0.55;
-const A_SWORD_DUR = 0.25;
-const A_SWORD2 = 0.85;
-const A_PULSE = 1.15;
-const A_PULSE_DUR = 0.35;
-const A_MORPH = 1.75;    // Beat 2 border morph, ~0.3s after the pulse settles
-const A_MORPH_DUR = 1.0;
-const A_TILT = 1.95;     // left flag tilts as the border passes
-
-/** The border: a vertical divider at x=512 that bows right by `bow` between
- *  y≈180 and y≈380 (peak at y=280). bow 0 = straight, 120 = kinked. Same command
- *  structure at every bow, so it interpolates cleanly. */
-function borderPath(bow: number): string {
-  const x = 512;
-  const px = (x + bow).toFixed(2);
-  const xs = x.toFixed(1);
-  return `M ${xs} 0 C ${xs} 60 ${xs} 120 ${xs} 180 `
-    + `C ${xs} 213 ${px} 247 ${px} 280 `
-    + `C ${px} 313 ${xs} 347 ${xs} 380 `
-    + `C ${xs} 440 ${xs} 500 ${xs} 560`;
+/** A stroke-only rectangle centred on cx, from `top` to `bottom`. Same command
+ *  structure at any size, so two of these interpolate cleanly (used for the
+ *  rebuilt building's morph). */
+function rectPath(cx: number, halfW: number, top: number, bottom: number): string {
+  return `M ${(cx - halfW).toFixed(1)} ${top} H ${(cx + halfW).toFixed(1)} V ${bottom} H ${(cx - halfW).toFixed(1)} Z`;
 }
 
+// ──────────────────────────── affairs ────────────────────────────
+// An earthquake: a town stands on flat ground, the ground cracks and the whole
+// scene shakes, the tall building's top shears off and a house tilts — then the
+// town rebuilds, differently: a shorter, wider building and a house moved along.
+
+const BLDG_CX = 580;
+
+// The ground: flat at both ends, a zigzag crack (±14px) between x=200 and x=820.
+// [x, yOffset]; a 0→1 value scales the offset, so flat (0) morphs into the crack (1).
+const EQ_CRACK: [number, number][] = [
+  [60, 0], [200, 0], [289, -14], [378, 14], [467, -14],
+  [556, 14], [645, -14], [734, 14], [820, 0], [964, 0],
+];
+function eqGroundPath(t: number): string {
+  return EQ_CRACK.map(([x, off], i) => `${i ? 'L' : 'M'} ${x} ${(GROUND_Y + off * t).toFixed(1)}`).join(' ');
+}
+
+// affairs timeline (seconds)
+const EQ_HOUSE_STAGGER = 0.1;
+const EQ_BUILDING = 0.45;   // the tall building pops in last
+const EQ_SHAKE = 0.75;      // crack forms + scene jitters
+const EQ_SHAKE_DUR = 0.8;
+const EQ_CRACK_DUR = 0.6;
+const EQ_FALL = 1.55;       // the top shears off as the jitter ends
+const EQ_FALL_DUR = 0.5;
+const EQ_B2 = 2.55;         // rebuild starts after a ~0.5s pause on the damage
+const EQ_FADE_DUR = 0.4;
+const EQ_UNCRACK = EQ_B2 + 0.1;
+const EQ_REBUILD = EQ_B2 + 0.4;
+const EQ_REBUILD_DUR = 0.6;
+const EQ_NEW_PED = EQ_REBUILD + EQ_REBUILD_DUR;
+const EQ_NEW_B = EQ_NEW_PED + 0.1;
+const EQ_TOTAL = EQ_NEW_B + 0.6;
+
 function AffairsScene({ reduce, onComplete }: { reduce: boolean | null; onComplete?: () => void }) {
-  // Beat 2 — morph the border straight → kinked by animating a 0→1 value and
-  // rebuilding the path from it (identical command structure both ends).
-  const morph = useMotionValue(reduce ? 1 : 0);
-  const borderD = useTransform(morph, (t) => borderPath(t * 120));
+  // The ground morphs flat ↔ cracked; the lower building morphs 120×120 → 170×110.
+  const crack = useMotionValue(0);
+  const groundD = useTransform(crack, (t) => eqGroundPath(t));
+  const rebuild = useMotionValue(reduce ? 1 : 0);
+  const lowerD = useTransform(rebuild, (t) => rectPath(BLDG_CX, 60 + 25 * t, 300 - 10 * t, GROUND_Y));
+
   useEffect(() => {
     if (reduce) return;
-    const controls = animate(morph, 1, { delay: A_MORPH, duration: A_MORPH_DUR, ease: 'easeInOut' });
-    return () => controls.stop();
-  }, [reduce, morph]);
+    const a1 = animate(crack, 1, { delay: EQ_SHAKE, duration: EQ_CRACK_DUR, ease: 'easeIn' });
+    const a2 = animate(crack, 0, { delay: EQ_UNCRACK, duration: 0.5, ease: 'easeInOut' });
+    const a3 = animate(rebuild, 1, { delay: EQ_REBUILD, duration: EQ_REBUILD_DUR, ease: 'easeInOut' });
+    return () => { a1.stop(); a2.stop(); a3.stop(); };
+  }, [reduce, crack, rebuild]);
 
   const doneRef = useRef(false);
   useEffect(() => {
     if (doneRef.current) return;
     doneRef.current = true;
     if (reduce) { onComplete?.(); return; }
-    const total = (A_MORPH + A_MORPH_DUR + 0.2) * 1000;
-    const t = window.setTimeout(() => onComplete?.(), total);
+    const t = window.setTimeout(() => onComplete?.(), EQ_TOTAL * 1000);
     return () => clearTimeout(t);
   }, [reduce, onComplete]);
 
   return (
-    <Frame label="Two territories divided by a border, their crossed swords and flags; the border shifts as one side gives way">
-      <defs>
-        <clipPath id="affairs-border-clip">
-          {/* grows downward (scaleY from the top) to draw the dashed border top→bottom
-              while keeping its dash pattern intact */}
-          <motion.rect
-            x={0} y={0} width={VB_W} height={VB_H}
-            style={{ transformBox: 'view-box', transformOrigin: '0px 0px' }}
-            initial={reduce ? false : { scaleY: 0 }}
-            animate={{ scaleY: 1 }}
-            transition={reduce ? { duration: 0 } : { duration: A_CLIP, ease: 'easeOut' }}
-          />
-        </clipPath>
-      </defs>
+    <Frame label="A town on flat ground; an earthquake cracks the ground and shears the top off a building, then the town rebuilds shorter and wider">
+      {/* The whole scene jitters on the x-axis during the quake. */}
+      <motion.g
+        animate={reduce ? {} : { x: [0, -8, 9, -7, 6, -4, 2, 0] }}
+        transition={reduce ? { duration: 0 } : { delay: EQ_SHAKE, duration: EQ_SHAKE_DUR, ease: 'linear' }}
+      >
+        {/* Ground (teal): draws on flat, cracks in Beat 1, heals in Beat 2. */}
+        <motion.path
+          d={groundD}
+          stroke={TEAL}
+          initial={reduce ? false : { pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={reduce ? { duration: 0 } : { duration: 0.4, ease: 'easeInOut' }}
+        />
 
-      {/* Beat 1 — the dashed border, revealed top→bottom; Beat 2 — it kinks right. */}
+        {/* Houses A and C — upright throughout. */}
+        {[240, 790].map((hx, i) => (
+          <motion.g
+            key={hx}
+            style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+            initial={reduce ? false : { scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={reduce ? { duration: 0 } : { delay: i * EQ_HOUSE_STAGGER, type: 'spring', stiffness: 520, damping: 15 }}
+          >
+            <House x={hx} y={HOUSE_BASE_Y} size={BUILT_HOUSE} />
+          </motion.g>
+        ))}
+
+        {/* House B (original) — pops in, tilts 10° in the quake, fades before the rebuild. */}
+        {!reduce && (
+          <motion.g
+            style={{ transformBox: 'view-box', transformOrigin: `380px ${GROUND_Y}px` }}
+            initial={{ scale: 0, opacity: 1, rotate: 0 }}
+            animate={{ scale: 1, opacity: 0, rotate: 10 }}
+            transition={{
+              scale: { delay: EQ_HOUSE_STAGGER, type: 'spring', stiffness: 520, damping: 15 },
+              rotate: { delay: EQ_FALL, type: 'spring', stiffness: 120, damping: 12 },
+              opacity: { delay: EQ_B2, duration: EQ_FADE_DUR },
+            }}
+          >
+            <House x={380} y={HOUSE_BASE_Y} size={BUILT_HOUSE} />
+          </motion.g>
+        )}
+
+        {/* Tall building — lower section persists and rebuilds wider. */}
+        <motion.path
+          d={lowerD}
+          style={{ transformBox: 'view-box', transformOrigin: `${BLDG_CX}px ${GROUND_Y}px` }}
+          initial={reduce ? false : { scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={reduce ? { duration: 0 } : { delay: EQ_BUILDING, type: 'spring', stiffness: 420, damping: 16 }}
+        />
+
+        {/* Upper section + pediment — pops in, shears off (rotate + fall) in Beat 1,
+            fades out in Beat 2. Outer group scales/fades; inner group falls. */}
+        {!reduce && (
+          <motion.g
+            style={{ transformBox: 'view-box', transformOrigin: `${BLDG_CX}px 300px` }}
+            initial={{ scale: 0, opacity: 1 }}
+            animate={{ scale: 1, opacity: 0 }}
+            transition={{
+              scale: { delay: EQ_BUILDING, type: 'spring', stiffness: 420, damping: 16 },
+              opacity: { delay: EQ_B2, duration: EQ_FADE_DUR },
+            }}
+          >
+            <motion.g
+              style={{ transformBox: 'view-box', transformOrigin: '520px 300px' }}
+              initial={{ rotate: 0, x: 0, y: 0 }}
+              animate={{ rotate: 18, x: 150, y: [0, 124, 120] }}
+              transition={{ delay: EQ_FALL, duration: EQ_FALL_DUR, ease: 'easeIn', y: { times: [0, 0.82, 1] } }}
+            >
+              <path d={rectPath(BLDG_CX, 60, 220, 300)} />
+              <path d="M 520 220 L 580 170 L 640 220" />
+            </motion.g>
+          </motion.g>
+        )}
+
+        {/* Rebuilt: a wider, shorter pediment pops onto the widened lower section. */}
+        <motion.g
+          style={{ transformBox: 'view-box', transformOrigin: `${BLDG_CX}px 310px` }}
+          initial={reduce ? false : { scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={reduce ? { duration: 0 } : { delay: EQ_NEW_PED, type: 'spring', stiffness: 380, damping: 12 }}
+        >
+          <path d="M 495 310 L 580 270 L 665 310" />
+        </motion.g>
+
+        {/* House B rebuilt — upright, shifted to x=410 (a wider gap from House A). */}
+        <motion.g
+          style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+          initial={reduce ? false : { scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={reduce ? { duration: 0 } : { delay: EQ_NEW_B, type: 'spring', stiffness: 420, damping: 12 }}
+        >
+          <House x={410} y={HOUSE_BASE_Y} size={BUILT_HOUSE} />
+        </motion.g>
+      </motion.g>
+    </Frame>
+  );
+}
+
+// ──────────────────────────── society ────────────────────────────
+// A three-tier stepped pyramid of power assembles bottom-up; its symbols (crown,
+// institution, populace) drop into place top-down — then the middle institution's
+// spire gives way to a temple: the structure persists, what it houses changes.
+
+const SOC_GROUND = 'M 100 420 L 924 420';
+// [left, right, top]; each tier is 90 tall. Ordered bottom → top (draw order).
+const SOC_TIERS: [number, number, number][] = [
+  [212, 812, 330],
+  [312, 712, 240],
+  [412, 612, 150],
+];
+function socTier([l, r, top]: [number, number, number]): string {
+  return `M ${l} ${top} H ${r} V ${top + 90} H ${l} Z`;
+}
+const SOC_CROWN = 'M 467 218 L 467 173 L 489.5 190 L 512 173 L 534.5 190 L 557 173 L 557 218 Z';
+const SOC_SWAP = 2.05; // spire → temple crossfade
+const SOC_TOTAL = 2.7;
+
+function SocietyScene({ reduce, onComplete }: { reduce: boolean | null; onComplete?: () => void }) {
+  const doneRef = useRef(false);
+  useEffect(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    if (reduce) { onComplete?.(); return; }
+    const t = window.setTimeout(() => onComplete?.(), SOC_TOTAL * 1000);
+    return () => clearTimeout(t);
+  }, [reduce, onComplete]);
+
+  // A symbol dropping into its tier with a small settle bounce.
+  const drop = (delay: number) => (reduce ? { duration: 0 } : { delay, type: 'spring' as const, stiffness: 420, damping: 13 });
+
+  return (
+    <Frame label="A three-tier pyramid of social order — crown, institution and people — where the institution's spire becomes a temple">
+      {/* Ground (teal), then tier outlines draw on bottom-up. */}
       <motion.path
-        d={borderD}
-        clipPath="url(#affairs-border-clip)"
-        stroke={ACCENT}
-        strokeWidth={SW}
-        strokeDasharray="24 16"
+        d={SOC_GROUND}
+        stroke={TEAL}
+        initial={reduce ? false : { pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={reduce ? { duration: 0 } : { duration: 0.4, ease: 'easeInOut' }}
       />
-
-      {/* Flags. Both plant (scale up from the pole base); the left one later tilts. */}
-      <motion.g
-        style={{ transformBox: 'view-box', transformOrigin: '300px 350px' }}
-        initial={reduce ? false : { scale: 0, rotate: 0 }}
-        animate={{ scale: 1, rotate: 28 }}
-        transition={reduce ? { duration: 0 } : {
-          scale: { delay: A_FLAG_L, type: 'spring', stiffness: 480, damping: 14 },
-          rotate: { delay: A_TILT, type: 'spring', stiffness: 110, damping: 11 },
-        }}
-      >
-        <line x1={300} y1={350} x2={300} y2={230} />
-        <path d="M 300 230 L 370 250 L 300 270 Z" />
-      </motion.g>
-
-      <motion.g
-        style={{ transformBox: 'view-box', transformOrigin: '724px 350px' }}
-        initial={reduce ? false : { scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={reduce ? { duration: 0 } : { delay: A_FLAG_R, type: 'spring', stiffness: 480, damping: 14 }}
-      >
-        <line x1={724} y1={350} x2={724} y2={230} />
-        <path d="M 724 230 L 654 250 L 724 270 Z" />
-      </motion.g>
-
-      {/* Crossed swords — each draws on, then the pair scale-pulses to mark the clash. */}
-      <motion.g
-        style={{ transformBox: 'view-box', transformOrigin: '512px 280px' }}
-        initial={reduce ? false : { scale: 1 }}
-        animate={reduce ? { scale: 1 } : { scale: [1, 1.15, 1] }}
-        transition={reduce ? { duration: 0 } : { delay: A_PULSE, duration: A_PULSE_DUR, times: [0, 0.5, 1], ease: 'easeInOut' }}
-      >
+      {SOC_TIERS.map((tier, i) => (
         <motion.path
-          d={SWORD1_D}
+          key={i}
+          d={socTier(tier)}
           initial={reduce ? false : { pathLength: 0 }}
           animate={{ pathLength: 1 }}
-          transition={reduce ? { duration: 0 } : { delay: A_SWORD1, duration: A_SWORD_DUR, ease: 'easeInOut' }}
+          transition={reduce ? { duration: 0 } : { delay: 0.15 + i * 0.3, duration: 0.3, ease: 'easeInOut' }}
         />
+      ))}
+
+      {/* Crown (top tier). */}
+      <motion.g
+        style={{ transformBox: 'view-box' }}
+        initial={reduce ? false : { y: -40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={drop(1.05)}
+      >
+        <path d={SOC_CROWN} />
+      </motion.g>
+
+      {/* Middle tier — the spire institution drops in, then fades to the temple. */}
+      {!reduce && (
+        <motion.g
+          style={{ transformBox: 'view-box' }}
+          initial={{ y: -40, opacity: 0 }}
+          animate={{ y: 0, opacity: [1, 1, 0] }}
+          transition={{ y: drop(1.17), opacity: { delay: SOC_SWAP, duration: 0.4, times: [0, 0.01, 1] } }}
+        >
+          <path d="M 467 285 H 557 V 315 H 467 Z" />
+          <path d="M 492 285 L 512 255 L 532 285" />
+        </motion.g>
+      )}
+      <motion.g
+        style={{ transformBox: 'view-box' }}
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={reduce ? { duration: 0 } : { delay: SOC_SWAP + 0.05, duration: 0.4 }}
+      >
+        <path d="M 467 278 L 512 255 L 557 278" />
+        <path d="M 467 278 H 557" />
+        <path d="M 485 278 V 315 M 512 278 V 315 M 539 278 V 315" />
+        <path d="M 467 315 H 557" />
+      </motion.g>
+
+      {/* Bottom tier — the populace, three circles, left to right. */}
+      {[392, 512, 632].map((cx, i) => (
+        <motion.g
+          key={cx}
+          style={{ transformBox: 'view-box' }}
+          initial={reduce ? false : { y: -40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={drop(1.29 + i * 0.12)}
+        >
+          <circle cx={cx} cy={375} r={26} />
+        </motion.g>
+      ))}
+    </Frame>
+  );
+}
+
+// ─────────────────────────── technology ──────────────────────────
+// Two clusters of houses sit far apart; a railroad draws between them, a
+// locomotive runs the line, and each cluster grows a new house — connection
+// produces growth.
+
+const TECH_P: [number, number][] = [[300, 210], [450, 240], [590, 320], [740, 350]];
+function techCub(t: number): [number, number] {
+  const mt = 1 - t;
+  return [
+    mt * mt * mt * TECH_P[0][0] + 3 * mt * mt * t * TECH_P[1][0] + 3 * mt * t * t * TECH_P[2][0] + t * t * t * TECH_P[3][0],
+    mt * mt * mt * TECH_P[0][1] + 3 * mt * mt * t * TECH_P[1][1] + 3 * mt * t * t * TECH_P[2][1] + t * t * t * TECH_P[3][1],
+  ];
+}
+function techDer(t: number): [number, number] {
+  const mt = 1 - t;
+  return [
+    3 * mt * mt * (TECH_P[1][0] - TECH_P[0][0]) + 6 * mt * t * (TECH_P[2][0] - TECH_P[1][0]) + 3 * t * t * (TECH_P[3][0] - TECH_P[2][0]),
+    3 * mt * mt * (TECH_P[1][1] - TECH_P[0][1]) + 6 * mt * t * (TECH_P[2][1] - TECH_P[1][1]) + 3 * t * t * (TECH_P[3][1] - TECH_P[2][1]),
+  ];
+}
+function techNormal(t: number): [number, number] {
+  const [dx, dy] = techDer(t);
+  const L = Math.hypot(dx, dy) || 1;
+  return [-dy / L, dx / L];
+}
+function techAngle(t: number): number {
+  const [dx, dy] = techDer(t);
+  return (Math.atan2(dy, dx) * 180) / Math.PI;
+}
+const TECH_RAIL_OFF = 11;
+function techRailPath(sign: number): string {
+  const pts: string[] = [];
+  for (let i = 0; i <= 60; i++) {
+    const t = i / 60;
+    const [x, y] = techCub(t);
+    const [nx, ny] = techNormal(t);
+    pts.push(`${i ? 'L' : 'M'} ${(x + sign * nx * TECH_RAIL_OFF).toFixed(1)} ${(y + sign * ny * TECH_RAIL_OFF).toFixed(1)}`);
+  }
+  return pts.join(' ');
+}
+const TECH_RAIL_L = techRailPath(1);
+const TECH_RAIL_R = techRailPath(-1);
+const TECH_TIE_HALF = 17;
+const TECH_TIES: [number, number, number, number][] = Array.from({ length: 14 }, (_, i) => {
+  const t = (i + 0.5) / 14;
+  const [x, y] = techCub(t);
+  const [nx, ny] = techNormal(t);
+  return [x + nx * TECH_TIE_HALF, y + ny * TECH_TIE_HALF, x - nx * TECH_TIE_HALF, y - ny * TECH_TIE_HALF];
+});
+const TECH_CL_A: [number, number][] = [[140, 150], [250, 130], [185, 240]];
+const TECH_CL_B: [number, number][] = [[790, 380], [895, 400], [845, 300]];
+const TECH_LOCO = 1.1;
+const TECH_TOTAL = 3.5;
+
+function TechScene({ reduce, onComplete }: { reduce: boolean | null; onComplete?: () => void }) {
+  // The locomotive follows the guide path (position + tangent) via a 0→1 value.
+  const prog = useMotionValue(reduce ? 1 : 0);
+  const lx = useTransform(prog, (t) => techCub(t)[0]);
+  const ly = useTransform(prog, (t) => techCub(t)[1]);
+  const lrot = useTransform(prog, (t) => techAngle(t));
+  useEffect(() => {
+    if (reduce) return;
+    const a = animate(prog, 1, { delay: TECH_LOCO, duration: 1.4, ease: 'easeInOut' });
+    return () => a.stop();
+  }, [reduce, prog]);
+
+  const doneRef = useRef(false);
+  useEffect(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    if (reduce) { onComplete?.(); return; }
+    const t = window.setTimeout(() => onComplete?.(), TECH_TOTAL * 1000);
+    return () => clearTimeout(t);
+  }, [reduce, onComplete]);
+
+  const popHouse = (delay: number) => (reduce ? { duration: 0 } : { delay, type: 'spring' as const, stiffness: 480, damping: 14 });
+
+  return (
+    <Frame label="Two clusters of houses joined by a railroad a locomotive runs along; each cluster then grows a new house">
+      {/* Track (teal): two rails draw on together, then ties appear along them. */}
+      {[TECH_RAIL_L, TECH_RAIL_R].map((d, i) => (
         <motion.path
-          d={SWORD2_D}
+          key={i}
+          d={d}
+          stroke={TEAL}
           initial={reduce ? false : { pathLength: 0 }}
           animate={{ pathLength: 1 }}
-          transition={reduce ? { duration: 0 } : { delay: A_SWORD2, duration: A_SWORD_DUR, ease: 'easeInOut' }}
+          transition={reduce ? { duration: 0 } : { delay: 0.9, duration: 1.0, ease: 'easeInOut' }}
         />
+      ))}
+      {TECH_TIES.map((s, i) => (
+        <motion.line
+          key={i}
+          x1={s[0]} y1={s[1]} x2={s[2]} y2={s[3]}
+          stroke={TEAL}
+          initial={reduce ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={reduce ? { duration: 0 } : { delay: 1.0 + i * 0.04, duration: 0.2 }}
+        />
+      ))}
+
+      {/* Cluster A, then Cluster B — pop in. */}
+      {TECH_CL_A.map(([x, y], i) => (
+        <motion.g
+          key={`a${i}`}
+          style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+          initial={reduce ? false : { scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={popHouse(i * 0.1)}
+        >
+          <House x={x} y={y} size={BUILT_HOUSE} />
+        </motion.g>
+      ))}
+      {TECH_CL_B.map(([x, y], i) => (
+        <motion.g
+          key={`b${i}`}
+          style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+          initial={reduce ? false : { scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={popHouse(0.4 + i * 0.1)}
+        >
+          <House x={x} y={y} size={BUILT_HOUSE} />
+        </motion.g>
+      ))}
+
+      {/* Expansion houses — one per cluster, once the line is running. */}
+      <motion.g
+        style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+        initial={reduce ? false : { scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={popHouse(2.6)}
+      >
+        <House x={320} y={90} size={BUILT_HOUSE} />
+      </motion.g>
+      <motion.g
+        style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+        initial={reduce ? false : { scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={popHouse(2.8)}
+      >
+        <House x={720} y={460} size={BUILT_HOUSE} />
+      </motion.g>
+
+      {/* The locomotive — stroke-only, follows the guide path and its tangent. */}
+      <motion.g
+        style={{ x: lx, y: ly, rotate: lrot, transformBox: 'fill-box', transformOrigin: 'center' }}
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={reduce ? { duration: 0 } : { delay: TECH_LOCO, duration: 0.2 }}
+      >
+        <path d="M -35 -18 H 35 V 18 H -35 Z" />
+        <path d="M -24 -18 V -32 H -12 V -18" />
+        <circle cx={-18} cy={18} r={11} />
+        <circle cx={18} cy={18} r={11} />
       </motion.g>
     </Frame>
   );
