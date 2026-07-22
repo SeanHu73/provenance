@@ -332,6 +332,7 @@ function HomeInner() {
             hidePins={true}
             tourDefaultZoom={activeTour?.defaultZoom}
             isUnstructuredMap={isOnTourMap}
+            mapPeek={mapPeek}
             flyTarget={flyTarget}
             onFlyComplete={() => setFlyTarget(null)}
             isTourActive={isActive}

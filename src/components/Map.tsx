@@ -48,6 +48,9 @@ interface MapProps {
   tourDefaultZoom?: number;
   /** True when the explorer is in the unstructured stop-picker phase */
   isUnstructuredMap?: boolean;
+  /** True while the map is "peeked" — revealed behind a stop card (e.g. FIND's
+   *  "Find on map"). GPS should be on here too. */
+  mapPeek?: boolean;
   /** Pan+fitBounds animation target from gallery selection */
   flyTarget?: { stopLocation: Loc } | null;
   onFlyComplete?: () => void;
@@ -272,29 +275,25 @@ function UserLocationTracker({ following, onLocationUpdate }: { following: boole
   return null;
 }
 
-/** Keeps the GPS "on" whenever the tour map is (re-)shown: each time it becomes
- *  active it re-acquires the user's location and centres on it, so the location
- *  dot is up without needing the locate button (the initial fetch only runs once
- *  on mount, so returns to the map otherwise showed nothing). The always-on
- *  UserLocationTracker then keeps the dot following the user. */
-function MapAutoLocate({ active, tourLocs, onLocationUpdate }: { active: boolean; tourLocs: Loc[]; onLocationUpdate: (pos: Loc | null) => void }) {
-  const map = useMap();
-  const handled = useRef(false); // acquired once for the current active period
+/** Keeps the GPS "on" whenever the map is shown to the explorer — the exploration
+ *  phase AND the FIND "Find on map" peek. Each time it becomes visible it acquires
+ *  the user's location so the dot appears without pressing the locate button (the
+ *  one-shot initial fetch on mount otherwise left later views blank). It only sets
+ *  the location — the map's own centring (MapZoomer / flyTarget) is left alone —
+ *  and the always-on UserLocationTracker then keeps the dot updated. */
+function MapAutoLocate({ active, onLocationUpdate }: { active: boolean; onLocationUpdate: (pos: Loc | null) => void }) {
+  const handled = useRef(false); // acquired once for the current visible period
 
   useEffect(() => {
-    if (!active) { handled.current = false; return; } // reset so returning re-acquires
-    if (handled.current || !map || !navigator.geolocation) return;
+    if (!active) { handled.current = false; return; } // reset so re-showing re-acquires
+    if (handled.current || !navigator.geolocation) return;
     handled.current = true;
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        onLocationUpdate(userPos);
-        fitToNearestTourPin(map as MapInstance, userPos, tourLocs);
-      },
-      () => { handled.current = false; }, // let it retry (e.g. on next render) if it failed
+      (pos) => onLocationUpdate({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => { handled.current = false; }, // reset so a later show retries if this failed
       { enableHighAccuracy: true, timeout: 8000 }
     );
-  }, [active, map, tourLocs, onLocationUpdate]);
+  }, [active, onLocationUpdate]);
 
   return null;
 }
@@ -977,6 +976,7 @@ export default function MapContainer({
   hidePins,
   tourDefaultZoom,
   isUnstructuredMap,
+  mapPeek,
   flyTarget,
   onFlyComplete,
   isTourActive,
@@ -1071,7 +1071,7 @@ export default function MapContainer({
           <TiltController tilt={mapTilt} />
           <MapInitializer tourPins={tourPins} onLocationUpdate={handleLocationUpdate} />
           <UserLocationTracker following={following} onLocationUpdate={handleLocationUpdate} />
-          <MapAutoLocate active={!!isUnstructuredMap} tourLocs={tourLocs} onLocationUpdate={handleLocationUpdate} />
+          <MapAutoLocate active={!!isUnstructuredMap || !!mapPeek} onLocationUpdate={handleLocationUpdate} />
           <BoundsTracker onChange={handleBoundsChange} />
           <MapZoomer
             isUnstructuredMap={!!isUnstructuredMap}
