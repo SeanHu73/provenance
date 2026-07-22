@@ -165,7 +165,9 @@ function LensSlider({ questionsByLens }: { questionsByLens: Record<string, strin
                 <p className="font-serif leading-snug" style={{ color: 'var(--th-text)', fontSize: 20 }}>
                   How did&hellip;
                   <br />
-                  <span className="font-bold" style={{ color: l.colour }}>{terms}</span>{' '}&hellip;shape the past?
+                  <span className="font-bold" style={{ color: l.colour }}>{terms}</span>
+                  <br />
+                  &hellip;shape the past?
                 </p>
 
                 {authored.length > 0 && (

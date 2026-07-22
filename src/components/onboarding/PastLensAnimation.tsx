@@ -73,7 +73,7 @@ const LENS_VIDEO: Partial<Record<PastLens, string>> = {
 /** A lens video: muted, plays `plays` times then holds the last frame. It (re)plays
  *  from the start whenever `autoplay` becomes true — so a slider card plays fresh
  *  each time it's swiped to. prefers-reduced-motion / inactive panels hold a frame. */
-function LensVideo({ src, plays = 3, autoplay = true, onComplete }: { src: string; plays?: number; autoplay?: boolean; onComplete?: () => void }) {
+function LensVideo({ src, plays = 3, autoplay = true, bg = '#F8F8EC', onComplete }: { src: string; plays?: number; autoplay?: boolean; bg?: string; onComplete?: () => void }) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const doneRef = useRef(onComplete);
   useEffect(() => { doneRef.current = onComplete; }, [onComplete]);
@@ -93,11 +93,12 @@ function LensVideo({ src, plays = 3, autoplay = true, onComplete }: { src: strin
     return () => { v.removeEventListener('ended', onEnded); if (timer) clearTimeout(timer); };
   }, [src, plays, autoplay]);
   // Fixed 854×480 (16:9) box so every lens video is the same size; a 4:3 source
-  // (technology) is letterboxed on the cream band instead of rendering taller.
+  // (technology) is letterboxed instead of rendering taller — `bg` fills those
+  // margins to match the clip's own background.
   return (
     <video
       ref={ref} src={src} muted playsInline preload="auto"
-      style={{ width: '100%', aspectRatio: '854 / 480', objectFit: 'contain', display: 'block', backgroundColor: '#F8F8EC' }}
+      style={{ width: '100%', aspectRatio: '854 / 480', objectFit: 'contain', display: 'block', backgroundColor: bg }}
     />
   );
 }
@@ -105,7 +106,8 @@ function LensVideo({ src, plays = 3, autoplay = true, onComplete }: { src: strin
 export default function PastLensAnimation({ lens, active = true, onComplete }: Props) {
   const reduce = useReducedMotion();
   const video = LENS_VIDEO[lens];
-  if (video) return <LensVideo src={video} plays={3} autoplay={active && !reduce} onComplete={onComplete} />;
+  // Technology's clip is 4:3 on black; its letterbox margins should be black too.
+  if (video) return <LensVideo src={video} plays={3} autoplay={active && !reduce} bg={lens === 'technology' ? '#000' : '#F8F8EC'} onComplete={onComplete} />;
   if (lens === 'society') return <SocietyScene reduce={reduce} onComplete={onComplete} />;
   if (lens === 'place') return <PlaceScene reduce={reduce} onComplete={onComplete} />;
   if (lens === 'affairs') return <AffairsScene reduce={reduce} onComplete={onComplete} />;
