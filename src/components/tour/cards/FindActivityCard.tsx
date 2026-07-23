@@ -54,15 +54,28 @@ function stripPhotoMarkers(text: string): string {
   return text.replace(/\[photo:\d+\]/gi, '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+/** How long the clue is up before we offer a way out. Long enough that it's a
+ *  real attempt to find the spot, short enough that a stuck explorer isn't
+ *  stranded. */
+const REVEAL_AFTER_MS = 30000;
+
 export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [shot, setShot] = useState<Shot | null>(null);
   const [revealed, setRevealed] = useState(false);
+  // After a beat, offer "Tap to reveal answer" for anyone who can't get to (or
+  // photograph) the right spot — so a hard-to-find stop never dead-ends the tour.
+  const [canReveal, setCanReveal] = useState(false);
   const objectUrl = useRef<string | null>(null);
 
   // The browser holds the file in memory until the object URL is revoked; without
   // this a walk-through of a ten-stop tour leaks ten full-res photos.
   useEffect(() => () => { if (objectUrl.current) URL.revokeObjectURL(objectUrl.current); }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => setCanReveal(true), REVEAL_AFTER_MS);
+    return () => clearTimeout(t);
+  }, []);
 
   const instructions = stripPhotoMarkers(stop.notice.prompt || '');
   const noticePhoto = (stop.notice.photos || []).find((p) => p.url)
@@ -84,8 +97,13 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
   };
 
   const submit = () => { setRevealed(true); onFound?.(); };
+  // Reveal without a photo (the escape hatch): there's no "Yours" to compare, so
+  // the reveal just shows the answer photo.
+  const revealAnswer = () => { setRevealed(true); onFound?.(); };
 
-  const sideBySide = shot?.portrait ?? true;
+  // Side-by-side only when there are two photos to compare; the escape-hatch
+  // reveal has just the answer, so it stacks (centred).
+  const sideBySide = !!shot && shot.portrait;
 
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
@@ -163,6 +181,17 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
               <p className="text-[18px] italic text-center" style={{ fontFamily: CLUE_FONT, color: 'var(--text-secondary)' }}>
                 Found it? Take a photo!
               </p>
+              {/* Escape hatch — only after they've had time to look. Can't find or
+                  photograph the spot? Reveal the answer and carry on. */}
+              {canReveal && (
+                <button
+                  onClick={revealAnswer}
+                  className="mt-1 text-[15px] underline animate-fade-in"
+                  style={{ fontFamily: CLUE_FONT, color: 'var(--th-primary)' }}
+                >
+                  Tap to reveal answer
+                </button>
+              )}
             </>
           ) : (
             /* Photo taken → show it here on the camera screen with a single green
@@ -202,7 +231,7 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
             className="text-center font-serif italic text-[32px] leading-snug"
             style={{ color: 'var(--th-primary)' }}
           >
-            Did you find it?
+            {shot ? 'Did you find it?' : 'Here it is'}
           </p>
           {/* The cap lives on the <img> in vh, not on a wrapper as a percentage.
               A percentage max-height resolves against the parent's *definite*
@@ -210,18 +239,20 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
               silently ignored and both photos rendered at natural size and got
               clipped. vh is definite, so the image really does fit. */}
           <div className={sideBySide ? 'grid grid-cols-2 gap-2 items-start' : 'flex flex-col gap-2 items-center'}>
-            <figure className="min-w-0 flex flex-col items-center">
-              <div className="rounded-xl overflow-hidden bg-black/[0.04]">
-                {/* eslint-disable-next-line @next/next/no-img-element -- object URL, not a served asset */}
-                <img
-                  src={shot!.url}
-                  alt="The photo you took"
-                  className="block object-contain"
-                  style={{ maxHeight: PHOTO_CAP, maxWidth: '100%' }}
-                />
-              </div>
-              <figcaption className="mt-1 text-[11px] uppercase tracking-wider text-text-secondary text-center">Yours</figcaption>
-            </figure>
+            {shot && (
+              <figure className="min-w-0 flex flex-col items-center">
+                <div className="rounded-xl overflow-hidden bg-black/[0.04]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- object URL, not a served asset */}
+                  <img
+                    src={shot.url}
+                    alt="The photo you took"
+                    className="block object-contain"
+                    style={{ maxHeight: PHOTO_CAP, maxWidth: '100%' }}
+                  />
+                </div>
+                <figcaption className="mt-1 text-[11px] uppercase tracking-wider text-text-secondary text-center">Yours</figcaption>
+              </figure>
+            )}
             {noticePhoto && (
               <figure className="min-w-0 flex flex-col items-center">
                 <div className="rounded-xl overflow-hidden bg-black/[0.04]">
