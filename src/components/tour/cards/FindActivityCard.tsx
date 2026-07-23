@@ -38,6 +38,9 @@ interface Props {
   stop: Stop;
   /** Fires once, when the reveal happens — lets the parent mount what's below. */
   onFound?: () => void;
+  /** The "Tap to reveal answer" escape hatch: skip the photo compare entirely and
+   *  take them straight to the Background section. */
+  onRevealAnswer?: () => void;
   /** Opens the map peek so the explorer can locate the stop. Present only when a
    *  location exists (gated upstream in page.tsx), so no extra location check here. */
   onPeekMap?: () => void;
@@ -59,7 +62,7 @@ function stripPhotoMarkers(text: string): string {
  *  stranded. */
 const REVEAL_AFTER_MS = 30000;
 
-export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
+export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeekMap }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [shot, setShot] = useState<Shot | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -97,13 +100,10 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
   };
 
   const submit = () => { setRevealed(true); onFound?.(); };
-  // Reveal without a photo (the escape hatch): there's no "Yours" to compare, so
-  // the reveal just shows the answer photo.
-  const revealAnswer = () => { setRevealed(true); onFound?.(); };
+  // The escape hatch skips the photo compare and drops straight to Background.
+  const revealAnswer = () => { onRevealAnswer?.(); };
 
-  // Side-by-side only when there are two photos to compare; the escape-hatch
-  // reveal has just the answer, so it stacks (centred).
-  const sideBySide = !!shot && shot.portrait;
+  const sideBySide = shot?.portrait ?? true;
 
   return (
     <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
@@ -132,6 +132,25 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
             <FormattedText text={instructions} />
           </p>
           <div className="mx-auto mt-3 h-px w-12" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.5 }} />
+        </div>
+      )}
+
+      {/* Escape hatch — appears above "Find on map" after they've had time to look.
+          Can't find or photograph the spot? This drops them straight to the
+          Background. A full button (not a text link) so it reads as a real option. */}
+      {!revealed && canReveal && (
+        <div className="flex justify-center">
+          <button
+            onClick={revealAnswer}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-[16px] font-semibold shadow-sm active:scale-95 transition-transform animate-fade-in"
+            style={{ fontFamily: CLUE_FONT, color: 'var(--th-primary)', border: '2px solid var(--th-primary)', backgroundColor: 'color-mix(in srgb, var(--th-primary) 8%, transparent)' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            Tap to reveal answer
+          </button>
         </div>
       )}
 
@@ -181,17 +200,6 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
               <p className="text-[18px] italic text-center" style={{ fontFamily: CLUE_FONT, color: 'var(--text-secondary)' }}>
                 Found it? Take a photo!
               </p>
-              {/* Escape hatch — only after they've had time to look. Can't find or
-                  photograph the spot? Reveal the answer and carry on. */}
-              {canReveal && (
-                <button
-                  onClick={revealAnswer}
-                  className="mt-1 text-[15px] underline animate-fade-in"
-                  style={{ fontFamily: CLUE_FONT, color: 'var(--th-primary)' }}
-                >
-                  Tap to reveal answer
-                </button>
-              )}
             </>
           ) : (
             /* Photo taken → show it here on the camera screen with a single green
@@ -231,7 +239,7 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
             className="text-center font-serif italic text-[32px] leading-snug"
             style={{ color: 'var(--th-primary)' }}
           >
-            {shot ? 'Did you find it?' : 'Here it is'}
+            Did you find it?
           </p>
           {/* The cap lives on the <img> in vh, not on a wrapper as a percentage.
               A percentage max-height resolves against the parent's *definite*
@@ -239,20 +247,18 @@ export default function FindActivityCard({ stop, onFound, onPeekMap }: Props) {
               silently ignored and both photos rendered at natural size and got
               clipped. vh is definite, so the image really does fit. */}
           <div className={sideBySide ? 'grid grid-cols-2 gap-2 items-start' : 'flex flex-col gap-2 items-center'}>
-            {shot && (
-              <figure className="min-w-0 flex flex-col items-center">
-                <div className="rounded-xl overflow-hidden bg-black/[0.04]">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- object URL, not a served asset */}
-                  <img
-                    src={shot.url}
-                    alt="The photo you took"
-                    className="block object-contain"
-                    style={{ maxHeight: PHOTO_CAP, maxWidth: '100%' }}
-                  />
-                </div>
-                <figcaption className="mt-1 text-[11px] uppercase tracking-wider text-text-secondary text-center">Yours</figcaption>
-              </figure>
-            )}
+            <figure className="min-w-0 flex flex-col items-center">
+              <div className="rounded-xl overflow-hidden bg-black/[0.04]">
+                {/* eslint-disable-next-line @next/next/no-img-element -- object URL, not a served asset */}
+                <img
+                  src={shot!.url}
+                  alt="The photo you took"
+                  className="block object-contain"
+                  style={{ maxHeight: PHOTO_CAP, maxWidth: '100%' }}
+                />
+              </div>
+              <figcaption className="mt-1 text-[11px] uppercase tracking-wider text-text-secondary text-center">Yours</figcaption>
+            </figure>
             {noticePhoto && (
               <figure className="min-w-0 flex flex-col items-center">
                 <div className="rounded-xl overflow-hidden bg-black/[0.04]">

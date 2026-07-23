@@ -7,6 +7,7 @@
  *   DISCOVER → lightbulb icon
  *   FIND     → binoculars icon
  *   RESPOND  → pen-on-paper icon
+ *   SHARE    → share-nodes icon
  *
  * Layout: the action label sits on the LEFT, the matching icon on the
  * RIGHT of the card (with a small right margin). Both render in bronze
@@ -23,7 +24,7 @@
  * introduces instead of being attached to the action header.
  */
 
-type Action = 'DISCUSS' | 'DISCOVER' | 'FIND' | 'RESPOND';
+type Action = 'DISCUSS' | 'DISCOVER' | 'FIND' | 'RESPOND' | 'SHARE';
 
 interface Props {
   action: Action;
@@ -128,6 +129,16 @@ function ActionIcon({ action, size }: { action: Action; size: number }) {
         <svg {...common}>
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L13 14l-4 1 1-4 8.5-8.5z" />
+        </svg>
+      );
+    case 'SHARE':
+      return (
+        <svg {...common}>
+          <circle cx="18" cy="5" r="3" />
+          <circle cx="6" cy="12" r="3" />
+          <circle cx="18" cy="19" r="3" />
+          <path d="M8.6 13.5l6.8 4" />
+          <path d="M15.4 6.5l-6.8 4" />
         </svg>
       );
   }

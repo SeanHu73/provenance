@@ -40,7 +40,20 @@ export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = fal
   // The Background section only appears once they've done the activity — a scroll
   // cue to it beforehand would let them skip straight past the looking.
   const [found, setFound] = useState(false);
+  // Set by the "reveal answer" escape hatch: mount the sections and then scroll
+  // straight to Background (or DISCOVER when there's no Background).
+  const [jumpToBackground, setJumpToBackground] = useState(false);
   const hasBackground = hasBackgroundContent(stop);
+
+  useEffect(() => {
+    if (!found || !jumpToBackground) return;
+    // Wait a frame so the just-mounted section is laid out before scrolling.
+    const id = requestAnimationFrame(() => {
+      (hasBackground ? bgRef.current : discoverRef.current)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setJumpToBackground(false);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [found, jumpToBackground, hasBackground]);
 
   // Mount DISCOVER once it scrolls in, and — since FIND and DISCOVER share one
   // snap-scroll page — pause a section's audio when it snaps out of view and
@@ -68,7 +81,12 @@ export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = fal
   return (
     <>
       <section ref={findRef} className="min-h-full snap-start flex flex-col justify-start px-5 py-6">
-        <FindActivityCard stop={stop} onFound={() => setFound(true)} onPeekMap={onPeekMap} />
+        <FindActivityCard
+          stop={stop}
+          onFound={() => setFound(true)}
+          onRevealAnswer={() => { setFound(true); setJumpToBackground(true); }}
+          onPeekMap={onPeekMap}
+        />
       </section>
       {/* Both later sections wait on the activity. Gating only the Background left
           DISCOVER reachable by scrolling, which skipped the activity *and* the
