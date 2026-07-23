@@ -22,7 +22,7 @@ import Link from 'next/link';
 import { Tour, Act, ContextEntrySnapshot, DetectiveCorrection, KnowledgeEntry } from '@/lib/types';
 import type { PastCategory } from '@/features/context-journal/types';
 import { LENS_BY_KEY, formatYear } from '@/features/context-journal/constants';
-import { getAllTourSessions, StoredTourSession } from '@/lib/tour-sessions-store';
+import { getAllTourSessions, setSessionStarred, StoredTourSession } from '@/lib/tour-sessions-store';
 import { getTours } from '@/lib/tours-store';
 import { getAllCorrections, saveCorrection } from '@/lib/detective-corrections-store';
 import { fetchEmbedding, saveKnowledgeEntry, newKnowledgeId, knowledgeEmbedText, knowledgeEmbedHash } from '@/lib/knowledge-store';
@@ -531,6 +531,7 @@ export default function SessionsAdminPage() {
   const [toursById, setToursById] = useState<Record<string, Tour>>({});
   const [corrections, setCorrections] = useState<Record<string, DetectiveCorrection>>({});
   const [loading, setLoading] = useState(true);
+  const [starredOnly, setStarredOnly] = useState(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -546,7 +547,20 @@ export default function SessionsAdminPage() {
 
   const refreshCorrections = useCallback(async () => { setCorrections(await getAllCorrections()); }, []);
 
-  const rows = buildRows(sessions, toursById);
+  // Optimistically flip the star in local state so the UI updates instantly;
+  // the Firestore write happens in the background.
+  const toggleStar = useCallback((id: string, starred: boolean) => {
+    setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, starred } : s)));
+    void setSessionStarred(id, starred).catch(() => {
+      // Revert on failure.
+      setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, starred: !starred } : s)));
+    });
+  }, []);
+
+  const starredCount = sessions.filter((s) => s.starred).length;
+  const visibleSessions = starredOnly ? sessions.filter((s) => s.starred) : sessions;
+  // CSV export follows the current filter, so "starred only" exports just those.
+  const rows = buildRows(visibleSessions, toursById);
 
   const download = (data: string, filename: string, mime: string) => {
     const blob = new Blob([data], { type: mime });
@@ -573,10 +587,17 @@ export default function SessionsAdminPage() {
           <div>
             <h1 className="text-2xl font-bold">Sessions</h1>
             <p className="text-xs text-stone-500 mt-0.5">
-              Everything explorers recorded ({sessions.length} sessions, {rows.length} data points). Saved continuously, so early-leavers are captured. Google Sheets is retired.
+              Everything explorers recorded ({sessions.length} sessions, {starredCount} starred). Saved continuously and kept indefinitely — nothing is auto-deleted. Star the real explorer runs to keep them apart from your own test opens.
             </p>
           </div>
           <div className="flex gap-3 text-sm items-center">
+            <button
+              onClick={() => setStarredOnly((v) => !v)}
+              className={`px-3 py-1.5 rounded border ${starredOnly ? 'bg-amber-400 border-amber-500 text-stone-900' : 'bg-white border-stone-300 text-stone-700 hover:bg-stone-100'}`}
+              title="Show only sessions you've starred"
+            >
+              {starredOnly ? '★ Starred only' : '☆ Starred only'}
+            </button>
             <button onClick={exportCsv} disabled={rows.length === 0} className="px-3 py-1.5 rounded bg-blue-700 text-white hover:bg-blue-800 disabled:opacity-40">Export CSV</button>
             <button
               onClick={exportReviews}
@@ -598,10 +619,12 @@ export default function SessionsAdminPage() {
             <p className="italic">No sessions found.</p>
             <p className="text-xs text-stone-500">If you expected data here, the Firestore rule may be missing — add <code className="bg-stone-200 px-1 rounded">match /memorial-church-tour-sessions/&#123;doc&#125; &#123; allow read, write: if true; &#125;</code> in the console. (It only protects sessions recorded after it&apos;s added.)</p>
           </div>
+        ) : starredOnly && visibleSessions.length === 0 ? (
+          <p className="text-sm text-stone-600 italic">No starred sessions yet. Star a session with the ☆ button to keep it here.</p>
         ) : (
           <div className="space-y-3">
-            {sessions.map((s) => (
-              <SessionCard key={s.id} s={s} toursById={toursById} corrections={corrections} onSaved={refreshCorrections} />
+            {visibleSessions.map((s) => (
+              <SessionCard key={s.id} s={s} toursById={toursById} corrections={corrections} onSaved={refreshCorrections} onToggleStar={toggleStar} />
             ))}
           </div>
         )}
@@ -612,11 +635,12 @@ export default function SessionsAdminPage() {
 
 /** One session, collapsed by default (the list gets long). The header stays
  *  visible; the body — acts, contexts + their review controls, extras — expands. */
-function SessionCard({ s, toursById, corrections, onSaved }: {
+function SessionCard({ s, toursById, corrections, onSaved, onToggleStar }: {
   s: StoredTourSession;
   toursById: Record<string, Tour>;
   corrections: Record<string, DetectiveCorrection>;
   onSaved: () => void;
+  onToggleStar: (id: string, starred: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   const tour = toursById[s.tourId];
@@ -627,23 +651,33 @@ function SessionCard({ s, toursById, corrections, onSaved }: {
   const reviewed = entries.filter((e) => corrections[e.id]).length;
 
   return (
-    <div className="border border-stone-300 rounded bg-white">
-      <button onClick={() => setOpen((o) => !o)} className="w-full flex items-baseline justify-between gap-3 p-4 text-left hover:bg-stone-50">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold">
-            <span className="text-stone-400 mr-1">{open ? '▾' : '▸'}</span>
-            {tour?.title || s.tourId}
-          </p>
-          <p className="text-[10px] text-stone-400 font-mono">
-            {s.id} · started {s.startedAt ? new Date(s.startedAt).toLocaleString() : '—'}
-            {s.completedAt ? ` · completed ${new Date(s.completedAt).toLocaleString()}` : ' · in progress'}
-          </p>
-        </div>
-        <span className="text-[10px] text-stone-400 shrink-0 text-right">
-          {s.completedStops?.length ?? 0} stops · {entries.length} context{entries.length === 1 ? '' : 's'}
-          {reviewed > 0 && <span className="ml-1 text-emerald-600">· {reviewed} reviewed</span>}
-        </span>
-      </button>
+    <div className={`border rounded bg-white ${s.starred ? 'border-amber-400 ring-1 ring-amber-300' : 'border-stone-300'}`}>
+      <div className="flex items-stretch">
+        <button
+          onClick={() => onToggleStar(s.id, !s.starred)}
+          className="shrink-0 pl-3 pr-1 flex items-center text-lg leading-none hover:scale-110 transition-transform"
+          title={s.starred ? 'Unstar this session' : 'Star this session (mark it as a real explorer run)'}
+          aria-pressed={!!s.starred}
+        >
+          <span className={s.starred ? 'text-amber-500' : 'text-stone-300'}>{s.starred ? '★' : '☆'}</span>
+        </button>
+        <button onClick={() => setOpen((o) => !o)} className="flex-1 flex items-baseline justify-between gap-3 p-4 text-left hover:bg-stone-50">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">
+              <span className="text-stone-400 mr-1">{open ? '▾' : '▸'}</span>
+              {tour?.title || s.tourId}
+            </p>
+            <p className="text-[10px] text-stone-400 font-mono">
+              {s.id} · started {s.startedAt ? new Date(s.startedAt).toLocaleString() : '—'}
+              {s.completedAt ? ` · completed ${new Date(s.completedAt).toLocaleString()}` : ' · in progress'}
+            </p>
+          </div>
+          <span className="text-[10px] text-stone-400 shrink-0 text-right">
+            {s.completedStops?.length ?? 0} stops · {entries.length} context{entries.length === 1 ? '' : 's'}
+            {reviewed > 0 && <span className="ml-1 text-emerald-600">· {reviewed} reviewed</span>}
+          </span>
+        </button>
+      </div>
 
       {open && (
         <div className="px-4 pb-4 space-y-3 border-t border-stone-100 pt-3">

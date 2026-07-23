@@ -15,8 +15,10 @@ import { TourSession, ContextEntrySnapshot } from './types';
 
 const COLLECTION = 'memorial-church-tour-sessions';
 
-/** A persisted session carries a `lastUpdated` stamp not on TourSession. */
-export type StoredTourSession = TourSession & { lastUpdated?: string };
+/** A persisted session carries a `lastUpdated` stamp not on TourSession, and an
+ *  admin-only `starred` flag for marking the real explorer runs worth keeping
+ *  apart from the sessions Sean creates just by opening the app to test. */
+export type StoredTourSession = TourSession & { lastUpdated?: string; starred?: boolean };
 
 /** Recursively drop `undefined` values — Firestore rejects them (the client isn't
  *  configured with `ignoreUndefinedProperties`), and a single nested `undefined`
@@ -65,6 +67,21 @@ export async function persistSessionContextEntries(sessionId: string, contextEnt
     );
   } catch (err) {
     console.error('[tour-sessions-store] persist context entries failed:', err);
+  }
+}
+
+/** Admin: star / unstar a session (marks the real explorer runs). Merged onto
+ *  the existing doc so it composes with the live session persistence. */
+export async function setSessionStarred(sessionId: string, starred: boolean): Promise<void> {
+  try {
+    await setDoc(
+      doc(db, COLLECTION, sessionId),
+      { starred, lastUpdated: new Date().toISOString() },
+      { merge: true },
+    );
+  } catch (err) {
+    console.error('[tour-sessions-store] setSessionStarred failed:', err);
+    throw err;
   }
 }
 
