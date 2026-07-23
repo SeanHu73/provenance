@@ -196,6 +196,14 @@ export function TourProvider({ children }: { children: ReactNode }) {
    */
   const devJumpTo = useCallback((phase: TourPhase, stopIndex?: number) => {
     if (!session) return;
+    // A dev jump skips the normal tap-through that primes the geolocation
+    // permission (page.tsx), so jumping straight to a map phase would show no
+    // location dot and — since the request never happens in a gesture — no
+    // prompt either. This call runs inside the jump's click, so it primes the
+    // permission the same way; once granted the maps track on their own.
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      try { navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true, timeout: 8000 }); } catch { /* ignore */ }
+    }
     persist({
       ...session,
       phaseHistory: [...session.phaseHistory, { phase: session.currentPhase, round: session.currentRound, stopIndex: session.currentStopIndex }],
