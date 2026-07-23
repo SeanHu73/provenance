@@ -363,37 +363,48 @@ function MapInitializer({
 }
 
 /**
- * Re-centres the map on the user at the tour's configured zoom level every
- * time the explorer (re-)enters the unstructured map phase — i.e. on the
- * initial entry AND on every return from a stop. Previously this used a
- * one-shot ref, which meant the zoom level only got reset on first mount
- * and would persist whatever the in-stop / flyer animations left behind.
+ * Frames the map every time it's shown to the explorer — the unstructured explore
+ * phase AND the "Find on map" peek. It resets the explore zoom on entry, and
+ * (crucially) centres on the user's location the moment it's known — now, or late,
+ * since it's async — so the location dot is actually on screen every time, instead
+ * of stranded off-map at the tour's church default.
  */
 function MapZoomer({
   isUnstructuredMap,
+  mapPeek,
   defaultZoom,
   userLocation,
 }: {
   isUnstructuredMap: boolean;
+  mapPeek: boolean;
   defaultZoom: number;
   userLocation: Loc | null;
 }) {
   const map = useMap();
-  const wasUnstructured = useRef(false);
+  const wasActive = useRef(false);
+  const centredOnUser = useRef(false);
+  const active = isUnstructuredMap || mapPeek;
 
   useEffect(() => {
-    // Fire on every false→true transition. Subsequent userLocation
-    // updates while already in the map phase don't re-zoom (the ref
-    // stays true until we leave the phase).
-    if (isUnstructuredMap && !wasUnstructured.current && map) {
-      const target = userLocation || CHURCH_LOCATION;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const anyMap = map as any;
-      anyMap.panTo(target);
+    if (!active) { wasActive.current = false; centredOnUser.current = false; return; }
+    if (!map) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyMap = map as any;
+    const entering = !wasActive.current;
+    wasActive.current = true;
+
+    // Reset the explore framing zoom on entry (a peek keeps its current zoom).
+    if (entering && isUnstructuredMap) {
       anyMap.setZoom(defaultZoom);
+      if (!userLocation) anyMap.panTo(CHURCH_LOCATION);
     }
-    wasUnstructured.current = isUnstructuredMap;
-  }, [isUnstructuredMap, map, userLocation, defaultZoom]);
+    // Centre on the user as soon as their location is known — once per showing —
+    // so the dot is on screen whether they're at the tour or testing from afar.
+    if (userLocation && !centredOnUser.current) {
+      anyMap.panTo(userLocation);
+      centredOnUser.current = true;
+    }
+  }, [active, isUnstructuredMap, map, userLocation, defaultZoom]);
 
   return null;
 }
@@ -1078,6 +1089,7 @@ export default function MapContainer({
           <BoundsTracker onChange={handleBoundsChange} />
           <MapZoomer
             isUnstructuredMap={!!isUnstructuredMap}
+            mapPeek={!!mapPeek}
             defaultZoom={tourDefaultZoom ?? 17}
             userLocation={userLocation}
           />
