@@ -1,22 +1,35 @@
 # Build State — Provenance
 
-*Handoff document for the next Claude Code session. Last updated 2026-07-09
-(latest: a **tour phase-header redesign + back-navigation overhaul + Context
-Journal polish** — new Explore→Contextualise→Reflect breadcrumb header (replaces
-the title + progress pills; menu now inside it; a "Stops" chevron handle opens
-the stops list, portaled so it works over the Contextualise/Reflect portals);
-cleaned stops list (no bogus cards, "N of M stops" excl. bonus, "Bonus Stop"
-cards, tap an explored stop → read-only **Discover preview** with "Return to …");
-per-card back arrows removed (back lives in the header arrow) + a Context-Journal
-back arrow that no longer re-locks the ask gate (seeded from a persisted per-act
-signal); a **`LeaveTourGuard`** confirm before the browser back button/refresh
-drops the single-page tour; Act fade shows a big "Explore" over an italic "Act N";
-Context Journal defaults to **classic** lens buttons with a menu toggle to a new
-**magnifier** A/B variant, question chat-bubbles, in-lens "Ask your own question"
-(skips the lens picker), untimed-by-default contexts; merged FIND/DISCOVER audio
-pause/resume across snaps + short-slide snap-to-top; onboarding slide 2 → a
-free-response "How have you been taught history?". **See the 2026-07-09 entry in
+*Handoff document for the next Claude Code session. Last updated 2026-07-23
+(latest: a **Context-Prototype onboarding + FIND polish batch** — a new
+admin-authored **theme question** ("SHARE") screen after the scene setup
+(`OpeningFrame.themeQuestion` → new `theme_question` phase; "Continue" then
+"Begin Exploration"; big record circle + type, response required), replacing the
+retired **DISCUSS – The Investigation** (`eq_discuss`) zombie; the onboarding
+"what do you think history is?" answer + the theme response are now saved to the
+**session** (`onboardingHistoryResponse` / `themeQuestionResponse`, shown in
+`/admin/sessions`); a second **Reflection intro** screen; the **GPS location dot**
+on the Explore `StopMapCard` + **Dev Jump** priming geolocation; a **FIND** "Tap
+to reveal answer" pill (after 30 s, above "Find on map") that drops to Background,
+plus a Background "Find on map"; **session starring/filtering** in the admin; and
+the P.A.S.T. lens **MP4** animations. **See the 2026-07-16 → 2026-07-23 entry in
 §8.**).
+Prior 2026-07-09: a **tour phase-header redesign + back-navigation overhaul +
+Context Journal polish** — new Explore→Contextualise→Reflect breadcrumb header
+(replaces the title + progress pills; menu now inside it; a "Stops" chevron handle
+opens the stops list, portaled so it works over the Contextualise/Reflect
+portals); cleaned stops list (no bogus cards, "N of M stops" excl. bonus, "Bonus
+Stop" cards, tap an explored stop → read-only **Discover preview** with "Return to
+…"); per-card back arrows removed (back lives in the header arrow) + a
+Context-Journal back arrow that no longer re-locks the ask gate (seeded from a
+persisted per-act signal); a **`LeaveTourGuard`** confirm before the browser back
+button/refresh drops the single-page tour; Act fade shows a big "Explore" over an
+italic "Act N"; Context Journal defaults to **classic** lens buttons with a menu
+toggle to a new **magnifier** A/B variant, question chat-bubbles, in-lens "Ask
+your own question" (skips the lens picker), untimed-by-default contexts; merged
+FIND/DISCOVER audio pause/resume across snaps + short-slide snap-to-top;
+onboarding slide 2 → a free-response "How have you been taught history?". **See
+the 2026-07-09 entry in §8.**
 Prior 2026-07-03 (was latest: the **"Set Up + Instructions" onboarding wizard**, the **P.A.S.T.
 framework redesign**, the **LEARN → DISCOVER** rename, and an optional
 **Opening-Frame starting-point pin** (§15 **pt.29**). Onboarding moved OUT of the
@@ -233,8 +246,15 @@ Plus two unstructured-mode phases: `unstructured_map` (the stop-picker
 overlay) and `midway_checkin` (the optional halfway prompt). Both are
 rendered by `page.tsx` outside the `Journal` overlay — see §10.
 
+The **DISCUSS – The Investigation** step (`eq_discuss`) was retired
+(2026-07-16): `completeEqScene` now goes straight to `eq_opening`, the phase is
+no longer rendered, and `EqDiscussCard.tsx` was deleted (the identifier stays in
+the union for any in-flight legacy session).
+
 Plus the **Context-Prototype** phases (all rendered inside `Journal`, since
 context mode keeps `unstructuredMode === false`): `opening_frame`,
+`theme_question` (the admin-authored **SHARE** question after the scene, when
+`OpeningFrame.themeQuestion` is set — see the 2026-07-16 → 2026-07-23 entry in §8),
 `act_intro` (the "Act N: Title" splash), `stop_map` (the per-stop "walk to"
 map), `resources` (end-of-tour), and — added 2026-06-27, the **end-of-act
 chain** — `act_context` (read-only Context section), `act_context_questions`
@@ -495,6 +515,76 @@ Tailwind CSS 4, TypeScript 5, @vis.gl/react-google-maps 1.8.3.
 ---
 
 ## 8. Recent Session Work (May 2026)
+
+### Theme question / SHARE, session recording, GPS, FIND reveal & session starring (2026-07-16 → 2026-07-23)
+
+A multi-session batch of Context-Prototype onboarding + FIND polish, session
+capture, and GPS fixes. All committed and live on `master`.
+
+**Theme question (`SHARE`) + dropping the DISCUSS zombie.** Context-Prototype
+onboarding now poses one admin-authored **theme question** right after the scene
+is set. New field **`OpeningFrame.themeQuestion`** (edited in the Opening Frame
+section of the admin tour editor); a new **`theme_question`** `TourPhase` between
+`opening_frame` and the first act. The Opening-Frame button changed from "Begin
+the tour" to **"Continue"** (`completeOpeningFrame` routes to `theme_question`
+when a theme question is set, else straight into the first act); the theme screen
+exits via **"Begin Exploration"** (`completeThemeQuestion` records the response
+and enters the first act). New **`ThemeQuestionCard.tsx`**: a `SHARE` ActionTitle,
+the big centred `RecordButton` circle with a type-below textarea (matches
+`ActReflectionCard`), **response required** (Begin Exploration disabled until they
+answer — no "Skip for now"). The retired **"DISCUSS – The Investigation"**
+(`eq_discuss`) screen is gone: `completeEqScene` now skips straight to `eq_opening`,
+`Journal` no longer renders it, **`EqDiscussCard.tsx` deleted**, and the dev-jump
+"Onboarding — the scene" target now points at the real `opening_frame` (was
+`eq_scene`) plus a new "Onboarding — theme question" target. New `ActionTitle`
+action **`SHARE`** (share-nodes icon).
+
+**Everything recorded lands in the session.** New `TourSession` fields
+**`themeQuestionResponse`** and **`onboardingHistoryResponse`** (+ `createSession`
+inits them null). The onboarding "What do you think history is?" answer — which
+previously only hit `localStorage['provenance.historyTaught']` — is now copied
+onto the session in `startTour`, so it survives into the admin's record. Both new
+responses render in **`/admin/sessions`** (per-session view + CSV export).
+
+**Reflection intro — second screen.** `ReflectionIntroCard` now has a second
+snap panel after "Let's hear what you think…": *"As you reflect, consider what
+you heard on the tour or when you recreated the context."* (then the sentinel →
+prompt picker).
+
+**GPS location dot on the Explore map.** The Context "walk to your next stop"
+map (**`StopMapCard`**) never rendered a user dot — added one (blue `#4285F4`
+marker via `getCurrentPosition` for an immediate fix + `watchPosition` for live
+updates; `watchPosition` alone doesn't always emit an initial fix). Earlier in the
+window the persistent `Map` was fixed to keep GPS on across the whole tour, grant
+on first tap, auto-show on the "Find on map" peek, and **centre on the user** so
+the dot is actually on-screen in explore + peek (`MapZoomer`; commits
+`982677b`/`a026722`/`b592a70`/`83ad65c`). **Dev Jump** now primes geolocation
+inside the jump's click (`devJumpTo` calls `getCurrentPosition`) — a jump skips the
+normal tap-through that primes the permission, so jumping straight to a map phase
+otherwise showed no dot and no prompt.
+
+**FIND activity — reveal escape hatch + Background map.** `FindActivityCard`:
+30 s after the clue appears, a **"Tap to reveal answer"** pill button (matching
+"Find on map") fades in **above** it; tapping it skips the photo-compare and drops
+straight to the **Background** section (new `onRevealAnswer` → `FindDiscoverCard`
+sets `found` and scrolls to `bgRef`) — no "Here it is" screen. `SeedCard`'s
+Background (the `hideFindInstructions` branch) gained its own **"Find on map"**
+button for anyone still looking. The green **Submit** button already lived on the
+camera screen the moment a photo is taken (unchanged, re-confirmed).
+
+**Sessions admin — star + filter.** Every app-open that starts a tour writes a
+session doc kept indefinitely (nothing prunes them), so real explorer runs get
+buried among test opens. Added a per-session **star** toggle
+(`setSessionStarred` → persisted `starred` flag on the doc; optimistic local
+flip) and a **"Starred only"** filter (CSV export follows the filter). The header
+now states sessions are never auto-deleted.
+
+**Lens animations → designer MP4s.** The P.A.S.T. lens cards (context onboarding
++ in-tour lens info) play the designer's `Place.mp4` / `Affairs.mp4` /
+`Technology.mp4` (via `PastLensAnimation`'s `LensVideo`): muted, **3× loop then
+stop with a 2 s pause**, `object-contain`, equal size, **black letterbox for
+technology** (4:3 source), descriptor "How did … / {terms} / …shape the past?"
+on its own line (`ContextIntroCard`). Society keeps its SVG scene.
 
 ### Tour header redesign, back-navigation overhaul & Context-Journal polish (2026-07-09)
 
