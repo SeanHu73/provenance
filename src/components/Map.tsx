@@ -255,9 +255,12 @@ function LocateButton({
   );
 }
 
-function UserLocationTracker({ following, onLocationUpdate }: { following: boolean; onLocationUpdate: (pos: Loc | null) => void }) {
+function UserLocationTracker({ following, mapActive, onLocationUpdate }: { following: boolean; mapActive: boolean; onLocationUpdate: (pos: Loc | null) => void }) {
   const map = useMap();
 
+  // `mapActive` is a dep so the watch is torn down and re-created when the map is
+  // (re-)shown — that fresh watch picks up permission granted late (after the first
+  // tap primed it), which a watch started before the grant would never do.
   useEffect(() => {
     if (!navigator.geolocation) return;
     const watchId = navigator.geolocation.watchPosition(
@@ -270,7 +273,7 @@ function UserLocationTracker({ following, onLocationUpdate }: { following: boole
       { enableHighAccuracy: true, maximumAge: 3000 }
     );
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [onLocationUpdate, following, map]);
+  }, [onLocationUpdate, following, map, mapActive]);
 
   return null;
 }
@@ -1070,7 +1073,7 @@ export default function MapContainer({
           <PoiStyler isTourActive={!!isTourActive} />
           <TiltController tilt={mapTilt} />
           <MapInitializer tourPins={tourPins} onLocationUpdate={handleLocationUpdate} />
-          <UserLocationTracker following={following} onLocationUpdate={handleLocationUpdate} />
+          <UserLocationTracker following={following} mapActive={!!isUnstructuredMap || !!mapPeek} onLocationUpdate={handleLocationUpdate} />
           <MapAutoLocate active={!!isUnstructuredMap || !!mapPeek} onLocationUpdate={handleLocationUpdate} />
           <BoundsTracker onChange={handleBoundsChange} />
           <MapZoomer

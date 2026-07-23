@@ -262,6 +262,24 @@ function HomeInner() {
     }
   }, [peekTour, startTour]);
 
+  // Geolocation is only granted in response to a user gesture on most browsers, so
+  // the map's automatic tracking never gets permission and the location dot stays
+  // hidden until you tap the locate button. Prime the permission on the first tap
+  // once a tour is active — one request inside a gesture grants it, and from then on
+  // the map's automatic tracking (explore map, "Find on map" peek) works on its own.
+  useEffect(() => {
+    if (!isActive || typeof navigator === 'undefined' || !navigator.geolocation) return;
+    let done = false;
+    const prime = () => {
+      if (done) return;
+      done = true;
+      try { navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true, timeout: 8000 }); } catch { /* ignore */ }
+      window.removeEventListener('pointerdown', prime, true);
+    };
+    window.addEventListener('pointerdown', prime, true);
+    return () => window.removeEventListener('pointerdown', prime, true);
+  }, [isActive]);
+
   // Current stop has a location → allow map peek
   const currentStop = activeTour && session
     ? getActiveStops(activeTour)[session.currentStopIndex] ?? null
