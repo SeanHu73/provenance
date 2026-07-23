@@ -541,6 +541,8 @@ export function createSession(tour: Tour, opts?: { id?: string }): TourSession {
     bankedQuestions: [],
     detourVisits: [],
     essentialQuestionResponses: null,
+    themeQuestionResponse: null,
+    onboardingHistoryResponse: null,
     startedAt: new Date().toISOString(),
     completedAt: null,
   };
@@ -867,9 +869,23 @@ export function completeMeetGuide(session: TourSession, tour: Tour): TourSession
   return routeAfterGuide(session, tour);
 }
 
-/** Context mode: the Opening Frame "Begin the tour" button → first act. */
+/** Context mode: the Opening Frame "Continue" button → theme question (if the
+ *  admin authored one), otherwise straight into the first act. */
 export function completeOpeningFrame(session: TourSession, tour: Tour): TourSession {
-  return enterFirstContextAct({ ...session, phaseHistory: pushHistory(session) }, tour);
+  const base = { ...session, phaseHistory: pushHistory(session) };
+  if (tour.openingFrame?.themeQuestion?.trim()) {
+    return { ...base, currentPhase: 'theme_question', currentRound: 0 };
+  }
+  return enterFirstContextAct(base, tour);
+}
+
+/** Context mode: the theme-question "Begin Exploration" button → first act.
+ *  Records the explorer's response (or '' when skipped) on the session. */
+export function completeThemeQuestion(session: TourSession, tour: Tour, response: string): TourSession {
+  return enterFirstContextAct(
+    { ...session, phaseHistory: pushHistory(session), themeQuestionResponse: response },
+    tour,
+  );
 }
 
 /** Context mode: the "Act N: Title" splash finished (auto after a hold, or
@@ -1064,13 +1080,16 @@ export function completeCommunityShare(session: TourSession, tour: Tour): TourSe
 }
 
 export function completeEqScene(session: TourSession): TourSession {
+  // The old "DISCUSS — The Investigation" step (eq_discuss) was removed; the
+  // scene now leads straight into the written response.
   return {
     ...session,
     phaseHistory: pushHistory(session),
-    currentPhase: 'eq_discuss',
+    currentPhase: 'eq_opening',
   };
 }
 
+/** Legacy pass-through kept for in-flight sessions parked on eq_discuss. */
 export function completeEqDiscuss(session: TourSession): TourSession {
   return {
     ...session,

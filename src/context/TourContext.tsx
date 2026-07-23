@@ -41,6 +41,7 @@ import {
   selectUnstructuredStop as selectUnstructuredStopImpl,
   completeMidwayCheckin as completeMidwayCheckinImpl,
   completeOpeningFrame as completeOpeningFrameImpl,
+  completeThemeQuestion as completeThemeQuestionImpl,
   completeActIntro as completeActIntroImpl,
   completeActOpening as completeActOpeningImpl,
   completeActClosing as completeActClosingImpl,
@@ -94,6 +95,7 @@ interface TourContextValue {
   endTour: () => void;
   // Context-Prototype mode
   completeOpeningFrame: () => void;
+  completeThemeQuestion: (response: string) => void;
   completeActIntro: () => void;
   completeActOpening: (response: string) => void;
   completeActClosing: (response: string) => void;
@@ -215,6 +217,13 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const startTour = useCallback((t: Tour, opts?: { sessionId?: string }) => {
     const s = createSession(t, { id: opts?.sessionId });
+    // Carry the onboarding "What do you think history is?" answer (captured
+    // before the tour, stored in localStorage by ContextOnboarding) onto the
+    // session so it lands in the admin's session record.
+    try {
+      const hist = typeof window !== 'undefined' ? window.localStorage.getItem('provenance.historyTaught') : null;
+      if (hist && hist.trim()) s.onboardingHistoryResponse = hist.trim();
+    } catch { /* ignore */ }
     setTour(t);
     persist(s);
   }, [persist]);
@@ -670,6 +679,13 @@ export function TourProvider({ children }: { children: ReactNode }) {
     logSeedIfEntered(next, tour);
   }, [session, tour, persist, logSeedIfEntered]);
 
+  const completeThemeQuestionFn = useCallback((response: string) => {
+    if (!session || !tour) return;
+    const next = completeThemeQuestionImpl(session, tour, response);
+    persist(next);
+    logSeedIfEntered(next, tour);
+  }, [session, tour, persist, logSeedIfEntered]);
+
   const completeActIntroFn = useCallback(() => {
     if (!session || !tour) return;
     persist(completeActIntroImpl(session));
@@ -802,6 +818,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeGuideOutro: completeGuideOutroFn,
       endTour,
       completeOpeningFrame: completeOpeningFrameFn,
+      completeThemeQuestion: completeThemeQuestionFn,
       completeActIntro: completeActIntroFn,
       completeActOpening: completeActOpeningFn,
       completeActClosing: completeActClosingFn,

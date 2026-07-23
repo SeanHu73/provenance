@@ -204,6 +204,11 @@ export interface OpeningFrame {
   /** Optional map pin for the starting point — drives the "Find pin" button on
    *  the Opening Frame and a single pin on the map peek. */
   location?: { lat: number; lng: number } | null;
+  /** A single tour-wide "theme question" posed right after the scene is set.
+   *  The explorer records or types one response (saved to the session). Blank
+   *  → the theme-question screen is skipped and the tour goes straight to the
+   *  first act. */
+  themeQuestion?: string;
 }
 
 /** An authored question shown at the start or end of an Act. The explorer
@@ -895,7 +900,7 @@ export interface WebNode {
   y: number;
 }
 
-export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'act_intro' | 'act_opening' | 'act_closing' | 'act_questions' | 'stop_map' | 'community_forum' | 'resources' | 'act_context_intro' | 'act_context' | 'act_context_questions' | 'act_reflection_intro' | 'act_reflection' | 'community_share' | 'additional_menu';
+export type TourPhase = 'intro' | 'meet_guide' | 'eq_scene' | 'eq_discuss' | 'eq_opening' | 'eq_additional' | 'seed' | 'notice' | 'wonder' | 'reveal' | 'reflect' | 'whats_next' | 'branch' | 'off_path' | 'eq_closing_discuss' | 'eq_closing' | 'eq_closing_additional' | 'eq_final_reflect' | 'eq_questions' | 'guide_outro' | 'end' | 'unstructured_map' | 'midway_checkin' | 'opening_frame' | 'theme_question' | 'act_intro' | 'act_opening' | 'act_closing' | 'act_questions' | 'stop_map' | 'community_forum' | 'resources' | 'act_context_intro' | 'act_context' | 'act_context_questions' | 'act_reflection_intro' | 'act_reflection' | 'community_share' | 'additional_menu';
 
 /** A Firestore-safe snapshot of one Context-Journal entry the explorer added,
  *  edited, or created during a tour. The live entries are guest-local (wiped at
@@ -1016,6 +1021,13 @@ export interface TourSession {
   completionOrder: string[];           // Stop IDs in the order the explorer completed them (unstructured mode)
   midwayResponseText: string | null;   // Explorer's response to the midway check-in question
   midwayShownAt: number | null;        // Index in completionOrder when midway check-in was shown
+  /** Response to the tour-wide theme question shown after the Opening Frame
+   *  (Context-Prototype). Null until answered; '' if the explorer skipped. */
+  themeQuestionResponse?: string | null;
+  /** The explorer's answer to the onboarding "What do you think history is?"
+   *  question, captured before the tour and copied onto the session at start so
+   *  it shows up in the admin's session record. */
+  onboardingHistoryResponse?: string | null;
   reflections: Array<{
     stopId: string;
     sliderValue: number;              // 0–1

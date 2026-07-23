@@ -2584,6 +2584,19 @@ function OpeningFrameEditor({
         placeholder="Before we begin, take a moment..."
       />
 
+      <div>
+        <RichTextarea
+          label="Theme question (asked after the scene, before exploring)"
+          value={frame.themeQuestion || ''}
+          onChange={(v) => onChange({ ...frame, themeQuestion: v })}
+          rows={2}
+          placeholder="e.g. What does this place tell you about the people who built it?"
+        />
+        <p className="text-[10px] text-stone-400 italic mt-1">
+          Explorers record or type a response, saved to their session. Leave blank to skip the screen and go straight into the tour.
+        </p>
+      </div>
+
       {/* ── Map pin (starting point) — drives the "Find pin" button ── */}
       <fieldset className="space-y-2">
         <legend className="text-xs font-semibold text-stone-700 uppercase tracking-wide flex items-center gap-2">

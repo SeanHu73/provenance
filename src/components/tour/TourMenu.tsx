@@ -47,10 +47,15 @@ function useJumpTargets(): JumpTarget[] {
   const stops = getActiveStops(tour);
   const indexOf = (stopId: string) => stops.findIndex((s: Stop) => s.id === stopId);
 
+  // Context-Prototype tours set the scene via `opening_frame`; essential-question
+  // tours use `eq_scene`. Jump to whichever this tour actually plays.
   const targets: JumpTarget[] = [
     { label: 'Onboarding — meet the guide', phase: 'meet_guide' },
-    { label: 'Onboarding — the scene', phase: 'eq_scene' },
+    { label: 'Onboarding — the scene', phase: tour.openingFrame ? 'opening_frame' : 'eq_scene' },
   ];
+  if (tour.openingFrame?.themeQuestion?.trim()) {
+    targets.push({ label: 'Onboarding — theme question', phase: 'theme_question' });
+  }
 
   getActs(tour).forEach((act, i) => {
     const at = indexOf(act.stopIds[0]);

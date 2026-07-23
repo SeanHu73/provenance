@@ -121,6 +121,29 @@ export default function ReflectionIntroCard({ onComplete }: Props) {
         </div>
       </section>
 
+      {/* Second screen — a gentle prompt for what to draw on while reflecting. */}
+      <section
+        className="relative min-h-[100dvh] flex flex-col justify-center items-center text-center px-8"
+        style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+      >
+        <p
+          className="font-serif leading-relaxed"
+          style={{
+            fontSize: 'clamp(21px, 6vw, 30px)',
+            color: 'var(--th-surface)',
+            maxWidth: '24ch',
+          }}
+        >
+          As you reflect, consider what you heard on the tour or when you recreated the context.
+        </p>
+        <div className="absolute bottom-7 left-0 right-0 flex flex-col items-center gap-1.5" style={{ opacity: 0.7 }}>
+          <span className="text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--th-surface)' }}>Scroll</span>
+          <svg className="animate-bounce" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--th-surface)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+      </section>
+
       {/* Sentinel — scrolling into it opens the prompt picker */}
       <div ref={enterRef} className="h-[55vh] flex items-end justify-center pb-10" style={{ scrollSnapAlign: 'end' }}>
         <span className="font-serif italic text-[15px]" style={{ color: 'var(--th-surface)', opacity: 0.6 }}>

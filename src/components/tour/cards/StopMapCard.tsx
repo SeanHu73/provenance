@@ -51,6 +51,22 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
   // Tapping the target pin opens a small confirm card (thumbnail + title)
   // so the group can be sure they're at the right spot before the stop opens.
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  // The explorer's live GPS position, shown as a blue dot so they can see
+  // themselves relative to the numbered stop pins. Permission was already
+  // primed by the first tap after Begin Tour (page.tsx), so watchPosition
+  // starts without a fresh gesture.
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+    const apply = (pos: GeolocationPosition) =>
+      setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    // Grab an immediate fix (watchPosition doesn't always emit an initial one),
+    // then keep it live as the explorer walks.
+    navigator.geolocation.getCurrentPosition(apply, undefined, { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 });
+    const watchId = navigator.geolocation.watchPosition(apply, undefined, { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
   // Almost always the info photo: this card is the "I'm here" confirm for a stop
   // they're about to explore. It resolves to the notice photo only on a revisit.
   const targetThumb = targetStop ? pickStopThumb(targetStop, completed.has(targetStop.id)) : null;
@@ -111,6 +127,15 @@ export default function StopMapCard({ tour, session, onContinue }: Props) {
                 <NumberedPin number={pin.number} state={pin.state} />
               </AdvancedMarker>
             ))}
+            {userLocation && (
+              <AdvancedMarker position={userLocation} zIndex={25}>
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute w-10 h-10 rounded-full animate-ping" style={{ background: 'rgba(66,133,244,0.2)' }} />
+                  <div className="absolute w-6 h-6 rounded-full" style={{ background: 'rgba(66,133,244,0.12)' }} />
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-white shadow-md" style={{ background: '#4285F4' }} />
+                </div>
+              </AdvancedMarker>
+            )}
           </GoogleMap>
         </APIProvider>
       ) : (

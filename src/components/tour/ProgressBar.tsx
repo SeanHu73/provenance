@@ -136,7 +136,7 @@ function LinearProgressBar({ tour, session }: Props) {
   const completedCount = logicalStops.filter(ls => completedIds.has(ls.id)).length;
 
   const isClosing = ['eq_closing_discuss', 'eq_closing', 'eq_closing_additional', 'eq_final_reflect', 'eq_questions', 'end'].includes(session.currentPhase);
-  const isIntroPhase = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'opening_frame'].includes(session.currentPhase);
+  const isIntroPhase = ['intro', 'eq_scene', 'eq_discuss', 'eq_opening', 'eq_additional', 'opening_frame', 'theme_question'].includes(session.currentPhase);
   const isInStopPhase = !isClosing && !isIntroPhase;
 
   let label = '';

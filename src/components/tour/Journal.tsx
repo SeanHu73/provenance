@@ -19,8 +19,8 @@ import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, ge
 import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
 import EqSceneCard from './cards/EqSceneCard';
-import EqDiscussCard from './cards/EqDiscussCard';
 import EqOpeningCard from './cards/EqOpeningCard';
+import ThemeQuestionCard from './cards/ThemeQuestionCard';
 import EqAdditionalCard from './cards/EqAdditionalCard';
 import EqClosingCard from './cards/EqClosingCard';
 import EqClosingAdditionalCard from './cards/EqClosingAdditionalCard';
@@ -88,7 +88,6 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeMeetGuide,
     completeGuideOutro,
     completeEqScene,
-    completeEqDiscuss,
     completeEqOpening,
     completeEqAdditional,
     completeEqClosing,
@@ -99,6 +98,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeActOpening,
     completeActClosing,
     completeCommunityForum,
+    completeThemeQuestion,
     completeContextIntro,
     completeActContext,
     completeReflectionIntro,
@@ -341,15 +341,19 @@ export default function Journal({ onMapPeek }: JournalProps) {
           <EqSceneCard
             scene={tour.openingFrame}
             subtitle="Setting the Scene"
-            buttonLabel="Begin the tour"
+            buttonLabel="Continue"
             openingVariant
             onPeekMap={onMapPeek}
             onContinue={completeOpeningFrame}
           />
         )}
 
-        {phase === 'eq_discuss' && tour.essentialQuestion && (
-          <EqDiscussCard tour={tour} onContinue={completeEqDiscuss} />
+        {/* Context-Prototype: the tour-wide theme question, recorded to the session */}
+        {phase === 'theme_question' && tour.openingFrame?.themeQuestion?.trim() && (
+          <ThemeQuestionCard
+            question={tour.openingFrame.themeQuestion}
+            onComplete={completeThemeQuestion}
+          />
         )}
 
         {phase === 'eq_opening' && tour.essentialQuestion && (

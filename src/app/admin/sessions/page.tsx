@@ -153,6 +153,14 @@ function buildRows(sessions: StoredTourSession[], toursById: Record<string, Tour
     if (s.midwayResponseText) {
       rows.push([...base, 'Midway', '', tour?.midwayQuestion || '', s.midwayResponseText]);
     }
+
+    if (s.onboardingHistoryResponse) {
+      rows.push([...base, 'Onboarding', '', 'What do you think history is?', s.onboardingHistoryResponse]);
+    }
+
+    if (s.themeQuestionResponse) {
+      rows.push([...base, 'Theme question', '', tour?.openingFrame?.themeQuestion || '', s.themeQuestionResponse]);
+    }
   }
   return rows;
 }
@@ -693,6 +701,12 @@ function FlatExtras({ s, tour }: { s: StoredTourSession; tour: Tour | undefined 
   }
   if (s.midwayResponseText) {
     items.push({ type: 'Midway', where: '', question: tour?.midwayQuestion || '', response: s.midwayResponseText });
+  }
+  if (s.onboardingHistoryResponse) {
+    items.push({ type: 'Onboarding', where: '', question: 'What do you think history is?', response: s.onboardingHistoryResponse });
+  }
+  if (s.themeQuestionResponse) {
+    items.push({ type: 'Theme question', where: '', question: tour?.openingFrame?.themeQuestion || '', response: s.themeQuestionResponse });
   }
 
   if (items.length === 0) return null;
