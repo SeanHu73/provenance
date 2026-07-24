@@ -52,7 +52,6 @@ import ContextIntroCard from './cards/ContextIntroCard';
 import ReflectionIntroCard from './cards/ReflectionIntroCard';
 import ContextJournal from '@/features/context-journal/ContextJournal';
 import { authoredToEntry } from '@/features/context-journal/adapters';
-import { useDevJumpOn } from '@/lib/dev-jump';
 import ContextQuestionsCard from './cards/ContextQuestionsCard';
 import ActReflectionCard from './cards/ActReflectionCard';
 import HearFromCommunityCard from './cards/HearFromCommunityCard';
@@ -110,11 +109,6 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeResources,
     completeStopMap,
   } = useTour();
-
-  // Dev Jump on → always play the FULL context onboarding (the P.A.S.T. teaching),
-  // even after it's been seen, so an admin jumping to a Context stage sees the whole
-  // sequence without resetting the app.
-  const devJumpOn = useDevJumpOn();
 
   const [paused, setPaused] = useState(false);
   const [stopsOpen, setStopsOpen] = useState(false);
@@ -424,7 +418,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
             (questionsByLens[e.pastCategory] ??= []).push(q);
           }
           return (
-            <ContextIntroCard onComplete={completeContextIntro} returning={!devJumpOn && !!session.contextIntroSeen} guidingQuestion={introGuiding} questionsByLens={questionsByLens} />
+            <ContextIntroCard onComplete={completeContextIntro} returning={!!session.contextIntroSeen} guidingQuestion={introGuiding} questionsByLens={questionsByLens} />
           );
         })()}
 
