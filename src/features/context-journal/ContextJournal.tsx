@@ -43,9 +43,6 @@ import { useDevJumpOn } from '@/lib/dev-jump';
  *  + hard offset shadow (see PastLens). */
 const INK = '#241f1b';
 const INK_SHADOW = 'rgba(26,20,14,0.9)';
-/** Warm coral accent shared with the context splashes (mirrors ContextIntroCard's
- *  CONTEXT_ACCENT) — used on the ask-first gate's kicker. No P.A.S.T. lens uses it. */
-const CONTEXT_ACCENT = '#E08A5F';
 
 /** The collapsible Map & timeline panel is hidden for now (it distracted from the
  *  lenses). Flip to re-enable — the panel and its wiring are otherwise intact. */
@@ -204,11 +201,10 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
     return () => window.clearTimeout(t);
   }, [showAddedTip]);
   // Ask-first gate (act 2+, not additional stops): the journal stays closed until
-  // the learner poses their own question and sees a response. `gateAskOpen` shows
-  // the question screen straight away; `sawResponseRef` records that they reached a
-  // response, so closing the ask flow (Done or after adding) unlocks the journal.
+  // the learner poses their own question and sees a response. The ask flow is the
+  // gate screen itself; `sawResponseRef` records that they reached a response, so
+  // closing the ask flow (Done or after adding) unlocks the journal.
   const [askedOwn, setAskedOwn] = useState(!!alreadyAsked);
-  const [gateAskOpen, setGateAskOpen] = useState(true);
   const sawResponseRef = useRef(false);
   // The continue gate is engagement with a *question*: tapping an authored
   // question (or asking your own — set on submit below), NOT just re-opening a
@@ -409,49 +405,21 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
     : null;
 
   // Ask-first gate — from the second act onward the learner must pose their own
-  // context question and see a response before the journal opens. Replaces the
-  // whole screen (no journal access) with a framed prompt + the question flow
-  // ready to go. Additional stops and act 1 pass askFirst=false and skip this.
+  // context question and see a response before the journal opens. The ask flow
+  // *is* the whole screen here (pick a lens → submit a question); no separate
+  // framing page. Closing without a response is a no-op, so the gate can't be
+  // dismissed until they've asked. Additional stops and act 1 skip this.
   if (askFirst && !askedOwn && !devJump) {
     return (
-      <div
-        className="fixed inset-0 z-[55] flex flex-col items-center justify-center text-center px-8 select-none"
-        style={{ backgroundColor: 'var(--th-journal)' }}
-      >
-        <div style={{ maxWidth: '22ch' }}>
-          <span className="font-display block" style={{ fontSize: 'clamp(14px, 4vw, 18px)', letterSpacing: '0.14em', textTransform: 'uppercase', color: CONTEXT_ACCENT }}>
-            Your turn
-          </span>
-          <h1 className="font-display mt-3" style={{ fontSize: 'clamp(30px, 8vw, 46px)', lineHeight: 1.1, color: 'var(--th-surface)' }}>
-            Try asking your own context question first!
-          </h1>
-          <button
-            onClick={() => { haptic(10); setGateAskOpen(true); }}
-            className="mt-8 inline-flex items-center justify-center gap-2.5 rounded-2xl px-7 py-3.5 font-display font-bold text-[17px]"
-            style={{ backgroundColor: 'var(--th-surface)', color: 'var(--th-primary)' }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z" />
-              <path d="M10 9a2.5 2.5 0 0 1 4.8.8c0 1.7-2.3 2.2-2.3 3.4" />
-              <line x1="12.4" y1="16" x2="12.41" y2="16" />
-            </svg>
-            Ask your own question
-          </button>
-        </div>
-
-        {gateAskOpen && (
-          <ContextAskFlow
-            tourId={scopeId}
-            actId={actId}
-            priorStops={priorStopTitles}
-            heading="Ask your own question"
-            intro="Try asking your own context question first — then you can explore other contexts."
-            onAnswered={(info) => { sawResponseRef.current = true; setExplored(true); setAskedOwnActId(actId ?? null); onContextQuestion?.(info); }}
-            onAdd={askAdd}
-            onClose={() => { setGateAskOpen(false); if (sawResponseRef.current) setAskedOwn(true); }}
-          />
-        )}
-      </div>
+      <ContextAskFlow
+        tourId={scopeId}
+        actId={actId}
+        priorStops={priorStopTitles}
+        heading="Ask your own question"
+        onAnswered={(info) => { sawResponseRef.current = true; setExplored(true); setAskedOwnActId(actId ?? null); onContextQuestion?.(info); }}
+        onAdd={askAdd}
+        onClose={() => { if (sawResponseRef.current) setAskedOwn(true); }}
+      />
     );
   }
 
