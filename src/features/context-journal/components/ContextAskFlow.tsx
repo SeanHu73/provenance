@@ -6,10 +6,11 @@
  * Pick a P.A.S.T. lens → record/type the question → a fast **Framing Coach**
  * (/api/context-frame) reorients and, only when the question is too narrow,
  * offers tap-to-use reframes → on proceed the heavy answer (/api/context-answer)
- * runs in the *background* while the learner writes their **own theory** (predict
- * then reveal); a "Cancel search" backs out any time → when the answer is ready a
- * "Reveal" button appears → the result shows the answer with their theory kept
- * for comparison; "Add to my journal" saves it (their prediction rides along).
+ * runs in the *background* while the learner answers one reflection — **why they
+ * asked** — then is free to close the sheet and keep exploring (notified when the
+ * answer lands); a "Cancel" backs out any time → when the answer is ready a
+ * "Reveal" button appears → the result shows the answer; "Add to my journal"
+ * saves it.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -101,11 +102,13 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
   const [text, setText] = useState('');
   const [asked, setAsked] = useState(job?.question ?? '');
   const [coach, setCoach] = useState<FrameResp | null>(null);
-  const [theory, setTheory] = useState(job?.theory ?? '');
-  // While it researches: first "what made you ask this?" (+ surroundings photos),
-  // then their own theory. `waitStep2` flips from the first step to the theory.
+  // Kept read-only: past jobs may carry a theory, but this screen no longer asks
+  // for one. It's still shown on the result screen when present.
+  const [theory] = useState(job?.theory ?? '');
+  // While it researches we ask a single reflection: "Why did you ask this
+  // question?" `motivationDone` flips once they submit it.
   const [motivation, setMotivation] = useState(job?.motivation ?? '');
-  const [waitStep2, setWaitStep2] = useState(!!(job?.motivation));
+  const [motivationDone, setMotivationDone] = useState(!!(job?.motivation));
   const [photos, setPhotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -219,7 +222,7 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
       lens, tourId, actId, priorStops, theory,
     });
     setJobId(id);
-    setWaitStep2(false);
+    setMotivationDone(false);
     setPhase('researching');
   };
 
@@ -376,55 +379,48 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
 
         {phase === 'researching' && (
           <div className="space-y-5">
-            <p className="text-[15px] leading-snug" style={{ color: 'var(--text-secondary)' }}>&ldquo;{asked}&rdquo;</p>
+            {/* Animated "Researching…" status, pinned to the top. */}
+            {!researchReady && (
+              <div className="flex items-center justify-center gap-2.5">
+                <span className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--th-primary)', borderTopColor: 'transparent' }} />
+                <motion.span
+                  className="text-[14px] font-semibold tracking-wide"
+                  style={{ color: 'var(--th-primary)' }}
+                  animate={{ opacity: [0.55, 1, 0.55] }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  Researching…
+                </motion.span>
+              </div>
+            )}
 
-            {!waitStep2 ? (
-              /* Step 1 — what made you ask, and a look at where you are. */
+            <p className="text-[15px] leading-snug text-center" style={{ color: 'var(--text-secondary)' }}>&ldquo;{asked}&rdquo;</p>
+
+            {!motivationDone ? (
+              /* One reflection while it researches — why they asked. */
               <div className="space-y-3">
-                <p className="text-[18px] font-semibold" style={{ color: 'var(--text-primary)' }}>What made you ask this?</p>
+                <p className="text-[18px] font-semibold" style={{ color: 'var(--text-primary)' }}>Why did you ask this question?</p>
                 <RecordButton onTranscript={(t) => setMotivation((prev) => (prev ? `${prev} ${t}` : t))} />
                 <textarea
                   value={motivation}
                   onChange={(e) => setMotivation(e.target.value)}
                   rows={3}
-                  placeholder="…or type"
+                  placeholder="Something you heard? Something you saw?"
                   className="w-full px-4 py-3 rounded-xl border-2 bg-white text-[17px] font-serif text-text-primary focus:outline-none"
                   style={{ borderColor: 'var(--th-border)' }}
                 />
-                <div className="flex flex-wrap items-center gap-2">
-                  {photos.map((url, i) => (
-                    <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt="" className="w-full h-full object-cover" />
-                      <button onClick={() => setPhotos((p) => p.filter((_, j) => j !== i))} aria-label="Remove photo" className="absolute top-0 right-0 w-5 h-5 bg-black/60 text-white text-xs flex items-center justify-center rounded-bl">×</button>
-                    </div>
-                  ))}
-                  <label className="w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer" style={{ borderColor: 'var(--th-border)', color: 'var(--text-secondary)' }} aria-label="Take a photo of your surroundings">
-                    {uploading ? '…' : (
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
-                    )}
-                    <input type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={(e) => addPhotos(e.target.files)} />
-                  </label>
-                </div>
-                <button onClick={() => setWaitStep2(true)} className="w-full py-3.5 rounded-xl text-base font-semibold text-white" style={{ backgroundColor: 'var(--th-primary)' }}>Continue</button>
+                <button onClick={() => setMotivationDone(true)} className="w-full py-3.5 rounded-xl text-base font-semibold text-white" style={{ backgroundColor: 'var(--th-primary)' }}>Submit</button>
+                <button onClick={cancelSearch} className="w-full py-1.5 text-[13px] underline" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
               </div>
-            ) : (
-              /* Step 2 — their own theory. */
-              <div className="space-y-3">
-                <p className="text-[18px] font-semibold" style={{ color: 'var(--text-primary)' }}>What&apos;s your theory?</p>
-                <RecordButton onTranscript={(t) => setTheory((prev) => (prev ? `${prev} ${t}` : t))} />
-                <textarea
-                  value={theory}
-                  onChange={(e) => setTheory(e.target.value)}
-                  rows={3}
-                  placeholder="…or type"
-                  className="w-full px-4 py-3 rounded-xl border-2 bg-white text-[17px] font-serif text-text-primary focus:outline-none"
-                  style={{ borderColor: 'var(--th-border)' }}
-                />
+            ) : !researchReady ? (
+              /* Submitted, still working — they're free to leave. */
+              <div className="text-center space-y-1.5 py-2">
+                <p className="text-[16px] font-semibold" style={{ color: 'var(--text-primary)' }}>You&apos;re free to close this and keep exploring.</p>
+                <p className="text-[14px] leading-snug" style={{ color: 'var(--text-secondary)' }}>We&apos;ll notify you when your answer is ready.</p>
               </div>
-            )}
+            ) : null}
 
-            {researchReady ? (
+            {researchReady && (
               <motion.button
                 onClick={() => { if (jobId) markSeen(jobId); setPhase('result'); }}
                 className="relative w-full py-3.5 rounded-xl text-base font-semibold text-white overflow-visible"
@@ -438,15 +434,6 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
                   Your answer is ready — reveal it
                 </span>
               </motion.button>
-            ) : (
-              <div className="space-y-2.5">
-                <p className="text-[13px] text-center leading-snug" style={{ color: 'var(--text-secondary)' }}>You can keep exploring — we&apos;ll let you know when it&apos;s ready.</p>
-                <div className="w-full py-3 rounded-xl text-[15px] font-semibold border-2 flex items-center justify-center gap-2" style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
-                  <span className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--th-primary)', borderTopColor: 'transparent' }} />
-                  Researching…
-                </div>
-                <button onClick={cancelSearch} className="w-full py-2 text-[13px] underline" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
-              </div>
             )}
           </div>
         )}
