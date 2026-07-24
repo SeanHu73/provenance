@@ -418,16 +418,13 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
         className="fixed inset-0 z-[55] flex flex-col items-center justify-center text-center px-8 select-none"
         style={{ backgroundColor: 'var(--th-journal)' }}
       >
-        <div style={{ maxWidth: '20ch' }}>
+        <div style={{ maxWidth: '22ch' }}>
           <span className="font-display block" style={{ fontSize: 'clamp(14px, 4vw, 18px)', letterSpacing: '0.14em', textTransform: 'uppercase', color: CONTEXT_ACCENT }}>
             Your turn
           </span>
-          <h1 className="font-display mt-3" style={{ fontSize: 'clamp(30px, 8vw, 46px)', lineHeight: 1.05, color: 'var(--th-surface)' }}>
+          <h1 className="font-display mt-3" style={{ fontSize: 'clamp(30px, 8vw, 46px)', lineHeight: 1.1, color: 'var(--th-surface)' }}>
             Try asking your own context question first!
           </h1>
-          <p className="font-serif mt-5" style={{ fontSize: 'clamp(16px, 4.4vw, 20px)', lineHeight: 1.4, color: 'var(--th-surface)', opacity: 0.85 }}>
-            Before you explore how others have contextualised this place, pose a question of your own and see what the Context Detective turns up.
-          </p>
           <button
             onClick={() => { haptic(10); setGateAskOpen(true); }}
             className="mt-8 inline-flex items-center justify-center gap-2.5 rounded-2xl px-7 py-3.5 font-display font-bold text-[17px]"
