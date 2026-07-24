@@ -399,7 +399,7 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
             {!motivationDone ? (
               /* One reflection while it researches — why they asked. */
               <div className="space-y-3">
-                <p className="text-[18px] font-semibold" style={{ color: 'var(--text-primary)' }}>Why did you ask this question?</p>
+                <p className="text-[18px] font-semibold text-center" style={{ color: 'var(--text-primary)' }}>Why did you ask this question?</p>
                 <RecordButton onTranscript={(t) => setMotivation((prev) => (prev ? `${prev} ${t}` : t))} />
                 <textarea
                   value={motivation}
