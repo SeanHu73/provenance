@@ -21,6 +21,7 @@ import {
 import { researchSystem, voiceSystem } from '@/lib/context-detective/prompts';
 import { researchDraft, voiceRewrite, ResearchSource } from '@/lib/context-detective/claude';
 import { embedTexts, cosine } from '@/lib/context-detective/embed';
+import { searchCommonsImages, isPhotoExt } from '@/lib/image-search';
 import { embeddingKey, getCachedEmbeddings, putCachedEmbedding } from '@/lib/context-detective/embed-cache';
 import { hashText } from '@/lib/tts-text';
 
@@ -344,10 +345,19 @@ export async function POST(req: Request) {
       + `retrieve=${timings.retrieve}ms research=${timings.research}ms voice=${timings.voice}ms · total=${Date.now() - t0}ms`,
     );
 
-    // If the answer draws on an authored context that carries a photo, illustrate
-    // the reveal with that curated image (first cited context that has one).
+    // Illustrate the reveal with a photo. Prefer a curated one: the first cited
+    // authored context that carries a photo. Only when there's none do we fall back
+    // to a best-effort Wikimedia Commons search on the answer's title — attached
+    // solely when a raster result comes back, and never allowed to block or fail
+    // the answer (searchCommonsImages swallows errors and honours the timeout).
     const photoSource = sources.find((s) => s.kind === 'context' && s.id && contextPhotos[s.id]);
-    const cardPhoto = photoSource?.id ? contextPhotos[photoSource.id] : undefined;
+    let cardPhoto = photoSource?.id ? contextPhotos[photoSource.id] : undefined;
+    if (!cardPhoto) {
+      const imgs = await searchCommonsImages(title || question, { thumbWidth: 800, limit: 12, timeoutMs: 4000 });
+      const hit = imgs.find((r) => isPhotoExt(r.ext) && r.thumbUrl);
+      if (hit) cardPhoto = { url: hit.thumbUrl, credit: hit.credit };
+      console.log(`[detective]   illustrate: ${hit ? `commons "${hit.title.slice(0, 40)}"` : 'no photo'} (query "${(title || question).slice(0, 40)}")`);
+    }
 
     // One card, built by the route. The explanation IS the voiced narrative —
     // there is nothing to extract, so nothing re-types it.
