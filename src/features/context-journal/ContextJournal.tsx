@@ -107,6 +107,7 @@ interface Props {
     lens: PastCategory;
     sources: { label: string; url: string }[];
     learnerPrediction?: string;
+    motivation?: string;
     originalQuestion?: string;
     status: 'answered' | 'banked';
   }) => void;

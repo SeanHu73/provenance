@@ -125,6 +125,7 @@ function buildRows(sessions: StoredTourSession[], toursById: Record<string, Tour
     // Every Detective answer the explorer got from asking their own question.
     for (const e of s.detectiveAnswers || []) {
       rows.push([...base, 'Context question (Detective answer)', lensLabel(e.lens), e.question || e.title, e.longExplanation || '']);
+      if (e.motivation) rows.push([...base, 'Context question — why asked', lensLabel(e.lens), e.question || e.title, e.motivation]);
     }
 
     // Contexts the explorer built in their Context Journal (map + timeline).
@@ -194,6 +195,7 @@ function buildDetectiveReviews(
         question: e.question || e.title || '',
         aiAnswer: e.longExplanation || '',
         learnerPrediction: e.learnerPrediction || undefined,
+        motivation: e.motivation || undefined,
         sources: (e.sourceLinks || []).map((l) => l.url).filter(Boolean),
         review: c
           ? {
@@ -449,6 +451,9 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
           </button>
           {open && <p className="mt-1 text-xs text-stone-700 whitespace-pre-line leading-relaxed border-l-2 border-stone-200 pl-2">{shownLong}</p>}
         </div>
+      )}
+      {e.motivation && (
+        <p className="text-[11px] text-stone-600"><span className="font-semibold text-stone-500">Why they asked:</span> {e.motivation}</p>
       )}
       {e.learnerPrediction && (
         <p className="text-[11px] text-stone-600"><span className="font-semibold text-stone-500">Their prediction:</span> {e.learnerPrediction}</p>

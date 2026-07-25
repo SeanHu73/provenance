@@ -81,6 +81,7 @@ interface Props {
     lens: PastCategory;
     sources: { label: string; url: string }[];
     learnerPrediction?: string;
+    motivation?: string;
     originalQuestion?: string;
     status: 'answered' | 'banked';
   }) => void;
@@ -164,6 +165,7 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
           .filter((s) => s.url || s.name)
           .map((s) => ({ label: s.name || s.url || 'Source', url: s.url || '' })),
         learnerPrediction: theory.trim() || undefined,
+        motivation: motivation.trim() || undefined,
         originalQuestion: (originalQuestionRef.current && originalQuestionRef.current !== asked)
           ? originalQuestionRef.current : undefined,
         status: resp?.status === 'answered' ? 'answered' : 'banked',

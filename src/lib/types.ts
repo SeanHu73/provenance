@@ -920,6 +920,9 @@ export interface ContextEntrySnapshot {
   longExplanation?: string;
   /** The learner's own predicted answer (predict-then-reveal), if they wrote one. */
   learnerPrediction?: string;
+  /** Why the learner asked this — the "Why did you ask this question?" reflection
+   *  captured while the Detective researches. */
+  motivation?: string;
   /** The P.A.S.T. lens ('place' | 'attitudes' | 'society' | 'technology'). */
   lens: string;
   /** authored = designer's, added = the learner's own copy, self = their own. */

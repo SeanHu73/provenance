@@ -488,6 +488,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
                     question: info.question,
                     originalQuestion: info.originalQuestion,
                     learnerPrediction: info.learnerPrediction,
+                    motivation: info.motivation,
                     sourceLinks: info.sources,
                   })}
                   priorStopTitles={priorStopTitles}

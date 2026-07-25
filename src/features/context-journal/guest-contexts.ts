@@ -90,6 +90,7 @@ export function toSnapshot(e: ContextEntry): ContextEntrySnapshot {
     shortSummary: e.shortSummary || undefined,
     longExplanation: e.longExplanation || undefined,
     learnerPrediction: e.learnerPrediction || undefined,
+    motivation: e.motivation || undefined,
     lens: e.pastCategory,
     origin: e.origin,
     question: e.question || undefined,
