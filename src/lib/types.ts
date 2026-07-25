@@ -265,6 +265,12 @@ export interface DetectiveCard {
   summary: string;
   explanation: string;
   sources: DetectiveSource[];
+  /** A photo to illustrate the answer. Set by the route when the answer draws on
+   *  an authored context that carries a photo (its thumbnail / first photo, or a
+   *  cited source's image), so the reveal shows the curated image. */
+  imageUrl?: string;
+  /** Optional attribution for `imageUrl` (e.g. a cited source's name). */
+  imageCredit?: string;
 }
 
 /** The parsed handout. Framing question + entry lens are stamped by the route,

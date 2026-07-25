@@ -120,8 +120,11 @@ function InstructionsSlide({ onNext }: { onNext: () => void }) {
   return (
     <div className="rounded-3xl bg-warm-white flex flex-col items-center text-center px-6 py-10" style={{ border: '1px solid var(--th-border)', boxShadow: '0 6px 24px rgba(26,20,14,0.10)' }}>
       <span className="font-display font-bold leading-none" style={{ fontSize: 38, color: STAR_COLOUR }}>✱</span>
-      <p className="mt-5 font-serif text-[21px] leading-snug text-text-primary max-w-[22ch]">
+      <p className="mt-5 font-serif text-[26px] leading-snug text-text-primary max-w-[20ch]">
         Pick a lens you want to look through to ask your question.
+      </p>
+      <p className="mt-4 font-serif italic text-[15px] leading-snug text-text-secondary max-w-[24ch]">
+        Optional: Explore questions others have asked.
       </p>
       <button
         onClick={onNext}

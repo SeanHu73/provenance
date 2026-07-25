@@ -34,7 +34,7 @@ function readyHaptic() {
 }
 
 interface RespSource { kind?: string; url?: string; name?: string; author?: string; date?: string; verified?: boolean }
-interface RespCard { lens?: PastCategory; title?: string; summary?: string; explanation?: string }
+interface RespCard { lens?: PastCategory; title?: string; summary?: string; explanation?: string; imageUrl?: string; imageCredit?: string }
 interface DetectiveResp {
   status?: 'answered' | 'banked' | 'declined';
   narrative?: string;
@@ -446,6 +446,17 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
             <p className="font-serif italic text-[16px] leading-snug" style={{ color: 'var(--text-secondary)' }}>&ldquo;{asked}&rdquo;</p>
             {/* generated title */}
             <h4 className="font-display font-bold text-[22px] leading-tight" style={{ color: 'var(--text-primary)' }}>{title}</h4>
+            {/* Curated photo — shown when the answer draws on an authored context
+                that carries one. */}
+            {card?.imageUrl && (
+              <figure className="m-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={card.imageUrl} alt={title} className="w-full rounded-xl object-cover max-h-64" />
+                {card.imageCredit && (
+                  <figcaption className="mt-1 text-[11px]" style={{ color: 'var(--text-secondary)' }}>{card.imageCredit}</figcaption>
+                )}
+              </figure>
+            )}
             {/* on-demand audio */}
             <div>
               <p className="text-[12px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>Tap to hear this read aloud — it may take a moment to generate.</p>

@@ -15,7 +15,7 @@ import { NextResponse } from 'next/server';
 import { collection, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
-  Tour, KnowledgeEntry, PastLens,
+  Tour, KnowledgeEntry, PastLens, ActContextItem,
   DetectiveAnswer, DetectiveHandout, DetectiveSource, DetectiveLog,
 } from '@/lib/types';
 import { researchSystem, voiceSystem } from '@/lib/context-detective/prompts';
@@ -126,8 +126,20 @@ async function captureCandidate(input: {
   }
 }
 
-async function loadCandidates(tourId: string): Promise<{ candidates: Candidate[]; preferredDomains: string[] }> {
+/** The best illustrative photo for an authored context: its chosen thumbnail,
+ *  else its first photo, else a cited source's image. Null when it has none. */
+function contextPhoto(c: ActContextItem): { url: string; credit?: string } | null {
+  const photos = (c.media || []).filter((m) => m.kind === 'photo' && m.url);
+  const pick = (c.thumbnailMediaId && photos.find((m) => m.id === c.thumbnailMediaId)) || photos[0];
+  if (pick?.url) return { url: pick.url };
+  const withImg = (c.sources || []).find((s) => s.imageUrl);
+  if (withImg?.imageUrl) return { url: withImg.imageUrl, credit: withImg.name || undefined };
+  return null;
+}
+
+async function loadCandidates(tourId: string): Promise<{ candidates: Candidate[]; preferredDomains: string[]; contextPhotos: Record<string, { url: string; credit?: string }> }> {
   const out: Candidate[] = [];
+  const contextPhotos: Record<string, { url: string; credit?: string }> = {};
   let preferredDomains: string[] = [];
   // Knowledge entries (already embedded)
   try {
@@ -159,13 +171,15 @@ async function loadCandidates(tourId: string): Promise<{ candidates: Candidate[]
             lens: c.pastCategory, domains: (c.sources || []).map((s) => s.url || '').filter(Boolean),
             score: 0,
           });
+          const photo = contextPhoto(c);
+          if (photo) contextPhotos[c.id] = photo;
         }
       }
     }
   } catch (err) {
     console.error('[context-answer] load contexts failed:', err);
   }
-  return { candidates: out, preferredDomains };
+  return { candidates: out, preferredDomains, contextPhotos };
 }
 
 export async function POST(req: Request) {
@@ -195,7 +209,7 @@ export async function POST(req: Request) {
     //    cached by text hash and reused (only cache-misses are embedded here);
     //    knowledge entries already carry theirs. The question is always embedded.
     const tRetrieve = Date.now();
-    const { candidates, preferredDomains } = await loadCandidates(tourId);
+    const { candidates, preferredDomains, contextPhotos } = await loadCandidates(tourId);
     const contexts = candidates.filter((c) => c.kind === 'context');
     const ctxTexts = contexts.map(candidateText);
     const ctxHashes = ctxTexts.map(embeddingKey);
@@ -330,6 +344,11 @@ export async function POST(req: Request) {
       + `retrieve=${timings.retrieve}ms research=${timings.research}ms voice=${timings.voice}ms · total=${Date.now() - t0}ms`,
     );
 
+    // If the answer draws on an authored context that carries a photo, illustrate
+    // the reveal with that curated image (first cited context that has one).
+    const photoSource = sources.find((s) => s.kind === 'context' && s.id && contextPhotos[s.id]);
+    const cardPhoto = photoSource?.id ? contextPhotos[photoSource.id] : undefined;
+
     // One card, built by the route. The explanation IS the voiced narrative —
     // there is nothing to extract, so nothing re-types it.
     const handout: DetectiveHandout = {
@@ -341,6 +360,7 @@ export async function POST(req: Request) {
         summary,
         explanation: narrative,
         sources,
+        ...(cardPhoto ? { imageUrl: cardPhoto.url, ...(cardPhoto.credit ? { imageCredit: cardPhoto.credit } : {}) } : {}),
       }],
       relevanceNote: relevanceNote || undefined,
     };
