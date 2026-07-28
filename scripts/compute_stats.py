@@ -134,7 +134,7 @@ def net_pct_value(pre: Stats, post: Stats) -> float | None:
 def net_pct(pre: Stats, post: Stats) -> str:
     """The signed display form used in the tables."""
     value = net_pct_value(pre, post)
-    return "" if value is None else f"{value:+.1f}"
+    return "" if value is None else f"{value:+.1f}%"
 
 
 def load_rows(path: Path) -> list:
@@ -282,8 +282,12 @@ def per_learner_threes(table: "OrderedDict", pre: Stats, post: Stats) -> float |
 
 # ── console output ─────────────────────────────────────────────────────────
 def console_safe(text) -> str:
-    """The console may be on a codepage that cannot encode typographic dashes."""
-    return str(text).replace("—", "-").replace("−", "-").replace("–", "-")
+    """
+    The console may be on a codepage that cannot encode typographic dashes, and
+    a two-line cell has to collapse onto one line here.
+    """
+    flat = str(text).replace("\n", " ")
+    return flat.replace("—", "-").replace("−", "-").replace("–", "-")
 
 
 def print_table(title: str, spec: TableSpec) -> None:
@@ -313,7 +317,7 @@ def print_table(title: str, spec: TableSpec) -> None:
 def learner_table1(phases: dict) -> TableSpec:
     return TableSpec(
         row_header="Phase",
-        headers=["Rating 2s", "Rating 3s", "Total Context Inquiries"],
+        headers=["Rating: 2s", "Rating: 3s", "Total Context Inquiries"],
         rows=[
             [PHASE_LABEL[p], phases[p].twos, phases[p].threes, phases[p].contextual]
             for p in PHASE_ORDER
@@ -364,8 +368,8 @@ def combined_table1(table: "OrderedDict") -> TableSpec:
     return TableSpec(
         row_header="Learner",
         headers=[
-            "Rating 2s", "Rating 3s", "Total Context Inquiries",
-            "Rating 2s", "Rating 3s", "Total Context Inquiries",
+            "Rating: 2s", "Rating: 3s", "Total Context Inquiries",
+            "Rating: 2s", "Rating: 3s", "Total Context Inquiries",
             "Total Context Inquiries",
         ],
         rows=rows,
@@ -380,10 +384,11 @@ def combined_table2(table: "OrderedDict") -> TableSpec:
     for name, pre, post, is_all in _combined_rows(table):
         net = net_pct(pre, post)
         if is_all:
-            # Only here: what the percentage-point shift is worth as a count.
+            # Only here: the shift restated as a count of questions, on its own
+            # line beneath the percentage. "\n" splits a cell across two lines.
             equivalent = per_learner_threes(table, pre, post)
             if net and equivalent is not None:
-                net = f"{net} ({equivalent:+.1f} per learner)"
+                net = f"{net}\n({equivalent:+.1f} more 3s per learner)"
         rows.append(
             [
                 name,
@@ -395,7 +400,9 @@ def combined_table2(table: "OrderedDict") -> TableSpec:
         )
     return TableSpec(
         row_header="Learner",
-        headers=["Score", "%3s", "Score", "%3s", "Score", "%3s (pp)"],
+        # The Net group's %3s is a percentage-point change; the group heading
+        # already says "post - pre", so the cells carry a plain % sign.
+        headers=["Score", "%3s", "Score", "%3s", "Score", "%3s"],
         rows=rows,
         bold_cols={5, 6},
         groups=[("Pre-test", 2), ("Post-test", 2), ("Net (post − pre)", 2)],
@@ -468,9 +475,14 @@ def build_html(title: str, spec: TableSpec, accent: str, note: str | None, width
             + "</tr>"
         )
 
+    def cell_html(value) -> str:
+        """A "\\n" in a value puts the remainder on its own quieter second line."""
+        head, _, tail = str(value).partition("\n")
+        return head if not tail else f'{head}<span class="sub">{tail}</span>'
+
     body = "\n".join(
         f'        <tr class="{"odd" if i % 2 else "even"}">'
-        + "".join(f"<td{classes_for(j)}>{value}</td>" for j, value in enumerate(row))
+        + "".join(f"<td{classes_for(j)}>{cell_html(value)}</td>" for j, value in enumerate(row))
         + "</tr>"
         for i, row in enumerate(spec.rows)
     )
@@ -516,9 +528,12 @@ def build_html(title: str, spec: TableSpec, accent: str, note: str | None, width
     font-size: 19px;
   }}
   thead th.num {{
-    /* Long column names wrap rather than stretching the table sideways. */
+    /* Long column names wrap rather than stretching the table sideways. This
+       width lets "Total Context Inquiries" break after "Context" — two lines,
+       not three, so the header row stays shallow. */
     white-space: normal;
-    max-width: 132px;
+    max-width: 158px;
+    line-height: 1.2;
     vertical-align: bottom;
   }}
   th.grp {{
@@ -532,6 +547,13 @@ def build_html(title: str, spec: TableSpec, accent: str, note: str | None, width
   /* The one vertical rule in the table: where a phase block begins. */
   .sep {{ border-left: 2px solid {group_rule}; }}
   td.num, th.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+  .sub {{
+    display: block;                    /* the restated figure, one line down */
+    margin-top: 4px;
+    font-size: 15px;
+    font-weight: 400;
+    opacity: 0.85;
+  }}
   tr.odd td {{ background: {stripe_bg}; }}
   .net {{ font-weight: 650; }}
   tbody tr:last-child td {{ border-bottom: none; }}
