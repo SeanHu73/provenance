@@ -148,6 +148,8 @@ class Layer:
     points: list
     style: PhaseStyle
     zorder: int
+    # False = present in full from the first frame, as context rather than motion.
+    animate: bool = True
 
 
 def build_points(rows: list) -> list:
@@ -343,7 +345,7 @@ def build_prepost(learner: str, pre: list, post: list):
     style_axes(ax, max_turn, title=learner)
     add_phase_legend(ax)
     return fig, [
-        Layer(ax, pre, PRE_STYLE, PHASE_ZORDER["pre"]),
+        Layer(ax, pre, PRE_STYLE, PHASE_ZORDER["pre"], animate=False),
         Layer(ax, post, POST_STYLE, PHASE_ZORDER["post"]),
     ]
 
@@ -370,7 +372,7 @@ def build_stacked(learner: str, pre: list, post: list):
     fig.suptitle(learner, fontsize=15, color=AXIS_GREY, x=0.125, y=1.005, ha="left")
 
     return fig, [
-        Layer(ax_pre, pre, PRE_STYLE, PHASE_ZORDER["pre"]),
+        Layer(ax_pre, pre, PRE_STYLE, PHASE_ZORDER["pre"], animate=False),
         Layer(ax_post, post, POST_STYLE, PHASE_ZORDER["pre"]),
     ]
 
@@ -424,17 +426,19 @@ def render_gif(fig, layers: list, path: Path) -> None:
         for artist in artists:
             artist.remove()
 
+    # Static layers are context: drawn in full from the first frame onward.
+    static = [l for l in layers if not l.animate]
+    moving = [l for l in layers if l.animate]
+
     frames, durations = [], []
-    for index, layer in enumerate(layers):
+    for index, layer in enumerate(moving):
         for visible, tail in trajectory_states(layer.points):
             drawn = []
-            for other, done in enumerate(layers):
-                if other < index:
-                    drawn += draw_trajectory(done.ax, done.points, done.style, zorder=done.zorder)
-                elif other == index:
-                    drawn += draw_trajectory(
-                        layer.ax, visible, layer.style, zorder=layer.zorder, tail=tail
-                    )
+            for done in static + moving[:index]:
+                drawn += draw_trajectory(done.ax, done.points, done.style, zorder=done.zorder)
+            drawn += draw_trajectory(
+                layer.ax, visible, layer.style, zorder=layer.zorder, tail=tail
+            )
             frames.append(_capture(fig, bbox))
             durations.append(FRAME_MS)
             for artist in drawn:
