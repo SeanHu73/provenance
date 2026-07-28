@@ -296,11 +296,20 @@ def phase_handle(style: PhaseStyle, size: float = MARKER_SIZE) -> Line2D:
 # ── tour-question footer ───────────────────────────────────────────────────
 @dataclass
 class Footer:
-    """The learner's tour question(s), typeset beneath the chart."""
+    """
+    The learner's tour question(s), typeset beneath the chart. Each line is a
+    list of (text, italic) runs, so the trailing rating can be italic while the
+    question stays upright.
+    """
 
-    text: str        # already wrapped; newlines are the line breaks
+    lines: list      # [[(text, italic), ...], ...] — already wrapped
     x: float         # figure fraction, aligned to the axes' left spine
     y: float         # figure fraction, top of the text block
+    step: float      # figure fraction between baselines
+
+    @property
+    def length(self) -> int:
+        return sum(len(text) for line in self.lines for text, _ in line)
 
 
 def load_questions(path: Path) -> dict:
@@ -332,59 +341,76 @@ def load_questions(path: Path) -> dict:
     return by_learner
 
 
-def footer_text(entries: list, fig_width: float) -> str:
+def footer_lines(entries: list, fig_width: float) -> list:
     """
-    Wrap the tour question(s) to the figure width. A learner with more than one
-    question gets them numbered; a single question needs no number.
+    Wrap the tour question(s) to the figure width, every line flush left. The
+    rating trails the question in italics, moving to its own line only when it
+    would not fit. A learner with more than one question gets them numbered.
     """
     columns = max(40, int(0.87 * fig_width / FOOTER_CHAR_IN))
     numbered = len(entries) > 1
     lines = []
 
     for index, (_, question, rating) in enumerate(entries, start=1):
-        label = f"Tour question {index}" if numbered else "Tour question"
+        label = f"Tour Question {index}" if numbered else "Tour Question"
+        wrapped = textwrap.wrap(f'{label}: "{question}"', width=columns) or [label]
+        lines.extend([[(text, False)] for text in wrapped])
+
         if rating:
-            label += f" (rated {rating})"
-        lines.append(
-            textwrap.fill(
-                f'{label}: "{question}"',
-                width=columns,
-                subsequent_indent="    ",   # hanging indent under the label
-            )
-        )
-    return "\n".join(lines)
+            suffix = f"(rated {rating})"
+            if len(wrapped[-1]) + 1 + len(suffix) <= columns:
+                lines[-1] = [(wrapped[-1] + " ", False), (suffix, True)]
+            else:
+                lines.append([(suffix, True)])
+    return lines
 
 
-def place_footer(fig, ax, text: str) -> Footer:
+def place_footer(fig, ax, lines: list) -> Footer:
     """Anchor the footer below everything the axes occupies, incl. the x-label."""
     fig.canvas.draw()
     extent = ax.get_tightbbox(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
-    return Footer(text=text, x=ax.get_position().x0, y=extent.y0 - FOOTER_GAP)
+    step = (FOOTER_SIZE * FOOTER_LINESPACING / 72) / fig.get_size_inches()[1]
+    return Footer(lines=lines, x=ax.get_position().x0, y=extent.y0 - FOOTER_GAP, step=step)
 
 
 def draw_footer(fig, footer: Footer, chars: int | None = None):
     """
     Render the footer, optionally truncated to the first `chars` characters —
-    that prefix is the whole typing animation. Top-anchored, so the block grows
-    downward into space the fixed crop box already accounts for.
+    that prefix is the whole typing animation. Runs are laid out left to right
+    by measuring each as it is placed, so an italic run sits flush against the
+    upright text before it. Top-anchored, so the block grows downward into
+    space the fixed crop box already accounts for.
     """
     if footer is None:
         return []
-    visible = footer.text if chars is None else footer.text[:chars]
-    if not visible:
-        return []
-    return [
-        fig.text(
-            footer.x,
-            footer.y,
-            visible,
-            ha="left",
-            va="top",
-            fontsize=FOOTER_SIZE,
-            color=AXIS_GREY,
-            linespacing=FOOTER_LINESPACING,
-        )
-    ]
+
+    renderer = fig.canvas.get_renderer()
+    budget = chars
+    artists = []
+
+    for row, segments in enumerate(footer.lines):
+        x = footer.x
+        y = footer.y - row * footer.step
+        for text, italic in segments:
+            shown = text if budget is None else text[:budget]
+            if shown:
+                artist = fig.text(
+                    x,
+                    y,
+                    shown,
+                    ha="left",
+                    va="top",
+                    fontsize=FOOTER_SIZE,
+                    color=AXIS_GREY,
+                    style="italic" if italic else "normal",
+                )
+                artists.append(artist)
+                x += artist.get_window_extent(renderer=renderer).width / fig.bbox.width
+            if budget is not None:
+                budget -= len(shown)
+                if budget <= 0:
+                    return artists
+    return artists
 
 
 def add_phase_legend(ax) -> None:
@@ -453,7 +479,7 @@ def build_prepost(learner: str, pre: list, post: list, questions: list = ()):
     style_axes(ax, max_turn, title=learner)
     add_phase_legend(ax)
 
-    footer = place_footer(fig, ax, footer_text(questions, width)) if questions else None
+    footer = place_footer(fig, ax, footer_lines(questions, width)) if questions else None
 
     return fig, [
         Layer(ax, pre, PRE_STYLE, PHASE_ZORDER["pre"], animate=False),
@@ -575,7 +601,7 @@ def render_gif(fig, layers: list, footer, path: Path) -> None:
 
     # Then the question types itself out, with every trajectory now complete.
     if footer:
-        for chars in range(TYPE_CHARS_PER_FRAME, len(footer.text) + TYPE_CHARS_PER_FRAME, TYPE_CHARS_PER_FRAME):
+        for chars in range(TYPE_CHARS_PER_FRAME, footer.length + TYPE_CHARS_PER_FRAME, TYPE_CHARS_PER_FRAME):
             drawn = []
             for done in static + moving:
                 drawn += draw_trajectory(done.ax, done.points, done.style, zorder=done.zorder)
