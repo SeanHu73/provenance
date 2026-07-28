@@ -234,92 +234,193 @@ def verify(table: "OrderedDict") -> None:
     print(f"Verification passed: {len(checks)} checks against data/question_ratings.csv")
 
 
+# ── table models ───────────────────────────────────────────────────────────
+@dataclass
+class TableSpec:
+    """
+    One table, described once and consumed by the console, HTML and fallback
+    renderers. Column indices in `bold_cols` and `dividers` are into a full row,
+    where index 0 is the row label.
+    """
+
+    row_header: str          # heading over the label column ("Learner" / "Phase")
+    headers: list            # data-column headings (excludes the label column)
+    rows: list               # each row is [label, *data]
+    bold_cols: set = None    # net columns, rendered slightly bolder
+    groups: list = None      # [(label, span), ...] spanning the data columns
+    dividers: set = None     # columns that open a group: get a left rule
+
+    def __post_init__(self):
+        self.bold_cols = self.bold_cols or set()
+        self.dividers = self.dividers or set()
+
+
+def fmt_pct_display(value: float | None) -> str:
+    """Percentages carry a % sign in the rendered tables (never in the CSV)."""
+    return "" if value is None else f"{value:.1f}%"
+
+
+def fmt_activated(stats: Stats, with_pct: bool = False) -> str:
+    """"n/m", optionally with the share it represents — used only on the All row."""
+    base = f"{stats.activated}/{stats.contextual}"
+    if not with_pct or stats.contextual == 0:
+        return base
+    return f"{base} ({round_half_up(100 * stats.activated / stats.contextual):.1f}%)"
+
+
+def per_learner_threes(table: "OrderedDict", pre: Stats, post: Stats) -> float | None:
+    """
+    What the %3s shift is worth as a countable number of 3-rated questions for
+    a typical learner: hold the pre-test 3s rate against the post-test volume,
+    take the shortfall against the actual 3s, and spread it over the cohort.
+    """
+    if not table or pre.contextual == 0 or post.contextual == 0:
+        return None
+    expected = post.contextual * (pre.threes / pre.contextual)
+    return round_half_up((post.threes - expected) / len(table))
+
+
 # ── console output ─────────────────────────────────────────────────────────
-def print_table(title: str, headers: list, rows: list) -> None:
-    widths = [max(len(str(headers[i])), *(len(str(r[i])) for r in rows)) for i in range(len(headers))]
-    line = "  ".join(str(h).ljust(widths[i]) for i, h in enumerate(headers))
-    # The console may be on a codepage that cannot encode the em dash.
-    print(f"\n{title.replace(chr(8212), '-')}")
+def console_safe(text) -> str:
+    """The console may be on a codepage that cannot encode typographic dashes."""
+    return str(text).replace("—", "-").replace("−", "-").replace("–", "-")
+
+
+def print_table(title: str, spec: TableSpec) -> None:
+    headers = [console_safe(spec.row_header)] + [console_safe(h) for h in spec.headers]
+    rows = [[console_safe(c) for c in row] for row in spec.rows]
+    widths = [max(len(headers[i]), *(len(r[i]) for r in rows)) for i in range(len(headers))]
+    print(f"\n{console_safe(title)}")
+
+    if spec.groups:
+        # The group tier starts above the first data column, not the label column.
+        cells = [" " * widths[0]]
+        column = 1
+        for label, span in spec.groups:
+            width = sum(widths[column : column + span]) + 2 * (span - 1)
+            cells.append(console_safe(label).ljust(width))
+            column += span
+        print("  ".join(cells).rstrip())
+
+    line = "  ".join(headers[i].ljust(widths[i]) for i in range(len(headers)))
     print(line)
     print("-" * len(line))
     for row in rows:
-        print("  ".join(str(c).ljust(widths[i]) for i, c in enumerate(row)))
+        print("  ".join(row[i].ljust(widths[i]) for i in range(len(row))))
 
 
-# ── table models ───────────────────────────────────────────────────────────
-# Each returns (headers, rows, bold_columns) so console, HTML and the fallback
-# renderer all read from one description.
-def learner_table1(phases: dict):
-    headers = ["Phase", "2s", "3s", "Contextual total"]
+# ── per-learner tables ─────────────────────────────────────────────────────
+def learner_table1(phases: dict) -> TableSpec:
+    return TableSpec(
+        row_header="Phase",
+        headers=["Rating 2s", "Rating 3s", "Total Context Inquiries"],
+        rows=[
+            [PHASE_LABEL[p], phases[p].twos, phases[p].threes, phases[p].contextual]
+            for p in PHASE_ORDER
+        ],
+    )
+
+
+def learner_table2(phases: dict) -> TableSpec:
+    return TableSpec(
+        row_header="Phase",
+        headers=["Score", "%3s"],
+        rows=[
+            [PHASE_LABEL[p], phases[p].score, fmt_pct_display(phases[p].pct_threes)]
+            for p in PHASE_ORDER
+        ],
+    )
+
+
+def learner_table3(phases: dict) -> TableSpec:
+    return TableSpec(
+        row_header="Phase",
+        headers=["P.A.S.T. activated"],
+        rows=[[PHASE_LABEL[p], fmt_activated(phases[p])] for p in PHASE_ORDER],
+    )
+
+
+# ── combined tables ────────────────────────────────────────────────────────
+# A grouped header tier plus a rule at each group's left edge separates the
+# pre-test block from the post-test block at a glance.
+def _combined_rows(table: "OrderedDict"):
+    """Each learner, then the All row; `is_all` marks the summary row."""
+    for name, phases in list(table.items()):
+        yield name, phases["pre"], phases["post"], False
+    all_rows = totals(table)
+    yield "All", all_rows["pre"], all_rows["post"], True
+
+
+def combined_table1(table: "OrderedDict") -> TableSpec:
     rows = [
-        [PHASE_LABEL[p], phases[p].twos, phases[p].threes, phases[p].contextual]
-        for p in PHASE_ORDER
+        [
+            name,
+            pre.twos, pre.threes, pre.contextual,
+            post.twos, post.threes, post.contextual,
+            f"{post.contextual - pre.contextual:+d}",
+        ]
+        for name, pre, post, _ in _combined_rows(table)
     ]
-    return headers, rows, set()
+    return TableSpec(
+        row_header="Learner",
+        headers=[
+            "Rating 2s", "Rating 3s", "Total Context Inquiries",
+            "Rating 2s", "Rating 3s", "Total Context Inquiries",
+            "Total Context Inquiries",
+        ],
+        rows=rows,
+        bold_cols={7},
+        groups=[("Pre-test", 3), ("Post-test", 3), ("Net (post − pre)", 1)],
+        dividers={1, 4, 7},
+    )
 
 
-def learner_table2(phases: dict):
-    headers = ["Phase", "Score", "%3s"]
-    rows = [[PHASE_LABEL[p], phases[p].score, fmt_pct(phases[p].pct_threes)] for p in PHASE_ORDER]
-    return headers, rows, set()
-
-
-def learner_table3(phases: dict):
-    headers = ["Phase", "P.A.S.T. activated"]
-    rows = [
-        [PHASE_LABEL[p], f"{phases[p].activated}/{phases[p].contextual}"]
-        for p in PHASE_ORDER
-    ]
-    return headers, rows, set()
-
-
-def combined_table1(table: "OrderedDict"):
-    headers = ["Learner", "Pre 2s", "Pre 3s", "Pre total", "Post 2s", "Post 3s", "Post total", "Net total"]
+def combined_table2(table: "OrderedDict") -> TableSpec:
     rows = []
-    for name, phases in list(table.items()) + [("All", totals(table))]:
-        pre, post = phases["pre"], phases["post"]
+    for name, pre, post, is_all in _combined_rows(table):
+        net = net_pct(pre, post)
+        if is_all:
+            # Only here: what the percentage-point shift is worth as a count.
+            equivalent = per_learner_threes(table, pre, post)
+            if net and equivalent is not None:
+                net = f"{net} ({equivalent:+.1f} per learner)"
         rows.append(
             [
                 name,
-                pre.twos, pre.threes, pre.contextual,
-                post.twos, post.threes, post.contextual,
-                f"{post.contextual - pre.contextual:+d}",
-            ]
-        )
-    return headers, rows, {7}
-
-
-def combined_table2(table: "OrderedDict"):
-    headers = ["Learner", "Pre score", "Pre %3s", "Post score", "Post %3s", "Net score", "Net %3s (pp)"]
-    rows = []
-    for name, phases in list(table.items()) + [("All", totals(table))]:
-        pre, post = phases["pre"], phases["post"]
-        rows.append(
-            [
-                name,
-                pre.score, fmt_pct(pre.pct_threes),
-                post.score, fmt_pct(post.pct_threes),
+                pre.score, fmt_pct_display(pre.pct_threes),
+                post.score, fmt_pct_display(post.pct_threes),
                 f"{post.score - pre.score:+d}",
-                net_pct(pre, post),
+                net,
             ]
         )
-    return headers, rows, {5, 6}
+    return TableSpec(
+        row_header="Learner",
+        headers=["Score", "%3s", "Score", "%3s", "Score", "%3s (pp)"],
+        rows=rows,
+        bold_cols={5, 6},
+        groups=[("Pre-test", 2), ("Post-test", 2), ("Net (post − pre)", 2)],
+        dividers={1, 3, 5},
+    )
 
 
-def combined_table3(table: "OrderedDict"):
-    headers = ["Learner", "Pre activated", "Post activated", "Net activations"]
-    rows = []
-    for name, phases in list(table.items()) + [("All", totals(table))]:
-        pre, post = phases["pre"], phases["post"]
-        rows.append(
-            [
-                name,
-                f"{pre.activated}/{pre.contextual}",
-                f"{post.activated}/{post.contextual}",
-                f"{post.activated - pre.activated:+d}",
-            ]
-        )
-    return headers, rows, {3}
+def combined_table3(table: "OrderedDict") -> TableSpec:
+    rows = [
+        [
+            name,
+            fmt_activated(pre, with_pct=is_all),
+            fmt_activated(post, with_pct=is_all),
+            f"{post.activated - pre.activated:+d}",
+        ]
+        for name, pre, post, is_all in _combined_rows(table)
+    ]
+    return TableSpec(
+        row_header="Learner",
+        headers=["P.A.S.T. activated", "P.A.S.T. activated", "Activations"],
+        rows=rows,
+        bold_cols={3},
+        groups=[("Pre-test", 1), ("Post-test", 1), ("Net (post − pre)", 1)],
+        dividers={1, 2, 3},
+    )
 
 
 TABLE_TITLES = {
@@ -331,26 +432,47 @@ TABLE_FILES = {1: "table1_counts", 2: "table2_scores", 3: "table3_past"}
 
 
 # ── HTML ───────────────────────────────────────────────────────────────────
-def build_html(title: str, headers: list, rows: list, bold_cols: set, accent: str, note: str | None, width: int) -> str:
+def build_html(title: str, spec: TableSpec, accent: str, note: str | None, width: int) -> str:
     header_bg = mix_white(accent, HEADER_WHITE)
     stripe_bg = mix_white(accent, STRIPE_WHITE)
     rule = mix_white(accent, 0.45)
+    group_rule = mix_white(accent, 0.15)   # stronger: separates pre from post
 
-    def cells(values, tag, row_index=None):
-        out = []
-        for i, value in enumerate(values):
-            classes = []
-            if i in bold_cols:
-                classes.append("net")
-            if i > 0:
-                classes.append("num")
-            attr = f' class="{" ".join(classes)}"' if classes else ""
-            out.append(f"<{tag}{attr}>{value}</{tag}>")
-        return "".join(out)
+    def classes_for(index: int, extra: list = ()) -> str:
+        names = list(extra)
+        if index > 0:
+            names.append("num")
+        if index in spec.bold_cols:
+            names.append("net")
+        if index in spec.dividers:
+            names.append("sep")
+        return f' class="{" ".join(names)}"' if names else ""
+
+    if spec.groups:
+        group_cells, column = [], 1     # column 0 is the label, spanned below
+        for label, span in spec.groups:
+            sep = " sep" if column in spec.dividers else ""
+            group_cells.append(f'<th colspan="{span}" class="grp{sep}">{label}</th>')
+            column += span
+        head = (
+            f'        <tr><th rowspan="2" class="rowlab">{spec.row_header}</th>'
+            + "".join(group_cells)
+            + "</tr>\n        <tr>"
+            + "".join(f"<th{classes_for(i + 1)}>{h}</th>" for i, h in enumerate(spec.headers))
+            + "</tr>"
+        )
+    else:
+        head = (
+            f'        <tr><th class="rowlab">{spec.row_header}</th>'
+            + "".join(f"<th{classes_for(i + 1)}>{h}</th>" for i, h in enumerate(spec.headers))
+            + "</tr>"
+        )
 
     body = "\n".join(
-        f'      <tr class="{"odd" if i % 2 else "even"}">{cells(row, "td", i)}</tr>'
-        for i, row in enumerate(rows)
+        f'        <tr class="{"odd" if i % 2 else "even"}">'
+        + "".join(f"<td{classes_for(j)}>{value}</td>" for j, value in enumerate(row))
+        + "</tr>"
+        for i, row in enumerate(spec.rows)
     )
     note_html = f'\n    <p class="note">{note}</p>' if note else ""
 
@@ -384,8 +506,8 @@ def build_html(title: str, headers: list, rows: list, bold_cols: set, accent: st
     padding: 13px 16px;
     font-size: 19px;
     text-align: left;
-    white-space: nowrap;               /* keep every cell on one line */
-    border: none;                      /* no vertical rules anywhere */
+    white-space: nowrap;               /* data never wraps mid-value */
+    border: none;                      /* no vertical rules between columns */
     border-bottom: 1px solid {rule};   /* thin horizontal rules only */
   }}
   th {{
@@ -393,6 +515,22 @@ def build_html(title: str, headers: list, rows: list, bold_cols: set, accent: st
     font-weight: 600;
     font-size: 19px;
   }}
+  thead th.num {{
+    /* Long column names wrap rather than stretching the table sideways. */
+    white-space: normal;
+    max-width: 132px;
+    vertical-align: bottom;
+  }}
+  th.grp {{
+    text-align: center;
+    white-space: nowrap;
+    font-size: 20px;
+    letter-spacing: 0.3px;
+    padding-bottom: 9px;
+  }}
+  th.rowlab {{ vertical-align: bottom; }}
+  /* The one vertical rule in the table: where a phase block begins. */
+  .sep {{ border-left: 2px solid {group_rule}; }}
   td.num, th.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
   tr.odd td {{ background: {stripe_bg}; }}
   .net {{ font-weight: 650; }}
@@ -414,7 +552,7 @@ def build_html(title: str, headers: list, rows: list, bold_cols: set, accent: st
     <h1>{title}</h1>
     <table>
       <thead>
-        <tr>{cells(headers, "th")}</tr>
+{head}
       </thead>
       <tbody>
 {body}
@@ -461,17 +599,28 @@ def render_fallback(jobs_data: list) -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    for title, headers, rows, bold_cols, accent, note, width, png_path in jobs_data:
+    for title, spec, accent, note, width, png_path in jobs_data:
         header_bg, stripe_bg = mix_white(accent, HEADER_WHITE), mix_white(accent, STRIPE_WHITE)
+        # No two-tier header here: the group label is folded into each column
+        # name so the fallback still distinguishes pre from post.
+        prefixes = [""] * len(spec.headers)
+        if spec.groups:
+            column = 0
+            for label, span in spec.groups:
+                for offset in range(span):
+                    prefixes[column + offset] = f"{label}\n"
+                column += span
+        headers = [spec.row_header] + [f"{p}{h}" for p, h in zip(prefixes, spec.headers)]
+
         fig_w = width / 100
-        fig_h = 1.4 + 0.42 * (len(rows) + 1) + (1.1 if note else 0)
+        fig_h = 1.4 + 0.42 * (len(spec.rows) + 1) + (1.1 if note else 0)
         fig, ax = plt.subplots(figsize=(fig_w, fig_h))
         fig.patch.set_facecolor(CREAM)
         ax.set_facecolor(CREAM)
         ax.axis("off")
 
         mpl_table = ax.table(
-            cellText=[[str(c) for c in row] for row in rows],
+            cellText=[[str(c) for c in row] for row in spec.rows],
             colLabels=[str(h) for h in headers],
             cellLoc="center",
             loc="upper center",
@@ -488,7 +637,7 @@ def render_fallback(jobs_data: list) -> None:
                 cell.get_text().set_fontweight("semibold")
             else:
                 cell.set_facecolor(stripe_bg if r % 2 == 0 else CREAM)
-                if c in bold_cols:
+                if c in spec.bold_cols:
                     cell.get_text().set_fontweight("bold")
 
         ax.set_title(title, color=INK, fontsize=15, loc="left", pad=18)
@@ -555,16 +704,16 @@ def main() -> None:
 
     jobs, fallback_jobs = [], []
 
-    def emit(folder: str, label: str, number: int, headers, rows, bold, width: int) -> None:
+    def emit(folder: str, label: str, number: int, spec: TableSpec, width: int) -> None:
         title = f"{label} — {TABLE_TITLES[number]}"
         note = PAST_NOTE if number == 3 else None
         accent = TABLE_ACCENT[number]
 
-        print_table(title, headers, rows)
+        print_table(title, spec)
         if note:
             print(f"  note: {note}")
 
-        html = build_html(title, headers, rows, bold, accent, note, width)
+        html = build_html(title, spec, accent, note, width)
         html_path = html_dir / f"{folder}_{TABLE_FILES[number]}.html"
         html_path.write_text(html, encoding="utf-8")
 
@@ -573,19 +722,17 @@ def main() -> None:
         png_path = target / f"{TABLE_FILES[number]}.png"
 
         jobs.append((html_path, png_path))
-        fallback_jobs.append((title, headers, rows, bold, accent, note, width, png_path))
+        fallback_jobs.append((title, spec, accent, note, width, png_path))
 
     # Per-learner: fewer columns, so a proportionally narrower card.
     for name, phases in table.items():
         folder = "".join(c if c.isalnum() else "_" for c in name.strip().lower()).strip("_")
         for number, builder in ((1, learner_table1), (2, learner_table2), (3, learner_table3)):
-            headers, rows, bold = builder(phases)
-            emit(folder, name, number, headers, rows, bold, width=680)
+            emit(folder, name, number, builder(phases), width=680)
 
     # Combined: ~800 CSS px at device scale factor 3 lands near 2400px.
     for number, builder in ((1, combined_table1), (2, combined_table2), (3, combined_table3)):
-        headers, rows, bold = builder(table)
-        emit("all_learners", "All Learners", number, headers, rows, bold, width=800)
+        emit("all_learners", "All Learners", number, builder(table), width=800)
 
     csv_path = args.out / "summary_stats.csv"
     write_summary_csv(table, csv_path)
