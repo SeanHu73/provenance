@@ -132,9 +132,12 @@ def net_pct_value(pre: Stats, post: Stats) -> float | None:
 
 
 def net_pct(pre: Stats, post: Stats) -> str:
-    """The signed display form used in the tables."""
+    """
+    The signed display form used in the tables. No % sign: this is a change in
+    percentage points, so the unit sits in the column heading instead.
+    """
     value = net_pct_value(pre, post)
-    return "" if value is None else f"{value:+.1f}%"
+    return "" if value is None else f"{value:+.1f}"
 
 
 def load_rows(path: Path) -> list:
@@ -400,9 +403,9 @@ def combined_table2(table: "OrderedDict") -> TableSpec:
         )
     return TableSpec(
         row_header="Learner",
-        # The Net group's %3s is a percentage-point change; the group heading
-        # already says "post - pre", so the cells carry a plain % sign.
-        headers=["Score", "%3s", "Score", "%3s", "Score", "%3s"],
+        # The Net group's %3s is a change in percentage points, not a percentage:
+        # the unit is carried in the heading and the cells stay unsuffixed.
+        headers=["Score", "%3s", "Score", "%3s", "Score", "%3s (pp)"],
         rows=rows,
         bold_cols={5, 6},
         groups=[("Pre-test", 2), ("Post-test", 2), ("Net (post − pre)", 2)],
