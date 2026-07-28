@@ -52,10 +52,10 @@ VALID_RATINGS = CONTEXTUAL | {"1"}
 NO_LENS = {"", "not specified"}
 
 PAST_NOTE = (
-    "P.A.S.T. usage indicates they applied the framework (usually indirectly, not "
-    "explicitly). The framework scaffolds contextual thinking, but you can "
-    "contextualise without applying P.A.S.T. For example, 2a questions concern "
-    "motivations of individuals without applying larger context."
+    "P.A.S.T. usage indicates the lenses from the framework was used (usually "
+    "indirectly, not explicitly). The framework scaffolds thinking in context, but "
+    "learners can still contextualise without applying P.A.S.T. For example, 2a "
+    "questions concern motivations of individuals without applying larger context."
 )
 
 # ── palette ────────────────────────────────────────────────────────────────
