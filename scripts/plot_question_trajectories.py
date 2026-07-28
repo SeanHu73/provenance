@@ -6,6 +6,7 @@ the turn counts or the ratings is hard-coded here.
 
 Usage:
     python scripts/plot_question_trajectories.py                # verify, then plot
+    python scripts/plot_question_trajectories.py --animate      # also write GIFs
     python scripts/plot_question_trajectories.py --verify-only  # verify, then stop
 
 Encoding
@@ -18,16 +19,17 @@ The lens_1 / lens_2 columns are deliberately ignored — the charts carry no
 lens colouring.
 
 Animation
-    Each line is materialised as an ordered list of PointSpec, and all drawing
-    goes through draw_trajectory(). To animate the line being drawn, call
-    draw_trajectory() repeatedly with progressively longer slices of the same
-    list — no other part of this module needs to change.
+    Each line is an ordered list of PointSpec and all drawing goes through
+    draw_trajectory(), so --animate simply calls it with progressively longer
+    slices. The GIFs are written without a Netscape loop block, so they draw
+    themselves once and then hold the finished chart.
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import io
 import sys
 from collections import Counter, OrderedDict
 from dataclasses import dataclass
@@ -39,6 +41,7 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from PIL import Image
 
 # ── paths ──────────────────────────────────────────────────────────────────
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -73,6 +76,13 @@ LINE_WIDTH = 1.0
 EDGE_WIDTH = 1.5           # white stroke around every marker
 HALO_WIDTH = 3.4           # wider white ring under hollow markers
 STACKED_LEARNER = "Learner 2"
+
+# ── animation ──────────────────────────────────────────────────────────────
+GIF_DPI = 200              # ~1000-1600px wide: crisp when scaled up on a slide
+STEPS_PER_SEGMENT = 4      # interpolated frames between consecutive turns
+FRAME_MS = 50              # per-frame delay
+FIRST_FRAME_MS = 400       # brief settle before the line starts moving
+LAYER_HOLD_MS = 600        # pause after each phase finishes drawing
 
 # ── typography ─────────────────────────────────────────────────────────────
 plt.rcParams.update(
@@ -124,11 +134,20 @@ POST_STYLE = PhaseStyle(
     linestyle="-",             # solid
     opacity=1.0,
 )
-PHASE_STYLE = {"pre": PRE_STYLE, "post": POST_STYLE}
 
 # Draw order: pre line, pre markers, post line, post markers. Each phase's line
 # sits beneath its own markers; the post-test layer sits above the pre-test one.
 PHASE_ZORDER = {"pre": 1, "post": 3}
+
+
+@dataclass
+class Layer:
+    """One phase drawn on one axes — the unit both static and animated output use."""
+
+    ax: object
+    points: list
+    style: PhaseStyle
+    zorder: int
 
 
 def build_points(rows: list) -> list:
@@ -154,20 +173,27 @@ def draw_trajectory(
     style: PhaseStyle,
     opacity: float | None = None,
     zorder: int = 1,
-    label: str | None = None,
+    tail: tuple | None = None,
 ) -> list:
     """
     Draw one trajectory: the connecting line with its markers on top.
 
+    `tail` is an optional (x, y) appended to the line but given no marker — it
+    is how a partially drawn segment reaches past the last completed turn.
+
     Returns the artists it created, in draw order. This is the single entry
-    point for rendering a line — an animation can call it with growing slices
-    of `points` (and remove the previous artists) to draw the line out over time.
+    point for rendering a line: an animation calls it with growing slices of
+    `points`, removing the previous frame's artists in between.
     """
     alpha = style.opacity if opacity is None else opacity
     artists = []
 
     xs = [p.turn for p in points]
     ys = [p.y for p in points]
+    if tail is not None:
+        xs.append(tail[0])
+        ys.append(tail[1])
+
     if len(xs) > 1:
         (line,) = ax.plot(
             xs,
@@ -184,24 +210,6 @@ def draw_trajectory(
 
     for point in points:
         artists.extend(_draw_marker(ax, point, style, alpha, zorder + 1))
-
-    # A proxy artist carries the legend entry, so the legend shows one clean
-    # swatch per phase instead of one per marker.
-    if label:
-        ax.plot(
-            [],
-            [],
-            color=style.line_colour,
-            linestyle=style.linestyle,
-            linewidth=LINE_WIDTH,
-            marker="o",
-            markerfacecolor=style.colour,
-            markeredgecolor=MARKER_HALO,
-            markeredgewidth=EDGE_WIDTH,
-            markersize=MARKER_SIZE * 0.8,
-            alpha=alpha,
-            label=label,
-        )
 
     return artists
 
@@ -253,15 +261,42 @@ def _draw_marker(ax, point: PointSpec, style: PhaseStyle, alpha: float, zorder: 
     return [halo, ring]
 
 
+def phase_handle(style: PhaseStyle, size: float = MARKER_SIZE) -> Line2D:
+    """A legend proxy showing one phase's line and marker treatment."""
+    return Line2D(
+        [],
+        [],
+        color=style.line_colour,
+        linestyle=style.linestyle,
+        linewidth=LINE_WIDTH,
+        marker="o",
+        markerfacecolor=style.colour,
+        markeredgecolor=MARKER_HALO,
+        markeredgewidth=EDGE_WIDTH,
+        markersize=size,
+        alpha=style.opacity,
+    )
+
+
+def add_phase_legend(ax) -> None:
+    """Sits above the axes, so it can never collide with a dense trajectory."""
+    ax.legend(
+        [phase_handle(PRE_STYLE, MARKER_SIZE * 0.8), phase_handle(POST_STYLE, MARKER_SIZE * 0.8)],
+        [PHASE_LABEL["pre"], PHASE_LABEL["post"]],
+        loc="lower right",
+        bbox_to_anchor=(1.0, 1.005),
+        ncol=2,
+        frameon=False,
+        handletextpad=0.6,
+        columnspacing=1.8,
+        labelcolor=AXIS_GREY,
+    )
+
+
 # ── figure scaffolding ─────────────────────────────────────────────────────
 def figure_width(max_turn: int) -> float:
     """Width that keeps the turn axis legible at print size."""
     return min(9.0, max(5.2, 1.7 + 0.45 * max_turn))
-
-
-def new_figure(max_turn: int):
-    fig, ax = plt.subplots(figsize=(figure_width(max_turn), 3.7))
-    return fig, ax
 
 
 def style_axes(ax, max_turn: int, title: str | None = None, xlabel: bool = True, ylabel: bool = True) -> None:
@@ -292,43 +327,28 @@ def style_axes(ax, max_turn: int, title: str | None = None, xlabel: bool = True,
     ax.tick_params(colors=AXIS_GREY, length=4, width=0.9)
 
 
-def save(fig, stem: Path) -> None:
-    for suffix in ("png", "svg"):
-        fig.savefig(stem.with_suffix(f".{suffix}"), dpi=300, bbox_inches="tight")
-    plt.close(fig)
-
-
-# ── charts ─────────────────────────────────────────────────────────────────
-def plot_pre(learner: str, points: list, out_dir: Path) -> None:
-    max_turn = max(p.turn for p in points)
-    fig, ax = new_figure(max_turn)
+# ── chart builders ─────────────────────────────────────────────────────────
+# Each returns (fig, layers) with the axes fully styled but no trajectory drawn.
+# render_static() and render_gif() consume the same pair.
+def build_pre(learner: str, pre: list):
+    max_turn = max(p.turn for p in pre)
+    fig, ax = plt.subplots(figsize=(figure_width(max_turn), 3.7))
     style_axes(ax, max_turn, title=learner)
-    draw_trajectory(ax, points, PRE_STYLE, zorder=PHASE_ZORDER["pre"])
-    save(fig, out_dir / f"{slug(learner)}_pre")
+    return fig, [Layer(ax, pre, PRE_STYLE, PHASE_ZORDER["pre"])]
 
 
-def plot_prepost(learner: str, pre: list, post: list, out_dir: Path) -> None:
+def build_prepost(learner: str, pre: list, post: list):
     max_turn = max(p.turn for p in pre + post)
-    fig, ax = new_figure(max_turn)
+    fig, ax = plt.subplots(figsize=(figure_width(max_turn), 3.7))
     style_axes(ax, max_turn, title=learner)
-
-    draw_trajectory(ax, pre, PRE_STYLE, zorder=PHASE_ZORDER["pre"], label=PHASE_LABEL["pre"])
-    draw_trajectory(ax, post, POST_STYLE, zorder=PHASE_ZORDER["post"], label=PHASE_LABEL["post"])
-
-    # Sits above the axes, so it can never collide with a dense trajectory.
-    ax.legend(
-        loc="lower right",
-        bbox_to_anchor=(1.0, 1.005),
-        ncol=2,
-        frameon=False,
-        handletextpad=0.6,
-        columnspacing=1.8,
-        labelcolor=AXIS_GREY,
-    )
-    save(fig, out_dir / f"{slug(learner)}_prepost")
+    add_phase_legend(ax)
+    return fig, [
+        Layer(ax, pre, PRE_STYLE, PHASE_ZORDER["pre"]),
+        Layer(ax, post, POST_STYLE, PHASE_ZORDER["post"]),
+    ]
 
 
-def plot_stacked(learner: str, pre: list, post: list, out_dir: Path) -> None:
+def build_stacked(learner: str, pre: list, post: list):
     """Two panels sharing the x-axis: pre-test above, post-test below."""
     max_turn = max(p.turn for p in pre + post)
     fig, (ax_pre, ax_post) = plt.subplots(
@@ -345,16 +365,106 @@ def plot_stacked(learner: str, pre: list, post: list, out_dir: Path) -> None:
     for ax in (ax_pre, ax_post):
         ax.title.set_fontsize(13)
 
-    draw_trajectory(ax_pre, pre, PRE_STYLE, zorder=PHASE_ZORDER["pre"])
-    draw_trajectory(ax_post, post, POST_STYLE, zorder=PHASE_ZORDER["pre"])
-
     # One shared y-label rather than the long string repeated on both panels.
     fig.supylabel("Context Rating Scale for Inquiries", fontsize=13, color=AXIS_GREY, x=0.02)
     fig.suptitle(learner, fontsize=15, color=AXIS_GREY, x=0.125, y=1.005, ha="left")
 
-    save(fig, out_dir / f"{slug(learner)}_stacked")
+    return fig, [
+        Layer(ax_pre, pre, PRE_STYLE, PHASE_ZORDER["pre"]),
+        Layer(ax_post, post, POST_STYLE, PHASE_ZORDER["pre"]),
+    ]
 
 
+def render_static(fig, layers: list, stem: Path) -> None:
+    for layer in layers:
+        draw_trajectory(layer.ax, layer.points, layer.style, zorder=layer.zorder)
+    for suffix in ("png", "svg"):
+        fig.savefig(stem.with_suffix(f".{suffix}"), dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
+# ── animation ──────────────────────────────────────────────────────────────
+def trajectory_states(points: list):
+    """
+    Progressive (visible_points, tail) states for one trajectory: the first
+    marker alone, then the line growing turn by turn with a marker landing each
+    time a turn is reached.
+    """
+    yield points[:1], None
+    for i in range(len(points) - 1):
+        a, b = points[i], points[i + 1]
+        for step in range(1, STEPS_PER_SEGMENT + 1):
+            f = step / STEPS_PER_SEGMENT
+            if step == STEPS_PER_SEGMENT:
+                yield points[: i + 2], None
+            else:
+                tail = (a.turn + (b.turn - a.turn) * f, a.y + (b.y - a.y) * f)
+                yield points[: i + 1], tail
+
+
+def _capture(fig, bbox) -> Image.Image:
+    """Render the figure to a PIL image at a fixed crop, so frames all match."""
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=GIF_DPI, bbox_inches=bbox)
+    buf.seek(0)
+    return Image.open(buf).convert("RGB")
+
+
+def render_gif(fig, layers: list, path: Path) -> None:
+    """
+    Draw each layer on in turn, one frame per step, and write a GIF that plays
+    once. Layers already completed stay fully drawn while the next one grows.
+    """
+    # Draw the finished chart once to fix the crop box: every frame is then
+    # rendered at identical dimensions, so the animation cannot jitter.
+    settled = [draw_trajectory(l.ax, l.points, l.style, zorder=l.zorder) for l in layers]
+    fig.canvas.draw()
+    bbox = fig.get_tightbbox(fig.canvas.get_renderer()).padded(0.08)
+    for artists in settled:
+        for artist in artists:
+            artist.remove()
+
+    frames, durations = [], []
+    for index, layer in enumerate(layers):
+        for visible, tail in trajectory_states(layer.points):
+            drawn = []
+            for other, done in enumerate(layers):
+                if other < index:
+                    drawn += draw_trajectory(done.ax, done.points, done.style, zorder=done.zorder)
+                elif other == index:
+                    drawn += draw_trajectory(
+                        layer.ax, visible, layer.style, zorder=layer.zorder, tail=tail
+                    )
+            frames.append(_capture(fig, bbox))
+            durations.append(FRAME_MS)
+            for artist in drawn:
+                artist.remove()
+        durations[-1] += LAYER_HOLD_MS   # let each finished phase settle
+
+    plt.close(fig)
+    durations[0] = FIRST_FRAME_MS
+
+    # One shared palette taken from the final frame keeps colours from shifting
+    # frame to frame; no dithering keeps the flat white background clean.
+    master = frames[-1].quantize(colors=128)
+    quantized = [f.quantize(palette=master, dither=Image.Dither.NONE) for f in frames]
+
+    # No `loop` argument: Pillow then omits the Netscape looping block entirely,
+    # which is what makes the GIF play through once and stop on the last frame.
+    quantized[0].save(
+        path,
+        save_all=True,
+        append_images=quantized[1:],
+        duration=durations,
+        optimize=True,
+        disposal=1,
+    )
+
+    if b"NETSCAPE2.0" in path.read_bytes():
+        print(f"! {path.name}: a loop block was written - this GIF will repeat.")
+
+
+# ── standalone legend ──────────────────────────────────────────────────────
 def plot_legend(out_dir: Path) -> None:
     """A standalone key: marker shapes, hollow vs filled, and the two phases."""
     fig, (ax_shape, ax_phase) = plt.subplots(1, 2, figsize=(9.4, 2.2))
@@ -365,16 +475,11 @@ def plot_legend(out_dir: Path) -> None:
         base = dict(linestyle="none", markersize=MARKER_SIZE, color="none")
         return Line2D([], [], **{**base, **kwargs})
 
-    def hollow(colour):
-        return marker(
-            marker="o",
-            markerfacecolor="white",
-            markeredgecolor=colour,
-            markeredgewidth=EDGE_WIDTH,
-        )
-
     shape_handles = [
-        (hollow(NEUTRAL), "Rating 1 — hollow circle"),
+        (
+            marker(marker="o", markerfacecolor="white", markeredgecolor=NEUTRAL, markeredgewidth=EDGE_WIDTH),
+            "Rating 1 — hollow circle",
+        ),
         (
             marker(marker="o", markerfacecolor=NEUTRAL, markeredgecolor=MARKER_HALO, markeredgewidth=EDGE_WIDTH),
             "Ratings 2a / 3a — filled circle",
@@ -384,39 +489,9 @@ def plot_legend(out_dir: Path) -> None:
             "Ratings 2b / 3b — filled square",
         ),
     ]
-
     phase_handles = [
-        (
-            Line2D(
-                [],
-                [],
-                color=PRE_STYLE.line_colour,
-                linestyle=PRE_STYLE.linestyle,
-                linewidth=LINE_WIDTH,
-                marker="o",
-                markerfacecolor=PRE_STYLE.colour,
-                markeredgecolor=MARKER_HALO,
-                markeredgewidth=EDGE_WIDTH,
-                markersize=MARKER_SIZE,
-                alpha=PRE_STYLE.opacity,
-            ),
-            PHASE_LABEL["pre"],
-        ),
-        (
-            Line2D(
-                [],
-                [],
-                color=POST_STYLE.line_colour,
-                linestyle=POST_STYLE.linestyle,
-                linewidth=LINE_WIDTH,
-                marker="o",
-                markerfacecolor=POST_STYLE.colour,
-                markeredgecolor=MARKER_HALO,
-                markeredgewidth=EDGE_WIDTH,
-                markersize=MARKER_SIZE,
-            ),
-            PHASE_LABEL["post"],
-        ),
+        (phase_handle(PRE_STYLE), PHASE_LABEL["pre"]),
+        (phase_handle(POST_STYLE), PHASE_LABEL["post"]),
     ]
 
     for ax, handles, title in (
@@ -436,7 +511,9 @@ def plot_legend(out_dir: Path) -> None:
         legend.get_title().set_color(AXIS_GREY)
         legend.get_title().set_fontsize(12.5)
 
-    save(fig, out_dir / "legend")
+    for suffix in ("png", "svg"):
+        fig.savefig(out_dir / f"legend.{suffix}", dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
 
 def slug(name: str) -> str:
@@ -524,6 +601,7 @@ def main() -> None:
     parser.add_argument("--data", type=Path, default=DATA_FILE, help="input CSV")
     parser.add_argument("--out", type=Path, default=OUT_DIR, help="output directory")
     parser.add_argument("--verify-only", action="store_true", help="print the table and stop")
+    parser.add_argument("--animate", action="store_true", help="also write play-once GIFs")
     args = parser.parse_args()
 
     rows = load_rows(args.data)
@@ -545,17 +623,23 @@ def main() -> None:
             print(f"! {learner}: no pre-test rows - skipping both charts.")
             continue
 
-        plot_pre(learner, pre, args.out)
-        written += 2
-
+        charts = [(f"{slug(learner)}_pre", lambda: build_pre(learner, pre))]
         if post:
-            plot_prepost(learner, pre, post, args.out)
-            written += 2
+            charts.append((f"{slug(learner)}_prepost", lambda: build_prepost(learner, pre, post)))
             if learner == STACKED_LEARNER:
-                plot_stacked(learner, pre, post, args.out)
-                written += 2
+                charts.append((f"{slug(learner)}_stacked", lambda: build_stacked(learner, pre, post)))
         else:
             print(f"! {learner}: no post-test rows - pre-only chart written.")
+
+        for name, build in charts:
+            fig, layers = build()
+            render_static(fig, layers, args.out / name)
+            written += 2
+            if args.animate:
+                fig, layers = build()          # a fresh figure for the frames
+                render_gif(fig, layers, args.out / f"{name}.gif")
+                written += 1
+                print(f"  {name}.gif")
 
     plot_legend(args.out)
     written += 2
