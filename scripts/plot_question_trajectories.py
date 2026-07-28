@@ -417,7 +417,6 @@ def plot_legend(out_dir: Path) -> None:
             ),
             PHASE_LABEL["post"],
         ),
-        (hollow(OXIDE_RED), "Rating 1, post-test — oxide red ring"),
     ]
 
     for ax, handles, title in (
