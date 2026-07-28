@@ -413,11 +413,12 @@ def draw_footer(fig, footer: Footer, chars: int | None = None):
     return artists
 
 
-def add_phase_legend(ax) -> None:
+def add_phase_legend(ax, phases: tuple = ("pre", "post")) -> None:
     """Sits above the axes, so it can never collide with a dense trajectory."""
+    styles = {"pre": PRE_STYLE, "post": POST_STYLE}
     ax.legend(
-        [phase_handle(PRE_STYLE, MARKER_SIZE * 0.8), phase_handle(POST_STYLE, MARKER_SIZE * 0.8)],
-        [PHASE_LABEL["pre"], PHASE_LABEL["post"]],
+        [phase_handle(styles[p], MARKER_SIZE * 0.8) for p in phases],
+        [PHASE_LABEL[p] for p in phases],
         loc="lower right",
         bbox_to_anchor=(1.0, 1.005),
         ncol=2,
@@ -469,6 +470,20 @@ def build_pre(learner: str, pre: list):
     max_turn = max(p.turn for p in pre)
     fig, ax = plt.subplots(figsize=(figure_width(max_turn), 3.7))
     style_axes(ax, max_turn, title=learner)
+    return fig, [Layer(ax, pre, PRE_STYLE, PHASE_ZORDER["pre"])], None
+
+
+def build_pre_matched(learner: str, pre: list, post: list):
+    """
+    The pre-test alone, but on the overlay's axes geometry: the x-axis runs to
+    the same last turn and the figure is the same size, so the plot area is
+    pixel-for-pixel the shape it has in {learner}_prepost. Use this when the two
+    sit side by side on a slide; {learner}_pre fits its own turns more tightly.
+    """
+    max_turn = max(p.turn for p in pre + post)
+    fig, ax = plt.subplots(figsize=(figure_width(max_turn), 3.7))
+    style_axes(ax, max_turn, title=learner)
+    add_phase_legend(ax, phases=("pre",))
     return fig, [Layer(ax, pre, PRE_STYLE, PHASE_ZORDER["pre"])], None
 
 
@@ -807,6 +822,9 @@ def main() -> None:
         charts = [(f"{slug(learner)}_pre", lambda: build_pre(learner, pre), False)]
         if post:
             questions = all_questions.get(learner, [])
+            charts.append(
+                (f"{slug(learner)}_pre_matched", lambda: build_pre_matched(learner, pre, post), False)
+            )
             charts.append(
                 (f"{slug(learner)}_prepost", lambda: build_prepost(learner, pre, post, questions), True)
             )
