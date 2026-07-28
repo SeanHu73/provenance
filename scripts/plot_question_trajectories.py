@@ -770,7 +770,15 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=OUT_DIR, help="output directory")
     parser.add_argument("--verify-only", action="store_true", help="print the table and stop")
     parser.add_argument("--animate", action="store_true", help="also write play-once GIFs")
+    parser.add_argument(
+        "--learners",
+        default="",
+        help="comma-separated learners to render; default all. Anyone left out "
+        "keeps the files they already have on disk.",
+    )
     args = parser.parse_args()
+
+    selected = {slug(name) for name in args.learners.split(",") if name.strip()}
 
     rows = load_rows(args.data)
     grouped = group(rows)
@@ -785,6 +793,8 @@ def main() -> None:
     written = 0
 
     for learner, phases in grouped.items():
+        if selected and slug(learner) not in selected:
+            continue
         pre = build_points(phases.get("pre", []))
         post = build_points(phases.get("post", []))
 

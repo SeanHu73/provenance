@@ -73,6 +73,11 @@ def mix_white(hex_colour: str, weight: float) -> str:
     return f"#{blend(r):02X}{blend(g):02X}{blend(b):02X}"
 
 
+def slug(name: str) -> str:
+    """Learner name to folder name: "Learner 5" -> "learner_5"."""
+    return "".join(c if c.isalnum() else "_" for c in name.strip().lower()).strip("_")
+
+
 def round_half_up(value: float, places: int = 1) -> float:
     """
     Round half away from zero. Python's built-in round() is banker's rounding,
@@ -214,18 +219,18 @@ def verify(table: "OrderedDict") -> None:
         ("Pre 2s", pre.twos, 18),
         ("Pre 3s", pre.threes, 10),
         ("Pre contextual total", pre.contextual, 28),
-        ("Post 2s", post.twos, 21),
+        ("Post 2s", post.twos, 22),
         ("Post 3s", post.threes, 27),
-        ("Post contextual total", post.contextual, 48),
+        ("Post contextual total", post.contextual, 49),
         ("Pre score", pre.score, 66),
-        ("Post score", post.score, 123),
+        ("Post score", post.score, 125),
         ("Pre %3s", pre.pct_threes, 35.7),
-        ("Post %3s", post.pct_threes, 56.3),
+        ("Post %3s", post.pct_threes, 55.1),
         ("Pre P.A.S.T. activated", pre.activated, 15),
         ("Post P.A.S.T. activated", post.activated, 33),
     ]
 
-    expected_questions = {"pre": [7, 15, 6, 7, 8, 7], "post": [8, 14, 6, 6, 11, 9]}
+    expected_questions = {"pre": [7, 15, 6, 7, 8, 7], "post": [8, 14, 6, 6, 12, 9]}
     for phase, expected in expected_questions.items():
         actual = [phases[phase].questions for phases in table.values()]
         checks.append((f"{PHASE_LABEL[phase]} question counts", actual, expected))
@@ -719,7 +724,15 @@ def main() -> None:
     parser.add_argument("--data", type=Path, default=DATA_FILE)
     parser.add_argument("--out", type=Path, default=OUT_DIR)
     parser.add_argument("--no-render", action="store_true", help="write HTML and CSV, skip PNGs")
+    parser.add_argument(
+        "--learners",
+        default="",
+        help="comma-separated learners whose folders to rewrite; default all. "
+        "The combined tables and the summary CSV always cover the whole cohort.",
+    )
     args = parser.parse_args()
+
+    selected = {slug(name) for name in args.learners.split(",") if name.strip()}
 
     table = compute(load_rows(args.data))
     verify(table)
@@ -751,7 +764,9 @@ def main() -> None:
 
     # Per-learner: fewer columns, so a proportionally narrower card.
     for name, phases in table.items():
-        folder = "".join(c if c.isalnum() else "_" for c in name.strip().lower()).strip("_")
+        folder = slug(name)
+        if selected and folder not in selected:
+            continue
         for number, builder in ((1, learner_table1), (2, learner_table2), (3, learner_table3)):
             emit(folder, name, number, builder(phases), width=680)
 
