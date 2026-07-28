@@ -15,7 +15,7 @@ Definitions
     Score                 2 x 2s + 3 x 3s
     %3s                   3s / (2s + 3s), one decimal; blank when there are no
                           contextual questions (never "nan")
-    P.A.S.T. activated    contextual questions whose lens_1 is non-empty and
+    P.A.S.T. usage        contextual questions whose lens_1 is non-empty and
                           not "Not specified"
 
 No mean or per-question yield is computed anywhere: Score is never divided by
@@ -52,10 +52,10 @@ VALID_RATINGS = CONTEXTUAL | {"1"}
 NO_LENS = {"", "not specified"}
 
 PAST_NOTE = (
-    "P.A.S.T. activation indicates uptake of the framework, not completeness of "
-    "contextual thinking. The framework supports contextual reasoning but is not its "
-    "only form; for example, 2a questions concern the motivations of individuals "
-    "rather than larger context, and are fully contextual without a lens."
+    "P.A.S.T. usage indicates they applied the framework (usually indirectly, not "
+    "explicitly). The framework scaffolds contextual thinking, but you can "
+    "contextualise without applying P.A.S.T. For example, 2a questions concern "
+    "motivations of individuals without applying larger context."
 )
 
 # ── palette ────────────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ class Stats:
     questions: int = 0      # all turns, including rating-1 turns
     twos: int = 0
     threes: int = 0
-    activated: int = 0      # contextual questions carrying a named lens
+    used: int = 0           # contextual questions carrying a named lens
 
     @property
     def contextual(self) -> int:
@@ -117,7 +117,7 @@ class Stats:
             questions=self.questions + other.questions,
             twos=self.twos + other.twos,
             threes=self.threes + other.threes,
-            activated=self.activated + other.activated,
+            used=self.used + other.used,
         )
 
 
@@ -196,7 +196,7 @@ def compute(rows: list) -> "OrderedDict":
             continue  # rating 1: counted as a question, never as contextual
 
         if row["lens_1"].lower() not in NO_LENS:
-            stats.activated += 1
+            stats.used += 1
     return table
 
 
@@ -226,8 +226,8 @@ def verify(table: "OrderedDict") -> None:
         ("Post score", post.score, 125),
         ("Pre %3s", pre.pct_threes, 35.7),
         ("Post %3s", post.pct_threes, 55.1),
-        ("Pre P.A.S.T. activated", pre.activated, 15),
-        ("Post P.A.S.T. activated", post.activated, 33),
+        ("Pre P.A.S.T. usage", pre.used, 15),
+        ("Post P.A.S.T. usage", post.used, 33),
     ]
 
     expected_questions = {"pre": [7, 15, 6, 7, 8, 7], "post": [8, 14, 6, 6, 12, 9]}
@@ -268,12 +268,12 @@ def fmt_pct_display(value: float | None) -> str:
     return "" if value is None else f"{value:.1f}%"
 
 
-def fmt_activated(stats: Stats, with_pct: bool = False) -> str:
+def fmt_usage(stats: Stats, with_pct: bool = False) -> str:
     """"n/m", optionally with the share it represents — used only on the All row."""
-    base = f"{stats.activated}/{stats.contextual}"
+    base = f"{stats.used}/{stats.contextual}"
     if not with_pct or stats.contextual == 0:
         return base
-    return f"{base} ({round_half_up(100 * stats.activated / stats.contextual):.1f}%)"
+    return f"{base} ({round_half_up(100 * stats.used / stats.contextual):.1f}%)"
 
 
 def per_learner_threes(table: "OrderedDict", pre: Stats, post: Stats) -> float | None:
@@ -347,8 +347,8 @@ def learner_table2(phases: dict) -> TableSpec:
 def learner_table3(phases: dict) -> TableSpec:
     return TableSpec(
         row_header="Phase",
-        headers=["P.A.S.T. activated"],
-        rows=[[PHASE_LABEL[p], fmt_activated(phases[p])] for p in PHASE_ORDER],
+        headers=["P.A.S.T. usage"],
+        rows=[[PHASE_LABEL[p], fmt_usage(phases[p])] for p in PHASE_ORDER],
     )
 
 
@@ -422,15 +422,15 @@ def combined_table3(table: "OrderedDict") -> TableSpec:
     rows = [
         [
             name,
-            fmt_activated(pre, with_pct=is_all),
-            fmt_activated(post, with_pct=is_all),
-            f"{post.activated - pre.activated:+d}",
+            fmt_usage(pre, with_pct=is_all),
+            fmt_usage(post, with_pct=is_all),
+            f"{post.used - pre.used:+d}",
         ]
         for name, pre, post, is_all in _combined_rows(table)
     ]
     return TableSpec(
         row_header="Learner",
-        headers=["P.A.S.T. activated", "P.A.S.T. activated", "Activations"],
+        headers=["P.A.S.T. usage", "P.A.S.T. usage", "Usage"],
         rows=rows,
         bold_cols={3},
         groups=[("Pre-test", 1), ("Post-test", 1), ("Net (post − pre)", 1)],
@@ -441,7 +441,7 @@ def combined_table3(table: "OrderedDict") -> TableSpec:
 TABLE_TITLES = {
     1: "Contextual Question Counts",
     2: "Contextual Question Scores",
-    3: "P.A.S.T. Activation",
+    3: "P.A.S.T. Usage",
 }
 TABLE_FILES = {1: "table1_counts", 2: "table2_scores", 3: "table3_past"}
 
@@ -698,7 +698,7 @@ def write_summary_csv(table: "OrderedDict", path: Path) -> None:
         ("contextual", lambda s: s.contextual),
         ("score", lambda s: s.score),
         ("pct_3s", lambda s: fmt_pct(s.pct_threes)),
-        ("past_activated", lambda s: s.activated),
+        ("past_usage", lambda s: s.used),
     ]
 
     with path.open("w", newline="", encoding="utf-8") as fh:
