@@ -138,6 +138,17 @@ function InstructionsSlide({ onNext }: { onNext: () => void }) {
       >
         Pick a lens to help you ask your question.
       </p>
+      <p
+        className="mt-4 max-w-[24ch] italic"
+        style={{
+          fontFamily: 'var(--ds-body-family)',
+          fontSize: 'var(--ds-body-size)',
+          lineHeight: 'var(--ds-body-line)',
+          color: 'var(--ds-grey)',
+        }}
+      >
+        Optional: Explore questions others have asked.
+      </p>
       <button
         onClick={onNext}
         aria-label="Swipe to the first lens"

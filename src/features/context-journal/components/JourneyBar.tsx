@@ -7,11 +7,10 @@
  * breadcrumb, and the menu control, with an optional "Revisit Stops" row beneath
  * a hairline divider. The step the learner is on is set larger than the rest.
  *
- * Geometry comes straight from the style guide's Navigation and Progress
- * boards: a 68px row (102px with the stops row), 44px circular controls at
- * white 10%, a divider at white 20% inset to the controls' outer edges, and
- * breadcrumb steps coloured done / current / upcoming. The bar itself uses the
- * theme colour rather than the guide's black, so it tracks the active palette.
+ * Geometry and colour come straight from the style guide's Navigation and
+ * Progress boards: a black bar 68px tall (102px with the stops row), 44px
+ * circular controls at white 10%, a divider at white 20% inset to the controls'
+ * outer edges, and breadcrumb steps coloured done / current / upcoming.
  *
  * The tour's own PhaseHeader is unchanged and still drives the rest of the app;
  * this is the journal's bar only.
@@ -68,9 +67,7 @@ export default function JourneyBar({ active, leading, menu, onOpenJourney }: Pro
   const activeIndex = STEPS.findIndex((s) => s.key === active);
 
   return (
-    // The bar follows the active theme rather than the style guide's black, so it
-    // still reads as Provenance when the palette switches.
-    <header data-cj-keep className="relative shrink-0" style={{ backgroundColor: 'var(--th-primary)' }}>
+    <header data-cj-keep className="relative shrink-0" style={{ backgroundColor: 'var(--ds-nav-bg)' }}>
       <div
         className="flex items-center gap-2"
         style={{

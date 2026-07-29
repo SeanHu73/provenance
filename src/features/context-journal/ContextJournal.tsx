@@ -467,11 +467,16 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
       className="flex flex-col"
       style={{
         height: '100dvh',
-        // The page washes to a very faint tint of the lens on show — enough to
+        // The page washes to a faint tint of the lens on show — enough to
         // register as a change of lens, well short of a colour cast. The cards
         // themselves stay white.
+        //
+        // The lens colour is lightened before it is mixed in. Blending the raw
+        // colour reads as the page dimming as much as colouring, so the tint has
+        // to stay tiny to be tolerable; pre-lightening buys visible hue at the
+        // same lightness, which is what actually signals the lens changed.
         backgroundColor: lensTint
-          ? `color-mix(in srgb, ${lensTint} 7%, var(--th-bg))`
+          ? `color-mix(in srgb, color-mix(in srgb, ${lensTint} 30%, white) 50%, var(--th-bg))`
           : 'var(--th-bg)',
         transition: 'background-color 420ms ease',
       }}
