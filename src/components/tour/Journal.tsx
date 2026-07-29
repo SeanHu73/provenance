@@ -165,6 +165,11 @@ export default function Journal({ onMapPeek }: JournalProps) {
   const logicalStops = isContext ? getContextOrderedStops(tour) : getLogicalStops(tour);
   const exploredCount = logicalStops.filter((ls) => new Set(session.completedStops).has(ls.id)).length;
   const exploreLabel = `${exploredCount} of ${logicalStops.length}`;
+  // "Revisit Stops" only means something once there is a stop to revisit, so the
+  // row stays off the bar until the first one is completed. Withholding the
+  // handler (rather than hiding the row at the bar) keeps that rule in one place
+  // — the journey bar shows the row exactly when it has somewhere to go.
+  const openStops = session.completedStops.length > 0 ? () => setStopsOpen(true) : undefined;
   const activeSub = group === 'contextualise' ? 'the P.A.S.T.' : undefined;
   // Where "Return" from a stop preview sends them back to.
   const previewReturnLabel = group === 'contextualise' ? 'Contextualising'
@@ -246,7 +251,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
           active={group}
           exploreLabel={exploreLabel}
           activeSub={activeSub}
-          onOpen={() => setStopsOpen(true)}
+          onOpen={openStops}
           onBack={canGoBack ? goBack : undefined}
           menu={<TourMenu onDark />}
         />
@@ -501,7 +506,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
                   askFirst={askFirst}
                   requireAskToContinue={requireAskToContinue}
                   exploreLabel={exploreLabel}
-                  onOpenStops={() => setStopsOpen(true)}
+                  onOpenStops={openStops}
                   onBack={canGoBack ? goBack : undefined}
                   alreadyAsked={alreadyEngaged}
                 />
