@@ -340,6 +340,17 @@ export interface KnowledgeEntry {
   status?: 'candidate' | 'verified';
   /** For candidates: the learner question that produced this answer (dedup + review). */
   sourceQuestion?: string;
+  /** The photo the answer was illustrated with, remembered so the same question
+   *  asked again — or this entry once promoted — shows the same image without
+   *  paying for another Wikimedia Commons search (which is best-effort and can
+   *  return something different, or nothing). `photoCredit` is its attribution. */
+  photoUrl?: string;
+  photoCredit?: string;
+  /** Embedding of `sourceQuestion` — a *question* vector, unlike `embedding`
+   *  which covers the answer text. Kept separately so a new ask can be compared
+   *  question-to-question: close enough, and the stored answer is served straight
+   *  back instead of researching it again. */
+  questionEmbedding?: number[];
   createdAt: string;
   updatedAt: string;
 }
@@ -954,6 +965,11 @@ export interface ContextEntrySnapshot {
   /** Full geometry as a JSON string (nested arrays can't be stored raw). */
   geometryJson?: string | null;
   mediaCount?: number;
+  /** The context's thumbnail photo, carried so promoting this answer into the
+   *  verified base keeps its illustration — and so a repeat of the same question
+   *  can be served with the same picture rather than searching for a new one. */
+  thumbnailUrl?: string;
+  thumbnailCredit?: string;
 }
 
 /**

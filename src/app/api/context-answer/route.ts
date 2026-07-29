@@ -112,13 +112,21 @@ async function captureCandidate(input: {
     if (dup) return;
 
     const embedText = `${shortSummary}\n\n${longExplanation}`.trim();
-    const [embedding] = await embedTexts([embedText]);
+    // Two vectors: the answer text (for topical retrieval) and the question
+    // itself (so a later ask can be matched question-to-question and served
+    // from here — see reuseFromBase).
+    const [embedding, questionEmbedding] = await embedTexts([embedText, question.trim()]);
     const id = newId();
     const now = new Date().toISOString();
     const entry: Omit<KnowledgeEntry, 'id'> = {
       title, shortSummary, longExplanation, sourceLinks, lens,
       embedding, embeddingModel: 'text-embedding-3-small', embeddingHash: hashText(embedText),
+      questionEmbedding,
       status: 'candidate', sourceQuestion: question.trim(),
+      // Remember the illustration so promoting this entry keeps its picture and
+      // no repeat ask has to search Commons for one again.
+      ...(card?.imageUrl ? { photoUrl: card.imageUrl } : {}),
+      ...(card?.imageCredit ? { photoCredit: card.imageCredit } : {}),
       createdAt: now, updatedAt: now,
     };
     await setDoc(doc(col, id), JSON.parse(JSON.stringify(entry)));
@@ -138,9 +146,16 @@ function contextPhoto(c: ActContextItem): { url: string; credit?: string } | nul
   return null;
 }
 
-async function loadCandidates(tourId: string): Promise<{ candidates: Candidate[]; preferredDomains: string[]; contextPhotos: Record<string, { url: string; credit?: string }> }> {
+async function loadCandidates(tourId: string): Promise<{
+  candidates: Candidate[];
+  preferredDomains: string[];
+  contextPhotos: Record<string, { url: string; credit?: string }>;
+  /** Verified entries, kept whole so a repeat question can be answered from one. */
+  entries: KnowledgeEntry[];
+}> {
   const out: Candidate[] = [];
   const contextPhotos: Record<string, { url: string; credit?: string }> = {};
+  const entries: KnowledgeEntry[] = [];
   let preferredDomains: string[] = [];
   // Knowledge entries (already embedded)
   try {
@@ -150,6 +165,10 @@ async function loadCandidates(tourId: string): Promise<{ candidates: Candidate[]
       // Candidates (auto-captured from learner answers) stay out of retrieval
       // until an admin promotes them to the verified base.
       if (e.status === 'candidate') return;
+      entries.push(e);
+      // An entry that remembers its photo illustrates its own answer, exactly as
+      // an authored context does.
+      if (e.photoUrl) contextPhotos[e.id] = { url: e.photoUrl, credit: e.photoCredit };
       out.push({
         kind: 'entry', id: e.id, title: e.title, summary: e.shortSummary, explanation: e.longExplanation,
         lens: e.lens, domains: (e.sourceLinks || []).map((l) => l.url).filter(Boolean),
@@ -180,7 +199,61 @@ async function loadCandidates(tourId: string): Promise<{ candidates: Candidate[]
   } catch (err) {
     console.error('[context-answer] load contexts failed:', err);
   }
-  return { candidates: out, preferredDomains, contextPhotos };
+  return { candidates: out, preferredDomains, contextPhotos, entries };
+}
+
+/** Backfill a promoted entry's question vector. Best-effort: a failure just means
+ *  near-match reuse waits for the next ask. */
+async function persistQuestionEmbedding(tourId: string, id: string, vec: number[]): Promise<void> {
+  try {
+    await setDoc(
+      doc(db, 'memorial-church-tours', tourId, 'knowledge-entries', id),
+      { questionEmbedding: vec, updatedAt: new Date().toISOString() },
+      { merge: true },
+    );
+  } catch (err) {
+    console.error('[context-answer] question-embedding backfill failed:', err);
+  }
+}
+
+/** Questions match on wording alone once punctuation and case are set aside. */
+const normaliseQuestion = (q: string) => q.trim().toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ');
+
+/**
+ * Cosine floor for treating a new question as "basically the same" as the one a
+ * verified entry was captured from. Deliberately high: a near-miss served from
+ * the base is a wrong answer delivered confidently and fast, which is worse than
+ * a slow right one. Below it, the question goes through the full pipeline.
+ */
+const REUSE_MIN = 0.94;
+
+/**
+ * Serve a repeat question straight from the verified base.
+ *
+ * Only entries promoted by an admin are eligible, and only those captured from a
+ * question in the first place (`sourceQuestion`) — a curator-authored entry has
+ * no question to compare against and stays on the normal retrieval path. Matching
+ * is question-to-question via `questionEmbedding`, not question-to-answer-text,
+ * so it measures "did someone already ask this" rather than "is this on topic".
+ *
+ * Returns null when nothing is close enough, and the pipeline runs as usual.
+ */
+function reuseFromBase(
+  entries: KnowledgeEntry[],
+  question: string,
+  qVec: number[] | undefined,
+): { entry: KnowledgeEntry; score: number; exact: boolean } | null {
+  const target = normaliseQuestion(question);
+  let best: { entry: KnowledgeEntry; score: number; exact: boolean } | null = null;
+  for (const e of entries) {
+    const asked = (e.sourceQuestion || '').trim();
+    if (!asked || !e.longExplanation) continue;
+    if (normaliseQuestion(asked) === target) return { entry: e, score: 1, exact: true };
+    if (!qVec || !e.questionEmbedding) continue;
+    const score = cosine(qVec, e.questionEmbedding);
+    if (score >= REUSE_MIN && (!best || score > best.score)) best = { entry: e, score, exact: false };
+  }
+  return best;
 }
 
 export async function POST(req: Request) {
@@ -210,19 +283,76 @@ export async function POST(req: Request) {
     //    cached by text hash and reused (only cache-misses are embedded here);
     //    knowledge entries already carry theirs. The question is always embedded.
     const tRetrieve = Date.now();
-    const { candidates, preferredDomains, contextPhotos } = await loadCandidates(tourId);
+    const { candidates, preferredDomains, contextPhotos, entries } = await loadCandidates(tourId);
     const contexts = candidates.filter((c) => c.kind === 'context');
     const ctxTexts = contexts.map(candidateText);
     const ctxHashes = ctxTexts.map(embeddingKey);
     const cached = await getCachedEmbeddings(ctxHashes);
     const missIdx = contexts.map((_, i) => i).filter((i) => !cached.has(ctxHashes[i]));
-    const [qVec, ...missVecs] = await embedTexts([question, ...missIdx.map((i) => ctxTexts[i])]);
+    // Entries promoted before question-embeddings existed carry a sourceQuestion
+    // but no vector for it. Embed those in this same batch and write them back, so
+    // near-match reuse starts working for the base as it already stands rather
+    // than only for questions asked from now on.
+    const needQVec = entries.filter((e) => (e.sourceQuestion || '').trim() && !e.questionEmbedding);
+    const [qVec, ...rest] = await embedTexts([
+      question,
+      ...missIdx.map((i) => ctxTexts[i]),
+      ...needQVec.map((e) => (e.sourceQuestion || '').trim()),
+    ]);
+    const missVecs = rest.slice(0, missIdx.length);
+    const legacyQVecs = rest.slice(missIdx.length);
     contexts.forEach((c, i) => { c.embedding = cached.get(ctxHashes[i]); });
     missIdx.forEach((ctxI, k) => {
       contexts[ctxI].embedding = missVecs[k];
       void putCachedEmbedding(ctxHashes[ctxI], missVecs[k]); // fill the cache for next time
     });
+    needQVec.forEach((e, k) => {
+      if (!legacyQVecs[k]) return;
+      e.questionEmbedding = legacyQVecs[k];
+      void persistQuestionEmbedding(tourId, e.id, legacyQVecs[k]);
+    });
     timings.retrieve = Date.now() - tRetrieve;
+
+    // 1b. Already answered? If this question — or one that means the same thing —
+    //     produced an entry an admin has since promoted, serve that entry and
+    //     stop. This skips research and voice entirely, so a repeat ask returns
+    //     in the time it takes to embed one question instead of a couple of
+    //     minutes, and returns the *reviewed* wording rather than a fresh
+    //     generation that may drift from it.
+    const reuse = reuseFromBase(entries, question, qVec);
+    if (reuse) {
+      const { entry, score, exact } = reuse;
+      const sources: DetectiveSource[] = [
+        { kind: 'entry', id: entry.id, name: entry.title, verified: true },
+        ...(entry.sourceLinks || []).map((l) => ({
+          kind: 'web' as const, url: l.url, name: l.label, verified: true,
+        })),
+      ];
+      const handout: DetectiveHandout = {
+        framingQuestion: question,
+        entryLens: entry.lens,
+        cards: [{
+          lens: entry.lens,
+          title: entry.title,
+          summary: entry.shortSummary,
+          explanation: entry.longExplanation,
+          sources,
+          ...(entry.photoUrl
+            ? { imageUrl: entry.photoUrl, ...(entry.photoCredit ? { imageCredit: entry.photoCredit } : {}) }
+            : {}),
+        }],
+      };
+      const answer: DetectiveAnswer = {
+        status: 'answered', narrative: entry.longExplanation, handout,
+        branch: 'verified-base', sources,
+      };
+      console.log(
+        `[detective] "${question.slice(0, 70)}" → reused ${exact ? 'exact' : `${score.toFixed(3)}`} `
+        + `match "${(entry.sourceQuestion || '').slice(0, 50)}" · total=${Date.now() - t0}ms`,
+      );
+      void logResponse({ ...answer, question, originalQuestion, tourId, actId, retrievedIds: [entry.id] });
+      return NextResponse.json(answer);
+    }
 
     // Rank, then drop the weak matches entirely. Taking the top K regardless of score
     // was actively harmful: a small base skews to whatever it happens to contain (here,

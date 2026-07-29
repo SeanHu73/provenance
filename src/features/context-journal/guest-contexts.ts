@@ -16,6 +16,7 @@
 
 import type { ContextEntrySnapshot } from '@/lib/types';
 import type { ContextEntry, NewContextEntry } from './types';
+import { thumbnailPhotoUrl } from './constants';
 
 const keyFor = (scopeId: string) => `provenance-guest-contexts:${scopeId}`;
 
@@ -84,6 +85,8 @@ export function snapshotGuestContexts(scopeId: string): ContextEntrySnapshot[] {
 /** Map one live ContextEntry to a Firestore-safe snapshot. Geometry is
  *  JSON-stringified because Firestore rejects its nested coordinate arrays. */
 export function toSnapshot(e: ContextEntry): ContextEntrySnapshot {
+  const thumb = thumbnailPhotoUrl(e);
+  const thumbMedia = thumb ? (e.media ?? []).find((m) => m.url === thumb) : undefined;
   return {
     id: e.id,
     title: e.title,
@@ -104,6 +107,8 @@ export function toSnapshot(e: ContextEntry): ContextEntrySnapshot {
     geometryType: e.geometry?.type ?? null,
     geometryJson: e.geometry ? JSON.stringify(e.geometry) : null,
     mediaCount: (e.media ?? []).length,
+    thumbnailUrl: thumb || undefined,
+    thumbnailCredit: thumbMedia?.title || undefined,
   };
 }
 

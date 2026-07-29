@@ -412,9 +412,28 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
         title: src.title, shortSummary: src.shortSummary, longExplanation: src.longExplanation,
         sourceLinks: e.sourceLinks ?? [], lens: e.lens as KnowledgeEntry['lens'],
         status: 'verified', createdAt: '', updatedAt: '',
+        // Carry what makes the entry reusable: the question it came from, and the
+        // photo it was illustrated with. Without the question a promoted entry can
+        // only ever be matched on topic, so the same question asked again pays for
+        // the whole research pipeline to reproduce an answer we already reviewed.
+        ...(e.question?.trim() ? { sourceQuestion: e.question.trim() } : {}),
+        ...(e.thumbnailUrl ? { photoUrl: e.thumbnailUrl } : {}),
+        ...(e.thumbnailCredit ? { photoCredit: e.thumbnailCredit } : {}),
       };
       const { embedding, model } = await fetchEmbedding(knowledgeEmbedText(base));
       base.embedding = embedding; base.embeddingModel = model; base.embeddingHash = knowledgeEmbedHash(base);
+      // A second vector, over the question itself, so a later ask is compared
+      // question-to-question rather than question-to-answer-text.
+      if (base.sourceQuestion) {
+        try {
+          const q = await fetchEmbedding(base.sourceQuestion);
+          base.questionEmbedding = q.embedding;
+        } catch (err) {
+          // Non-fatal: exact-wording reuse still works, near-match backfills on
+          // the next ask (see persistQuestionEmbedding in /api/context-answer).
+          console.error('[sessions] question embedding failed:', err);
+        }
+      }
       await saveKnowledgeEntry(tourId, base);
       await persist({ promotedEntryId: base.id, verdict: verdict ?? 'approved' });
       setStatus('Promoted to knowledge base ✓');
