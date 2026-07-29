@@ -46,6 +46,9 @@ interface Props {
   onAskLens?: (lens: PastCategory) => void;
   /** Fires whenever the "every lens has been swiped to" state flips. */
   onAllSeenChange?: (allSeen: boolean) => void;
+  /** The shown lens's colour, so the page can wash its background with a faint
+   *  tint of it. null on the instructions slide. */
+  onLensTintChange?: (colour: string | null) => void;
   /** Seed all lenses as already-seen (a returning learner, via back-nav). */
   initiallyAllSeen?: boolean;
 }
@@ -78,7 +81,7 @@ function LensGlass({ colour, size }: { colour: string; size: number }) {
  *  neutral colour); the rest sit small and dimmed. Tapping a glyph jumps to it. */
 const STAR_COLOUR = 'var(--th-primary)';
 function PastIndicator({ active, onJump }: { active: number; onJump: (i: number) => void }) {
-  const items = [{ glyph: '✱', label: 'instructions', colour: STAR_COLOUR }, ...LENSES.map((l) => ({ glyph: l.label[0], label: l.label, colour: l.colour }))];
+  const items = [{ glyph: '✱', label: 'instructions', colour: STAR_COLOUR, key: null as string | null }, ...LENSES.map((l) => ({ glyph: l.label[0], label: l.label, colour: l.colour, key: l.key as string }))];
   return (
     <div className="flex items-end justify-center gap-1.5 select-none">
       {items.map((it, i) => {
@@ -87,6 +90,8 @@ function PastIndicator({ active, onJump }: { active: number; onJump: (i: number)
           <div key={it.label} className="flex items-end gap-1.5">
             <button
               onClick={() => onJump(i)}
+              // lets the "saved to this lens" tooltip aim its pointer at the letter
+              data-lens={it.key ?? undefined}
               aria-label={i === 0 ? 'Show the instructions' : `Show the ${it.label} lens`}
               aria-current={isActive}
               className="relative flex items-center justify-center bg-transparent border-0 p-0 cursor-pointer"
@@ -121,11 +126,17 @@ function InstructionsSlide({ onNext }: { onNext: () => void }) {
   return (
     <div className="rounded-3xl bg-warm-white flex flex-col items-center text-center px-6 py-10" style={{ border: '1px solid var(--th-border)', boxShadow: '0 6px 24px rgba(26,20,14,0.10)' }}>
       <span className="font-display font-bold leading-none" style={{ fontSize: 38, color: STAR_COLOUR }}>✱</span>
-      <p className="mt-5 font-serif text-[26px] leading-snug text-text-primary max-w-[20ch]">
-        Pick a lens you want to look through to ask your question.
-      </p>
-      <p className="mt-4 font-serif italic text-[15px] leading-snug text-text-secondary max-w-[24ch]">
-        Optional: Explore questions others have asked.
+      <p
+        className="mt-5 max-w-[20ch]"
+        style={{
+          fontFamily: 'var(--ds-h2-family)',
+          fontSize: 'var(--ds-h2-size)',
+          lineHeight: 'var(--ds-h2-line)',
+          fontWeight: 'var(--ds-h2-weight)',
+          color: 'var(--ds-ink)',
+        }}
+      >
+        Pick a lens to help you ask your question.
       </p>
       <button
         onClick={onNext}
@@ -152,7 +163,7 @@ const slideVariants = {
 
 export default function PastPanelSlider({
   entries, selectedRange, savedIds, focusedId, guidingQuestion, lockInfoById,
-  onFocus, onToggleSave, onOpenFull, onAskLens, onAllSeenChange, initiallyAllSeen = false,
+  onFocus, onToggleSave, onOpenFull, onAskLens, onAllSeenChange, onLensTintChange, initiallyAllSeen = false,
 }: Props) {
   // Deck index. 0 is the ✱ instructions panel; 1–4 are the lenses. Starts on the
   // instructions so "pick a lens" is the first thing they read.
@@ -173,6 +184,10 @@ export default function PastPanelSlider({
     const inRange = entries.filter((e) => overlapsRange({ start: e.timeRange.start, end: e.timeRange.end }, selectedRange));
     return LENSES.map((lens) => ({ lens, items: inRange.filter((e) => e.pastCategory === lens.key) }));
   }, [entries, selectedRange]);
+
+  // Hand the shown lens's colour up so the page can tint its background.
+  const shownColour = active === 0 ? null : LENSES[active - 1].colour;
+  useEffect(() => { onLensTintChange?.(shownColour); }, [shownColour, onLensTintChange]);
 
   const goTo = (i: number) => {
     const clamped = Math.max(0, Math.min(LAST, i));
@@ -381,11 +396,10 @@ function LensSlide({ lens, questions, added, savedIds, focusedId, lockInfoById, 
         {onAsk && (
           <button
             onClick={onAsk}
-            className="mt-4 w-full flex items-center gap-3 rounded-full px-3 py-2.5 text-left"
+            className="ds-halo-pulse mt-4 w-full flex items-center gap-3 rounded-full px-3 py-2.5 text-left"
             style={{
               backgroundColor: 'var(--ds-white)',
               border: 'var(--ds-input-focus-border)',
-              boxShadow: 'var(--ds-shadow-glow)',
             }}
           >
             <span

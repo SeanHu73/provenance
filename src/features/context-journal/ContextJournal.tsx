@@ -117,7 +117,7 @@ interface Props {
    *  currently unused here. */
   exploreLabel?: string;
   /** In-tour: shows the Explore→Contextualise→Reflect breadcrumb in the journey
-   *  bar (Contextualise active), with "Open journey" opening the stops list. */
+   *  bar (Contextualise active), with "Revisit Stops" opening the stops list. */
   onOpenStops?: () => void;
   /** In-tour back — steps the tour back a phase (shown as a header arrow). */
   onBack?: () => void;
@@ -191,20 +191,39 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   // Slider variant: every P.A.S.T. lens has been swiped to. Seeded true for a
   // returning learner (back-nav) so the swipe gate doesn't re-lock.
   const [allLensesSeen, setAllLensesSeen] = useState(!!alreadyAsked);
-  // The floating "Ask your own question" CTA is hidden in the gated in-tour flow
-  // until a premature Continue reveals it — then it stays.
-  const [askCtaRevealed, setAskCtaRevealed] = useState(false);
-  // Why a locked Continue was blocked on the last tap: swipe the lenses, or ask
-  // your own first (drives the button label / hint).
-  const [continueBlock, setContinueBlock] = useState<null | 'swipe' | 'ask'>(null);
-  // After adding a context, a one-off tooltip tells the learner it now lives in
-  // the lenses for next time.
+  // After adding a context, a one-off tooltip tells the learner which lens it
+  // landed in — `addedLens` aims the tooltip's pointer at that letter.
   const [showAddedTip, setShowAddedTip] = useState(false);
+  const [addedLens, setAddedLens] = useState<PastCategory | null>(null);
+  // The shown lens's colour, handed up by the slider so the page can wash its
+  // background with a faint tint of it.
+  const [lensTint, setLensTint] = useState<string | null>(null);
   useEffect(() => {
     if (!showAddedTip) return;
     const t = window.setTimeout(() => setShowAddedTip(false), 7000);
     return () => window.clearTimeout(t);
   }, [showAddedTip]);
+  // Where to put the tooltip: measured off the P·A·S·T letter for the lens the
+  // context landed in, so the pointer aims at where it now lives rather than at
+  // wherever the learner happened to be. Null → the letter isn't on screen (the
+  // other lens variants), and the tooltip falls back to sitting above the footer.
+  const [tipAnchor, setTipAnchor] = useState<{ top: number; arrowLeft: number } | null>(null);
+  useEffect(() => {
+    if (!showAddedTip || !addedLens) return;
+    // Measured on the next frame: the add closes a sheet, and the letter has to
+    // be laid out before its position means anything.
+    const measure = () => {
+      const el = document.querySelector(`[data-lens="${addedLens}"]`);
+      const r = el?.getBoundingClientRect();
+      setTipAnchor(r ? { top: r.bottom + 10, arrowLeft: r.left + r.width / 2 } : null);
+    };
+    const frame = requestAnimationFrame(measure);
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', measure);
+    };
+  }, [showAddedTip, addedLens]);
   // Ask-first gate (act 2+, not additional stops): the journal stays closed until
   // the learner poses their own question and sees a response. The ask flow is the
   // gate screen itself; `sawResponseRef` records that they reached a response, so
@@ -270,6 +289,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
       });
     }
     setExplored(true);
+    setAddedLens(draft.pastCategory);
     setShowAddedTip(true);
   };
   const persistUpdate = (id: string, patch: Partial<NewContextEntry>): Promise<void> =>
@@ -398,6 +418,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
         sourceId: entry.id, origin: 'added', placeId: scopeId,
       });
       setFullEntry(null);
+      setAddedLens(entry.pastCategory);
       setShowAddedTip(true);
     } catch (err) {
       console.error('[context-journal] add failed:', err);
@@ -434,15 +455,27 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   // requires posing your own question.
   const engaged = lensVariant === 'slider' ? allLensesSeen : explored;
   const canContinue = devJump || (requireAskToContinue ? engaged && exploredUnlocked : engaged);
-  // The floating "Ask your own" CTA is suppressed in the gated in-tour flow until
-  // a premature Continue reveals it (then it stays). Standalone / revisit keep it.
-  const gatedFlow = !!inTour && !revisit;
-  // The slider redesign carries its own ask-your-own on every lens card, so the
-  // floating global ask is redundant there and stays hidden.
-  const floatingAskHidden = lensVariant === 'slider' || (gatedFlow && !askCtaRevealed) || (anyLensOpen && !continueNudge);
+  // The slider carries an ask-your-own on every lens card, so the floating global
+  // CTA is redundant there. Elsewhere it only steps aside while a lens is open.
+  // (It used to stay hidden in gated flows until a premature Continue revealed
+  // it; with the locked Continue gone there is nothing left to reveal it, so it
+  // is simply available.)
+  const floatingAskHidden = lensVariant === 'slider' || (anyLensOpen && !continueNudge);
 
   return (
-    <div className="flex flex-col" style={{ height: '100dvh', backgroundColor: 'var(--th-bg)' }}>
+    <div
+      className="flex flex-col"
+      style={{
+        height: '100dvh',
+        // The page washes to a very faint tint of the lens on show — enough to
+        // register as a change of lens, well short of a colour cast. The cards
+        // themselves stay white.
+        backgroundColor: lensTint
+          ? `color-mix(in srgb, ${lensTint} 7%, var(--th-bg))`
+          : 'var(--th-bg)',
+        transition: 'background-color 420ms ease',
+      }}
+    >
       {/* top bar — the redesign's black journey bar (style guide: Navigation) */}
       <JourneyBar
         active="contextualise"
@@ -624,6 +657,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
             onOpenFull={openFull}
             onAskLens={(lens) => { setAskLens(lens); setAskOpen(true); }}
             onAllSeenChange={setAllLensesSeen}
+            onLensTintChange={setLensTint}
             initiallyAllSeen={!!alreadyAsked}
           />
         ) : lensVariant === 'magnifier' ? (
@@ -700,27 +734,21 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
         {inTour && !revisit ? (
           <div className="px-5 pb-8 pt-4">
             {requireAskToContinue && !canContinue ? (
-              // First act: Continue stays locked until they've swiped through
-              // every lens AND posed their own question. Tapping it either nudges
-              // toward swiping, or (once swiped) reveals the ask CTA and relabels
-              // the button to spell out what's left.
-              <>
-                <button
-                  onClick={() => {
-                    haptic(30);
-                    if (!engaged) setContinueBlock('swipe');
-                    else if (!exploredUnlocked) { setContinueBlock('ask'); setAskCtaRevealed(true); setContinueNudge(true); }
-                  }}
-                  className="w-full py-3.5 rounded-2xl text-[15px] font-semibold border-2 border-dashed bg-transparent flex items-center justify-center gap-2"
-                  style={{ color: 'color-mix(in srgb, var(--th-primary) 62%, transparent)', borderColor: 'color-mix(in srgb, var(--th-primary) 38%, transparent)' }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                  {continueBlock === 'ask' ? 'Try asking your own question before continuing' : continueLabel}
-                </button>
-                {continueBlock === 'swipe' && !engaged && (
-                  <p className="mt-2 text-center text-xs text-text-muted">Swipe through all the lenses first.</p>
-                )}
-              </>
+              // First act: rather than a locked Continue the learner can tap at,
+              // the footer simply names what is still outstanding. The swipe part
+              // of the gate is already spelled out under the lens dots, so this
+              // only has to carry the ask.
+              <p
+                className="text-center"
+                style={{
+                  fontFamily: 'var(--ds-body-l-family)',
+                  fontSize: 'var(--ds-body-l-size)',
+                  lineHeight: 'var(--ds-body-l-line)',
+                  color: 'var(--ds-grey)',
+                }}
+              >
+                Ask your own question before continuing
+              </p>
             ) : (
               <>
                 <button
@@ -755,26 +783,53 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
         )}
       </div>
 
-      {/* Added-context tooltip — a one-off nudge that a context the learner just
-          added now lives in the P.A.S.T. lenses for next time. */}
+      {/* Added-context tooltip — a one-off note naming the lens the context landed
+          in, hung under that lens's letter with its pointer on it. */}
       <AnimatePresence>
         {showAddedTip && (
           <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
             transition={{ type: 'spring', stiffness: 420, damping: 30 }}
             className="fixed left-1/2 -translate-x-1/2 z-[70] px-4"
-            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 92px)' }}
+            style={tipAnchor
+              ? { top: tipAnchor.top }
+              : { bottom: 'calc(env(safe-area-inset-bottom, 0px) + 92px)' }}
           >
-            <div className="relative flex items-start gap-2.5 rounded-2xl px-4 py-3 shadow-xl text-warm-white" style={{ backgroundColor: 'var(--th-primary)', maxWidth: 320 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
-                <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3M11 8v6M8 11h6" />
-              </svg>
-              <p className="flex-1 font-serif text-[13.5px] leading-snug">
-                Nice — your context now lives in the P·A·S·T lenses. You&apos;ll spot it here whenever you look through them.
+            <div className="relative flex items-center gap-2 rounded-2xl px-3.5 py-2.5 shadow-xl text-white" style={{ backgroundColor: 'var(--th-primary)', maxWidth: 320 }}>
+              <p
+                className="flex-1"
+                style={{
+                  fontFamily: 'var(--ds-body-family)',
+                  fontSize: 'var(--ds-body-size)',
+                  lineHeight: 'var(--ds-body-line)',
+                }}
+              >
+                Saved to {addedLens ? LENS_BY_KEY[addedLens]?.label ?? 'your lenses' : 'your lenses'}
               </p>
-              <button onClick={() => setShowAddedTip(false)} aria-label="Dismiss" className="shrink-0 -mr-1 -mt-1 w-6 h-6 flex items-center justify-center text-warm-white/85 text-xl leading-none">&times;</button>
-              {/* little pointer toward the lenses above */}
-              <span aria-hidden className="absolute left-1/2 -translate-x-1/2" style={{ top: -7, width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderBottom: '8px solid var(--th-primary)' }} />
+              <button onClick={() => setShowAddedTip(false)} aria-label="Dismiss" className="shrink-0 -mr-1 w-6 h-6 flex items-center justify-center text-white/85">
+                <CloseIcon width={13} height={13} />
+              </button>
+              {/* pointer up at the lens letter this context landed in */}
+              <span
+                aria-hidden
+                className="absolute"
+                style={{
+                  top: -7,
+                  // The letter's x is measured against the viewport; the tooltip is
+                  // centred on the viewport, so this converts to an offset inside
+                  // it. Clamped to the rounded corners, since the outermost letters
+                  // can sit wider than a short message's box.
+                  left: tipAnchor
+                    ? `clamp(16px, calc(${tipAnchor.arrowLeft}px - 50vw + 50%), calc(100% - 16px))`
+                    : '50%',
+                  transform: 'translateX(-50%)',
+                  width: 0,
+                  height: 0,
+                  borderLeft: '8px solid transparent',
+                  borderRight: '8px solid transparent',
+                  borderBottom: '8px solid var(--th-primary)',
+                }}
+              />
             </div>
           </motion.div>
         )}
@@ -842,7 +897,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
           <AddContextFlow
             key="add"
             onClose={() => setAddOpen(false)}
-            onSubmit={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); setExplored(true); setShowAddedTip(true); }}
+            onSubmit={async (draft) => { await persistAdd({ ...draft, placeId: scopeId, origin: 'self' }); setExplored(true); setAddedLens(draft.pastCategory); setShowAddedTip(true); }}
           />
         )}
         {liveFull && (

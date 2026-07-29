@@ -3,14 +3,15 @@
 /**
  * JourneyBar — the Context Journal's top bar, per the redesign.
  *
- * A black bar carrying a back button, the Explore › Contextualise › Reflect
- * breadcrumb, and the menu control, with an optional "Open journey" row beneath
- * a hairline divider.
+ * A bar carrying a back button, the Explore › Contextualise › Reflect
+ * breadcrumb, and the menu control, with an optional "Revisit Stops" row beneath
+ * a hairline divider. The step the learner is on is set larger than the rest.
  *
- * Geometry and colour come straight from the style guide's Navigation and
- * Progress boards: a 68px row (102px with the journey row), 44px circular
- * controls at white 10%, a divider at white 20% inset to the controls' outer
- * edges, and breadcrumb steps coloured done / current / upcoming.
+ * Geometry comes straight from the style guide's Navigation and Progress
+ * boards: a 68px row (102px with the stops row), 44px circular controls at
+ * white 10%, a divider at white 20% inset to the controls' outer edges, and
+ * breadcrumb steps coloured done / current / upcoming. The bar itself uses the
+ * theme colour rather than the guide's black, so it tracks the active palette.
  *
  * The tour's own PhaseHeader is unchanged and still drives the rest of the app;
  * this is the journal's bar only.
@@ -59,7 +60,7 @@ interface Props {
   leading?: ReactNode;
   /** Right control — the caller owns its dropdown, so it is passed in whole. */
   menu?: ReactNode;
-  /** Shows the "Open journey" row when provided. */
+  /** Shows the "Revisit Stops" row when provided. */
   onOpenJourney?: () => void;
 }
 
@@ -67,7 +68,9 @@ export default function JourneyBar({ active, leading, menu, onOpenJourney }: Pro
   const activeIndex = STEPS.findIndex((s) => s.key === active);
 
   return (
-    <header data-cj-keep className="relative shrink-0" style={{ backgroundColor: 'var(--ds-nav-bg)' }}>
+    // The bar follows the active theme rather than the style guide's black, so it
+    // still reads as Provenance when the palette switches.
+    <header data-cj-keep className="relative shrink-0" style={{ backgroundColor: 'var(--th-primary)' }}>
       <div
         className="flex items-center gap-2"
         style={{
@@ -86,11 +89,12 @@ export default function JourneyBar({ active, leading, menu, onOpenJourney }: Pro
               <span key={step.key} className="flex min-w-0 items-center gap-1.5">
                 <span
                   aria-current={isCurrent ? 'step' : undefined}
-                  className="truncate"
+                  className="truncate transition-all duration-200"
                   style={{
                     fontFamily: 'var(--ds-body-s-family)',
-                    fontSize: 'var(--ds-body-s-size)',
-                    lineHeight: 'var(--ds-body-s-line)',
+                    // the step they are on is set larger so it carries the row
+                    fontSize: isCurrent ? 'var(--ds-body-l-size)' : 'var(--ds-body-s-size)',
+                    lineHeight: isCurrent ? 'var(--ds-body-l-line)' : 'var(--ds-body-s-line)',
                     // The guide has no 12px bold token, so Body S carries a bold
                     // weight for the steps the learner has reached.
                     fontWeight: isCurrent || isDone ? 700 : 400,
@@ -141,7 +145,7 @@ export default function JourneyBar({ active, leading, menu, onOpenJourney }: Pro
               fontWeight: 700,
             }}
           >
-            Open journey
+            Revisit Stops
             <ChevronDownIcon width={14} height={14} className="shrink-0" />
           </button>
         </>

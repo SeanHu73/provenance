@@ -263,3 +263,35 @@
   font-weight: var(--ds-link-s-weight);
   color: var(--ds-cardinal);
 }
+
+/* ============================================================
+   HALO PULSE
+   A slow breath on the ask-your-own control's glow, to draw the
+   eye without nagging. Long period and small amplitude on
+   purpose — this sits under text the learner is reading.
+   ============================================================ */
+
+@keyframes ds-halo-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(207, 76, 76, 0.22),
+      0 0 15px rgba(207, 76, 76, 0.32);
+  }
+  50% {
+    box-shadow:
+      0 0 0 7px rgba(207, 76, 76, 0.05),
+      0 0 22px rgba(207, 76, 76, 0.46);
+  }
+}
+
+.ds-halo-pulse {
+  animation: ds-halo-pulse 2.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-halo-pulse {
+    animation: none;
+    box-shadow: var(--ds-shadow-glow);
+  }
+}
