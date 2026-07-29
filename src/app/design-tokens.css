@@ -171,9 +171,11 @@
   --ds-input-focus-border: 2px solid var(--ds-cardinal-light);
 
   /* ---- Navigation ----------------------------------------------
-     Bar is 68px alone, 102px with the "Open journey" row. */
+     Bar is 68px alone. The guide's 102px expanded height assumed a
+     labelled second row; ours is a hairline plus a small chevron, so
+     it needs 21px rather than 34px. */
   --ds-nav-height: 68px;
-  --ds-nav-height-expanded: 102px;
+  --ds-nav-height-expanded: 89px;
   --ds-nav-bg: var(--ds-ink);
   --ds-nav-button-size: 44px;
   --ds-nav-button-bg: rgba(255, 255, 255, 0.1);

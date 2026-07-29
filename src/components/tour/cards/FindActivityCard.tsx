@@ -23,7 +23,7 @@ import { createPortal } from 'react-dom';
 import { Stop } from '@/lib/types';
 import ActionTitle from './ActionTitle';
 import FormattedText from './FormattedText';
-import { CheckIcon, CloseIcon, EyeIcon, MapPinIcon } from '@/components/icons';
+import { CloseIcon, EyeIcon, MapPinIcon } from '@/components/icons';
 
 /** Height cap for each revealed photo. The "Did you find it?" line sits above the
  *  pair and each photo carries a caption below it, so this leaves room for both
@@ -83,11 +83,11 @@ export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeek
     objectUrl.current = url;
     // Read the shot's orientation off the decoded bitmap — it decides the reveal
     // layout (portrait shots sit side by side, landscape ones stack). Taking the
-    // photo no longer auto-advances: the button turns into a green pulsing check
-    // and they tap it to submit, so the compare is a choice, not a jump cut.
+    // photo goes straight to the compare: the camera already asked them to keep
+    // or retake the shot, so a submit step here only repeated that question.
     const img = new Image();
-    img.onload = () => setShot({ url, portrait: img.naturalHeight >= img.naturalWidth });
-    img.onerror = () => setShot({ url, portrait: true });
+    img.onload = () => { setShot({ url, portrait: img.naturalHeight >= img.naturalWidth }); submit(); };
+    img.onerror = () => { setShot({ url, portrait: true }); submit(); };
     img.src = url;
   };
 
@@ -159,50 +159,26 @@ export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeek
             Found it? Take a photo!
           </p>
 
-          {/* One control, two states. Tapping it opens the camera; once a shot is
-              taken the *same* button turns green and submits. The old flow put a
-              preview screen with its own Submit in between, which read as a second
-              approval of a photo they had already confirmed in the camera. */}
+          {/* The only control: it opens the camera, and taking the shot goes
+              straight to the compare. There is no submit step — the camera's own
+              keep/retake already covers that, so a second confirmation here just
+              asked the same question twice. The green ring is what the submit
+              button used to say: this is the action. */}
           <button
-            onClick={() => (shot ? submit() : inputRef.current?.click())}
-            className={`w-24 h-24 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 ${shot ? 'submit-pulse' : ''}`}
-            style={shot
-              ? { backgroundColor: '#16A34A', color: '#fff' }
-              : { backgroundColor: 'var(--th-surface)', color: 'var(--th-primary)' }}
-            aria-label={shot ? 'Submit your photo' : 'Take a photo of what you found'}
+            onClick={() => inputRef.current?.click()}
+            className="w-24 h-24 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95"
+            style={{
+              backgroundColor: 'var(--th-surface)',
+              color: 'var(--th-primary)',
+              border: '4px solid #16A34A',
+            }}
+            aria-label="Take a photo of what you found"
           >
-            {shot ? (
-              <CheckIcon width={40} height={40} aria-hidden />
-            ) : (
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-            )}
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
           </button>
-
-          {/* A compact confirmation of what they shot — tappable to check it full
-              screen, with a retake beside it. Not a gate: the green button above
-              submits whenever they are ready. */}
-          {shot && (
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setZoom({ url: shot.url, alt: 'The photo you took' })}
-                className="rounded-lg overflow-hidden bg-black/[0.04] shrink-0"
-                aria-label="View your photo"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- object URL, not a served asset */}
-                <img src={shot.url} alt="The photo you took" className="block object-cover" style={{ width: 56, height: 56 }} />
-              </button>
-              <button
-                onClick={() => inputRef.current?.click()}
-                className="text-[13px] underline"
-                style={{ fontFamily: CLUE_FONT, color: 'var(--text-secondary)' }}
-              >
-                Retake
-              </button>
-            </div>
-          )}
 
           {/* Escape hatch, always available and sitting under the camera. Can't
               reach or photograph the spot? This drops straight to the Background,

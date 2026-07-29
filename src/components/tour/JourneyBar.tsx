@@ -4,8 +4,9 @@
  * JourneyBar — the Context Journal's top bar, per the redesign.
  *
  * A bar carrying a back button, the Explore › Contextualise › Reflect
- * breadcrumb, and the menu control, with an optional "Revisit Stops" row beneath
- * a hairline divider. The step the learner is on is set larger than the rest.
+ * breadcrumb, and the menu control, with an optional revisit-stops handle
+ * beneath a hairline divider — a small chevron, not a labelled row, so the bar
+ * stays shallow. The step the learner is on is set larger than the rest.
  *
  * Geometry and colour come straight from the style guide's Navigation and
  * Progress boards: a black bar 68px tall (102px with the stops row), 44px
@@ -59,7 +60,7 @@ interface Props {
   leading?: ReactNode;
   /** Right control — the caller owns its dropdown, so it is passed in whole. */
   menu?: ReactNode;
-  /** Shows the "Revisit Stops" row when provided. */
+  /** Shows the revisit-stops handle when provided. */
   onOpenJourney?: () => void;
 }
 
@@ -132,19 +133,17 @@ export default function JourneyBar({ active, leading, menu, onOpenJourney }: Pro
               marginRight: 'var(--ds-nav-inset)',
             }}
           />
+          {/* A chevron rather than a labelled row — the bar sits above every
+              screen, so the handle is kept to a hairline and an arrow. The label
+              lives on the control for screen readers. */}
           <button
             type="button"
             onClick={onOpenJourney}
-            className="flex w-full items-center justify-center gap-2 border-0 bg-transparent text-white"
-            style={{
-              height: 'calc(var(--ds-nav-height-expanded) - var(--ds-nav-height))',
-              fontFamily: 'var(--ds-body-s-family)',
-              fontSize: 'var(--ds-body-s-size)',
-              fontWeight: 700,
-            }}
+            aria-label="Revisit stops"
+            className="flex w-full items-center justify-center border-0 bg-transparent text-white"
+            style={{ height: 'calc(var(--ds-nav-height-expanded) - var(--ds-nav-height))', opacity: 0.85 }}
           >
-            Revisit Stops
-            <ChevronDownIcon width={14} height={14} className="shrink-0" />
+            <ChevronDownIcon width={16} height={16} className="shrink-0" />
           </button>
         </>
       )}

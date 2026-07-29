@@ -32,16 +32,16 @@ interface Props {
   opinion?: boolean;
   /** Black "The Investigation" subtitle under the action label. */
   investigation?: boolean;
-  /** Stack the icon over the label and centre the block, instead of the default
-   *  label-left / icon-right row. Used by the FIND screen. */
+  /** Centre the label + icon as a block, instead of pushing them to the card's
+   *  left and right edges. Used by the FIND screen. */
   centered?: boolean;
   /** Extra Tailwind classes on the outer wrapper. */
   className?: string;
 }
 
 const ICON_SIZE = 64;
-/** The centred variant stacks icon over label, so the icon is set smaller to
- *  keep the FIND header from eating the top of a one-screen snap section. */
+/** The centred variant sets the icon beside the label rather than across the
+ *  card, so it is sized to the label's cap height rather than the full 64. */
 const ICON_SIZE_CENTERED = 46;
 const ACTION_TITLE_PX = 44;
 const INVESTIGATION_PX = 22;
@@ -59,18 +59,17 @@ export default function ActionTitle({
           stacks the icon above the label instead. */}
       <div
         className={centered
-          ? 'flex flex-col items-center gap-1'
+          ? 'flex items-center justify-center gap-3'
           : 'flex items-end justify-between gap-3 pr-2'}
         style={{ color: 'var(--th-accent-dark)' }}
       >
-        {centered && <ActionIcon action={action} size={ICON_SIZE_CENTERED} />}
         <h2
           className="uppercase tracking-[0.12em] font-display font-bold leading-none"
           style={{ fontSize: ACTION_TITLE_PX }}
         >
           {action}
         </h2>
-        {!centered && <ActionIcon action={action} size={ICON_SIZE} />}
+        <ActionIcon action={action} size={centered ? ICON_SIZE_CENTERED : ICON_SIZE} />
       </div>
 
       {opinion && (
