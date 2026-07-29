@@ -35,6 +35,10 @@ function readyHaptic() {
 
 interface RespSource { kind?: string; url?: string; name?: string; author?: string; date?: string; verified?: boolean }
 interface RespCard { lens?: PastCategory; title?: string; summary?: string; explanation?: string; imageUrl?: string; imageCredit?: string }
+
+/** Media id for the answer's own photo, kept distinct from the `ph_N` ids the
+ *  learner's uploads use so the thumbnail can point at it unambiguously. */
+const SUGGESTED_PHOTO_ID = 'suggested';
 interface DetectiveResp {
   status?: 'answered' | 'banked' | 'declined';
   narrative?: string;
@@ -259,8 +263,19 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
       camera: null,
       mapType: 'default',
       includePlaceTime: false,
-      media: photos.map((url, i) => ({ id: `ph_${i}`, kind: 'photo' as const, url, title: '' })),
-      thumbnailMediaId: photos.length ? 'ph_0' : null,
+      // The answer's own photo is carried into the context so the entry has a
+      // thumbnail in the journal. Without it a self-asked context that the
+      // learner didn't add photos to saved with no media at all, and showed as
+      // a bare icon next to authored questions that all have pictures.
+      // It leads the media list and is the thumbnail; any photos they added
+      // themselves follow.
+      media: [
+        ...(card?.imageUrl
+          ? [{ id: SUGGESTED_PHOTO_ID, kind: 'photo' as const, url: card.imageUrl, title: card.imageCredit || '' }]
+          : []),
+        ...photos.map((url, i) => ({ id: `ph_${i}`, kind: 'photo' as const, url, title: '' })),
+      ],
+      thumbnailMediaId: card?.imageUrl ? SUGGESTED_PHOTO_ID : (photos.length ? 'ph_0' : null),
       sources,
       learnerPrediction: theory.trim() || undefined,
       motivation: motivation.trim() || undefined,
