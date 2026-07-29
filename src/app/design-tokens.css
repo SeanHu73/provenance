@@ -1,0 +1,262 @@
+/* ============================================================
+   DESIGN TOKENS — Context Journal redesign
+   Transcribed from the Figma style guide exports in /design
+   (Colors, Typography, Button, Input, Navigation, Progress).
+
+   Every value here is measured from those SVGs rather than
+   eyeballed. Namespaced --ds-* so it sits alongside the existing
+   --th-* theme layer without colliding; nothing switches over to
+   these until a component opts in.
+
+   Points where the style guide contradicts itself are marked
+   AMBIGUOUS with the reading that was taken.
+   ============================================================ */
+
+:root {
+  /* ---- Palette ------------------------------------------------
+     Six rows off the Colors board. The red and green rows ship a
+     tint alongside the base; the neutrals are a single ramp. */
+  --ds-cardinal: #8C1515;         /* primary — filled buttons, links */
+  --ds-cardinal-light: #CF4C4C;   /* focus rings, input focus border */
+
+  --ds-ink: #111111;              /* headings, nav bar fill */
+  --ds-ink-soft: #3A3A3A;         /* body text */
+  --ds-grey: #817171;             /* placeholder, secondary text */
+  --ds-grey-light: #CFC5C5;       /* inactive lens letters, dividers */
+  --ds-blush: #F4ECEC;            /* page background, pressed tint */
+  --ds-white: #FFFFFF;            /* card surface */
+
+  --ds-amber: #E8AC4D;            /* current step in the breadcrumb */
+  --ds-teal: #5DB2C5;
+  --ds-purple: #A08BD7;
+  --ds-green: #2E9959;
+  --ds-green-tint: #D6EEDD;       /* active lens pill background */
+
+  /* ---- P.A.S.T. lens colours ----------------------------------
+     Mapping inferred from the Context Journal mockup, where the
+     active "P" pill is green and the A/S/T letters carry the
+     amber / purple / teal hues in that order. Confirm against the
+     designer's intent before relying on it. */
+  --ds-lens-place: var(--ds-green);
+  --ds-lens-place-tint: var(--ds-green-tint);
+  --ds-lens-affairs: var(--ds-amber);
+  --ds-lens-society: var(--ds-purple);
+  --ds-lens-technology: var(--ds-teal);
+  --ds-lens-inactive: var(--ds-grey-light);
+
+  /* ---- Type families ------------------------------------------
+     The scale uses exactly two families. Georgia leads the serif
+     stack so desktop/iOS use the real thing; Gelasio is loaded via
+     next/font as a metric-compatible fallback for Android, where
+     Georgia is absent and would otherwise land on Noto Serif. */
+  --ds-font-serif: Georgia, var(--font-gelasio), 'Times New Roman', serif;
+  --ds-font-sans: var(--font-lato), 'Helvetica Neue', Arial, sans-serif;
+
+  /* ---- Type scale ---------------------------------------------
+     size / line-height / weight, letter-spacing is 0 throughout.
+     Families are NOT uniform by size — see Title vs Title S. */
+
+  /* Display — Georgia 40 Bold / 40
+     AMBIGUOUS: the style guide's Display row is split, with three
+     cells as Georgia Bold and two as Lato 900. Georgia is taken
+     because the mockup's page title is unmistakably a serif. */
+  --ds-display-family: var(--ds-font-serif);
+  --ds-display-size: 2.5rem;      /* 40px */
+  --ds-display-line: 2.5rem;      /* 40px — 1.0 */
+  --ds-display-weight: 700;
+
+  /* H1 — Georgia 32 Bold Italic / 40 */
+  --ds-h1-family: var(--ds-font-serif);
+  --ds-h1-size: 2rem;             /* 32px */
+  --ds-h1-line: 2.5rem;           /* 40px */
+  --ds-h1-weight: 700;
+  --ds-h1-style: italic;
+
+  /* H2 — Georgia 26 Bold / 32 */
+  --ds-h2-family: var(--ds-font-serif);
+  --ds-h2-size: 1.625rem;         /* 26px */
+  --ds-h2-line: 2rem;             /* 32px */
+  --ds-h2-weight: 700;
+
+  /* Title — Lato 18 Bold / 24
+     Note: sans, unlike the serif headings above and Title S below. */
+  --ds-title-family: var(--ds-font-sans);
+  --ds-title-size: 1.125rem;      /* 18px */
+  --ds-title-line: 1.5rem;        /* 24px */
+  --ds-title-weight: 700;
+
+  /* Title S — Georgia 16 Bold / 20
+     Not a smaller Title: different family. Kept as exported since
+     all five cells of its row agree. */
+  --ds-title-s-family: var(--ds-font-serif);
+  --ds-title-s-size: 1rem;        /* 16px */
+  --ds-title-s-line: 1.25rem;     /* 20px */
+  --ds-title-s-weight: 700;
+
+  /* Body L — Lato 16 Regular / 20 */
+  --ds-body-l-family: var(--ds-font-sans);
+  --ds-body-l-size: 1rem;         /* 16px */
+  --ds-body-l-line: 1.25rem;      /* 20px */
+  --ds-body-l-weight: 400;
+
+  /* Body — Lato 14 Regular / 20 */
+  --ds-body-family: var(--ds-font-sans);
+  --ds-body-size: 0.875rem;       /* 14px */
+  --ds-body-line: 1.25rem;        /* 20px */
+  --ds-body-weight: 400;
+
+  /* Body S — Lato 12 Regular / 18 */
+  --ds-body-s-family: var(--ds-font-sans);
+  --ds-body-s-size: 0.75rem;      /* 12px */
+  --ds-body-s-line: 1.125rem;     /* 18px */
+  --ds-body-s-weight: 400;
+
+  /* Link S — Lato 12 Black / 18 (weight 900, not 700) */
+  --ds-link-s-family: var(--ds-font-sans);
+  --ds-link-s-size: 0.75rem;      /* 12px */
+  --ds-link-s-line: 1.125rem;     /* 18px */
+  --ds-link-s-weight: 900;
+
+  /* Button — Lato 18 Bold / 26 */
+  --ds-button-family: var(--ds-font-sans);
+  --ds-button-size: 1.125rem;     /* 18px */
+  --ds-button-line: 1.625rem;     /* 26px */
+  --ds-button-weight: 700;
+
+  /* Button S — Lato 16 Bold / 20
+     AMBIGUOUS: the row's label cell reads 18px while its other
+     four cells read 16px. 16 is taken as the majority. */
+  --ds-button-s-family: var(--ds-font-sans);
+  --ds-button-s-size: 1rem;       /* 16px */
+  --ds-button-s-line: 1.25rem;    /* 20px */
+  --ds-button-s-weight: 700;
+
+  /* ---- Radii ---------------------------------------------------
+     Buttons are full pills (radius = half the height), so they are
+     expressed as 9999px rather than the measured 33 / 26. */
+  --ds-radius-pill: 9999px;
+  --ds-radius-card: 1rem;         /* 16px — cards, inputs */
+  --ds-radius-circle: 50%;
+
+  /* ---- Elevation -----------------------------------------------
+     Offsets and blurs as exported; alpha is Figma's default black
+     shadow and was toned to something usable at each step. */
+  --ds-shadow-sm: 0 2.5px 6.25px rgba(0, 0, 0, 0.06);
+  --ds-shadow-md: 0 4px 10px rgba(0, 0, 0, 0.08);
+  --ds-shadow-lg: 0 4px 15px rgba(0, 0, 0, 0.10);
+  --ds-shadow-glow: 0 0 15px rgba(207, 76, 76, 0.35); /* input focus */
+
+  /* ---- Buttons -------------------------------------------------
+     Heights and radii are measured. Horizontal padding is derived
+     from the measured widths minus the rendered label, so it
+     survives labels other than "Continue". */
+  --ds-btn-height: 66px;
+  --ds-btn-padding-x: 28px;
+  --ds-btn-gap: 8px;              /* label to chevron */
+
+  --ds-btn-s-height: 52px;
+  --ds-btn-s-padding-x: 28px;
+
+  --ds-btn-border-width: 1px;     /* outlined, default state */
+  --ds-btn-ring-width: 4px;       /* pressed / focus ring, inset 2px */
+  --ds-btn-ring-color: var(--ds-cardinal-light);
+  --ds-btn-disabled-opacity: 0.2; /* applied to the whole button */
+
+  /* ---- Input ---------------------------------------------------
+     350x104 on a 390 frame, so 20px side margins. */
+  --ds-input-height: 104px;
+  --ds-input-radius: var(--ds-radius-card);
+  --ds-input-bg: var(--ds-white);
+  --ds-input-padding: 20px;
+  --ds-input-focus-border: 2px solid var(--ds-cardinal-light);
+
+  /* ---- Navigation ----------------------------------------------
+     Bar is 68px alone, 102px with the "Open journey" row. */
+  --ds-nav-height: 68px;
+  --ds-nav-height-expanded: 102px;
+  --ds-nav-bg: var(--ds-ink);
+  --ds-nav-button-size: 44px;
+  --ds-nav-button-bg: rgba(255, 255, 255, 0.1);
+  --ds-nav-divider: rgba(255, 255, 255, 0.6);
+
+  /* Breadcrumb states, from the Progress board. */
+  --ds-step-done: var(--ds-white);
+  --ds-step-current: var(--ds-amber);
+  --ds-step-upcoming: var(--ds-grey);
+
+  /* ---- Layout --------------------------------------------------
+     Frame is 390x844 (iPhone 13/14 logical size). */
+  --ds-frame-width: 390px;
+  --ds-gutter: 20px;
+}
+
+/* ============================================================
+   TYPE UTILITIES
+   One class per token so markup can name the style rather than
+   restate size/weight/family at each call site.
+   ============================================================ */
+
+.ds-display {
+  font-family: var(--ds-display-family);
+  font-size: var(--ds-display-size);
+  line-height: var(--ds-display-line);
+  font-weight: var(--ds-display-weight);
+}
+
+.ds-h1 {
+  font-family: var(--ds-h1-family);
+  font-size: var(--ds-h1-size);
+  line-height: var(--ds-h1-line);
+  font-weight: var(--ds-h1-weight);
+  font-style: var(--ds-h1-style);
+}
+
+.ds-h2 {
+  font-family: var(--ds-h2-family);
+  font-size: var(--ds-h2-size);
+  line-height: var(--ds-h2-line);
+  font-weight: var(--ds-h2-weight);
+}
+
+.ds-title {
+  font-family: var(--ds-title-family);
+  font-size: var(--ds-title-size);
+  line-height: var(--ds-title-line);
+  font-weight: var(--ds-title-weight);
+}
+
+.ds-title-s {
+  font-family: var(--ds-title-s-family);
+  font-size: var(--ds-title-s-size);
+  line-height: var(--ds-title-s-line);
+  font-weight: var(--ds-title-s-weight);
+}
+
+.ds-body-l {
+  font-family: var(--ds-body-l-family);
+  font-size: var(--ds-body-l-size);
+  line-height: var(--ds-body-l-line);
+  font-weight: var(--ds-body-l-weight);
+}
+
+.ds-body {
+  font-family: var(--ds-body-family);
+  font-size: var(--ds-body-size);
+  line-height: var(--ds-body-line);
+  font-weight: var(--ds-body-weight);
+}
+
+.ds-body-s {
+  font-family: var(--ds-body-s-family);
+  font-size: var(--ds-body-s-size);
+  line-height: var(--ds-body-s-line);
+  font-weight: var(--ds-body-s-weight);
+}
+
+.ds-link-s {
+  font-family: var(--ds-link-s-family);
+  font-size: var(--ds-link-s-size);
+  line-height: var(--ds-link-s-line);
+  font-weight: var(--ds-link-s-weight);
+  color: var(--ds-cardinal);
+}

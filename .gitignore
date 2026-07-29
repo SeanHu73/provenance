@@ -47,3 +47,6 @@ next-env.d.ts
 # ProRes 4444 logo masters — ~190MB, regenerable, and superseded by the QTRLE cuts
 # (same alpha, ~10x smaller, and decodable without a ProRes codec). Kept locally only.
 docs/logo_final/animation/*-alpha.mov
+
+# python bytecode from scripts/
+__pycache__/

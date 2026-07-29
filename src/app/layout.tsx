@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Newsreader, DM_Serif_Display, Montserrat } from 'next/font/google';
+import { Newsreader, DM_Serif_Display, Montserrat, Lato, Gelasio } from 'next/font/google';
 import localFont from 'next/font/local';
 import './globals.css';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
@@ -40,11 +40,39 @@ const marigoldSans = localFont({
   display: 'swap',
 });
 
+// ---- Context Journal redesign ------------------------------------
+// The redesigned type scale uses two families: Georgia for the serif
+// headings and Lato for everything else. Weights cover Regular (body),
+// Bold (titles, buttons) and Black (Link S).
+const lato = Lato({
+  weight: ['400', '700', '900'],
+  style: ['normal', 'italic'],
+  subsets: ['latin'],
+  variable: '--font-lato',
+  display: 'swap',
+});
+
+// Georgia is a system font — present on Windows, macOS and iOS but not
+// on Android, where the headings would otherwise fall back to Noto
+// Serif and reflow. Gelasio is metric-compatible with Georgia, so it
+// stands in on those devices without shifting any layout. The serif
+// stack in design-tokens.css lists Georgia first, so devices that have
+// it keep using the real thing.
+const gelasio = Gelasio({
+  weight: ['400', '700'],
+  style: ['normal', 'italic'],
+  subsets: ['latin'],
+  variable: '--font-gelasio',
+  display: 'swap',
+});
+
 const fontVariables = [
   newsreader.variable,
   dmSerifDisplay.variable,
   montserrat.variable,
   marigoldSans.variable,
+  lato.variable,
+  gelasio.variable,
 ].join(' ');
 
 export const metadata: Metadata = {

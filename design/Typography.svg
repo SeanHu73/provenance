@@ -1,0 +1,71 @@
+<svg width="1435" height="1420" viewBox="0 0 1435 1420" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M0 16C0 7.16344 7.16344 0 16 0H1419C1427.84 0 1435 7.16344 1435 16V71C1435 79.8366 1427.84 87 1419 87H16C7.16344 87 0 79.8366 0 71V16Z" fill="#0F0F0F"/>
+<text fill="white" style="white-space: pre" xml:space="preserve" font-family="Proxima Nova" font-size="32" font-weight="bold" letter-spacing="0em"><tspan x="40" y="53.452">Typography</tspan></text>
+<path d="M0 119C0 110.163 7.16344 103 16 103H1419C1427.84 103 1435 110.163 1435 119V1247C1435 1255.84 1427.84 1263 1419 1263H16C7.16344 1263 0 1255.84 0 1247V119Z" fill="white"/>
+<path d="M40 159C40 150.163 47.1634 143 56 143H177C185.837 143 193 150.163 193 159C193 167.837 185.837 175 177 175H56C47.1634 175 40 167.837 40 159Z" fill="#EBF3FF"/>
+<path d="M64 151.667L60.7917 154.875L64 158.083L67.2084 154.875L64 151.667Z" fill="#25282A"/>
+<path d="M64 159.917L60.7917 163.125L64 166.333L67.2084 163.125L64 159.917Z" fill="#25282A"/>
+<path d="M56.6667 159L59.875 155.792L63.0834 159L59.875 162.208L56.6667 159Z" fill="#25282A"/>
+<path d="M68.125 155.792L64.9167 159L68.125 162.208L71.3334 159L68.125 155.792Z" fill="#25282A"/>
+<text fill="#25282A" style="white-space: pre" xml:space="preserve" font-family="Montserrat" font-size="16" letter-spacing="0em"><tspan x="82" y="164.736">Typography</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="14" letter-spacing="0em"><tspan x="40" y="230.329">MEDIUM TEXT - REGULAR</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="14" letter-spacing="0em"><tspan x="314" y="230.329">FONT SIZE</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="14" letter-spacing="0em"><tspan x="499" y="230.329">FONT WEIGHT</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="14" letter-spacing="0em"><tspan x="703" y="230.329">LINE HEIGHT </tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Inter" font-size="14" letter-spacing="0em"><tspan x="903" y="230.329">USE CASE</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="40" y="324.193">Display</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="304" y="324.193">40px</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="488" y="324.193">Bold</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="40" font-weight="900" letter-spacing="0em"><tspan x="693" y="325.718">40</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="40" font-weight="900" letter-spacing="0em"><tspan x="883" y="325.718">Onboarding Text, Page Title </tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="32" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="40" y="417.402">H1</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="32" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="304" y="417.402">32px</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="32" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="488" y="417.402">Bold Italic</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="32" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="693" y="417.402">40</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="32" font-style="italic" font-weight="bold" letter-spacing="0em"><tspan x="883" y="417.402">Onboarding Text, Page Title </tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="26" font-weight="bold" letter-spacing="0em"><tspan x="40" y="507.308">H2</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="26" font-weight="bold" letter-spacing="0em"><tspan x="304" y="507.308">26px</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="26" font-weight="bold" letter-spacing="0em"><tspan x="488" y="507.071">Bold</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="26" font-weight="bold" letter-spacing="0em"><tspan x="693" y="507.308">32</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="26" font-weight="bold" letter-spacing="0em"><tspan x="883" y="507.308">Onboarding Text, Page Title </tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="40" y="597.204">Title</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="304" y="597.204">18px</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="488" y="596.966">Bold</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="693" y="597.204">24</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="883" y="597.204">Onboarding Text, Page Title </tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="40" y="687.82">Title S</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="304" y="687.82">16px</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="488" y="687.582">Bold</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="693" y="687.82">20</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Georgia" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="883" y="687.82">Onboarding Text, Page Title </tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="16" letter-spacing="0em"><tspan x="40" y="780.43">Body L</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="16" letter-spacing="0em"><tspan x="304" y="780.43">16px</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="16" letter-spacing="0em"><tspan x="488" y="778.192">Regular</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="16" letter-spacing="0em"><tspan x="693" y="780.43">20</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="16" letter-spacing="0em"><tspan x="883" y="780.43">Onboarding Text, Page Title </tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="14" letter-spacing="0em"><tspan x="40" y="871.656">Body</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="14" letter-spacing="0em"><tspan x="304" y="871.656">14px</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="14" letter-spacing="0em"><tspan x="488" y="871.418">Regular</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="14" letter-spacing="0em"><tspan x="693" y="871.656">20</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="14" letter-spacing="0em"><tspan x="883" y="871.656">Onboarding Text, Page Title </tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="12" letter-spacing="0em"><tspan x="40" y="962.882">Body S</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="12" letter-spacing="0em"><tspan x="304" y="962.882">12px</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="12" letter-spacing="0em"><tspan x="488" y="961.644">Regular</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="12" letter-spacing="0em"><tspan x="693" y="962.882">18</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="12" letter-spacing="0em"><tspan x="883" y="962.882">Onboarding Text, Page Title </tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="12" font-weight="900" letter-spacing="0em"><tspan x="40" y="1043.88">Link S</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="12" font-weight="900" letter-spacing="0em"><tspan x="304" y="1043.88">12 px</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="12" font-weight="900" letter-spacing="0em"><tspan x="488" y="1043.88">Bold</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="12" font-weight="900" letter-spacing="0em"><tspan x="694" y="1043.88">18</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="12" font-weight="900" letter-spacing="0em"><tspan x="884" y="1043.88">Link</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="40" y="1120.2">Button</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="304" y="1120.2">18 px</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="488" y="1120.2">Bold</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="694" y="1120.2">26</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="884" y="1120.2">Button</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="40" y="1198.2">Button S</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="304" y="1197.43">16 px</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="488" y="1197.43">Bold</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="694" y="1197.43">20</tspan></text>
+<text fill="#111111" style="white-space: pre" xml:space="preserve" font-family="Lato" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="884" y="1197.43">Button</tspan></text>
+</svg>
