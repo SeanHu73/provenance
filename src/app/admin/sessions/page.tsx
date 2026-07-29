@@ -26,6 +26,7 @@ import { getAllTourSessions, setSessionStarred, StoredTourSession } from '@/lib/
 import { getTours } from '@/lib/tours-store';
 import { getAllCorrections, saveCorrection } from '@/lib/detective-corrections-store';
 import { fetchEmbedding, saveKnowledgeEntry, newKnowledgeId, knowledgeEmbedText, knowledgeEmbedHash } from '@/lib/knowledge-store';
+import ImageSearchModal from '@/components/ImageSearchModal';
 
 type Row = string[];
 
@@ -354,6 +355,7 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
   const [open, setOpen] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [photoPicker, setPhotoPicker] = useState(false);
   const [note, setNote] = useState(correction?.note ?? '');
   const [verdict, setVerdict] = useState<DetectiveCorrection['verdict']>(correction?.verdict);
   const [kind, setKind] = useState<DetectiveCorrection['kind']>(correction?.kind);
@@ -383,6 +385,8 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
       verdict, kind, note: note.trim() || undefined,
       original: correction?.original ?? { title: e.title, shortSummary: e.shortSummary ?? '', longExplanation: e.longExplanation ?? '' },
       edited: willEdit,
+      photoUrl: correction?.photoUrl,
+      photoCredit: correction?.photoCredit,
       promotedEntryId: correction?.promotedEntryId,
       ...over,
       updatedAt: new Date().toISOString(),
@@ -417,8 +421,8 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
         // only ever be matched on topic, so the same question asked again pays for
         // the whole research pipeline to reproduce an answer we already reviewed.
         ...(e.question?.trim() ? { sourceQuestion: e.question.trim() } : {}),
-        ...(e.thumbnailUrl ? { photoUrl: e.thumbnailUrl } : {}),
-        ...(e.thumbnailCredit ? { photoCredit: e.thumbnailCredit } : {}),
+        ...(shownPhoto ? { photoUrl: shownPhoto } : {}),
+        ...(shownPhotoCredit ? { photoCredit: shownPhotoCredit } : {}),
       };
       const { embedding, model } = await fetchEmbedding(knowledgeEmbedText(base));
       base.embedding = embedding; base.embeddingModel = model; base.embeddingHash = knowledgeEmbedHash(base);
@@ -446,6 +450,9 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
 
   const shownTitle = correction?.edited?.title || e.title;
   const shownLong = correction?.edited?.longExplanation || e.longExplanation;
+  // The admin's pick wins; otherwise whatever illustrated the answer.
+  const shownPhoto = correction?.photoUrl || e.thumbnailUrl;
+  const shownPhotoCredit = correction?.photoUrl ? correction.photoCredit : e.thumbnailCredit;
 
   return (
     <div className="rounded border border-stone-200 p-2.5 space-y-1">
@@ -534,6 +541,44 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
                 </div>
               </div>
             )}
+            {/* illustration — the Detective's photo is best-effort, so the admin can
+                put a better one on the entry before it joins the base. */}
+            <div className="space-y-1">
+              <span className="text-[10px] text-stone-500 font-semibold">Illustration</span>
+              <div className="flex items-start gap-2">
+                {shownPhoto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={shownPhoto} alt="" className="w-16 h-16 rounded object-cover border border-stone-200 shrink-0" />
+                ) : (
+                  <span className="w-16 h-16 rounded border border-dashed border-stone-300 shrink-0 flex items-center justify-center text-[10px] text-stone-400">none</span>
+                )}
+                <div className="flex flex-col gap-1 items-start">
+                  <button onClick={() => setPhotoPicker(true)} className="text-[11px] font-semibold text-blue-700 hover:underline">
+                    {shownPhoto ? 'Suggest a better photo ▸' : 'Add a photo ▸'}
+                  </button>
+                  {correction?.photoUrl && (
+                    <>
+                      <span className="text-[10px] text-emerald-700">Your pick{correction.photoCredit ? ` — ${correction.photoCredit}` : ''}</span>
+                      <button
+                        onClick={() => void persist({ photoUrl: undefined, photoCredit: undefined })}
+                        className="text-[10px] text-stone-500 hover:underline"
+                      >
+                        Revert to the Detective&apos;s photo
+                      </button>
+                    </>
+                  )}
+                  {!correction?.photoUrl && shownPhoto && (
+                    <span className="text-[10px] text-stone-400">Found by the Detective</span>
+                  )}
+                </div>
+              </div>
+              {photoPicker && (
+                <ImageSearchModal
+                  onClose={() => setPhotoPicker(false)}
+                  onPick={(url, credit) => { setPhotoPicker(false); void persist({ photoUrl: url, photoCredit: credit }); }}
+                />
+              )}
+            </div>
             {/* promote */}
             <div className="flex items-center gap-2 pt-0.5">
               <button onClick={promote} disabled={busy} className="px-2 py-1 rounded bg-emerald-700 text-white text-[11px] hover:bg-emerald-800 disabled:opacity-40">

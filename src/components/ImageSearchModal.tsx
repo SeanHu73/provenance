@@ -15,7 +15,8 @@ interface ImageResult { id: string; title: string; thumbUrl: string; fullUrl: st
 
 interface Props {
   onClose: () => void;
-  onPick: (url: string) => void;
+  /** `credit` is the Commons attribution, for callers that store it. */
+  onPick: (url: string, credit?: string) => void;
 }
 
 export default function ImageSearchModal({ onClose, onPick }: Props) {
@@ -63,7 +64,7 @@ export default function ImageSearchModal({ onClose, onPick }: Props) {
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {results.map((r) => (
-                <button key={r.id} onClick={() => onPick(r.fullUrl)} className="text-left rounded-lg overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
+                <button key={r.id} onClick={() => onPick(r.fullUrl, r.credit)} className="text-left rounded-lg overflow-hidden border" style={{ borderColor: 'var(--th-border)' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={r.thumbUrl} alt={r.title} className="w-full h-28 object-cover" />
                   <p className="px-2 py-1 text-[10px] text-text-muted truncate">{r.credit}</p>

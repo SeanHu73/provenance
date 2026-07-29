@@ -1009,6 +1009,11 @@ export interface DetectiveCorrection {
   original?: { title: string; shortSummary: string; longExplanation: string };
   /** The admin's corrected text (present only when they edited). */
   edited?: { title: string; shortSummary: string; longExplanation: string };
+  /** A better illustration the admin picked, replacing whatever the Detective
+   *  found. Stored on the correction rather than written straight to the entry so
+   *  it is legible as a review decision and survives re-promotion. */
+  photoUrl?: string;
+  photoCredit?: string;
   /** Knowledge-entry id if the admin promoted this into the verified base. */
   promotedEntryId?: string;
   updatedAt: string;
