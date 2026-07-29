@@ -1,14 +1,29 @@
 'use client';
 
 /**
- * Big centered record button — records mic audio, transcribes via /api/transcribe
+ * Big centred record button — records mic audio, transcribes via /api/transcribe
  * (Deepgram), and hands the text back so the caller can drop it into a textbox to
  * proof-read. Shared by the reflection response and the Context Detective ask.
+ *
+ * Three states, all drawn at the same diameter so the layout never jumps as the
+ * learner moves through them:
+ *   idle         filled disc + mic
+ *   recording    white disc, ringed, with a pause glyph
+ *   transcribing white disc with a spinner ("tidying up what you said")
  */
 
 import { useEffect, useRef, useState } from 'react';
 
-export default function RecordButton({ onTranscript }: { onTranscript: (t: string) => void }) {
+interface Props {
+  onTranscript: (t: string) => void;
+  /** Diameter in px. The reflection screen runs this large; other callers keep
+   *  the original 80 so their layouts are unchanged. */
+  size?: number;
+  /** Soft halo behind the disc, to pull the eye before they have answered. */
+  halo?: boolean;
+}
+
+export default function RecordButton({ onTranscript, size = 80, halo = false }: Props) {
   const [state, setState] = useState<'idle' | 'recording' | 'transcribing' | 'error'>('idle');
   const recRef = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
@@ -44,31 +59,52 @@ export default function RecordButton({ onTranscript }: { onTranscript: (t: strin
 
   const stop = () => { if (recRef.current?.state === 'recording') recRef.current.stop(); };
 
-  if (state === 'transcribing') {
-    return (
-      <div className="flex flex-col items-center gap-2 py-2">
-        <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--th-primary)', borderTopColor: 'transparent' }} />
-        <p className="text-sm italic text-text-secondary">Tidying up what you said…</p>
-      </div>
-    );
-  }
+  const busy = state === 'transcribing';
+  const listening = state === 'recording';
+  // The two non-idle states sit on white with a ring, so the disc reads as a
+  // control that is *doing something* rather than one waiting to be pressed.
+  const onWhite = listening || busy;
+  const glyph = Math.round(size * 0.30);
 
   return (
     <div className="flex flex-col items-center gap-2">
       <button
-        onClick={state === 'recording' ? stop : start}
-        className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg text-white"
-        style={{ backgroundColor: state === 'recording' ? '#c0392b' : 'var(--th-primary)' }}
-        aria-label={state === 'recording' ? 'Stop recording' : 'Record'}
+        onClick={listening ? stop : busy ? undefined : start}
+        disabled={busy}
+        className="rounded-full flex items-center justify-center shadow-lg transition-colors"
+        style={{
+          width: size,
+          height: size,
+          backgroundColor: onWhite ? 'var(--ds-white, #fff)' : 'var(--ds-cardinal-light, #CF4C4C)',
+          color: onWhite ? 'var(--ds-cardinal, #8C1515)' : '#fff',
+          border: onWhite ? '2px solid var(--ds-cardinal, #8C1515)' : 'none',
+          boxShadow: halo && !onWhite
+            ? '0 0 0 10px rgba(207,76,76,0.16), 0 0 26px rgba(207,76,76,0.35)'
+            : '0 6px 16px rgba(0,0,0,0.14)',
+        }}
+        aria-label={listening ? 'Stop recording' : busy ? 'Transcribing' : 'Record'}
       >
-        {state === 'recording' ? (
-          <span className="w-6 h-6 rounded bg-white animate-pulse" />
+        {listening ? (
+          // pause bars — tapping again finishes the recording
+          <span className="flex items-center" style={{ gap: Math.round(glyph * 0.28) }} aria-hidden>
+            <span style={{ width: Math.round(glyph * 0.26), height: glyph, borderRadius: 2, backgroundColor: 'currentColor' }} />
+            <span style={{ width: Math.round(glyph * 0.26), height: glyph, borderRadius: 2, backgroundColor: 'currentColor' }} />
+          </span>
+        ) : busy ? (
+          <span
+            className="rounded-full animate-spin"
+            style={{ width: glyph, height: glyph, border: '3px solid currentColor', borderTopColor: 'transparent' }}
+            aria-hidden
+          />
         ) : (
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" /><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" /></svg>
+          <svg width={glyph} height={glyph} viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" /><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" /></svg>
         )}
       </button>
-      <p className="text-sm text-text-secondary">
-        {state === 'recording' ? 'Listening… tap to finish' : state === 'error' ? 'Mic unavailable — type below' : 'Tap to record your thoughts'}
+      <p className="text-sm text-text-secondary" aria-live="polite">
+        {listening ? 'Listening… tap to finish'
+          : busy ? 'Tidying up what you said…'
+          : state === 'error' ? 'Mic unavailable — type below'
+          : 'Tap to record your thoughts'}
       </p>
     </div>
   );

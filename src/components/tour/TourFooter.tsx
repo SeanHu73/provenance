@@ -8,6 +8,7 @@ import { getTourMode, getActiveStops } from '@/lib/tours-store';
 import { findActOfStop, getActs, getActContexts } from '@/lib/tour-session';
 import { useTour } from '@/context/TourContext';
 import MicButton from './MicButton';
+import { NoteIcon } from '@/components/icons';
 import { useRoom } from '@/context/RoomContext';
 import RoomMenu from '@/components/room/RoomMenu';
 import ContextJournal from '@/features/context-journal/ContextJournal';
@@ -45,12 +46,13 @@ export default function TourFooter({ tour, session, pointAtQuestion = false }: P
   // surfaces the current Act's title on the footer bar, next to Journal.
   const isContext = getTourMode(tour) === 'context';
   const showInquiries = !isContext;
-  // Context-Prototype: the footer carries the current Act and nothing else. The
-  // Context Journal is reached through the tour's own Contextualise phase, so a
-  // second way in from the footer was redundant — and the reflection page's
-  // full-width "Look back at your Context Journal" bar went with it. Other tour
-  // modes keep the button.
-  const showJournalButton = !isContext;
+  // Context-Prototype: the footer carries the current Act and nothing else, since
+  // the Context Journal is reached through the tour's own Contextualise phase.
+  // The one exception is the reflection page, where looking back at what they
+  // explored is the point — there it returns as a labelled button. Other tour
+  // modes keep the button throughout.
+  const journalProminent = isContext && session.currentPhase === 'act_reflection';
+  const showJournalButton = !isContext || journalProminent;
   const journalLabelled = true;
   let actNumLabel: string | null = null;
   let actTitleText = '';
@@ -124,24 +126,21 @@ export default function TourFooter({ tour, session, pointAtQuestion = false }: P
         style={{ backgroundColor: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
       >
         {showJournalButton && (
-          <div className="relative shrink-0">
+          <div className={`relative ${journalProminent ? 'w-full max-w-md' : 'shrink-0'}`}>
             <button
               onClick={openJournal}
               disabled={!journalUnlocked}
-              aria-label="Context Journal"
+              aria-label="Look back at your Context Journal"
               title={journalUnlocked ? 'Context Journal' : 'Opens once you reach the Context Journal'}
               className={`relative flex items-center justify-center rounded-xl text-warm-white transition-colors border ${
                 journalUnlocked
                   ? 'bg-white/25 hover:bg-white/35 border-white/50'
                   : 'bg-white/10 border-white/25 opacity-45 cursor-not-allowed'
-              } ${journalLabelled ? 'gap-2 px-5 py-3.5 text-base font-semibold' : 'w-11 h-11'}`}
+              } ${journalLabelled ? `gap-2 px-5 py-3.5 text-base font-semibold${journalProminent ? ' w-full' : ''}` : 'w-11 h-11'}`}
               style={{ boxShadow: journalUnlocked ? '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' : 'none' }}
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-              </svg>
-              Context Journal
+              <NoteIcon width={22} height={22} className="shrink-0" />
+              {journalProminent ? 'Look back at your Context Journal' : 'Context Journal'}
               {/* lock badge until it's unlocked */}
               {!journalUnlocked && (
                 <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-warm-white text-journal flex items-center justify-center shadow" aria-hidden>
