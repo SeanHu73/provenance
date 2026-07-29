@@ -356,22 +356,62 @@ def learner_table3(phases: dict) -> TableSpec:
 # A grouped header tier plus a rule at each group's left edge separates the
 # pre-test block from the post-test block at a glance.
 def _combined_rows(table: "OrderedDict"):
-    """Each learner, then the All row; `is_all` marks the summary row."""
+    """
+    Each learner, then the summary row; `is_all` marks the latter.
+
+    The summary carries the cohort *summed*, which is what the rate columns
+    need — a pooled %3s is 3s over contextual questions across everyone, not
+    the mean of six per-learner percentages. Tables whose columns are counts
+    divide it back down per learner at the point of rendering (see `avg`).
+    """
     for name, phases in list(table.items()):
         yield name, phases["pre"], phases["post"], False
     all_rows = totals(table)
-    yield "All", all_rows["pre"], all_rows["post"], True
+    yield ALL_LABEL, all_rows["pre"], all_rows["post"], True
+
+
+#: Label for the summary row. Tables whose count columns are averaged say so —
+#: a mean of 4.7 questions under a heading that reads like a total is a trap.
+ALL_LABEL = "All"
+ALL_AVG_LABEL = "ALL avg"
+
+
+def avg(value: int, n: int, signed: bool = False) -> str:
+    """
+    A summary-row count as a per-learner mean. `n` is the cohort size.
+
+    Rounded half-up like every other figure here — Python's default rounds .5
+    to even, which would report two neighbouring means inconsistently.
+    """
+    if n == 0:
+        return ""
+    mean = round_half_up(value / n)
+    return f"{mean:+.1f}" if signed else f"{mean:.1f}"
 
 
 def combined_table1(table: "OrderedDict") -> TableSpec:
+    n = len(table)
     rows = [
         [
-            name,
-            pre.twos, pre.threes, pre.contextual,
-            post.twos, post.threes, post.contextual,
-            f"{post.contextual - pre.contextual:+d}",
+            ALL_AVG_LABEL if is_all else name,
+            *(
+                # Summing counts across learners answers "how many did the cohort
+                # ask", which says as much about cohort size as about the tour.
+                # The per-learner mean is the comparable figure.
+                [
+                    avg(pre.twos, n), avg(pre.threes, n), avg(pre.contextual, n),
+                    avg(post.twos, n), avg(post.threes, n), avg(post.contextual, n),
+                    avg(post.contextual - pre.contextual, n, signed=True),
+                ]
+                if is_all else
+                [
+                    pre.twos, pre.threes, pre.contextual,
+                    post.twos, post.threes, post.contextual,
+                    f"{post.contextual - pre.contextual:+d}",
+                ]
+            ),
         ]
-        for name, pre, post, _ in _combined_rows(table)
+        for name, pre, post, is_all in _combined_rows(table)
     ]
     return TableSpec(
         row_header="Learner",
@@ -388,6 +428,7 @@ def combined_table1(table: "OrderedDict") -> TableSpec:
 
 
 def combined_table2(table: "OrderedDict") -> TableSpec:
+    n = len(table)
     rows = []
     for name, pre, post, is_all in _combined_rows(table):
         net = net_pct(pre, post)
@@ -397,12 +438,19 @@ def combined_table2(table: "OrderedDict") -> TableSpec:
             equivalent = per_learner_threes(table, pre, post)
             if net and equivalent is not None:
                 net = f"{net}\n({equivalent:+.1f} more 3s per learner)"
+        # Score is a count, so the summary row averages it. The %3s columns are
+        # already rates over the pooled questions and are left as they are.
+        scores = (
+            [avg(pre.score, n), avg(post.score, n), avg(post.score - pre.score, n, signed=True)]
+            if is_all else
+            [pre.score, post.score, f"{post.score - pre.score:+d}"]
+        )
         rows.append(
             [
-                name,
-                pre.score, fmt_pct_display(pre.pct_threes),
-                post.score, fmt_pct_display(post.pct_threes),
-                f"{post.score - pre.score:+d}",
+                ALL_AVG_LABEL if is_all else name,
+                scores[0], fmt_pct_display(pre.pct_threes),
+                scores[1], fmt_pct_display(post.pct_threes),
+                scores[2],
                 net,
             ]
         )
