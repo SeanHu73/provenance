@@ -129,10 +129,28 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
 
   return (
     <div className="animate-fade-in space-y-5">
-      <h2 className="font-display font-bold leading-tight" style={{ fontSize: 30, color: 'var(--th-primary)' }}>
-        Hear from the Community
+      {/* Two-tone title, centred, with the subject on its own line. */}
+      <h2
+        className="text-center"
+        style={{
+          fontFamily: 'var(--ds-h2-family)',
+          fontSize: 'var(--ds-h2-size)',
+          lineHeight: 'var(--ds-h2-line)',
+          fontWeight: 'var(--ds-h2-weight)',
+        }}
+      >
+        <span className="block" style={{ color: 'var(--ds-ink)' }}>Hear from the</span>
+        <span className="block" style={{ color: 'var(--ds-cardinal)' }}>Community</span>
       </h2>
-      <p className="text-[15px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+      <p
+        className="text-center"
+        style={{
+          fontFamily: 'var(--ds-body-l-family)',
+          fontSize: 'var(--ds-body-l-size)',
+          lineHeight: 'var(--ds-body-l-line)',
+          color: 'var(--ds-ink-soft)',
+        }}
+      >
         What others took away from this part of the tour.
       </p>
 
@@ -162,15 +180,42 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
         <p className="text-center text-[13px] font-semibold" style={{ color: 'var(--th-primary)' }}>✓ Your response is shared with the community</p>
       )}
 
+      {/* Continue leads on the left as the filled pill; sharing sits beside it as
+          the outlined one — the order the mockup puts them in. */}
       <div className="flex gap-2 pt-1">
+        <button
+          onClick={handleContinue}
+          className="flex-1 flex items-center justify-center text-white"
+          style={{
+            minHeight: 'var(--ds-btn-s-height)',
+            paddingInline: 12,
+            borderRadius: 'var(--ds-radius-pill)',
+            backgroundColor: 'var(--ds-cardinal)',
+            fontFamily: 'var(--ds-button-s-family)',
+            fontSize: 'var(--ds-button-s-size)',
+            fontWeight: 'var(--ds-button-s-weight)',
+          }}
+        >
+          {isLastAct ? lastActLabel : 'Continue Tour'}
+        </button>
         {reflection && !shared && (
-          <button onClick={openShareSheet} className="flex-1 py-3 rounded-lg text-base font-semibold border-2" style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
+          <button
+            onClick={openShareSheet}
+            className="flex-1 flex items-center justify-center"
+            style={{
+              minHeight: 'var(--ds-btn-s-height)',
+              paddingInline: 12,
+              borderRadius: 'var(--ds-radius-pill)',
+              border: 'var(--ds-btn-border-width) solid var(--ds-cardinal)',
+              color: 'var(--ds-cardinal)',
+              fontFamily: 'var(--ds-button-s-family)',
+              fontSize: 'var(--ds-button-s-size)',
+              fontWeight: 'var(--ds-button-s-weight)',
+            }}
+          >
             Share your thoughts
           </button>
         )}
-        <button onClick={handleContinue} className="flex-1 py-3 rounded-lg text-base font-semibold bg-accent-dark text-white">
-          {isLastAct ? lastActLabel : 'Continue Tour'}
-        </button>
       </div>
 
       {askShare && (
@@ -195,21 +240,51 @@ function ShareCard({ share, tourId, sessionId, upvoted, count, onUpvote }: {
 }) {
   const [open, setOpen] = useState(false);
   const [comments, setComments] = useState<CommunityComment[]>([]);
-  const [loaded, setLoaded] = useState(false);
 
-  const expand = async () => {
-    const next = !open;
-    setOpen(next);
-    if (next && !loaded) {
-      setComments(await getComments(share.id));
-      setLoaded(true);
-    }
-  };
+  // The count shows on collapsed cards now, so the thread is fetched when the
+  // card mounts rather than when it is opened — "1 Comment" is the thing that
+  // invites the tap, and it cannot say that without having looked.
+  useEffect(() => {
+    let alive = true;
+    getComments(share.id).then((c) => { if (alive) setComments(c); }).catch(() => { /* count just stays 0 */ });
+    return () => { alive = false; };
+  }, [share.id]);
+
+  const expand = () => setOpen((v) => !v);
 
   return (
-    <div className="rounded-xl p-3.5" style={{ backgroundColor: 'var(--th-surface-alt)' }}>
-      {share.name && <p className="text-[13px] font-semibold mb-1" style={{ color: 'var(--th-primary)' }}>{share.name}</p>}
-      <p className="text-[16px] leading-relaxed" style={{ color: 'var(--text-primary)' }}>{share.text}</p>
+    <div
+      className="p-4"
+      style={{
+        backgroundColor: 'var(--ds-white)',
+        borderRadius: 'var(--ds-radius-card)',
+        boxShadow: 'var(--ds-shadow-sm)',
+      }}
+    >
+      {share.name && (
+        <p
+          className="mb-2"
+          style={{
+            fontFamily: 'var(--ds-title-s-family)',
+            fontSize: 'var(--ds-title-s-size)',
+            lineHeight: 'var(--ds-title-s-line)',
+            fontWeight: 'var(--ds-title-s-weight)',
+            color: 'var(--ds-cardinal)',
+          }}
+        >
+          {share.name}
+        </p>
+      )}
+      <p
+        style={{
+          fontFamily: 'var(--ds-body-l-family)',
+          fontSize: 'var(--ds-body-l-size)',
+          lineHeight: 'var(--ds-body-l-line)',
+          color: 'var(--ds-ink)',
+        }}
+      >
+        {share.text}
+      </p>
 
       {share.photos && share.photos.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2">
@@ -227,19 +302,34 @@ function ShareCard({ share, tourId, sessionId, upvoted, count, onUpvote }: {
         </div>
       )}
 
-      {/* Footer: upvote + comments toggle */}
-      <div className="flex items-center gap-4 mt-3 text-[13px]">
-        <button onClick={onUpvote} className="flex items-center gap-1.5 font-semibold" style={{ color: upvoted ? 'var(--th-primary)' : 'var(--text-secondary)' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill={upvoted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15" /></svg>
-          {count}
+      {/* Footer: the comment count opens the thread; the upvote sits beside it. */}
+      <div className="flex items-center gap-4 mt-3">
+        <button
+          onClick={expand}
+          aria-expanded={open}
+          className="flex items-center gap-2"
+          style={{ fontFamily: 'var(--ds-body-family)', fontSize: 'var(--ds-body-size)' }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ds-cardinal)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z" />
+          </svg>
+          <span style={{ color: 'var(--ds-cardinal)', fontWeight: 700 }}>{comments.length}</span>
+          <span style={{ color: 'var(--ds-grey)' }}>{open ? 'Hide' : 'Comment'}</span>
         </button>
-        <button onClick={expand} className="font-semibold" style={{ color: 'var(--text-secondary)' }}>
-          {open ? 'Hide comments' : 'Comment'}
+        <button
+          onClick={onUpvote}
+          aria-pressed={upvoted}
+          aria-label="Upvote"
+          className="flex items-center gap-1.5"
+          style={{ fontFamily: 'var(--ds-body-family)', fontSize: 'var(--ds-body-size)', fontWeight: 700, color: upvoted ? 'var(--ds-cardinal)' : 'var(--ds-grey)' }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill={upvoted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><polyline points="18 15 12 9 6 15" /></svg>
+          {count}
         </button>
       </div>
 
       {open && (
-        <div className="mt-3 space-y-2 border-t pt-3" style={{ borderColor: 'var(--th-border)' }}>
+        <div className="mt-3 space-y-2 pt-3 border-t" style={{ borderColor: 'var(--ds-blush)' }}>
           {comments.map((c) => (
             <div key={c.id} className="text-[15px]">
               {c.name && <span className="font-semibold" style={{ color: 'var(--th-primary)' }}>{c.name}: </span>}
@@ -268,22 +358,51 @@ function CommentComposer({ onSubmit }: { onSubmit: (text: string, name?: string)
   const canSubmit = !!text.trim() && (!needName || !!name.trim()) && !busy;
 
   return (
+    /* Stacked and full width, per the mockup: name, then the comment, then Post
+       as an outlined pill of its own — not a small button crowded beside the
+       field it submits. */
     <div className="space-y-2 pt-1">
       {needName && (
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name"
-          className="w-full px-3 py-2 rounded-lg text-[15px] font-serif border-2 border-sandstone-light bg-white focus:outline-none" />
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Your name"
+          className="ds-textarea px-4 py-3"
+          style={{
+            fontFamily: 'var(--ds-body-l-family)',
+            fontSize: 'var(--ds-body-l-size)',
+            borderColor: 'var(--ds-grey-light)',
+          }}
+        />
       )}
-      <div className="flex gap-2">
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Add a comment…"
-          className="flex-1 px-3 py-2 rounded-lg text-[15px] font-serif border-2 border-sandstone-light bg-white focus:outline-none" />
-        <button
-          onClick={async () => { if (!canSubmit) return; setBusy(true); await onSubmit(text.trim(), name.trim() || undefined); setText(''); setBusy(false); }}
-          disabled={!canSubmit}
-          className="px-4 rounded-lg text-sm font-semibold bg-aged-gold text-white disabled:opacity-40"
-        >
-          Post
-        </button>
-      </div>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={3}
+        placeholder="Add a comment…"
+        className="ds-textarea px-4 py-3"
+        style={{
+          fontFamily: 'var(--ds-body-l-family)',
+          fontSize: 'var(--ds-body-l-size)',
+          borderColor: 'var(--ds-grey-light)',
+        }}
+      />
+      <button
+        onClick={async () => { if (!canSubmit) return; setBusy(true); await onSubmit(text.trim(), name.trim() || undefined); setText(''); setBusy(false); }}
+        disabled={!canSubmit}
+        className="w-full flex items-center justify-center disabled:opacity-40"
+        style={{
+          minHeight: 'var(--ds-btn-s-height)',
+          borderRadius: 'var(--ds-radius-pill)',
+          border: 'var(--ds-btn-border-width) solid var(--ds-cardinal)',
+          color: 'var(--ds-cardinal)',
+          fontFamily: 'var(--ds-button-s-family)',
+          fontSize: 'var(--ds-button-s-size)',
+          fontWeight: 'var(--ds-button-s-weight)',
+        }}
+      >
+        {busy ? 'Posting…' : 'Post'}
+      </button>
     </div>
   );
 }

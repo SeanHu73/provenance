@@ -48,10 +48,11 @@ export default function TourFooter({ tour, session, pointAtQuestion = false }: P
   const showInquiries = !isContext;
   // Context-Prototype: the footer carries the current Act and nothing else, since
   // the Context Journal is reached through the tour's own Contextualise phase.
-  // The one exception is the reflection page, where looking back at what they
-  // explored is the point — there it returns as a labelled button. Other tour
-  // modes keep the button throughout.
-  const journalProminent = isContext && session.currentPhase === 'act_reflection';
+  // The exception is the reflection pair — writing a response and then reading
+  // the community's — where looking back at what they explored is the point.
+  // There it returns as a labelled button. Other tour modes keep it throughout.
+  const journalProminent = isContext
+    && (session.currentPhase === 'act_reflection' || session.currentPhase === 'community_share');
   const showJournalButton = !isContext || journalProminent;
   const journalLabelled = true;
   let actNumLabel: string | null = null;
