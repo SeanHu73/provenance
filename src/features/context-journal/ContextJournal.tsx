@@ -28,7 +28,8 @@ import PastPanel from './components/PastPanel';
 import PastPanelMagnifier from './components/PastPanelMagnifier';
 import PastPanelSlider from './components/PastPanelSlider';
 import { useLensVariant } from './lens-variant';
-import { PhaseBars, StopsHandle } from '@/components/tour/PhaseHeader';
+import JourneyBar, { BarButton } from './components/JourneyBar';
+import { ChevronLeftIcon, CloseIcon, MenuIcon } from '@/components/icons';
 import ContextOverlay from './components/ContextOverlay';
 import AddContextFlow from './components/AddContextFlow';
 import ContextAskFlow from './components/ContextAskFlow';
@@ -111,9 +112,12 @@ interface Props {
     originalQuestion?: string;
     status: 'answered' | 'banked';
   }) => void;
-  /** In-tour: shows the Explore→Contextualise→Reflect phase bars in the header
-   *  (Contextualise active), with EXPLORE opening the stops list. */
+  /** Progress count ("2 of 5"). Still accepted from the tour, but the redesigned
+   *  journey bar shows the phase breadcrumb rather than a count, so it is
+   *  currently unused here. */
   exploreLabel?: string;
+  /** In-tour: shows the Explore→Contextualise→Reflect breadcrumb in the journey
+   *  bar (Contextualise active), with "Open journey" opening the stops list. */
   onOpenStops?: () => void;
   /** In-tour back — steps the tour back a phase (shown as a header arrow). */
   onBack?: () => void;
@@ -122,7 +126,7 @@ interface Props {
   alreadyAsked?: boolean;
 }
 
-export default function ContextJournal({ tourId, actId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false, requireAskToContinue = false, onContextQuestion, exploreLabel, onOpenStops, onBack, alreadyAsked = false }: Props) {
+export default function ContextJournal({ tourId, actId, authored, inTour, revisit, onExit, continueLabel = 'Continue tour', responses = [], guidingQuestion, viewedContextIds = [], onContextViewed, priorStopTitles = [], askFirst = false, requireAskToContinue = false, onContextQuestion, onOpenStops, onBack, alreadyAsked = false }: Props) {
   const scopeId = tourId ?? DEFAULT_PLACE_ID;
   // Dev Jump (admin, off by default) unlocks this screen's three gates — ask-first,
   // continue, and the shared-contexts pool. They are the pedagogy, not plumbing, so
@@ -439,43 +443,43 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
 
   return (
     <div className="flex flex-col" style={{ height: '100dvh', backgroundColor: 'var(--th-bg)' }}>
-      {/* top bar */}
-      <header className="relative shrink-0 flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: 'var(--th-primary)' }}>
-        {revisit ? (
-          // Revisit overlay: a plain close button returns to the tour.
-          <button onClick={onExit} aria-label="Close" className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15 text-2xl leading-none">
-            &times;
-          </button>
-        ) : inTour && onBack ? (
-          // In-tour: step the tour back a phase (returning is safe — gates are
-          // seeded from a persisted signal so they don't re-lock).
-          <button onClick={onBack} aria-label="Go back" className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-          </button>
-        ) : inTour ? (
-          <span className="w-9 h-9" aria-hidden />
-        ) : (
-          <Link href="/" aria-label="Back" className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white hover:bg-white/15">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </Link>
-        )}
-        {onOpenStops && !revisit ? (
-          <PhaseBars active="contextualise" exploreLabel={exploreLabel} activeSub="the P.A.S.T." onOpen={onOpenStops} tone="dark" className="flex-1" />
-        ) : (
-          <h1 className="flex-1 font-display text-xl text-warm-white">Context Journal</h1>
-        )}
-        <button
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label="Menu" aria-expanded={menuOpen}
-          className="w-9 h-9 rounded-full flex items-center justify-center text-warm-white bg-white/20 hover:bg-white/30 border border-white/40"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-            <path d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-        {menuOpen && (
+      {/* top bar — the redesign's black journey bar (style guide: Navigation) */}
+      <JourneyBar
+        active="contextualise"
+        onOpenJourney={onOpenStops && !revisit ? onOpenStops : undefined}
+        leading={
+          revisit ? (
+            // Revisit overlay: a plain close button returns to the tour.
+            <BarButton label="Close" onClick={onExit}>
+              <CloseIcon width={18} height={18} />
+            </BarButton>
+          ) : inTour && onBack ? (
+            // In-tour: step the tour back a phase (returning is safe — gates are
+            // seeded from a persisted signal so they don't re-lock).
+            <BarButton label="Go back" onClick={onBack}>
+              <ChevronLeftIcon width={18} height={18} />
+            </BarButton>
+          ) : inTour ? undefined : (
+            <Link
+              href="/"
+              aria-label="Back"
+              className="shrink-0 flex items-center justify-center rounded-full text-white"
+              style={{
+                width: 'var(--ds-nav-button-size)',
+                height: 'var(--ds-nav-button-size)',
+                backgroundColor: 'var(--ds-nav-button-bg)',
+              }}
+            >
+              <ChevronLeftIcon width={18} height={18} />
+            </Link>
+          )
+        }
+        menu={
+          <>
+            <BarButton label="Menu" expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)}>
+              <MenuIcon width={18} height={18} />
+            </BarButton>
+            {menuOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
             <div className="absolute right-3 top-full mt-1 z-50 w-72 max-h-[70vh] overflow-y-auto rounded-2xl shadow-xl bg-warm-white border" style={{ borderColor: 'var(--th-border)' }}>
@@ -559,13 +563,10 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
               )}
             </div>
           </>
-        )}
-      </header>
-      {onOpenStops && !revisit && (
-        <div className="shrink-0 flex justify-center" style={{ backgroundColor: 'var(--th-primary)', borderBottom: '3px solid #241f1b' }}>
-          <StopsHandle onClick={onOpenStops} tone="dark" />
-        </div>
-      )}
+            )}
+          </>
+        }
+      />
 
       {/* 1 — collapsible map + timeline (collapsed by default) — hidden for now */}
       {SHOW_MAP_TIMELINE && (
@@ -725,8 +726,19 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
                 <button
                   onClick={onExit}
                   disabled={!canContinue}
-                  className="w-full py-3.5 rounded-2xl text-base font-semibold text-warm-white disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: 'var(--th-primary)' }}
+                  className="w-full flex items-center justify-center text-white disabled:cursor-not-allowed"
+                  style={{
+                    height: 'var(--ds-btn-height)',
+                    paddingInline: 'var(--ds-btn-padding-x)',
+                    borderRadius: 'var(--ds-radius-pill)',
+                    backgroundColor: 'var(--ds-cardinal)',
+                    fontFamily: 'var(--ds-button-family)',
+                    fontSize: 'var(--ds-button-size)',
+                    lineHeight: 'var(--ds-button-line)',
+                    fontWeight: 'var(--ds-button-weight)',
+                    // the guide's disabled state is the whole button dimmed
+                    opacity: canContinue ? 1 : 'var(--ds-btn-disabled-opacity)',
+                  }}
                 >
                   {continueLabel}
                 </button>

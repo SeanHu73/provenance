@@ -24,6 +24,7 @@ import { LENSES, overlapsRange, thumbnailPhotoUrl, type LensDef } from '../const
 import type { ContextEntry, PastCategory, TimeRange } from '../types';
 import BookmarkButton from './BookmarkButton';
 import PastLensCard from './PastLensCard';
+import { ChevronRightIcon, LockIcon } from '@/components/icons';
 
 function haptic(ms = 8) {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(ms);
@@ -195,11 +196,21 @@ export default function PastPanelSlider({
 
   return (
     <div className="px-4 pb-5">
-      {/* Top: a "Contextualise…" kicker over the guiding theme, centred. */}
+      {/* Top: the guiding theme, centred. The old "Contextualise…" kicker is gone
+          — the journey bar above already names the phase. */}
       {guidingQuestion && (
         <div className="px-1 pt-5 pb-1 text-center">
-          <p className="font-serif italic text-[14px] leading-none" style={{ color: 'var(--text-secondary)' }}>Contextualise&hellip;</p>
-          <p className="mt-1 font-display font-bold text-[22px] leading-tight" style={{ color: 'var(--th-primary)' }}>{guidingQuestion}</p>
+          <p
+            style={{
+              fontFamily: 'var(--ds-h2-family)',
+              fontSize: 'var(--ds-h2-size)',
+              lineHeight: 'var(--ds-h2-line)',
+              fontWeight: 'var(--ds-h2-weight)',
+              color: 'var(--ds-ink)',
+            }}
+          >
+            {guidingQuestion}
+          </p>
         </div>
       )}
 
@@ -301,45 +312,119 @@ function LensSlide({ lens, questions, added, savedIds, focusedId, lockInfoById, 
     ...questions.filter((q) => lockInfoById?.has(q.id)),
   ];
   return (
-    <div className="rounded-3xl bg-warm-white px-5 py-5" style={{ border: '1px solid var(--th-border)', boxShadow: '0 6px 24px rgba(26,20,14,0.10)' }}>
-      {/* lens identity — the name in its lens colour, an (i) to open the full lens
-          page, and the sub-topics beneath. */}
-      <div className="flex items-center gap-1.5">
-        <h3 className="font-display font-bold leading-none" style={{ fontSize: 26, color: colour }}>{lens.label}</h3>
-        <button onClick={onOpenCard} aria-label={`See ${lens.label} details`} className="shrink-0 flex items-center justify-center" style={{ color: colour }}>
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><circle cx="12" cy="7.6" r="0.6" fill="currentColor" /></svg>
-        </button>
-      </div>
-      <p className="mt-1.5 text-[13px] leading-snug text-text-secondary">{lens.categories.join('   |   ')}</p>
-
-      {/* the prompt + ask-your-own — the primary action on the card, centred, with
-          a soft halo so it reads as the focal point. */}
-      <h2 className="mt-5 text-center font-display font-bold leading-tight text-text-primary" style={{ fontSize: 'clamp(24px, 6.8vw, 30px)' }}>
-        What are you curious about?
-      </h2>
-      {onAsk && (
-        <button
-          onClick={onAsk}
-          className="mt-4 w-full flex items-center gap-3 rounded-full bg-warm-white px-4 py-3.5 text-left"
+    <div
+      className="px-4 py-5"
+      style={{
+        backgroundColor: 'var(--ds-white)',
+        borderRadius: 'var(--ds-radius-card)',
+        boxShadow: 'var(--ds-shadow-md)',
+      }}
+    >
+      {/* lens identity — the name in its lens colour with an (i) badge opening the
+          full lens page, and the sub-topics beneath. Centred, per the redesign. */}
+      <div className="flex items-center justify-center gap-2">
+        <h3
+          className="leading-none"
           style={{
-            border: '1.5px solid var(--th-primary)',
-            boxShadow: '0 0 0 5px color-mix(in srgb, var(--th-primary) 9%, transparent), 0 4px 16px color-mix(in srgb, var(--th-primary) 16%, transparent)',
+            fontFamily: 'var(--ds-h2-family)',
+            fontSize: 'var(--ds-h2-size)',
+            fontWeight: 'var(--ds-h2-weight)',
+            color: colour,
           }}
         >
-          <span className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-warm-white" style={{ backgroundColor: 'var(--th-primary)' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.4-3 4" /><line x1="12" y1="17.5" x2="12.01" y2="17.5" />
-            </svg>
-          </span>
-          <span className="flex-1 font-semibold text-[18.5px]" style={{ color: 'var(--text-primary)' }}>Ask your own question</span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" style={{ color: 'var(--th-primary)' }}><path d="M9 6l6 6-6 6" /></svg>
+          {lens.label}
+        </h3>
+        <button
+          onClick={onOpenCard}
+          aria-label={`See ${lens.label} details`}
+          className="shrink-0 flex items-center justify-center rounded-md text-white"
+          style={{ width: 20, height: 20, backgroundColor: colour }}
+        >
+          <span style={{ fontFamily: 'var(--ds-font-sans)', fontSize: 12, fontWeight: 900, lineHeight: 1 }}>i</span>
         </button>
-      )}
+      </div>
+      <p
+        className="mt-1.5 text-center"
+        style={{
+          fontFamily: 'var(--ds-body-family)',
+          fontSize: 'var(--ds-body-size)',
+          lineHeight: 'var(--ds-body-line)',
+          color: 'var(--ds-ink-soft)',
+        }}
+      >
+        {lens.categories.join(' | ')}
+      </p>
 
-      {/* model questions (locked last) */}
+      {/* the ask card — the prompt and the ask-your-own pill nested in their own
+          panel, so the primary action reads as one block. */}
+      <div
+        className="mt-4 px-4 py-5"
+        style={{
+          backgroundColor: 'var(--ds-white)',
+          border: '1px solid var(--ds-blush)',
+          borderRadius: 'var(--ds-radius-card)',
+        }}
+      >
+        <h2
+          className="text-center"
+          style={{
+            fontFamily: 'var(--ds-h1-family)',
+            fontSize: 'var(--ds-h1-size)',
+            lineHeight: 'var(--ds-h1-line)',
+            fontWeight: 'var(--ds-h1-weight)',
+            fontStyle: 'var(--ds-h1-style)',
+            color: 'var(--ds-ink)',
+          }}
+        >
+          What are you curious about?
+        </h2>
+        {onAsk && (
+          <button
+            onClick={onAsk}
+            className="mt-4 w-full flex items-center gap-3 rounded-full px-3 py-2.5 text-left"
+            style={{
+              backgroundColor: 'var(--ds-white)',
+              border: 'var(--ds-input-focus-border)',
+              boxShadow: 'var(--ds-shadow-glow)',
+            }}
+          >
+            <span
+              className="shrink-0 rounded-full flex items-center justify-center text-white"
+              style={{ width: 34, height: 34, backgroundColor: 'var(--ds-cardinal)' }}
+            >
+              <span style={{ fontFamily: 'var(--ds-font-sans)', fontSize: 17, fontWeight: 900, lineHeight: 1 }}>?</span>
+            </span>
+            <span
+              className="flex-1"
+              style={{
+                fontFamily: 'var(--ds-body-l-family)',
+                fontSize: 'var(--ds-body-l-size)',
+                lineHeight: 'var(--ds-body-l-line)',
+                color: 'var(--ds-ink)',
+              }}
+            >
+              Ask your own question
+            </span>
+          </button>
+        )}
+      </div>
+
+      {/* model questions (locked last). The label sits out here rather than in the
+          ask card because it belongs to this list, and reads left-aligned. */}
       {orderedQuestions.length > 0 && (
         <div className="mt-4 space-y-2.5">
-          <p className="text-[12px] font-semibold text-text-secondary">Explore questions others have asked</p>
+          <p
+            className="text-left"
+            style={{
+              fontFamily: 'var(--ds-title-family)',
+              fontSize: 'var(--ds-title-size)',
+              lineHeight: 'var(--ds-title-line)',
+              fontWeight: 'var(--ds-title-weight)',
+              color: 'var(--ds-ink)',
+            }}
+          >
+            Explore what others asked:
+          </p>
           {orderedQuestions.map((entry) => (
             <QuestionRow key={entry.id} entry={entry} colour={colour} lock={lockInfoById?.get(entry.id) ?? null} onTap={() => onOpenFull(entry)} />
           ))}
@@ -347,7 +432,9 @@ function LensSlide({ lens, questions, added, savedIds, focusedId, lockInfoById, 
       )}
 
       {orderedQuestions.length === 0 && added.length === 0 && !onAsk && (
-        <p className="mt-4 text-sm text-text-muted">No context here yet.</p>
+        <p className="mt-4" style={{ fontFamily: 'var(--ds-body-family)', fontSize: 'var(--ds-body-size)', color: 'var(--ds-grey)' }}>
+          No context here yet.
+        </p>
       )}
 
       {added.length > 0 && (
@@ -392,15 +479,28 @@ function QuestionRow({ entry, colour, lock, onTap }: {
         <button
           onClick={() => { haptic(6); setShowHint((v) => !v); }}
           aria-expanded={showHint}
-          className="w-full flex items-center gap-3.5 text-left rounded-2xl px-3.5 py-3.5"
-          style={{ backgroundColor: 'var(--th-surface-alt)', opacity: 0.75 }}
+          className="w-full flex items-center gap-3.5 text-left px-3 py-3"
+          style={{
+            backgroundColor: 'var(--ds-blush)',
+            borderRadius: 'var(--ds-radius-card)',
+            borderLeft: `4px solid ${colour}`,
+            opacity: 0.75,
+          }}
         >
-          <span className="shrink-0 w-16 h-16 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--th-border)' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted">
-              <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
+          <span className="shrink-0 w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--ds-white)' }}>
+            <LockIcon width={22} height={22} style={{ color: 'var(--ds-cardinal)' }} />
           </span>
-          <span className="flex-1 min-w-0 font-serif text-[16.5px] text-text-muted leading-snug">{label}</span>
+          <span
+            className="flex-1 min-w-0"
+            style={{
+              fontFamily: 'var(--ds-body-l-family)',
+              fontSize: 'var(--ds-body-l-size)',
+              lineHeight: 'var(--ds-body-l-line)',
+              color: 'var(--ds-grey)',
+            }}
+          >
+            {label}
+          </span>
         </button>
         <AnimatePresence initial={false}>
           {showHint && (
@@ -427,8 +527,13 @@ function QuestionRow({ entry, colour, lock, onTap }: {
   return (
     <button
       onClick={onTap}
-      className="w-full flex items-center gap-3.5 text-left rounded-2xl px-3.5 py-3.5"
-      style={{ backgroundColor: 'var(--th-surface-alt)' }}
+      className="w-full flex items-center gap-3.5 text-left px-3 py-3"
+      style={{
+        backgroundColor: 'var(--ds-blush)',
+        borderRadius: 'var(--ds-radius-card)',
+        // the lens-coloured spine down the left edge, per the redesign
+        borderLeft: `4px solid ${colour}`,
+      }}
     >
       {photo ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -440,10 +545,18 @@ function QuestionRow({ entry, colour, lock, onTap }: {
           </svg>
         </span>
       )}
-      <span className="flex-1 min-w-0 font-serif text-[17px] leading-snug text-text-primary">{label}</span>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-        <path d="M9 6l6 6-6 6" />
-      </svg>
+      <span
+        className="flex-1 min-w-0"
+        style={{
+          fontFamily: 'var(--ds-body-l-family)',
+          fontSize: 'var(--ds-body-l-size)',
+          lineHeight: 'var(--ds-body-l-line)',
+          color: 'var(--ds-ink)',
+        }}
+      >
+        {label}
+      </span>
+      <ChevronRightIcon width={20} height={20} className="shrink-0" style={{ color: colour }} />
     </button>
   );
 }

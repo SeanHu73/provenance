@@ -177,12 +177,15 @@
   --ds-nav-bg: var(--ds-ink);
   --ds-nav-button-size: 44px;
   --ds-nav-button-bg: rgba(255, 255, 255, 0.1);
-  --ds-nav-divider: rgba(255, 255, 255, 0.6);
+  /* Divider under the breadcrumb row, inset to the two button edges. */
+  --ds-nav-divider: rgba(255, 255, 255, 0.2);
+  --ds-nav-inset: 16px;
 
-  /* Breadcrumb states, from the Progress board. */
+  /* Breadcrumb states. The board draws upcoming steps as white at 60%
+     rather than a flat grey, which holds up better on the black bar. */
   --ds-step-done: var(--ds-white);
   --ds-step-current: var(--ds-amber);
-  --ds-step-upcoming: var(--ds-grey);
+  --ds-step-upcoming: rgba(255, 255, 255, 0.6);
 
   /* ---- Layout --------------------------------------------------
      Frame is 390x844 (iPhone 13/14 logical size). */
