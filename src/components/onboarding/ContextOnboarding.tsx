@@ -490,8 +490,7 @@ function HistoryResponse({ onSubmit }: { onSubmit: () => void }) {
         onChange={(e) => setText(e.target.value)}
         rows={4}
         placeholder="…or type your answer"
-        className="w-full mt-3 px-4 py-3 rounded-2xl border-2 font-serif text-[16px] focus:outline-none"
-        style={{ borderColor: 'var(--th-border)', backgroundColor: 'var(--th-surface)', color: 'var(--th-text)' }}
+        className="ds-textarea mt-3 px-4 py-3 font-serif text-[16px]"
       />
       <button
         onClick={submit}

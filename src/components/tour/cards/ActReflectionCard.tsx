@@ -20,6 +20,7 @@ import { uploadSharePhoto, recordUnsharedResponse } from '@/lib/community-store'
 import { subscribeGuestContexts } from '@/features/context-journal/guest-contexts';
 import FormattedText from './FormattedText';
 import RecordButton from './RecordButton';
+import { ChevronLeftIcon } from '@/components/icons';
 
 const CUSTOM_PROMPT = 'What piqued your interest? What else would you want to share?';
 
@@ -148,17 +149,50 @@ export default function ActReflectionCard({ onComplete }: Props) {
             transition={{ duration: 0.35, ease: 'easeOut' }}
             style={{ transformOrigin: 'center' }}
           >
-      <button onClick={() => setSelected(null)} className="mb-3 inline-flex items-center gap-1 text-sm font-semibold" style={{ color: 'var(--th-primary)' }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M15 18l-6-6 6-6" /></svg>
-        Choose another
-      </button>
+      {/* The whole header is centred on the prompt, per the reflection sequence:
+          the way back, the eyebrow, then the question the learner is answering. */}
+      <div className="flex justify-center">
+        <button
+          onClick={() => setSelected(null)}
+          className="mb-3 inline-flex items-center gap-1"
+          style={{
+            fontFamily: 'var(--ds-body-l-family)',
+            fontSize: 'var(--ds-body-l-size)',
+            color: 'var(--ds-cardinal)',
+          }}
+        >
+          <ChevronLeftIcon width={16} height={16} />
+          Choose another
+        </button>
+      </div>
 
-      <p className="text-[11px] uppercase tracking-[0.16em] font-semibold mb-1" style={{ color: 'var(--th-primary)' }}>Responding to</p>
-      <p className="font-serif leading-relaxed" style={{ fontSize: 21, color: 'var(--text-primary)' }}><FormattedText text={selected.text} /></p>
+      <p
+        className="text-center uppercase mb-2"
+        style={{
+          fontFamily: 'var(--ds-body-s-family)',
+          fontSize: 'var(--ds-body-s-size)',
+          fontWeight: 700,
+          letterSpacing: '0.16em',
+          color: 'var(--ds-cardinal)',
+        }}
+      >
+        Responding to
+      </p>
+      <p
+        className="text-center"
+        style={{
+          fontFamily: 'var(--ds-h2-family)',
+          fontSize: 'var(--ds-h2-size)',
+          lineHeight: 'var(--ds-h2-line)',
+          fontWeight: 'var(--ds-h2-weight)',
+          color: 'var(--ds-ink)',
+        }}
+      >
+        <FormattedText text={selected.text} />
+      </p>
 
       <div className="mt-4">
         <RecordButton
-          size={140}
           halo={!text.trim()}
           onTranscript={(t) => setText((prev) => (prev ? `${prev} ${t}` : t))}
         />
@@ -169,8 +203,7 @@ export default function ActReflectionCard({ onComplete }: Props) {
         onChange={(e) => setText(e.target.value)}
         rows={4}
         placeholder="…or type your response"
-        className="mt-3 w-full px-4 py-3 rounded-xl border-2 bg-white text-[18px] font-serif text-text-primary focus:outline-none"
-        style={{ borderColor: 'var(--th-border)' }}
+        className="ds-textarea mt-3 px-4 py-3 text-[18px] font-serif"
       />
 
       {/* Contexts + photos appear once they've written their response — respond first, then add. */}

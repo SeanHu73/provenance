@@ -16,14 +16,14 @@ import { useEffect, useRef, useState } from 'react';
 
 interface Props {
   onTranscript: (t: string) => void;
-  /** Diameter in px. The reflection screen runs this large; other callers keep
-   *  the original 80 so their layouts are unchanged. */
+  /** Diameter in px. Every screen that offers dictation uses the same size, so
+   *  the control is recognisably the same control wherever it appears. */
   size?: number;
   /** Soft halo behind the disc, to pull the eye before they have answered. */
   halo?: boolean;
 }
 
-export default function RecordButton({ onTranscript, size = 80, halo = false }: Props) {
+export default function RecordButton({ onTranscript, size = 140, halo = false }: Props) {
   const [state, setState] = useState<'idle' | 'recording' | 'transcribing' | 'error'>('idle');
   const recRef = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);

@@ -40,8 +40,7 @@ export default function ThemeQuestionCard({ question, onComplete }: Props) {
         onChange={(e) => setText(e.target.value)}
         rows={4}
         placeholder="…or type your response"
-        className="w-full px-4 py-3 rounded-xl border-2 bg-white text-[18px] font-serif text-text-primary focus:outline-none"
-        style={{ borderColor: 'var(--th-border)' }}
+        className="ds-textarea px-4 py-3 text-[18px] font-serif"
       />
 
       <div className="flex gap-2">

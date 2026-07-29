@@ -323,8 +323,7 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
               onChange={(e) => setText(e.target.value)}
               rows={4}
               placeholder="…or type your question"
-              className="w-full px-4 py-3 rounded-xl border-2 bg-white text-[18px] font-serif text-text-primary focus:outline-none"
-              style={{ borderColor: 'var(--th-border)' }}
+              className="ds-textarea px-4 py-3 text-[18px] font-serif"
             />
             {text.trim() && (
               <button onClick={runCoach} className="w-full py-3.5 rounded-xl text-base font-semibold text-white" style={{ backgroundColor: 'var(--th-primary)' }}>Ask this question</button>
@@ -369,8 +368,7 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={3}
-              className="w-full px-4 py-3 rounded-xl border-2 bg-white text-[17px] font-serif text-text-primary focus:outline-none"
-              style={{ borderColor: 'var(--th-border)' }}
+              className="ds-textarea px-4 py-3 text-[17px] font-serif"
             />
             <div className="flex gap-2">
               <button onClick={() => setPhase('compose')} className="flex-1 py-3 rounded-xl text-[15px] font-semibold border-2" style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>Rewrite it</button>
@@ -408,8 +406,7 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
                   onChange={(e) => setMotivation(e.target.value)}
                   rows={3}
                   placeholder="Something you heard? Something you saw?"
-                  className="w-full px-4 py-3 rounded-xl border-2 bg-white text-[17px] font-serif text-text-primary focus:outline-none"
-                  style={{ borderColor: 'var(--th-border)' }}
+                  className="ds-textarea px-4 py-3 text-[17px] font-serif"
                 />
                 <button onClick={() => setMotivationDone(true)} className="w-full py-3.5 rounded-xl text-base font-semibold text-white" style={{ backgroundColor: 'var(--th-primary)' }}>Submit</button>
                 <button onClick={cancelSearch} className="w-full py-1.5 text-[13px] underline" style={{ color: 'var(--text-secondary)' }}>Cancel</button>

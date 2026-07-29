@@ -267,6 +267,39 @@
 }
 
 /* ============================================================
+   TEXT ENTRY
+   The response boxes the learner types into. At rest they are a
+   plain white card; taking focus brings up the cardinal border and
+   the same red glow the ask control carries, so choosing to type
+   reads as deliberate a choice as choosing to speak.
+
+   The border is present but transparent at rest, so focusing it
+   changes colour rather than thickness and nothing reflows.
+   ============================================================ */
+
+.ds-textarea {
+  width: 100%;
+  background-color: var(--ds-input-bg);
+  color: var(--ds-ink);
+  border: 2px solid transparent;
+  border-radius: var(--ds-radius-card);
+  outline: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.ds-textarea:focus {
+  border-color: var(--ds-cardinal-light);
+  box-shadow: var(--ds-shadow-glow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-textarea {
+    transition: none;
+  }
+}
+
+/* ============================================================
    HALO PULSE
    A slow breath on the ask-your-own control's glow, to draw the
    eye without nagging. Long period and small amplitude on
