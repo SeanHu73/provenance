@@ -45,11 +45,13 @@ export default function TourFooter({ tour, session, pointAtQuestion = false }: P
   // surfaces the current Act's title on the footer bar, next to Journal.
   const isContext = getTourMode(tour) === 'context';
   const showInquiries = !isContext;
-  // On the reflection page the learner often wants to look back at what they
-  // explored — so there the Context Journal button grows a label and takes the
-  // whole footer, instead of sitting as a small icon.
-  const journalProminent = isContext && session.currentPhase === 'act_reflection';
-  const journalLabelled = !isContext || journalProminent;
+  // Context-Prototype: the footer carries the current Act and nothing else. The
+  // Context Journal is reached through the tour's own Contextualise phase, so a
+  // second way in from the footer was redundant — and the reflection page's
+  // full-width "Look back at your Context Journal" bar went with it. Other tour
+  // modes keep the button.
+  const showJournalButton = !isContext;
+  const journalLabelled = true;
   let actNumLabel: string | null = null;
   let actTitleText = '';
   const inActPhase = ['act_intro', 'act_opening', 'act_closing', 'act_questions', 'community_forum', 'stop_map', 'seed', 'notice', 'wonder', 'reveal', 'reflect', 'whats_next', 'branch'].includes(session.currentPhase);
@@ -100,6 +102,8 @@ export default function TourFooter({ tour, session, pointAtQuestion = false }: P
   // sessionStorage (matches the guest-contexts lifecycle).
   const [showJournalTip, setShowJournalTip] = useState(false);
   useEffect(() => {
+    // Nothing to point at in context mode — the footer button is gone there.
+    if (!showJournalButton) return;
     if (session.currentPhase !== 'act_reflection') return;
     const key = `provenance-revisit-tip:${tour.id}`;
     try {
@@ -109,48 +113,50 @@ export default function TourFooter({ tour, session, pointAtQuestion = false }: P
     const raf = requestAnimationFrame(() => setShowJournalTip(true));
     const t = setTimeout(() => setShowJournalTip(false), 9000);
     return () => { cancelAnimationFrame(raf); clearTimeout(t); };
-  }, [session.currentPhase, tour.id]);
+  }, [session.currentPhase, tour.id, showJournalButton]);
 
   const openJournal = () => { if (!journalUnlocked) return; setShowJournalTip(false); setShowJournal(true); };
 
   return (
     <>
       <div
-        className={`shrink-0 px-4 py-3 border-t flex items-center gap-3 ${isContext && !journalProminent ? 'justify-between' : 'justify-center'}`}
+        className={`shrink-0 px-4 py-3 border-t flex items-center gap-3 ${showJournalButton && showInquiries ? 'justify-between' : 'justify-center'}`}
         style={{ backgroundColor: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
       >
-        <div className={`relative shrink-0 ${journalProminent ? 'w-full max-w-md' : ''}`}>
-          <button
-            onClick={openJournal}
-            disabled={!journalUnlocked}
-            aria-label="Context Journal"
-            title={journalUnlocked ? 'Context Journal' : 'Opens once you reach the Context Journal'}
-            className={`relative flex items-center justify-center rounded-xl text-warm-white transition-colors border ${
-              journalUnlocked
-                ? 'bg-white/25 hover:bg-white/35 border-white/50'
-                : 'bg-white/10 border-white/25 opacity-45 cursor-not-allowed'
-            } ${journalLabelled ? `gap-2 px-5 py-3.5 text-base font-semibold${journalProminent ? ' w-full' : ''}` : 'w-11 h-11'}`}
-            style={{ boxShadow: journalUnlocked ? '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' : 'none' }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-            </svg>
-            {journalLabelled && (journalProminent ? 'Look back at your Context Journal' : 'Context Journal')}
-            {/* lock badge until it's unlocked */}
-            {!journalUnlocked && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-warm-white text-journal flex items-center justify-center shadow" aria-hidden>
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                </svg>
-              </span>
-            )}
-          </button>
-          {showJournalTip && <RevisitTip onDismiss={() => setShowJournalTip(false)} />}
-        </div>
+        {showJournalButton && (
+          <div className="relative shrink-0">
+            <button
+              onClick={openJournal}
+              disabled={!journalUnlocked}
+              aria-label="Context Journal"
+              title={journalUnlocked ? 'Context Journal' : 'Opens once you reach the Context Journal'}
+              className={`relative flex items-center justify-center rounded-xl text-warm-white transition-colors border ${
+                journalUnlocked
+                  ? 'bg-white/25 hover:bg-white/35 border-white/50'
+                  : 'bg-white/10 border-white/25 opacity-45 cursor-not-allowed'
+              } ${journalLabelled ? 'gap-2 px-5 py-3.5 text-base font-semibold' : 'w-11 h-11'}`}
+              style={{ boxShadow: journalUnlocked ? '0 3px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)' : 'none' }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+              </svg>
+              Context Journal
+              {/* lock badge until it's unlocked */}
+              {!journalUnlocked && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-warm-white text-journal flex items-center justify-center shadow" aria-hidden>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                  </svg>
+                </span>
+              )}
+            </button>
+            {showJournalTip && <RevisitTip onDismiss={() => setShowJournalTip(false)} />}
+          </div>
+        )}
 
-        {/* Current Act (context mode) — sits next to Journal: number on top,
-            title in italics below, truncated so it always fits. */}
+        {/* Current Act (context mode) — the footer's whole content there: number
+            on top, title in italics below, truncated so it always fits. */}
         {actNumLabel && (
           <div
             className="flex-1 min-w-0 text-center leading-tight"

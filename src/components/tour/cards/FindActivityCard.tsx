@@ -19,9 +19,11 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Stop } from '@/lib/types';
 import ActionTitle from './ActionTitle';
 import FormattedText from './FormattedText';
+import { CheckIcon, CloseIcon, EyeIcon, MapPinIcon } from '@/components/icons';
 
 /** Height cap for each revealed photo. The "Did you find it?" line sits above the
  *  pair and each photo carries a caption below it, so this leaves room for both
@@ -57,28 +59,18 @@ function stripPhotoMarkers(text: string): string {
   return text.replace(/\[photo:\d+\]/gi, '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-/** How long the clue is up before we offer a way out. Long enough that it's a
- *  real attempt to find the spot, short enough that a stuck explorer isn't
- *  stranded. */
-const REVEAL_AFTER_MS = 30000;
-
 export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeekMap }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [shot, setShot] = useState<Shot | null>(null);
   const [revealed, setRevealed] = useState(false);
-  // After a beat, offer "Tap to reveal answer" for anyone who can't get to (or
-  // photograph) the right spot — so a hard-to-find stop never dead-ends the tour.
-  const [canReveal, setCanReveal] = useState(false);
+  // Tapping either photo opens it full-screen — a phone-sized side-by-side is
+  // too small to actually compare details in.
+  const [zoom, setZoom] = useState<{ url: string; alt: string } | null>(null);
   const objectUrl = useRef<string | null>(null);
 
   // The browser holds the file in memory until the object URL is revoked; without
   // this a walk-through of a ten-stop tour leaks ten full-res photos.
   useEffect(() => () => { if (objectUrl.current) URL.revokeObjectURL(objectUrl.current); }, []);
-
-  useEffect(() => {
-    const t = setTimeout(() => setCanReveal(true), REVEAL_AFTER_MS);
-    return () => clearTimeout(t);
-  }, []);
 
   const instructions = stripPhotoMarkers(stop.notice.prompt || '');
   const noticePhoto = (stop.notice.photos || []).find((p) => p.url)
@@ -106,10 +98,10 @@ export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeek
   const sideBySide = shot?.portrait ?? true;
 
   return (
-    <div className="animate-fade-in space-y-6 min-h-full flex flex-col justify-center">
+    <div className="animate-fade-in space-y-4 min-h-full flex flex-col justify-center">
       <div>
-        <ActionTitle action="FIND" />
-        {stop.title && <p className="mt-1 font-serif italic text-text-secondary text-[22px] leading-snug">{stop.title}</p>}
+        <ActionTitle action="FIND" centered />
+        {stop.title && <p className="mt-1 text-center font-serif italic text-text-secondary text-[22px] leading-snug">{stop.title}</p>}
       </div>
 
       {/* The instructions — the notice prompt, and deliberately nothing else.
@@ -117,7 +109,7 @@ export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeek
           eyebrow, so it reads as a task to go and do. Montserrat (see CLUE_FONT)
           so the ask reads friendly and legible. */}
       {instructions && (
-        <div className="py-2 text-center" style={{ fontFamily: CLUE_FONT }}>
+        <div className="py-1 text-center" style={{ fontFamily: CLUE_FONT }}>
           <div className="mx-auto mb-3 h-px w-12" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.5 }} />
           <p
             className="text-[15px] font-semibold uppercase tracking-[0.22em] mb-3"
@@ -128,29 +120,10 @@ export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeek
           {/* Through FormattedText, not raw — prompts are authored with the
               app's markup (**bold**, *italic*, {{#hex}}colour{{/}}), and a plain
               <p> renders the asterisks literally. */}
-          <p className="text-[29px] leading-relaxed text-text-primary whitespace-pre-line max-w-xl mx-auto">
+          <p className="text-[29px] leading-snug text-text-primary whitespace-pre-line max-w-xl mx-auto">
             <FormattedText text={instructions} />
           </p>
           <div className="mx-auto mt-3 h-px w-12" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.5 }} />
-        </div>
-      )}
-
-      {/* Escape hatch — appears above "Find on map" after they've had time to look.
-          Can't find or photograph the spot? This drops them straight to the
-          Background. A full button (not a text link) so it reads as a real option. */}
-      {!revealed && canReveal && (
-        <div className="flex justify-center">
-          <button
-            onClick={revealAnswer}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-[16px] font-semibold shadow-sm active:scale-95 transition-transform animate-fade-in"
-            style={{ fontFamily: CLUE_FONT, color: 'var(--th-primary)', border: '2px solid var(--th-primary)', backgroundColor: 'color-mix(in srgb, var(--th-primary) 8%, transparent)' }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            Tap to reveal answer
-          </button>
         </div>
       )}
 
@@ -165,10 +138,7 @@ export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeek
             style={{ fontFamily: CLUE_FONT, color: 'var(--th-primary)', border: '2px solid var(--th-primary)', backgroundColor: 'color-mix(in srgb, var(--th-primary) 8%, transparent)' }}
             aria-label="Find this stop on the map"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 21s-7-7.5-7-13a7 7 0 0 1 14 0c0 5.5-7 13-7 13z" />
-              <circle cx="12" cy="9" r="2" fill="currentColor" stroke="none" />
-            </svg>
+            <MapPinIcon width={20} height={20} aria-hidden />
             Find on map
           </button>
         </div>
@@ -184,42 +154,45 @@ export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeek
             className="hidden"
             onChange={(e) => onPick(e.target.files?.[0])}
           />
-          {!shot ? (
-            <>
+
+          <p className="text-[18px] text-center font-semibold" style={{ fontFamily: CLUE_FONT, color: 'var(--text-primary)' }}>
+            Found it? Take a photo!
+          </p>
+
+          {/* One control, two states. Tapping it opens the camera; once a shot is
+              taken the *same* button turns green and submits. The old flow put a
+              preview screen with its own Submit in between, which read as a second
+              approval of a photo they had already confirmed in the camera. */}
+          <button
+            onClick={() => (shot ? submit() : inputRef.current?.click())}
+            className={`w-24 h-24 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 ${shot ? 'submit-pulse' : ''}`}
+            style={shot
+              ? { backgroundColor: '#16A34A', color: '#fff' }
+              : { backgroundColor: 'var(--th-surface)', color: 'var(--th-primary)' }}
+            aria-label={shot ? 'Submit your photo' : 'Take a photo of what you found'}
+          >
+            {shot ? (
+              <CheckIcon width={40} height={40} aria-hidden />
+            ) : (
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+            )}
+          </button>
+
+          {/* A compact confirmation of what they shot — tappable to check it full
+              screen, with a retake beside it. Not a gate: the green button above
+              submits whenever they are ready. */}
+          {shot && (
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => inputRef.current?.click()}
-                className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95"
-                style={{ backgroundColor: 'var(--th-primary)', color: '#fff' }}
-                aria-label="Take a photo of what you found"
+                onClick={() => setZoom({ url: shot.url, alt: 'The photo you took' })}
+                className="rounded-lg overflow-hidden bg-black/[0.04] shrink-0"
+                aria-label="View your photo"
               >
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-              </button>
-              <p className="text-[18px] italic text-center" style={{ fontFamily: CLUE_FONT, color: 'var(--text-secondary)' }}>
-                Found it? Take a photo!
-              </p>
-            </>
-          ) : (
-            /* Photo taken → show it here on the camera screen with a single green
-               "Submit" button. Seeing the shot means the button is a clear submit
-               of what they just took, not a blind second approval. Tap to compare. */
-            <>
-              <div className="rounded-xl overflow-hidden bg-black/[0.04]" style={{ maxWidth: '72%' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- object URL, not a served asset */}
-                <img src={shot.url} alt="The photo you took" className="block object-contain" style={{ maxHeight: '32vh', maxWidth: '100%' }} />
-              </div>
-              <button
-                onClick={submit}
-                className="submit-pulse inline-flex items-center gap-2 px-8 py-3.5 rounded-full shadow-lg transition-transform active:scale-95 text-[17px] font-semibold"
-                style={{ backgroundColor: '#16A34A', color: '#fff', fontFamily: CLUE_FONT }}
-                aria-label="Submit your photo"
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
-                Submit
+                <img src={shot.url} alt="The photo you took" className="block object-cover" style={{ width: 56, height: 56 }} />
               </button>
               <button
                 onClick={() => inputRef.current?.click()}
@@ -228,8 +201,20 @@ export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeek
               >
                 Retake
               </button>
-            </>
+            </div>
           )}
+
+          {/* Escape hatch, always available and sitting under the camera. Can't
+              reach or photograph the spot? This drops straight to the Background,
+              so a hard-to-find stop never dead-ends the tour. */}
+          <button
+            onClick={revealAnswer}
+            className="mt-1 inline-flex items-center gap-2 px-6 py-3 rounded-full text-[16px] font-semibold shadow-sm active:scale-95 transition-transform"
+            style={{ fontFamily: CLUE_FONT, color: 'var(--th-primary)', border: '2px solid var(--th-primary)', backgroundColor: 'color-mix(in srgb, var(--th-primary) 8%, transparent)' }}
+          >
+            <EyeIcon width={20} height={20} aria-hidden />
+            Tap to reveal answer
+          </button>
         </div>
       ) : (
         // pb keeps the photo captions clear of the Journal's "keep scrolling"
@@ -248,7 +233,11 @@ export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeek
               clipped. vh is definite, so the image really does fit. */}
           <div className={sideBySide ? 'grid grid-cols-2 gap-2 items-start' : 'flex flex-col gap-2 items-center'}>
             <figure className="min-w-0 flex flex-col items-center">
-              <div className="rounded-xl overflow-hidden bg-black/[0.04]">
+              <button
+                onClick={() => setZoom({ url: shot!.url, alt: 'The photo you took' })}
+                className="rounded-xl overflow-hidden bg-black/[0.04] block"
+                aria-label="View your photo full screen"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element -- object URL, not a served asset */}
                 <img
                   src={shot!.url}
@@ -256,12 +245,16 @@ export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeek
                   className="block object-contain"
                   style={{ maxHeight: PHOTO_CAP, maxWidth: '100%' }}
                 />
-              </div>
+              </button>
               <figcaption className="mt-1 text-[11px] uppercase tracking-wider text-text-secondary text-center">Yours</figcaption>
             </figure>
             {noticePhoto && (
               <figure className="min-w-0 flex flex-col items-center">
-                <div className="rounded-xl overflow-hidden bg-black/[0.04]">
+                <button
+                  onClick={() => setZoom({ url: noticePhoto.url, alt: noticePhoto.caption || 'The stop' })}
+                  className="rounded-xl overflow-hidden bg-black/[0.04] block"
+                  aria-label="View the stop's photo full screen"
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element -- intrinsic-sized; next/image wants fixed dims */}
                   <img
                     src={noticePhoto.url}
@@ -269,13 +262,56 @@ export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeek
                     className="block object-contain"
                     style={{ maxHeight: PHOTO_CAP, maxWidth: '100%' }}
                   />
-                </div>
+                </button>
                 <figcaption className="mt-1 text-[11px] uppercase tracking-wider text-text-secondary text-center">The stop</figcaption>
               </figure>
             )}
           </div>
         </div>
       )}
+
+      {zoom && <PhotoZoom url={zoom.url} alt={zoom.alt} onClose={() => setZoom(null)} />}
     </div>
   );
+}
+
+/**
+ * Full-screen look at one photo. Tapping anywhere (or the close control) shuts
+ * it.
+ *
+ * Portalled to <body> rather than rendered in place: the card sits inside the
+ * Journal's animated scroll container, and a transformed ancestor becomes the
+ * containing block for `position: fixed` — so in place this covered only the
+ * scroll area, leaving the header and footer on top of it.
+ */
+function PhotoZoom({ url, alt, onClose }: { url: string; alt: string; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  if (typeof document === 'undefined') return null;
+
+  return createPortal((
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={alt}
+      onClick={onClose}
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4 animate-fade-in"
+      style={{ backgroundColor: 'rgba(0,0,0,0.92)' }}
+    >
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute top-4 right-4 w-11 h-11 rounded-full flex items-center justify-center text-white"
+        style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
+      >
+        <CloseIcon width={18} height={18} />
+      </button>
+      {/* eslint-disable-next-line @next/next/no-img-element -- object URL / intrinsic-sized */}
+      <img src={url} alt={alt} className="block object-contain" style={{ maxHeight: '90vh', maxWidth: '100%' }} />
+    </div>
+  ), document.body);
 }

@@ -28,7 +28,7 @@ import PastPanel from './components/PastPanel';
 import PastPanelMagnifier from './components/PastPanelMagnifier';
 import PastPanelSlider from './components/PastPanelSlider';
 import { useLensVariant } from './lens-variant';
-import JourneyBar, { BarButton } from './components/JourneyBar';
+import JourneyBar, { BarButton } from '@/components/tour/JourneyBar';
 import { ChevronLeftIcon, CloseIcon, MenuIcon } from '@/components/icons';
 import ContextOverlay from './components/ContextOverlay';
 import AddContextFlow from './components/AddContextFlow';

@@ -12,8 +12,8 @@
  * circular controls at white 10%, a divider at white 20% inset to the controls'
  * outer edges, and breadcrumb steps coloured done / current / upcoming.
  *
- * The tour's own PhaseHeader is unchanged and still drives the rest of the app;
- * this is the journal's bar only.
+ * Shared: the Context Journal renders it directly, and the tour's PhaseHeader
+ * wraps it, so the whole experience carries one bar.
  */
 
 import type { ReactNode } from 'react';
@@ -89,9 +89,10 @@ export default function JourneyBar({ active, leading, menu, onOpenJourney }: Pro
                   className="truncate transition-all duration-200"
                   style={{
                     fontFamily: 'var(--ds-body-s-family)',
-                    // the step they are on is set larger so it carries the row
-                    fontSize: isCurrent ? 'var(--ds-body-l-size)' : 'var(--ds-body-s-size)',
-                    lineHeight: isCurrent ? 'var(--ds-body-l-line)' : 'var(--ds-body-s-line)',
+                    // the step they are on is set well above the rest so it
+                    // carries the row at a glance
+                    fontSize: isCurrent ? 'var(--ds-title-size)' : 'var(--ds-body-s-size)',
+                    lineHeight: isCurrent ? 'var(--ds-title-line)' : 'var(--ds-body-s-line)',
                     // The guide has no 12px bold token, so Body S carries a bold
                     // weight for the steps the learner has reached.
                     fontWeight: isCurrent || isDone ? 700 : 400,

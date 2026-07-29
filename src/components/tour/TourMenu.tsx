@@ -180,7 +180,7 @@ export function AutoPlayMenuItem({ highlight = false }: { highlight?: boolean })
   );
 }
 
-export default function TourMenu({ inline = false }: { inline?: boolean }) {
+export default function TourMenu({ inline = false, onDark = false }: { inline?: boolean; onDark?: boolean }) {
   const [open, setOpen] = useState(false);
   const [hint, clearHint] = useAutoplayHint();
 
@@ -195,10 +195,15 @@ export default function TourMenu({ inline = false }: { inline?: boolean }) {
       <button
         onClick={() => (shown ? close() : setOpen(true))}
         aria-label="Menu" aria-expanded={shown}
-        className={inline
-          ? 'w-9 h-9 rounded-full flex items-center justify-center bg-warm-white hover:bg-black/[0.04] border-2'
-          : 'fixed top-3 right-3 z-[46] w-10 h-10 rounded-full flex items-center justify-center text-warm-white bg-black/35 hover:bg-black/50 backdrop-blur border border-white/30 shadow-lg'}
-        style={inline ? { color: 'var(--text-secondary)', borderColor: 'var(--th-border)' } : undefined}
+        className={onDark
+          ? 'shrink-0 rounded-full flex items-center justify-center border-0 text-white'
+          : inline
+            ? 'w-9 h-9 rounded-full flex items-center justify-center bg-warm-white hover:bg-black/[0.04] border-2'
+            : 'fixed top-3 right-3 z-[46] w-10 h-10 rounded-full flex items-center justify-center text-warm-white bg-black/35 hover:bg-black/50 backdrop-blur border border-white/30 shadow-lg'}
+        style={onDark
+          // matches JourneyBar's BarButton so the two controls on the bar pair up
+          ? { width: 'var(--ds-nav-button-size)', height: 'var(--ds-nav-button-size)', backgroundColor: 'var(--ds-nav-button-bg)' }
+          : inline ? { color: 'var(--text-secondary)', borderColor: 'var(--th-border)' } : undefined}
       >
         {/* three horizontal lines */}
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>

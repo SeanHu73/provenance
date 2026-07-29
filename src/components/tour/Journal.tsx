@@ -248,7 +248,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
           activeSub={activeSub}
           onOpen={() => setStopsOpen(true)}
           onBack={canGoBack ? goBack : undefined}
-          menu={<TourMenu inline />}
+          menu={<TourMenu onDark />}
         />
       )}
       {/* Confirm before the browser/OS back button (or refresh) drops the tour. */}
@@ -303,7 +303,13 @@ export default function Journal({ onMapPeek }: JournalProps) {
               : { x: isBack ? '100%' : '-100%' }
             }
             transition={{ duration: isFade ? 0.4 : 0.12, ease: isFade ? 'easeInOut' : 'easeOut' }}
-            className={`absolute inset-0 overflow-y-auto tour-scroll ${isMergedFindDiscover ? 'snap-y snap-mandatory' : ''}`}
+            // Proximity, not mandatory. A FIND section taller than the viewport
+            // (a long clue, plus the camera and the reveal below it) is the only
+            // snap point until the photo is submitted, and mandatory snapping
+            // drags the scroll back to that single point — leaving the bottom of
+            // the section physically unreachable. Proximity still snaps between
+            // FIND / Background / DISCOVER but lets a tall section scroll.
+            className={`absolute inset-0 overflow-y-auto tour-scroll ${isMergedFindDiscover ? 'snap-y snap-proximity' : ''}`}
             ref={(el) => { scrollContainerRef.current = el; checkScroll(); }}
             onScroll={checkScroll}
           >

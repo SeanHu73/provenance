@@ -32,11 +32,17 @@ interface Props {
   opinion?: boolean;
   /** Black "The Investigation" subtitle under the action label. */
   investigation?: boolean;
+  /** Stack the icon over the label and centre the block, instead of the default
+   *  label-left / icon-right row. Used by the FIND screen. */
+  centered?: boolean;
   /** Extra Tailwind classes on the outer wrapper. */
   className?: string;
 }
 
 const ICON_SIZE = 64;
+/** The centred variant stacks icon over label, so the icon is set smaller to
+ *  keep the FIND header from eating the top of a one-screen snap section. */
+const ICON_SIZE_CENTERED = 46;
 const ACTION_TITLE_PX = 44;
 const INVESTIGATION_PX = 22;
 
@@ -44,22 +50,27 @@ export default function ActionTitle({
   action,
   opinion = false,
   investigation = false,
+  centered = false,
   className = '',
 }: Props) {
   return (
-    <div className={className}>
-      {/* Action row — label left, icon right (margin from edge). */}
+    <div className={`${centered ? 'text-center' : ''} ${className}`}>
+      {/* Action row — label left, icon right (margin from edge); centred variant
+          stacks the icon above the label instead. */}
       <div
-        className="flex items-end justify-between gap-3 pr-2"
+        className={centered
+          ? 'flex flex-col items-center gap-1'
+          : 'flex items-end justify-between gap-3 pr-2'}
         style={{ color: 'var(--th-accent-dark)' }}
       >
+        {centered && <ActionIcon action={action} size={ICON_SIZE_CENTERED} />}
         <h2
           className="uppercase tracking-[0.12em] font-display font-bold leading-none"
           style={{ fontSize: ACTION_TITLE_PX }}
         >
           {action}
         </h2>
-        <ActionIcon action={action} size={ICON_SIZE} />
+        {!centered && <ActionIcon action={action} size={ICON_SIZE} />}
       </div>
 
       {opinion && (
@@ -114,15 +125,28 @@ function ActionIcon({ action, size }: { action: Action; size: number }) {
         </svg>
       );
     case 'FIND':
-      // Binoculars (the magnifier now belongs to the P.A.S.T. lens cards).
+      // The designer's explore mark (compass inside a magnifier). It ships as a
+      // PNG silhouette, so it is drawn as a mask filled with currentColor rather
+      // than an <img> — that way it picks up --th-accent-dark like the other
+      // icons and follows the theme instead of baking one colour in.
       return (
-        <svg {...common}>
-          <path d="M4 9.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2V15a2.5 2 0 0 1-5 0z" />
-          <path d="M15 9.5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2V15a2.5 2 0 0 1-5 0z" />
-          <path d="M9 11h6" />
-          <path d="M5 7.5v-1a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1" />
-          <path d="M16 7.5v-1a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1" />
-        </svg>
+        <span
+          aria-hidden
+          className="inline-block shrink-0"
+          style={{
+            width: size,
+            height: size,
+            backgroundColor: 'currentColor',
+            WebkitMaskImage: 'url(/icons/explore.png)',
+            maskImage: 'url(/icons/explore.png)',
+            WebkitMaskSize: 'contain',
+            maskSize: 'contain',
+            WebkitMaskRepeat: 'no-repeat',
+            maskRepeat: 'no-repeat',
+            WebkitMaskPosition: 'center',
+            maskPosition: 'center',
+          }}
+        />
       );
     case 'RESPOND':
       return (
