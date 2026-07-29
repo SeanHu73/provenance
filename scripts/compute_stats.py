@@ -268,9 +268,24 @@ def fmt_pct_display(value: float | None) -> str:
     return "" if value is None else f"{value:.1f}%"
 
 
-def fmt_usage(stats: Stats, with_pct: bool = False) -> str:
-    """"n/m", optionally with the share it represents — used only on the All row."""
-    base = f"{stats.used}/{stats.contextual}"
+def fmt_usage(stats: Stats, with_pct: bool = False, per: int = 0) -> str:
+    """
+    "n/m", optionally with the share it represents — the share is used only on
+    the summary row.
+
+    `per` averages both counts over that many learners, so the summary row
+    describes a typical learner rather than the cohort's totals. The share stays
+    pooled (all usage over all contextual questions), which means that on the
+    summary row the fraction shown is a pair of rounded means while the
+    percentage is the exact pooled rate — dividing one will not always reproduce
+    the other to the decimal. The pooled rate is the honest one: a mean of the
+    six per-learner shares would count a learner with two questions as heavily
+    as one with eleven.
+    """
+    if per:
+        base = f"{round_half_up(stats.used / per):.1f}/{round_half_up(stats.contextual / per):.1f}"
+    else:
+        base = f"{stats.used}/{stats.contextual}"
     if not with_pct or stats.contextual == 0:
         return base
     return f"{base} ({round_half_up(100 * stats.used / stats.contextual):.1f}%)"
@@ -467,12 +482,14 @@ def combined_table2(table: "OrderedDict") -> TableSpec:
 
 
 def combined_table3(table: "OrderedDict") -> TableSpec:
+    n = len(table)
     rows = [
         [
-            name,
-            fmt_usage(pre, with_pct=is_all),
-            fmt_usage(post, with_pct=is_all),
-            f"{post.used - pre.used:+d}",
+            ALL_AVG_LABEL if is_all else name,
+            fmt_usage(pre, with_pct=is_all, per=n if is_all else 0),
+            fmt_usage(post, with_pct=is_all, per=n if is_all else 0),
+            avg(post.used - pre.used, n, signed=True) if is_all
+            else f"{post.used - pre.used:+d}",
         ]
         for name, pre, post, is_all in _combined_rows(table)
     ]
