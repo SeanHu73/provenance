@@ -20,9 +20,14 @@ import type { ResearchBackend } from './types';
 const COLLECTION = 'memorial-church-app-settings';
 const DOC_ID = 'global';
 
-/** The Detective's original pipeline. Anything unset or unreadable lands here —
- *  the known-good path is the one to fail towards. */
-export const DEFAULT_RESEARCH_BACKEND: ResearchBackend = 'claude';
+/** Both paths at once, preferring Claude. Anything unset or unreadable lands
+ *  here — and it is the safest default precisely because it is the one mode that
+ *  still answers when either half fails. */
+export const DEFAULT_RESEARCH_BACKEND: ResearchBackend = 'hedged';
+
+/** Numbered for the admin UI: mode 1 is the default, and the vendor names never
+ *  reach the screen. Order is the order they appear when tapping through. */
+export const RESEARCH_MODES: ResearchBackend[] = ['hedged', 'claude', 'perplexity'];
 
 export interface AppSettings {
   researchBackend: ResearchBackend;
@@ -33,9 +38,9 @@ export interface AppSettings {
 const settingsDoc = () => doc(db, COLLECTION, DOC_ID);
 
 function normalise(data: Record<string, unknown> | undefined): AppSettings {
-  const backend = data?.researchBackend;
+  const backend = data?.researchBackend as ResearchBackend | undefined;
   return {
-    researchBackend: backend === 'perplexity' ? 'perplexity' : DEFAULT_RESEARCH_BACKEND,
+    researchBackend: backend && RESEARCH_MODES.includes(backend) ? backend : DEFAULT_RESEARCH_BACKEND,
     updatedAt: typeof data?.updatedAt === 'string' ? data.updatedAt : null,
   };
 }

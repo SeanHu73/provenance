@@ -51,10 +51,11 @@ const PREFER_PRIMARY_MS = 60_000;
 /**
  * Hard ceiling on research, both paths included. Past this we bank deliberately
  * rather than let Vercel kill the function at `maxDuration` — a graceful miss the
- * learner can see beats a request that dies holding the answer. Leaves room for
- * the voice pass and the photo lookup, which run afterwards.
+ * learner can see beats a request that dies holding the answer. Two minutes is
+ * already longer than anyone will happily wait at a stop, and it leaves plenty of
+ * room for the voice pass and the photo lookup, which run afterwards.
  */
-const RESEARCH_CEILING_MS = 200_000;
+const RESEARCH_CEILING_MS = 120_000;
 const TOP_K = 6;
 /** Cosine floor a base entry must clear to be shown to the model at all. Below this
  *  it is not "related material", it is a distraction we have stamped as verified. */
@@ -505,6 +506,10 @@ export async function POST(req: Request) {
     // the alternative is finished (or nearly) by the moment the primary gives up,
     // so a handover costs almost nothing. It does mean paying for both on every
     // ask; that is the trade, taken deliberately.
+    // Mode 2 is the original flow, kept intact: Claude alone, no Perplexity
+    // launched, nothing to race. The other two modes run both and differ only in
+    // which answer they'd rather have.
+    const claudeOnly = setting === 'claude';
     const claudeCtl = new AbortController();
     const pplxCtl = new AbortController();
     // Launched here and neither awaited yet, so each must swallow its own failure
@@ -514,11 +519,13 @@ export async function POST(req: Request) {
         if (!claudeCtl.signal.aborted) console.warn(`[detective] claude research failed: ${err instanceof Error ? err.message : err}`);
         return null;
       });
-    const pplxRun = viaPerplexity(pplxCtl.signal)
-      .catch((err) => {
-        if (!pplxCtl.signal.aborted) console.warn(`[detective] perplexity research failed: ${err instanceof Error ? err.message : err}`);
-        return { research: null, findings: null };
-      });
+    const pplxRun = claudeOnly
+      ? Promise.resolve({ research: null, findings: null as PerplexityFindings | null })
+      : viaPerplexity(pplxCtl.signal)
+        .catch((err) => {
+          if (!pplxCtl.signal.aborted) console.warn(`[detective] perplexity research failed: ${err instanceof Error ? err.message : err}`);
+          return { research: null, findings: null as PerplexityFindings | null };
+        });
 
     const preferPerplexity = setting === 'perplexity';
     const primary = preferPerplexity ? pplxRun.then((r) => r.research) : claudeRun;

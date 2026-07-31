@@ -34,9 +34,17 @@ export function PastWord() {
   );
 }
 
-export default function PastFramework({ onAllRevealed }: { onAllRevealed?: () => void } = {}) {
+export default function PastFramework({
+  onAllRevealed,
+  /** Skip the tap-to-unveil. The blur is a teaching device for the first meeting;
+   *  when this is shown as a *reminder* the learner has already earned the words,
+   *  and making them tap four times to re-read something they know is a chore. */
+  startRevealed = false,
+}: { onAllRevealed?: () => void; startRevealed?: boolean } = {}) {
   const [openLens, setOpenLens] = useState<LensDef | null>(null);
-  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  const [revealed, setRevealed] = useState<Set<string>>(
+    () => new Set(startRevealed ? LENSES.map((l) => l.key) : []),
+  );
   const allRevealed = revealed.size === LENSES.length;
 
   // Tell the onboarding once every lens has been unveiled (unlocks the scroll).
@@ -107,6 +115,7 @@ export default function PastFramework({ onAllRevealed }: { onAllRevealed?: () =>
       <p className="text-[13px] italic text-center mt-4" style={{ color: 'var(--th-text)', opacity: 0.6 }}>
         {allRevealed ? 'Tap the magnifier to see example questions.' : 'Tap each lens to reveal what it means.'}
       </p>
+      {/* Portaled at z-[1400] by PastLensCard, so it clears the reminder sheet. */}
 
       <AnimatePresence>
         {openLens && <PastLensCard lens={openLens} onClose={() => setOpenLens(null)} />}

@@ -301,15 +301,23 @@ export interface DetectiveAnswer {
 }
 
 /** A logged Detective response for the admin review queue. */
-/** Which pipeline researched an answer. Shown to the admin as "Research mode 1"
- *  (claude) and "Research mode 2" (perplexity) — the vendor names stay in the
- *  code and out of the UI, since the toggle is on screen during a live tour.
+/** Which pipeline researched an answer. Shown to the admin as numbered modes —
+ *  the vendor names stay in the code and out of the UI, since the toggle is on
+ *  screen during a live tour.
  *
- *  `claude` is the original: Sonnet with the web-search tool, looping until it
- *  submits. `perplexity` runs one Sonar search and hands its findings to a single
- *  Claude pass to draft from. Switched globally in the app settings, and recorded
- *  on every answer so the two can be compared on the same questions. */
-export type ResearchBackend = 'claude' | 'perplexity';
+ *  - `hedged` (mode 1, the default) runs both at once and prefers Claude's answer,
+ *    taking Perplexity's only if Claude misses. Costs both every ask; buys a
+ *    fallback that is already finished the moment it is needed.
+ *  - `claude` (mode 2) is the original flow on its own — Sonnet with the
+ *    web-search tool, looping until it submits, no Perplexity anywhere near it.
+ *    Kept so there is always a way back to known behaviour if the hedge
+ *    complicates something.
+ *  - `perplexity` (mode 3) is one Sonar search handed to a single Claude pass to
+ *    draft from, with Claude's own path as its fallback.
+ *
+ *  Switched globally in the app settings, and recorded on every answer so the
+ *  three can be compared on the same questions. */
+export type ResearchBackend = 'hedged' | 'claude' | 'perplexity';
 
 export interface DetectiveLog extends DetectiveAnswer {
   id: string;

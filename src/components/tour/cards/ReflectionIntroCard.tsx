@@ -30,11 +30,11 @@ export default function ReflectionIntroCard({ onComplete }: Props) {
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setMounted(true));
-    // 0.9s, the onboarding's delay ceiling. This one was 1.8s and was the worst
-    // wait in the app, because it doesn't just delay the line — scrolling is
-    // blocked until it lands, so the reader is stuck looking at a half-finished
-    // screen that won't move.
-    const t = window.setTimeout(() => setLine2(true), 900);
+    // 1.3s — the onboarding's delay ceiling. It was 1.8s, which was the worst wait
+    // in the app because it doesn't just delay the line: scrolling is blocked until
+    // it lands, so the reader is stuck on a half-finished screen that won't move.
+    // 0.9s was too brisk in the other direction and the two lines ran together.
+    const t = window.setTimeout(() => setLine2(true), 1300);
     return () => { cancelAnimationFrame(raf); window.clearTimeout(t); };
   }, []);
 

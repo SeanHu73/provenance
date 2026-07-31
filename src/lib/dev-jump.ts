@@ -14,8 +14,13 @@
  * gates (ContextJournal), the footer lock (TourFooter), and the research gate
  * (ReflectGate). A React context would mean threading a provider through all four.
  *
- * Persisted so a jump survives the reload the tour does on some transitions;
- * `try/catch` because Safari private mode throws on localStorage access.
+ * **sessionStorage, not localStorage.** It has to survive the reload the tour does
+ * on some transitions, so it can't be pure in-memory — but it must not survive the
+ * tab. On localStorage a jump switched on once stayed on for that device forever,
+ * so a visitor could arrive at a phone with the tour's gates already disabled and
+ * never know the difference. Now every fresh open starts off.
+ *
+ * `try/catch` because Safari private mode throws on storage access.
  */
 
 import { useEffect, useState } from 'react';
@@ -24,7 +29,7 @@ const KEY = 'mc_dev_jump_v1';
 
 function read(): boolean {
   if (typeof window === 'undefined') return false;
-  try { return window.localStorage.getItem(KEY) === '1'; } catch { return false; }
+  try { return window.sessionStorage.getItem(KEY) === '1'; } catch { return false; }
 }
 
 let on = read();
@@ -32,7 +37,7 @@ const subscribers = new Set<(v: boolean) => void>();
 
 export function setDevJump(v: boolean): void {
   on = v;
-  try { window.localStorage.setItem(KEY, v ? '1' : '0'); } catch { /* private mode */ }
+  try { window.sessionStorage.setItem(KEY, v ? '1' : '0'); } catch { /* private mode */ }
   subscribers.forEach((s) => s(v));
 }
 

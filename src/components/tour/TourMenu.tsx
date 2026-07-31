@@ -14,8 +14,10 @@
 import { useEffect, useState } from 'react';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useAutoplayHint } from '@/lib/autoplay-hint';
-import { useDevJump, useDevJumpOn } from '@/lib/dev-jump';
-import { subscribeAppSettings, setResearchBackend } from '@/lib/app-settings-store';
+import { useDevJump } from '@/lib/dev-jump';
+import { subscribeAppSettings, setResearchBackend, RESEARCH_MODES } from '@/lib/app-settings-store';
+import { useAdminUnlock } from '@/lib/admin-unlock';
+import PastReminderSheet from './PastReminderSheet';
 import { useTourOptional } from '@/context/TourContext';
 import { getActs } from '@/lib/tour-session';
 import { getActiveStops } from '@/lib/tours-store';
@@ -89,6 +91,7 @@ function useJumpTargets(): JumpTarget[] {
  *  menu with it. Optional context throughout: the Journal also mounts standalone
  *  at `/context-journal` with no provider, where there is no session to jump. */
 export function DevJumpMenuItem() {
+  const [unlocked] = useAdminUnlock();
   const [on, setOn] = useDevJump();
   const ctx = useTourOptional();
   const targets = useJumpTargets();
@@ -100,7 +103,8 @@ export function DevJumpMenuItem() {
   const isHere = (t: JumpTarget) => cur === t.phase && (t.stopIndex === undefined || t.stopIndex === curStop);
 
   // No tour running — nothing to jump between, so don't offer the control at all.
-  if (!ctx?.session) return null;
+  // And never before the admin gesture: this disables the tour's learning gates.
+  if (!ctx?.session || !unlocked) return null;
 
   return (
     <div className="border-t" style={{ borderColor: 'var(--th-border)' }}>
@@ -168,7 +172,7 @@ export function DevJumpMenuItem() {
  * a learner who opened the menu looking for the audio toggle.
  */
 export function ResearchBackendMenuItem() {
-  const devOn = useDevJumpOn();
+  const [unlocked] = useAdminUnlock();
   const [backend, setBackend] = useState<ResearchBackend | null>(null);
   const [changedAt, setChangedAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -179,19 +183,23 @@ export function ResearchBackendMenuItem() {
     setChangedAt(s.updatedAt);
   }), []);
 
-  if (!devOn) return null;
+  if (!unlocked) return null;
 
-  const on = backend === 'perplexity';
+  const idx = backend ? RESEARCH_MODES.indexOf(backend) : -1;
+  const on = backend !== null && backend !== 'hedged';
+  const nextIdx = idx < 0 ? 0 : (idx + 1) % RESEARCH_MODES.length;
+  // Tapping cycles 1 → 2 → 3 → 1 rather than toggling, now that there are three.
   const toggle = async () => {
     if (busy || backend === null) return;
     setBusy(true);
-    const next: ResearchBackend = on ? 'claude' : 'perplexity';
+    const previous = backend;
+    const next = RESEARCH_MODES[nextIdx];
     setBackend(next); // optimistic; the subscription confirms or corrects it
     try {
       await setResearchBackend(next);
     } catch (err) {
-      console.error('[app-settings] could not switch the research backend:', err);
-      setBackend(on ? 'perplexity' : 'claude');
+      console.error('[app-settings] could not switch the research mode:', err);
+      setBackend(previous);
     } finally {
       setBusy(false);
     }
@@ -219,7 +227,7 @@ export function ResearchBackendMenuItem() {
             tour, and which engine is behind which mode is nobody's business but
             the admin's. 1 = Claude, 2 = Perplexity. */}
         <span className="block font-semibold text-text-primary">
-          Research mode {backend === null ? '…' : on ? '2' : '1'}
+          Research mode {backend === null ? '…' : idx + 1}
         </span>
         <span className="block text-xs text-text-secondary leading-snug">
           {backend === null
@@ -227,12 +235,68 @@ export function ResearchBackendMenuItem() {
             : `Applies to everyone, everywhere${changedAt ? ` · set ${new Date(changedAt).toLocaleString()}` : ''}`}
         </span>
         <span className="block text-[11px] text-text-secondary opacity-70 leading-snug mt-0.5">
-          Tap to switch to mode {on ? '1' : '2'}
+          Tap to switch to mode {nextIdx + 1}
         </span>
       </span>
       <span className="shrink-0 w-10 h-6 rounded-full p-0.5 transition-colors" style={{ backgroundColor: on ? '#0ea5e9' : 'var(--th-border)' }}>
         <span className="block w-5 h-5 rounded-full bg-white shadow transition-transform" style={{ transform: on ? 'translateX(16px)' : 'translateX(0)' }} />
       </span>
+    </button>
+  );
+}
+
+/** "Remind me of the P.A.S.T." — pulls the four lenses up over whatever the
+ *  learner is doing. Wanting to check what the S stands for is not the same as
+ *  wanting to redo the Context step, so this opens a sheet rather than jumping
+ *  the tour anywhere. Shared by both menus. */
+export function PastReminderMenuItem() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-black/[0.03] border-t"
+        style={{ borderColor: 'var(--th-border)' }}
+      >
+        <span
+          className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+          style={{ backgroundColor: 'var(--th-secondary)', color: 'var(--th-journal)' }}
+        >
+          {/* magnifier — the same mark the lenses carry */}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+          </svg>
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block font-semibold text-text-primary">Remind me of the P.A.S.T.</span>
+          <span className="block text-xs text-text-secondary leading-snug">The four lenses, and what each one asks.</span>
+        </span>
+      </button>
+      {open && <PastReminderSheet onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+/** The hidden way in. Seven taps on the menu's footer reveals Dev Jump and the
+ *  research-mode switch; before that neither is rendered at all. It looks like a
+ *  wordmark because it is one — nothing here says "tap me", which is the point.
+ *  See `admin-unlock.ts` for why this exists. */
+export function AdminUnlockTapTarget() {
+  const [unlocked, tap, remaining] = useAdminUnlock();
+  return (
+    <button
+      onClick={tap}
+      aria-hidden={!unlocked}
+      tabIndex={-1}
+      className="w-full px-4 py-2.5 text-center border-t select-none"
+      style={{ borderColor: 'var(--th-border)' }}
+    >
+      <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-secondary)', opacity: unlocked ? 0.6 : 0.35 }}>
+        {unlocked ? 'Provenance · admin' : 'Provenance'}
+      </span>
+      {remaining > 0 && (
+        <span className="ml-2 text-[10px]" style={{ color: 'var(--th-primary)' }}>{remaining}</span>
+      )}
     </button>
   );
 }
@@ -316,8 +380,10 @@ export default function TourMenu({ inline = false, onDark = false }: { inline?: 
                 Audio plays automatically. Turn it off here to control when it plays.
               </div>
             )}
+            <PastReminderMenuItem />
             <DevJumpMenuItem />
             <ResearchBackendMenuItem />
+            <AdminUnlockTapTarget />
           </div>
         </>
       )}

@@ -27,9 +27,10 @@ export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props)
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setMounted(true));
-    // 0.9s — the onboarding's delay ceiling. Longer and the only control on the
-    // screen is missing for long enough that it reads as a screen that's stuck.
-    const t = setTimeout(() => setShowButton(true), 900);
+    // 1.2s. Longer and the only control on the screen is missing for long enough
+    // that it reads as stuck; much shorter and it arrives before the title has
+    // landed, which reads as a screen that skipped its own entrance.
+    const t = setTimeout(() => setShowButton(true), 1200);
     return () => { cancelAnimationFrame(raf); clearTimeout(t); };
   }, []);
 
