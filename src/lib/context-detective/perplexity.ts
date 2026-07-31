@@ -17,33 +17,55 @@
  * Claude path. A globally-switched backend must not be able to take the
  * Detective down for everyone.
  *
- * ENDPOINT: Perplexity currently exposes two OpenAI-shaped surfaces, and which
- * one an account sees has moved more than once, so both the URL and the model are
- * env vars:
+ * ENDPOINT: Perplexity exposes two OpenAI-shaped surfaces and they are not
+ * interchangeable — this cost us a round of confused testing, so it is written
+ * down here.
  *
- *   • the gateway / router — `/router/v1/chat/completions`, multi-provider
- *     (`creator/model-name` ids), citations on `message.annotations[]`. It
- *     REJECTS the search parameters with a 400.
- *   • the native Sonar API — `/chat/completions`, bare model ids, citations on
- *     `search_results[]` or `citations[]`, and it takes `search_domain_filter`
- *     and `web_search_options`.
+ *   • `/chat/completions` — the native Sonar API. Bare model ids (`sonar-pro`,
+ *     `sonar`), citations on `search_results[]` and `citations[]`, and it takes
+ *     the search parameters. **This is the one that does web research**, and the
+ *     default below.
+ *   • `/router/v1/chat/completions` — the gateway, a multi-provider proxy for
+ *     other vendors' models (`anthropic/…`, `gpt-…`). It rejects every Sonar id
+ *     with `400 Invalid model`, so pointing this module at it means every ask
+ *     silently falls back to the Claude path.
  *
- * Rather than make that a setting someone has to get right, the call sends the
- * search parameters and retries once without them if the endpoint refuses them,
- * and the citation parser reads all three shapes. So either URL works, and the
- * only thing the domains cost on the gateway is that they don't apply.
+ * The call still sends the search parameters and retries once without them on a
+ * 400, and the parser reads `annotations[]` as well as the two native shapes, so
+ * a future move doesn't break it outright.
  *
- * A wrong URL still degrades safely: it logs and the route falls back to the
- * Claude path, rather than costing a learner their answer.
+ * A wrong URL degrades safely: it logs and the route falls back to the Claude
+ * path, rather than costing a learner their answer. Safely, but silently — if
+ * mode 2 feels exactly like mode 1, check the log for `400 Invalid model` first.
  */
 
-const DEFAULT_URL = 'https://api.perplexity.ai/router/v1/chat/completions';
-/** Gateway ids are `creator/model-name`; the native API wants a bare `sonar-pro`.
- *  Set PERPLEXITY_MODEL to match whichever PERPLEXITY_API_URL points at. */
-const DEFAULT_MODEL = 'perplexity/sonar-pro';
-/** Sonar's own research depth. `low` is the fast one; the drafting pass adds the
- *  depth we care about, so buying more here mostly buys latency. */
+const DEFAULT_URL = 'https://api.perplexity.ai/chat/completions';
+const DEFAULT_MODEL = 'sonar-pro';
+/** Sonar's own research depth. Measured on this key, same question:
+ *    bare (default context size)   8.2s
+ *    search_context_size: 'low'    2.9s
+ *  Same 15 sources either way, so the depth was buying latency and nothing else —
+ *  the drafting pass supplies the depth we actually care about. */
 const CONTEXT_SIZE = 'low';
+/**
+ * A tour's `preferredDomains` are NOT passed to Sonar, deliberately.
+ *
+ * Two reasons, both measured. The semantics are wrong: `search_domain_filter` is
+ * an allowlist that *restricts*, where the tour's config means "prioritise these,
+ * don't limit me to them" — filtering on stanford.edu returned nothing but
+ * stanford.edu subdomains. And it costs: 11.3s against 2.9s without, on the same
+ * question. Flip this to true if you'd rather have the hard restriction.
+ */
+const SEND_DOMAIN_FILTER = false;
+/**
+ * `search_mode: 'academic'` biases toward journals and archives (arxiv, SAGE)
+ * while still surfacing the institution's own pages, at 4.4s against 2.9s.
+ * Left off because it changes what kind of source a tour ends up citing, and
+ * that's an editorial decision rather than a performance one — but it is
+ * probably the right default for this product once someone has read a few
+ * answers both ways.
+ */
+const SEARCH_MODE: string | null = null;
 /** Cap it well under the route's 300s budget — a slow search should degrade to
  *  the Claude path, not eat the whole request. */
 const TIMEOUT_MS = 30_000;
@@ -147,7 +169,8 @@ export async function perplexitySearch(input: {
   // code serves either endpoint without anyone having to configure which.
   const searchParams = {
     web_search_options: { search_context_size: CONTEXT_SIZE },
-    ...(domains.length ? { search_domain_filter: domains } : {}),
+    ...(SEND_DOMAIN_FILTER && domains.length ? { search_domain_filter: domains } : {}),
+    ...(SEARCH_MODE ? { search_mode: SEARCH_MODE } : {}),
   };
 
   const post = (body: object) => fetch(url, {

@@ -248,33 +248,79 @@ export async function researchDraft(system: string, userText: string): Promise<R
  * submitting" miss entirely — the model cannot answer in prose and leave the
  * route with nothing.
  */
-export async function synthesiseResearch(system: string, userText: string): Promise<ResearchOutput | null> {
+export async function synthesiseResearch(
+  system: string,
+  userText: string,
+  /** The URLs the search returned, for the pushback below. */
+  availableUrls: string[] = [],
+): Promise<ResearchOutput | null> {
+  const tools = [{
+    name: 'submit_answer',
+    description:
+      'Submit your final structured answer. Put EVERY source you used as its own object in the `sources` '
+      + 'array — never as text. `relevanceNote` is a short plain sentence or an empty string.',
+    strict: true,
+    input_schema: RESEARCH_SCHEMA,
+  }];
+  const messages: Json[] = [{ role: 'user', content: userText }];
   const started = Date.now();
-  const resp = await callClaude({
-    model: SONNET,
-    max_tokens: 8000,
-    system: cachedSystem(system),
-    thinking: { type: 'adaptive' },
-    output_config: { effort: 'medium' },
-    tools: [{
-      name: 'submit_answer',
-      description:
-        'Submit your final structured answer. Put EVERY source you used as its own object in the `sources` '
-        + 'array — never as text. `relevanceNote` is a short plain sentence or an empty string.',
-      strict: true,
-      input_schema: RESEARCH_SCHEMA,
-    }],
-    tool_choice: { type: 'tool', name: 'submit_answer' },
-    messages: [{ role: 'user', content: userText }],
-  });
-  const content: Json[] = resp.content || [];
-  const submit = content.find((b: Json) => b.type === 'tool_use' && b.name === 'submit_answer');
-  if (!submit) {
-    console.log(`[detective] synthesis ended without submitting (stop=${resp.stop_reason}) after ${Date.now() - started}ms`);
-    return null;
+
+  // Two passes at most: the draft, and one pushback if it comes back uncited.
+  // Handing a model the sources as data was supposed to make citing automatic. It
+  // did not — measured, it drafted from the retrieved base and cited nothing while
+  // holding fourteen URLs. So the Claude path's repair loop earns its keep here
+  // too, just shorter: the sources are already in the prompt, so one reminder is
+  // either enough or the problem is not forgetfulness.
+  for (let i = 0; i < 2; i++) {
+    const resp = await callClaude({
+      model: SONNET,
+      max_tokens: 8000,
+      system: cachedSystem(system),
+      thinking: { type: 'adaptive' },
+      // The searching is done: this pass judges what came back and writes it up.
+      // At `medium` it was spending 62s thinking about a task whose hard part had
+      // already happened — most of the Perplexity path's latency was here, not in
+      // the search.
+      output_config: { effort: 'low' },
+      tools,
+      tool_choice: { type: 'tool', name: 'submit_answer' },
+      messages,
+    });
+    const content: Json[] = resp.content || [];
+    const submit = content.find((b: Json) => b.type === 'tool_use' && b.name === 'submit_answer');
+    if (!submit) {
+      console.log(`[detective] synthesis ended without submitting (stop=${resp.stop_reason}) after ${Date.now() - started}ms`);
+      return null;
+    }
+    const out = submit.input as ResearchOutput;
+    if (out.status !== 'answered' || out.sources?.length || i > 0) {
+      console.log(`[detective] synthesis done · ${Date.now() - started}ms · ${i + 1} model call${i ? 's' : ''}`);
+      return out;
+    }
+    console.warn(
+      `[detective] synthesis submitted an ANSWER with zero sources — pushing back once`
+      + `\n[detective]   rejected draft: ${(out.draft || '').trim().slice(0, 200).replace(/\s+/g, ' ')}`,
+    );
+    messages.push({ role: 'assistant', content });
+    messages.push({
+      role: 'user',
+      content: [{
+        type: 'tool_result',
+        tool_use_id: submit.id,
+        is_error: true,
+        content:
+          'Rejected: status="answered" with an empty sources array. Every claim must trace to a source '
+          + '(Research skill §5), and you are holding them — they are listed in the prompt above.\n\n'
+          + (availableUrls.length
+            ? `The web results available to you:\n${availableUrls.slice(0, 15).map((u) => `  - ${u}`).join('\n')}\n\n`
+            : '')
+          + 'Call submit_answer again with the same draft, listing in `sources` the ones that actually support '
+          + 'the claims you made (kind "web", the url, verified false) and any verified-base entry or context '
+          + 'you leaned on (kind "entry"/"context", its id, verified true). Do NOT bank: you have the material.',
+      }],
+    });
   }
-  console.log(`[detective] synthesis done · ${Date.now() - started}ms · 1 model call`);
-  return submit.input as ResearchOutput;
+  return null;
 }
 
 // ── Voice rewrite (Opus 4.8) — the narrative plus its title and summary ──

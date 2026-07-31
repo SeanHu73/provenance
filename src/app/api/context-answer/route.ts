@@ -459,7 +459,7 @@ export async function POST(req: Request) {
           + `Follow your P.A.S.T., Research, and Grounding skills. Screen first (is this a question? is it about context?).\n\n`
           + `The search above is raw material, not your answer: judge it, keep what the sources actually support, and write the draft yourself. The synthesis is not a source — cite the URLs. If the material is thin, say plainly what it does not establish and answer as far as it goes; a partial answer is expected and welcome.\n\n`
           + submitBlock;
-        research = await synthesiseResearch(researchSystem(), synthUser);
+        research = await synthesiseResearch(researchSystem(), synthUser, findings.sources.map((s) => s.url));
         if (research) backend = 'perplexity';
       }
       if (!research) {
@@ -571,10 +571,16 @@ export async function POST(req: Request) {
     const photoSource = sources.find((s) => s.kind === 'context' && s.id && contextPhotos[s.id]);
     let cardPhoto = photoSource?.id ? contextPhotos[photoSource.id] : undefined;
     if (!cardPhoto) {
-      const imgs = await searchCommonsImages(title || question, { thumbWidth: 800, limit: 12, timeoutMs: 4000 });
-      const hit = imgs.find((r) => isPhotoExt(r.ext) && r.thumbUrl);
-      if (hit) cardPhoto = { url: hit.thumbUrl, credit: hit.credit };
-      console.log(`[detective]   illustrate: ${hit ? `commons "${hit.title.slice(0, 40)}"` : 'no photo'} (query "${(title || question).slice(0, 40)}")`);
+      // Two queries, not one. The title names the *conditions* ("Gilded Age
+      // philanthropic values") and Commons has no photograph of an abstraction, so
+      // a good title reliably found nothing. The learner's own question names a
+      // place or a person, which Commons does have — so fall back to it.
+      for (const q of [title, question].filter((v, i, a) => v?.trim() && a.indexOf(v) === i)) {
+        const imgs = await searchCommonsImages(q, { thumbWidth: 800, limit: 12, timeoutMs: 4000 });
+        const hit = imgs.find((r) => isPhotoExt(r.ext) && r.thumbUrl);
+        console.log(`[detective]   illustrate: ${hit ? `commons "${hit.title.slice(0, 40)}"` : 'no photo'} (query "${q.slice(0, 40)}")`);
+        if (hit) { cardPhoto = { url: hit.thumbUrl, credit: hit.credit }; break; }
+      }
     }
 
     // One card, built by the route. The explanation IS the voiced narrative —
