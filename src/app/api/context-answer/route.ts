@@ -313,6 +313,42 @@ function reuseFromBase(
   return best;
 }
 
+/**
+ * Words that carry no subject: question words, pronouns, and the general verbs a
+ * question is built out of. What is left is what a picture could be *of*.
+ */
+const NO_SUBJECT = new Set([
+  'a', 'an', 'the', 'and', 'or', 'but', 'if', 'so', 'as', 'of', 'in', 'on', 'at', 'to', 'for',
+  'from', 'by', 'with', 'about', 'into', 'over', 'after', 'before', 'here', 'there', 'then',
+  'who', 'what', 'when', 'where', 'why', 'how', 'which', 'whose', 'whom',
+  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'do', 'does', 'did', 'have', 'has', 'had',
+  'can', 'could', 'will', 'would', 'should', 'may', 'might', 'must',
+  'i', 'you', 'he', 'she', 'it', 'we', 'they', 'them', 'this', 'that', 'these', 'those',
+  'his', 'her', 'its', 'their', 'our', 'my', 'your',
+  'build', 'built', 'make', 'made', 'get', 'got', 'go', 'went', 'come', 'came', 'use', 'used',
+  'like', 'want', 'need', 'know', 'think', 'say', 'said', 'happen', 'happened',
+  'people', 'thing', 'things', 'time', 'times', 'way', 'ways', 'place', 'places',
+]);
+
+/** The substantive words in a query — what a photograph could actually depict. */
+function subjectTerms(q: string): string[] {
+  return Array.from(new Set(
+    (q || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s'-]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 3 && !NO_SUBJECT.has(w)),
+  ));
+}
+
+/** Does this Commons result actually depict what was asked about? Commons ranks
+ *  loosely enough that a top hit routinely shares nothing with the query, so the
+ *  title has to carry at least one of its subject words. */
+function sharesSubject(title: string, terms: string[]): boolean {
+  const t = (title || '').toLowerCase();
+  return terms.some((w) => t.includes(w));
+}
+
 export async function POST(req: Request) {
   let body: { question?: string; originalQuestion?: string; tourId?: string; actId?: string; lens?: PastLens; priorStops?: string[] } = {};
   try { body = await req.json(); } catch { /* empty */ }
@@ -718,10 +754,21 @@ export async function POST(req: Request) {
       // philanthropic values") and Commons has no photograph of an abstraction, so
       // a good title reliably found nothing. The learner's own question names a
       // place or a person, which Commons does have — so fall back to it.
+      //
+      // Both are screened first, and the results screened after. "Why did they
+      // build it here?" has no subject in it at all: every word is a question word
+      // or a pronoun, Commons matches on whatever survives, and the answer gets
+      // illustrated with something unrelated. A wrong photograph is worse than
+      // none — it is read as evidence.
       for (const q of [title, question].filter((v, i, a) => v?.trim() && a.indexOf(v) === i)) {
+        const terms = subjectTerms(q);
+        if (!terms.length) {
+          console.log(`[detective]   illustrate: skipped, no subject in "${q.slice(0, 40)}"`);
+          continue;
+        }
         const imgs = await searchCommonsImages(q, { thumbWidth: 800, limit: 12, timeoutMs: 4000 });
-        const hit = imgs.find((r) => isPhotoExt(r.ext) && r.thumbUrl);
-        console.log(`[detective]   illustrate: ${hit ? `commons "${hit.title.slice(0, 40)}"` : 'no photo'} (query "${q.slice(0, 40)}")`);
+        const hit = imgs.find((r) => isPhotoExt(r.ext) && r.thumbUrl && sharesSubject(r.title, terms));
+        console.log(`[detective]   illustrate: ${hit ? `commons "${hit.title.slice(0, 40)}"` : 'no relevant photo'} (query "${q.slice(0, 40)}")`);
         if (hit) { cardPhoto = { url: hit.thumbUrl, credit: hit.credit }; break; }
       }
     }
