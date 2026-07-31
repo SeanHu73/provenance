@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { Pin, Stop, Tour } from '@/lib/types';
+import { useDeviceHeading, requestHeading } from '@/lib/device-heading';
 
 const CHURCH_LOCATION = { lat: 37.42700, lng: -122.17015 }; // Stanford Memorial Church
 const MAX_AUTO_ZOOM = 17;
@@ -197,12 +198,48 @@ function PinMarker({ pin, isSelected, onClick }: { pin: Pin; isSelected: boolean
   );
 }
 
-function UserLocationDot({ position }: { position: Loc }) {
+/**
+ * The blue dot, with a cone for the direction the phone is pointing.
+ *
+ * A dot says where you are and nothing about which way to turn, which is the
+ * question someone actually standing there is asking. The cone is drawn relative
+ * to the *map's* rotation rather than to north, so it still points at the right
+ * building when the map itself has been rotated.
+ *
+ * `heading` is null on desktop, on a device without a magnetometer, and on iOS
+ * before permission is granted. The dot is unchanged in all three — the cone is
+ * an addition, never a dependency.
+ */
+function UserLocationDot({ position, heading }: { position: Loc; heading: number | null }) {
+  const map = useMap();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapHeading = ((map as any)?.getHeading?.() as number | undefined) ?? 0;
+  const rotation = heading === null ? null : (heading - mapHeading + 360) % 360;
   return (
     <AdvancedMarker position={position} zIndex={20}>
       <div className="relative flex items-center justify-center">
         <div className="absolute w-10 h-10 rounded-full animate-ping" style={{ background: 'rgba(66,133,244,0.2)' }} />
         <div className="absolute w-6 h-6 rounded-full" style={{ background: 'rgba(66,133,244,0.12)' }} />
+        {rotation !== null && (
+          <div
+            className="absolute"
+            style={{ width: 44, height: 44, transform: `rotate(${rotation}deg)`, pointerEvents: 'none' }}
+            aria-hidden
+          >
+            {/* A soft wedge rather than a hard arrow: the reading is only ever
+                accurate to within a few degrees, and a sharp point claims a
+                precision the magnetometer does not have. */}
+            <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+              <defs>
+                <radialGradient id="hdg" cx="50%" cy="100%" r="72%">
+                  <stop offset="0%" stopColor="#4285F4" stopOpacity="0.55" />
+                  <stop offset="100%" stopColor="#4285F4" stopOpacity="0" />
+                </radialGradient>
+              </defs>
+              <path d="M22 22 L8 1 A24 24 0 0 1 36 1 Z" fill="url(#hdg)" />
+            </svg>
+          </div>
+        )}
         <div className="w-3.5 h-3.5 rounded-full border-2 border-white shadow-md" style={{ background: '#4285F4' }} />
       </div>
     </AdvancedMarker>
@@ -222,6 +259,11 @@ function LocateButton({
   const [locating, setLocating] = useState(false);
 
   function handleClick() {
+    // iOS only hands over the compass from inside a user gesture, and this is the
+    // one the learner already presses when they want to know where they are. Not
+    // awaited: the heading is a bonus on top of centring the map, and making the
+    // centring wait on a permission dialog would be the wrong trade.
+    void requestHeading();
     if (following) { onToggleFollow(); return; }
     if (!navigator.geolocation || !map) return;
     setLocating(true);
@@ -1002,6 +1044,9 @@ export default function MapContainer({
   const [mapMenuOpen, setMapMenuOpen] = useState(false);
   const [navPrompt, setNavPrompt] = useState<{ tour: Tour; distanceM: number } | null>(null);
   const [mapBounds, setMapBounds] = useState<Bounds | null>(null);
+  // Which way they are facing. Null until the sensor reports (and, on iOS, until
+  // the Locate button has asked for it).
+  const deviceHeading = useDeviceHeading();
   const [containerSize, setContainerSize] = useState<ContainerSize>({ W: window?.innerWidth ?? 400, H: window?.innerHeight ?? 600 });
 
   const handleLocationUpdate = useCallback((pos: Loc | null) => setUserLocation(pos), []);
@@ -1035,10 +1080,17 @@ export default function MapContainer({
     onTourPinSelect?.(tour);
   }
 
-  // Compute off-screen arrows for unstructured map phase
+  // Off-screen arrows. In the unstructured phase they point at every stop still
+  // to do — the learner is choosing. On a guided tour there is only one stop that
+  // matters, and zooming in far enough to read the building is exactly when it
+  // leaves the screen, so the active stop gets an arrow of its own rather than
+  // nothing at all.
+  const arrowStops = isUnstructuredMap
+    ? tourStops
+    : tourStops?.filter((ts) => ts.isActive && !ts.isCompleted);
   const offScreenArrows =
-    isUnstructuredMap && mapBounds && tourStops
-      ? computeOffScreenArrows(tourStops, mapBounds, containerSize)
+    mapBounds && arrowStops?.length
+      ? computeOffScreenArrows(arrowStops, mapBounds, containerSize)
       : [];
 
   const MAP_TYPES = {
@@ -1099,7 +1151,7 @@ export default function MapContainer({
             defaultZoom={tourDefaultZoom ?? 17}
           />
           <OverlayAwarePanner tourStops={tourStops} flyTarget={flyTarget} />
-          {userLocation && <UserLocationDot position={userLocation} />}
+          {userLocation && <UserLocationDot position={userLocation} heading={deviceHeading} />}
           {!hidePins && pins.map((pin) => (
             <PinMarker
               key={pin.id}
