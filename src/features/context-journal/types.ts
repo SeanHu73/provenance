@@ -90,6 +90,10 @@ export interface ContextEntry {
   /** Designer unlock dependency (authored contexts): the question stays hidden in
    *  the journal until this context id has been listened to. */
   unlockAfterContextId?: string;
+  /** Designer "go and look" prompt (authored contexts, and the learner's added
+   *  copy): something on campus that is evidence of this context. Shown as a
+   *  popup when the learner leaves the context page. */
+  evidencePrompt?: string;
   /** The learner's own predicted answer, written *before* they revealed the
    *  Detective's answer (the predict-then-reveal step). Shown at the bottom of the
    *  context page for comparison. Absent for authored contexts. */

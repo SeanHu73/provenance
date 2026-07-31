@@ -437,6 +437,10 @@ export interface ActContextItem {
    *  journal until the referenced context has been listened to (is in the
    *  session's viewedContexts). Empty/undefined = available from the start. */
   unlockAfterContextId?: string;
+  /** Optional "go and look" prompt: something on campus the explorer can find as
+   *  evidence of this context. Shown as a popup the moment they leave the context
+   *  — whether they added it to their journal or closed it. Empty = no prompt. */
+  evidencePrompt?: string;
   /** @deprecated legacy: contexts used to be positioned after a stop and carry
    *  their own framing question. Read for old tours only. */
   afterStopId?: string;

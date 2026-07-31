@@ -2521,6 +2521,21 @@ function ContextItemsEditor({
                     ))}
                   </select>
                 </label>
+
+                {/* Evidence prompt — optional "go and look" send-off for this context */}
+                <label className="block text-[11px] text-stone-500">
+                  Evidence prompt (optional):
+                  <textarea
+                    value={item.evidencePrompt ?? ''}
+                    onChange={(e) => onPatch(item.id, { evidencePrompt: e.target.value || undefined })}
+                    placeholder="e.g. Find the carved initials above the west door — the mason left them the year this was built."
+                    rows={2}
+                    className="mt-1 w-full px-2 py-1 border border-stone-300 rounded text-xs bg-white"
+                  />
+                  <span className="block mt-0.5 text-stone-400">
+                    Pops up when the explorer leaves this context — whether they add it to their journal or close it. Leave empty for none.
+                  </span>
+                </label>
               </li>
             );
           })}

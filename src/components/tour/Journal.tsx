@@ -15,7 +15,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { getActiveStops, getTourMode } from '@/lib/tours-store';
 import type { Stop } from '@/lib/types';
-import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts, getAdditionalStops, getContextOrderedStops, getLogicalStops } from '@/lib/tour-session';
+import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts, getAdditionalStops, getContextOrderedStops, getLogicalStops, actReflectionsOf } from '@/lib/tour-session';
 import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
 import EqSceneCard from './cards/EqSceneCard';
@@ -456,10 +456,9 @@ export default function Journal({ onMapPeek }: JournalProps) {
             );
             const authored = (additional ? (additional.contexts ?? []) : getActContexts(act)).map((c) => authoredToEntry(c, tour.id));
             const responses = Object.entries(session.actResponses ?? {}).flatMap(([aid, r]) => {
-              const refl = r?.reflection;
-              if (!refl) return [];
               const a = getActs(tour).find((x) => x.id === aid);
-              return [{ actTitle: a?.title ?? '', promptText: refl.promptText ?? '', text: refl.text }];
+              // Every response, not just the first — the closing reflection can hold several.
+              return actReflectionsOf(r).map((refl) => ({ actTitle: a?.title ?? '', promptText: refl.promptText ?? '', text: refl.text }));
             });
             const guidingQuestion = (additional ? additional.guidingQuestion : act?.guidingQuestion)?.trim() || undefined;
             // Stops the learner has completed — passed to Ask-your-own as their

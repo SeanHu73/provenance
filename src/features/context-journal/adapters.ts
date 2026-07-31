@@ -25,6 +25,7 @@ export function authoredToEntry(item: ActContextItem, placeId: string): ContextE
     mapType: item.mapType,
     includePlaceTime: item.includePlaceTime,
     unlockAfterContextId: item.unlockAfterContextId,
+    evidencePrompt: item.evidencePrompt,
     voiceoverUrl: item.voiceoverUrl,
     voiceoverTitle: item.voiceoverTitle,
     ttsAudioUrl: item.ttsAudioUrl,

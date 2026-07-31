@@ -31,6 +31,7 @@ import { useLensVariant } from './lens-variant';
 import JourneyBar, { BarButton } from '@/components/tour/JourneyBar';
 import { ChevronLeftIcon, CloseIcon, MenuIcon } from '@/components/icons';
 import ContextOverlay from './components/ContextOverlay';
+import EvidencePromptOverlay from './components/EvidencePromptOverlay';
 import AddContextFlow from './components/AddContextFlow';
 import ContextAskFlow from './components/ContextAskFlow';
 import ResearchReadyBar from './components/ResearchReadyBar';
@@ -186,6 +187,10 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   // The learner's own added copy being edited (authored originals stay read-only).
   const [editEntry, setEditEntry] = useState<ContextEntry | null>(null);
   const [fullEntry, setFullEntry] = useState<ContextEntry | null>(null);
+  // The designer's "go and look" prompt for the context just left — see
+  // leaveFull() below. `evidenceSeen` keeps one prompt to one showing.
+  const [evidence, setEvidence] = useState<ContextEntry | null>(null);
+  const evidenceSeen = useRef<Set<string>>(new Set());
   // In-tour gate: the learner must open at least one context before continuing.
   const [explored, setExplored] = useState(!!alreadyAsked);
   // Slider variant: every P.A.S.T. lens has been swiped to. Seeded true for a
@@ -237,6 +242,18 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
     setFullEntry(entry);
     if (entry.origin === 'authored') setExplored(true);
     onContextViewed?.({ contextId: entry.id, title: entry.title, lens: entry.pastCategory, question: entry.question });
+  };
+  // Leaving a context page — closed, or added to the journal. If the designer
+  // attached an evidence prompt, it takes over the screen here: the reading ends
+  // by sending them to look for the thing on campus. Once per context (a copy
+  // shares its source's key), so re-reading isn't re-nagged.
+  const leaveFull = (entry: ContextEntry | null) => {
+    setFullEntry(null);
+    if (!entry?.evidencePrompt?.trim()) return;
+    const key = entry.sourceId || entry.id;
+    if (evidenceSeen.current.has(key)) return;
+    evidenceSeen.current.add(key);
+    setEvidence(entry);
   };
   // The context the viewer has tapped — drives the map (fly to its area); null
   // returns the map to the admin default view.
@@ -415,9 +432,12 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
         includePlaceTime: entry.includePlaceTime,
         voiceoverUrl: entry.voiceoverUrl, voiceoverTitle: entry.voiceoverTitle,
         ttsAudioUrl: entry.ttsAudioUrl, ttsAudioHash: entry.ttsAudioHash,
+        // The copy keeps the designer's evidence prompt, so re-opening it from
+        // the journal behaves like the original.
+        ...(entry.evidencePrompt ? { evidencePrompt: entry.evidencePrompt } : {}),
         sourceId: entry.id, origin: 'added', placeId: scopeId,
       });
-      setFullEntry(null);
+      leaveFull(entry);
       setAddedLens(entry.pastCategory);
       setShowAddedTip(true);
     } catch (err) {
@@ -911,12 +931,22 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
             entry={liveFull}
             saved={savedIds.has(liveFull.id)}
             onToggleSave={() => toggleSave(liveFull.id)}
-            onClose={() => setFullEntry(null)}
+            onClose={() => leaveFull(liveFull)}
             domain={domain}
             defaultView={defaultView}
             onDelete={liveFull.origin === 'authored' ? undefined : () => removeEntry(liveFull.id)}
             onEdit={liveFull.origin === 'authored' ? undefined : () => setEditEntry(liveFull)}
             onAdd={liveFull.origin === 'authored' ? () => addAuthored(liveFull) : undefined}
+          />
+        )}
+        {/* The designer's "go and look" prompt, handed over as the context closes */}
+        {evidence && (
+          <EvidencePromptOverlay
+            key="evidence"
+            title={evidence.title}
+            lens={evidence.pastCategory}
+            prompt={evidence.evidencePrompt ?? ''}
+            onClose={() => setEvidence(null)}
           />
         )}
         {editEntry && (
