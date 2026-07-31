@@ -25,6 +25,7 @@ import { uploadSharePhoto, recordUnsharedResponse } from '@/lib/community-store'
 import { subscribeGuestContexts } from '@/features/context-journal/guest-contexts';
 import FormattedText from './FormattedText';
 import RecordButton from './RecordButton';
+import ReflectionPinPicker, { type PinLoc } from './ReflectionPinPicker';
 import { ChevronLeftIcon } from '@/components/icons';
 
 const CUSTOM_PROMPT = 'What piqued your interest? What else would you want to share?';
@@ -40,7 +41,7 @@ interface Props {
   onDone: () => void;
 }
 
-type Selected = { id: string | null; text: string; isCustom: boolean; actId?: string };
+type Selected = { id: string | null; text: string; isCustom: boolean; actId?: string; kind?: 'evidence' };
 
 function newResponseId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
@@ -76,9 +77,15 @@ export default function ActReflectionCard({ onSave, onDone }: Props) {
   const [text, setText] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [tagged, setTagged] = useState<string[]>([]);
+  const [pin, setPin] = useState<PinLoc | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const canSave = !!text.trim() && !busy;
+  // The evidence prompt asks for a photograph of a real thing in a real place, so
+  // a description on its own does not answer it. All three, or it is not saved.
+  const isEvidence = selected?.kind === 'evidence';
+  const canSave = isEvidence
+    ? !!text.trim() && photos.length > 0 && !!pin && !busy
+    : !!text.trim() && !busy;
 
   const save = async () => {
     if (!canSave || !selected) return;
@@ -91,6 +98,7 @@ export default function ActReflectionCard({ onSave, onDone }: Props) {
       actId,
       text: text.trim(),
       photos,
+      pin: pin ? { lat: pin.lat, lng: pin.lng } : null,
       taggedContexts: tagged.map((id) => ({ id, title: taggable.find((c) => c.id === id)?.title ?? '' })),
       promptId: selected.isCustom ? null : selected.id,
       promptText: selected.isCustom ? CUSTOM_PROMPT : selected.text,
@@ -119,6 +127,7 @@ export default function ActReflectionCard({ onSave, onDone }: Props) {
     setText('');
     setPhotos([]);
     setTagged([]);
+    setPin(null);
     setBusy(false);
   };
 
@@ -145,10 +154,24 @@ export default function ActReflectionCard({ onSave, onDone }: Props) {
                 return (
                   <button
                     key={p.id}
-                    onClick={() => setSelected({ id: p.id, text: p.prompt, isCustom: false, actId: p.actId })}
+                    onClick={() => setSelected({ id: p.id, text: p.prompt, isCustom: false, actId: p.actId, kind: p.kind })}
                     className="shrink-0 w-[85%] rounded-2xl px-6 py-8 text-center shadow-md flex flex-col items-center justify-center"
                     style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)', minHeight: '54vh' }}
                   >
+                    {/* This one asks for something different from the others — a
+                        photograph of a real thing, not a written thought — so the
+                        card says so before they commit to it. */}
+                    {p.kind === 'evidence' && (
+                      <span
+                        className="mb-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold uppercase tracking-[0.12em]"
+                        style={{ backgroundColor: 'color-mix(in srgb, var(--th-primary) 12%, transparent)', color: 'var(--th-primary)' }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" />
+                        </svg>
+                        Photo &amp; place
+                      </span>
+                    )}
                     {p.photoUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.photoUrl} alt="" className="w-full max-h-44 object-cover rounded-xl mb-6" />
@@ -254,6 +277,43 @@ export default function ActReflectionCard({ onSave, onDone }: Props) {
         <FormattedText text={selected.text} />
       </p>
 
+      {/* The evidence prompt is answered in the order it is done: take the
+          photograph, say where it was, then say what it shows. Each step appears
+          as the one before it is finished, so the screen never opens as a form. */}
+      {isEvidence ? (
+        <div className="mt-5 space-y-5">
+          <EvidenceStep n={1} label="Photograph it" done={photos.length > 0}>
+            <PhotoPicker photos={photos} setPhotos={setPhotos} camera />
+          </EvidenceStep>
+
+          {photos.length > 0 && (
+            <EvidenceStep n={2} label="Where is it?" done={!!pin}>
+              <ReflectionPinPicker
+                value={pin}
+                onChange={setPin}
+                centre={currentStop?.location ?? null}
+              />
+            </EvidenceStep>
+          )}
+
+          {photos.length > 0 && pin && (
+            <EvidenceStep n={3} label="What does it show?" done={!!text.trim()}>
+              <RecordButton
+                halo={!text.trim()}
+                onTranscript={(t) => setText((prev) => (prev ? `${prev} ${t}` : t))}
+              />
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={4}
+                placeholder="…or type it"
+                className="ds-textarea mt-3 px-4 py-3 text-[18px] font-serif"
+              />
+            </EvidenceStep>
+          )}
+        </div>
+      ) : (
+      <>
       <div className="mt-4">
         <RecordButton
           halo={!text.trim()}
@@ -298,6 +358,8 @@ export default function ActReflectionCard({ onSave, onDone }: Props) {
           <PhotoPicker photos={photos} setPhotos={setPhotos} />
         </div>
       )}
+      </>
+      )}
 
       <button
         onClick={save}
@@ -314,8 +376,39 @@ export default function ActReflectionCard({ onSave, onDone }: Props) {
   );
 }
 
+/** One step of the evidence answer. Numbered, and ticked once it is done — three
+ *  separate actions in a row need to look like a sequence rather than a form. */
+function EvidenceStep({ n, label, done, children }: {
+  n: number; label: string; done: boolean; children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <span
+          className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-bold"
+          style={done
+            ? { backgroundColor: 'var(--th-primary)', color: '#fff' }
+            : { border: '2px solid var(--th-border)', color: 'var(--text-secondary)' }}
+        >
+          {done ? '✓' : n}
+        </span>
+        <span className="font-semibold text-[15px]" style={{ color: 'var(--text-primary)' }}>{label}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 /** Photos on a reflection: uploaded from the device, or found online (Commons). */
-function PhotoPicker({ photos, setPhotos }: { photos: string[]; setPhotos: React.Dispatch<React.SetStateAction<string[]>> }) {
+function PhotoPicker({ photos, setPhotos, camera = false }: {
+  photos: string[];
+  setPhotos: React.Dispatch<React.SetStateAction<string[]>>;
+  /** Offer the camera first. `capture` opens it directly instead of the photo
+   *  library — the point of the evidence prompt is the thing in front of them,
+   *  not something already on the phone. Choosing from the library stays
+   *  available beside it, since they may have photographed it earlier. */
+  camera?: boolean;
+}) {
   const [uploading, setUploading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -348,16 +441,36 @@ function PhotoPicker({ photos, setPhotos }: { photos: string[]; setPhotos: React
           ))}
         </div>
       )}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
+        {camera && (
+          <label
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold cursor-pointer text-white"
+            style={{ backgroundColor: 'var(--th-primary)' }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" />
+            </svg>
+            {uploading ? 'Uploading…' : 'Take a photo'}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => { upload(e.target.files); e.target.value = ''; }}
+            />
+          </label>
+        )}
         <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold cursor-pointer border-2" style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
-          {uploading ? 'Uploading…' : 'Add photos'}
+          {camera ? 'Choose from photos' : (uploading ? 'Uploading…' : 'Add photos')}
           <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { upload(e.target.files); e.target.value = ''; }} />
         </label>
+        {!camera && (
         <button onClick={() => setSearchOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border-2" style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
           Find online
         </button>
+        )}
       </div>
       {searchOpen && <ImageSearchModal onClose={() => setSearchOpen(false)} onPick={(url) => { setPhotos((prev) => [...prev, url]); setSearchOpen(false); }} />}
     </div>

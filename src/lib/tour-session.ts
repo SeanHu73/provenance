@@ -484,7 +484,29 @@ export function reflectionPromptsOf(act: Act | null): ReflectionPrompt[] {
  *  ids namespaced by act so two acts' legacy prompts can't collide, and the act
  *  each came from riding along (responses stay filed under it). Nothing an act
  *  authored is dropped. */
+/**
+ * The evidence prompt — always offered, never authored.
+ *
+ * Every other prompt asks them to write about what they thought. This one asks
+ * them to go and find the context standing in the world: photograph it, say where
+ * it is, and say what it shows. It is built in rather than authored because it is
+ * not about this tour's content — it works on any tour, and a tour that forgot to
+ * write it would lose the one prompt that sends them back outside.
+ */
+export const EVIDENCE_PROMPT_ID = '__evidence__';
+export const EVIDENCE_PROMPT: MergedReflectionPrompt = {
+  id: EVIDENCE_PROMPT_ID,
+  prompt: 'Take a picture of something you learned from the context that you saw in person!',
+  kind: 'evidence',
+};
+
+/** Every prompt including the built-in evidence one, which goes last so the
+ *  authored set still reads as the tour's own. */
 export function allReflectionPrompts(tour: Tour | null): MergedReflectionPrompt[] {
+  return [...authoredReflectionPrompts(tour), EVIDENCE_PROMPT];
+}
+
+function authoredReflectionPrompts(tour: Tour | null): MergedReflectionPrompt[] {
   if (!tour) return [];
   const authored = (tour.reflectionPrompts ?? []).filter((p) => p.prompt.trim());
   if (authored.length) return authored;

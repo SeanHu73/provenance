@@ -111,7 +111,13 @@ function buildRows(sessions: StoredTourSession[], toursById: Record<string, Tour
           extras.push(`contexts: ${refl.taggedContexts.map((c) => c.title || c.id).join(', ')}`);
         }
         if (refl.photos && refl.photos.length) extras.push(`${refl.photos.length} photo(s)`);
-        if (refl.pin) extras.push(`pin: ${refl.pin.title || 'spot'}${refl.pin.note ? ` — ${refl.pin.note}` : ''}`);
+        // Coordinates, not just "spot" — the evidence prompt's whole point is
+        // where the thing is, and a label nobody set says nothing.
+        if (refl.pin) {
+          extras.push(`pin: ${refl.pin.lat.toFixed(5)}, ${refl.pin.lng.toFixed(5)}`
+            + (refl.pin.title ? ` (${refl.pin.title})` : '')
+            + (refl.pin.note ? ` — ${refl.pin.note}` : ''));
+        }
         extras.push(refl.sharedToCommunity ? 'shared' : 'unshared');
         const response = refl.text + (extras.length ? `  [${extras.join('; ')}]` : '');
         rows.push([...base, 'Act reflection', actTitle, prompt, response]);

@@ -557,6 +557,9 @@ export interface ActReflectionResponse {
  *  the prompts read as one closing set. */
 export interface MergedReflectionPrompt extends ReflectionPrompt {
   actId?: string;
+  /** `evidence` is the built-in "photograph what you saw" prompt, which answers
+   *  with a photo, a pin and a description rather than with text alone. */
+  kind?: 'evidence';
 }
 
 /** One context question the explorer asked (and the AI's answer, once wired). */
