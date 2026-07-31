@@ -424,7 +424,12 @@ export async function POST(req: Request) {
       + priorBlock
       + `RETRIEVED VERIFIED-BASE CANDIDATES (curator-authored; verified. Use only those that DIRECTLY answer — fit, not presence):\n${candidateBlock}\n\n`;
     const submitBlock =
-      `SUBMIT: call submit_answer exactly once — the draft (guiding first-person plural; it will be voiced afterwards), the branch (verified-base / live / banked), the lead lens, and every source you actually used as its own object in the sources array (entry/context id for verified, url for web), never as text and never inside relevanceNote. An answered draft with an empty sources array is rejected. Leave unused source sub-fields as empty strings, and relevanceNote empty unless this context is likely not relevant to what the learner is exploring.`;
+      `SUBMIT: call submit_answer exactly once — the draft (guiding first-person plural; it will be voiced afterwards), the branch (verified-base / live / banked), the lead lens, and every source you actually used as its own object in the sources array, never as text and never inside relevanceNote.\n\n`
+      + `CITING IS CHEAP — only two fields are required per source, so there is no reason to skip one:\n`
+      + `  • a verified-base entry or context: {"kind":"entry"|"context","id":"<the id in brackets above>","name":"<its title>","verified":true}\n`
+      + `  • a web page: {"kind":"web","url":"<the full https:// url>","name":"<page title>","verified":false}\n`
+      + `Omit author/date unless you actually know them. An answered draft with an empty sources array is rejected — if you leaned on a retrieved entry, cite the entry; drafting from one without citing it is the same failure as drafting from memory.\n\n`
+      + `Leave relevanceNote empty unless this context is likely not relevant to what the learner is exploring.`;
 
     const researchUser =
       askBlock
@@ -442,9 +447,12 @@ export async function POST(req: Request) {
     const tResearch = Date.now();
     let research = null as Awaited<ReturnType<typeof researchDraft>>;
     let backend: ResearchBackend = 'claude';
+    // Kept for the citation floor below: what the search actually returned.
+    let lastFindings: Awaited<ReturnType<typeof perplexitySearch>> = null;
 
     if (setting === 'perplexity') {
       const findings = await perplexitySearch({ question, domains: preferredDomains });
+      lastFindings = findings;
       // Findings with no citations are worse than no findings: the drafting pass
       // has an answer in front of it and nothing to attribute it to, so it either
       // banks or writes an uncited draft — which is exactly the failure this
@@ -506,6 +514,34 @@ export async function POST(req: Request) {
         author: s.author || undefined, date: s.date || undefined, verified: s.verified,
       };
     });
+    // Last resort. Both paths push back on an uncited answer and both still ship
+    // one sometimes — measured, 6 of the last 10 logged answers had an empty
+    // sources array, on every branch and both backends. An answer with no
+    // provenance is the one thing this product cannot show a learner, so when the
+    // model won't name what it used, attribute the material it was actually given:
+    // the retrieved entries for a verified-base draft, the search results for a
+    // live one. That is a statement about what was in front of it rather than a
+    // citation it made, so it is logged loudly — `verified` still describes the
+    // material (a curator entry is verified whoever names it), not our confidence
+    // that the draft leaned on it. Watch the warning count: this firing often
+    // means the drafts are unattributed, not that the floor is working.
+    if (research.status === 'answered' && sources.length === 0) {
+      const fallback: DetectiveSource[] = research.branch === 'live'
+        ? (lastFindings?.sources ?? []).slice(0, 3).map((s) => ({
+            kind: 'web' as const, url: linkOf(s.url), name: s.title || s.url, verified: false,
+          }))
+        : ranked.slice(0, 2).map((c) => ({
+            kind: c.kind, id: c.id, url: linkOf(c.domains.find(Boolean)), name: c.title, verified: true,
+          }));
+      if (fallback.length) {
+        console.warn(
+          `[detective]   ⚠ answered with no citations after pushback — attributing to the ${fallback.length} `
+          + `${research.branch === 'live' ? 'search result(s)' : 'retrieved entr(ies)'} it was given`,
+        );
+        sources.push(...fallback);
+      }
+    }
+
     const unlinked = sources.filter((s) => !s.url).length;
     if (unlinked) {
       console.warn(`[detective]   ⚠ ${unlinked}/${sources.length} source(s) have no link — they will render as plain titles`);

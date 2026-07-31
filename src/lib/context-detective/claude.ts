@@ -57,6 +57,19 @@ export interface ResearchOutput {
   sources: ResearchSource[];
 }
 
+/**
+ * Only `kind` and `verified` are required.
+ *
+ * All seven used to be, with the prompt telling the model to "leave unused source
+ * sub-fields as empty strings" — so citing one URL meant filling seven fields,
+ * five of them meaningless. Measured across the logged answers, most drafts came
+ * back with an EMPTY sources array rather than pay that: 6 of the last 10, on both
+ * research paths, going back before either was touched. A required field the
+ * caller doesn't want is friction on every citation, and the cheapest way out of
+ * friction is to cite nothing.
+ *
+ * `additionalProperties: false` still holds, so the shape can't drift.
+ */
 const SOURCE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -69,7 +82,7 @@ const SOURCE_SCHEMA = {
     date: { type: 'string' },
     verified: { type: 'boolean' },
   },
-  required: ['kind', 'id', 'url', 'name', 'author', 'date', 'verified'],
+  required: ['kind', 'verified'],
 };
 
 const RESEARCH_SCHEMA = {
