@@ -296,11 +296,24 @@ export interface DetectiveAnswer {
 }
 
 /** A logged Detective response for the admin review queue. */
+/** Which pipeline researched an answer. `claude` is the original — Sonnet with
+ *  the web-search tool, looping until it submits. `perplexity` runs one Sonar
+ *  search and hands its findings to a single Claude pass to draft from. Switched
+ *  globally in the app settings, and recorded on every answer so the two can be
+ *  compared on the same questions. */
+export type ResearchBackend = 'claude' | 'perplexity';
+
 export interface DetectiveLog extends DetectiveAnswer {
   id: string;
   tourId: string;
   actId?: string;
   question: string;
+  /** Which research backend produced this answer (absent on answers logged
+   *  before the two were switchable, and on ones served from the base). */
+  researchBackend?: ResearchBackend;
+  /** Wall-clock milliseconds the research stage took — the number the two
+   *  backends are actually being compared on. */
+  researchMs?: number;
   /** The learner's ORIGINAL question, before the Framing Coach may have prompted
    *  a reframe. Equals `question` when they kept their wording. Lets the author
    *  see whether learners arrived at a good contextual question on their own. */

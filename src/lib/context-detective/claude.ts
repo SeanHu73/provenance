@@ -235,6 +235,48 @@ export async function researchDraft(system: string, userText: string): Promise<R
   return null;
 }
 
+/**
+ * Draft from research someone else did (the Perplexity backend).
+ *
+ * Same skills, same `submit_answer` schema, same downstream handling as
+ * `researchDraft` — the only difference is that the searching already happened,
+ * so there is no web_search tool, no multi-round loop, and no repair pushbacks.
+ * The two failure modes those pushbacks exist to catch are structurally harder
+ * here: the sources arrive as a list in the prompt, so citing is a copy.
+ *
+ * `tool_choice` forces the submission, which removes the "ended without
+ * submitting" miss entirely — the model cannot answer in prose and leave the
+ * route with nothing.
+ */
+export async function synthesiseResearch(system: string, userText: string): Promise<ResearchOutput | null> {
+  const started = Date.now();
+  const resp = await callClaude({
+    model: SONNET,
+    max_tokens: 8000,
+    system: cachedSystem(system),
+    thinking: { type: 'adaptive' },
+    output_config: { effort: 'medium' },
+    tools: [{
+      name: 'submit_answer',
+      description:
+        'Submit your final structured answer. Put EVERY source you used as its own object in the `sources` '
+        + 'array — never as text. `relevanceNote` is a short plain sentence or an empty string.',
+      strict: true,
+      input_schema: RESEARCH_SCHEMA,
+    }],
+    tool_choice: { type: 'tool', name: 'submit_answer' },
+    messages: [{ role: 'user', content: userText }],
+  });
+  const content: Json[] = resp.content || [];
+  const submit = content.find((b: Json) => b.type === 'tool_use' && b.name === 'submit_answer');
+  if (!submit) {
+    console.log(`[detective] synthesis ended without submitting (stop=${resp.stop_reason}) after ${Date.now() - started}ms`);
+    return null;
+  }
+  console.log(`[detective] synthesis done · ${Date.now() - started}ms · 1 model call`);
+  return submit.input as ResearchOutput;
+}
+
 // ── Voice rewrite (Opus 4.8) — the narrative plus its title and summary ──
 
 export interface VoiceOutput {

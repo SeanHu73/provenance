@@ -11,14 +11,15 @@
  * highlight the Auto-Play toggle with a one-line explanation.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useAutoplayHint } from '@/lib/autoplay-hint';
-import { useDevJump } from '@/lib/dev-jump';
+import { useDevJump, useDevJumpOn } from '@/lib/dev-jump';
+import { subscribeAppSettings, setResearchBackend } from '@/lib/app-settings-store';
 import { useTourOptional } from '@/context/TourContext';
 import { getActs } from '@/lib/tour-session';
 import { getActiveStops } from '@/lib/tours-store';
-import type { Stop, TourPhase } from '@/lib/types';
+import type { ResearchBackend, Stop, TourPhase } from '@/lib/types';
 
 /** One jumpable destination. `stopIndex` is required for anything inside an act —
  *  the act is derived from the stop the session is parked on, so a phase alone is
@@ -153,6 +154,83 @@ export function DevJumpMenuItem() {
   );
 }
 
+/**
+ * The Context Detective's research backend — a global switch, not a device one.
+ *
+ * Flipping it writes one Firestore document that the answer route reads on every
+ * ask, so it changes the Detective for **every explorer on every device**, mid-tour
+ * included, until it is flipped back. That is the point of it: the two pipelines
+ * are being compared on real questions, and a per-device flag would only ever
+ * compare them on this phone.
+ *
+ * Sits under Dev Jump and only appears when Dev Jump is on — it is an admin
+ * control with app-wide blast radius, so it should not be one stray tap away for
+ * a learner who opened the menu looking for the audio toggle.
+ */
+export function ResearchBackendMenuItem() {
+  const devOn = useDevJumpOn();
+  const [backend, setBackend] = useState<ResearchBackend | null>(null);
+  const [changedAt, setChangedAt] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Live, so a flip made on the laptop shows as flipped here without a reload.
+  useEffect(() => subscribeAppSettings((s) => {
+    setBackend(s.researchBackend);
+    setChangedAt(s.updatedAt);
+  }), []);
+
+  if (!devOn) return null;
+
+  const on = backend === 'perplexity';
+  const toggle = async () => {
+    if (busy || backend === null) return;
+    setBusy(true);
+    const next: ResearchBackend = on ? 'claude' : 'perplexity';
+    setBackend(next); // optimistic; the subscription confirms or corrects it
+    try {
+      await setResearchBackend(next);
+    } catch (err) {
+      console.error('[app-settings] could not switch the research backend:', err);
+      setBackend(on ? 'perplexity' : 'claude');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      disabled={busy || backend === null}
+      className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-black/[0.03] disabled:opacity-60 border-t"
+      style={{ borderColor: 'var(--th-border)' }}
+      aria-pressed={on}
+    >
+      <span
+        className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+        style={{ backgroundColor: on ? '#0ea5e9' : 'var(--th-border)', color: on ? '#fff' : 'var(--text-secondary)' }}
+      >
+        {/* magnifier icon */}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+        </svg>
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block font-semibold text-text-primary">
+          Research: {backend === null ? 'loading…' : on ? 'Perplexity' : 'Claude'}
+        </span>
+        <span className="block text-xs text-text-secondary leading-snug">
+          {backend === null
+            ? 'Reading the global setting…'
+            : `Applies to everyone, everywhere${changedAt ? ` · set ${new Date(changedAt).toLocaleString()}` : ''}`}
+        </span>
+      </span>
+      <span className="shrink-0 w-10 h-6 rounded-full p-0.5 transition-colors" style={{ backgroundColor: on ? '#0ea5e9' : 'var(--th-border)' }}>
+        <span className="block w-5 h-5 rounded-full bg-white shadow transition-transform" style={{ transform: on ? 'translateX(16px)' : 'translateX(0)' }} />
+      </span>
+    </button>
+  );
+}
+
 /** The Auto-Play on/off row — a headphone icon, a label, and a switch. Shared by
  *  this menu and the Context Journal's menu so it looks/behaves identically. */
 export function AutoPlayMenuItem({ highlight = false }: { highlight?: boolean }) {
@@ -233,6 +311,7 @@ export default function TourMenu({ inline = false, onDark = false }: { inline?: 
               </div>
             )}
             <DevJumpMenuItem />
+            <ResearchBackendMenuItem />
           </div>
         </>
       )}

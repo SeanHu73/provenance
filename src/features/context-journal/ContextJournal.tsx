@@ -38,7 +38,7 @@ import ResearchReadyBar from './components/ResearchReadyBar';
 import { captureExploredContext, subscribeExploredContexts, updateExploredContext, type ExploredContext } from './shared-store';
 import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
 import { contextNarrationText } from '@/lib/tts-narration';
-import { AutoPlayMenuItem, DevJumpMenuItem } from '@/components/tour/TourMenu';
+import { AutoPlayMenuItem, DevJumpMenuItem, ResearchBackendMenuItem } from '@/components/tour/TourMenu';
 import { useDevJumpOn } from '@/lib/dev-jump';
 
 /** Comic ink shared with the P.A.S.T. lens buttons, for the "Ask" CTA's border
@@ -549,6 +549,9 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
                   without this row an admin can't jump back out. Renders nothing
                   when there's no tour session (the standalone journal route). */}
               <DevJumpMenuItem />
+              {/* The Detective's research backend — global, and reachable here
+                  because this is the screen where questions are actually asked. */}
+              <ResearchBackendMenuItem />
               {/* A/B: swap the P.A.S.T. lens UI (magnifier vs classic buttons). */}
               <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--th-border)' }}>
                 <span className="font-semibold text-text-primary text-sm">Lens style</span>

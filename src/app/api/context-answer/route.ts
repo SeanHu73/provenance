@@ -16,10 +16,12 @@ import { collection, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
   Tour, KnowledgeEntry, PastLens, ActContextItem,
-  DetectiveAnswer, DetectiveHandout, DetectiveSource, DetectiveLog,
+  DetectiveAnswer, DetectiveHandout, DetectiveSource, DetectiveLog, ResearchBackend,
 } from '@/lib/types';
 import { researchSystem, voiceSystem } from '@/lib/context-detective/prompts';
-import { researchDraft, voiceRewrite, ResearchSource } from '@/lib/context-detective/claude';
+import { researchDraft, synthesiseResearch, voiceRewrite, ResearchSource } from '@/lib/context-detective/claude';
+import { perplexitySearch, findingsBlock } from '@/lib/context-detective/perplexity';
+import { getResearchBackend } from '@/lib/app-settings-store';
 import { embedTexts, cosine } from '@/lib/context-detective/embed';
 import { searchCommonsImages, isPhotoExt } from '@/lib/image-search';
 import { embeddingKey, getCachedEmbeddings, putCachedEmbedding } from '@/lib/context-detective/embed-cache';
@@ -68,8 +70,20 @@ async function logResponse(input: Omit<DetectiveLog, 'id' | 'createdAt' | 'revie
   }
 }
 
-function banked(question: string, tourId: string, actId: string | undefined, narrative = '', originalQuestion?: string): DetectiveAnswer {
-  void logResponse({ question, originalQuestion, tourId, actId, status: 'banked', narrative, handout: null, branch: 'banked', sources: [], retrievedIds: [] });
+function banked(
+  question: string,
+  tourId: string,
+  actId: string | undefined,
+  narrative = '',
+  originalQuestion?: string,
+  /** Which backend ran, and how long its research took — recorded even on a miss,
+   *  since "how often does it come back with nothing" is half the comparison. */
+  trace?: { researchBackend?: ResearchBackend; researchMs?: number },
+): DetectiveAnswer {
+  void logResponse({
+    question, originalQuestion, tourId, actId, status: 'banked', narrative,
+    handout: null, branch: 'banked', sources: [], retrievedIds: [], ...trace,
+  });
   return { status: 'banked', narrative, handout: null, branch: 'banked', sources: [] };
 }
 
@@ -383,24 +397,58 @@ export async function POST(req: Request) {
         + `This is BACKGROUND ONLY, to gauge what they likely already know and pitch the answer accordingly (don't re-explain what they've clearly seen). Do NOT treat these stops as sources or evidence, do NOT quote or argue from their content, and do NOT make the connections between them and the answer for the learner — drawing those links is the learner's own job.\n\n`
       : '';
 
-    const researchUser =
+    // Everything both research backends need. Only the tail differs: the Claude
+    // path is told how to search, the Perplexity path is handed what was found.
+    // MECHANICS ONLY. The doctrine — the source ladder, the fit gate, the partial
+    // answer, when banking is and is not allowed, and why knowing a fact is not a
+    // source for it — lives in the Research skill (§1-§5) and is stated there once.
+    // It used to be restated here too, which meant two copies of the same rules
+    // drifting apart silently, with only this one visible to whoever edited the
+    // route. Say here only what the skill cannot know: the runtime contract.
+    const askBlock =
       `QUESTION FROM THE LEARNER:\n"${question}"\n\n`
       + `ENTRY LENS${lensLine}\n\n`
       + priorBlock
-      + `RETRIEVED VERIFIED-BASE CANDIDATES (curator-authored; verified. Use only those that DIRECTLY answer — fit, not presence):\n${candidateBlock}\n\n`
+      + `RETRIEVED VERIFIED-BASE CANDIDATES (curator-authored; verified. Use only those that DIRECTLY answer — fit, not presence):\n${candidateBlock}\n\n`;
+    const submitBlock =
+      `SUBMIT: call submit_answer exactly once — the draft (guiding first-person plural; it will be voiced afterwards), the branch (verified-base / live / banked), the lead lens, and every source you actually used as its own object in the sources array (entry/context id for verified, url for web), never as text and never inside relevanceNote. An answered draft with an empty sources array is rejected. Leave unused source sub-fields as empty strings, and relevanceNote empty unless this context is likely not relevant to what the learner is exploring.`;
+
+    const researchUser =
+      askBlock
       + `PRIORITISED DOMAINS for web search (prioritise, do not restrict to): ${domains.join(', ') || 'academic and official / university sites'}\n\n`
-      // MECHANICS ONLY. The doctrine — the source ladder, the fit gate, the partial answer,
-      // when banking is and is not allowed, and why knowing a fact is not a source for it —
-      // lives in the Research skill (§1-§5) and is stated there once. It used to be restated
-      // here too, which meant two copies of the same rules drifting apart silently, with only
-      // this one visible to whoever edited the route. Say here only what the skill cannot
-      // know: the tool contract and the runtime budget.
       + `Follow your P.A.S.T., Research, and Grounding skills. Screen first (is this a question? is it about context?).\n\n`
       + `SEARCH BUDGET: web_search is capped. Issue the queries you need together in the SAME turn (several tool calls at once) so they run in parallel and you read all the results before deciding whether another round is warranted. Running out of searches is NOT a research failure: if the tool reports you have hit its usage limit, stop searching and answer from the results already in front of you. Never bank because a tool limit stopped you, and never mention a tool limit to the learner.\n\n`
-      + `SUBMIT: call submit_answer exactly once — the draft (guiding first-person plural; it will be voiced afterwards), the branch (verified-base / live / banked), the lead lens, and every source you actually used as its own object in the sources array (entry/context id for verified, url for web), never as text and never inside relevanceNote. An answered draft with an empty sources array is rejected. Leave unused source sub-fields as empty strings, and relevanceNote empty unless this context is likely not relevant to what the learner is exploring.`;
+      + submitBlock;
 
+    // 2. Research + draft. Which backend runs is an app-wide setting an admin
+    //    flips once (app-settings-store) — it is read here, per request, so a flip
+    //    applies to every explorer on every device without anyone reloading.
+    //    Perplexity failing for any reason (no key, timeout, bad endpoint) falls
+    //    through to the Claude path rather than costing the learner their answer.
+    const setting = await getResearchBackend();
     const tResearch = Date.now();
-    const research = await researchDraft(researchSystem(), researchUser);
+    let research = null as Awaited<ReturnType<typeof researchDraft>>;
+    let backend: ResearchBackend = 'claude';
+
+    if (setting === 'perplexity') {
+      const findings = await perplexitySearch({ question, domains: preferredDomains });
+      if (findings) {
+        const synthUser =
+          askBlock
+          + `${findingsBlock(findings)}\n\n`
+          + `Follow your P.A.S.T., Research, and Grounding skills. Screen first (is this a question? is it about context?).\n\n`
+          + `The search above is raw material, not your answer: judge it, keep what the sources actually support, and write the draft yourself. The synthesis is not a source — cite the URLs. If the material is thin, say plainly what it does not establish and answer as far as it goes; a partial answer is expected and welcome.\n\n`
+          + submitBlock;
+        research = await synthesiseResearch(researchSystem(), synthUser);
+        if (research) backend = 'perplexity';
+      }
+      if (!research) {
+        console.warn('[detective] perplexity path produced nothing — falling back to the Claude research path');
+      }
+    }
+    if (!research) {
+      research = await researchDraft(researchSystem(), researchUser);
+    }
     timings.research = Date.now() - tResearch;
     if (!research || research.status === 'banked') {
       // Banking is meant to be rare (see the Research skill §4a). When it happens,
@@ -408,10 +456,12 @@ export async function POST(req: Request) {
       // indistinguishable from a genuine one and we cannot tell which we have.
       const why = !research ? 'no submit_answer returned' : (research.draft || '').trim().slice(0, 300) || '(no reason given)';
       console.log(
-        `[detective] "${question.slice(0, 70)}" → banked · retrieve=${timings.retrieve}ms research=${timings.research}ms total=${Date.now() - t0}ms`
+        `[detective] "${question.slice(0, 70)}" → banked · backend=${backend} retrieve=${timings.retrieve}ms research=${timings.research}ms total=${Date.now() - t0}ms`
         + `\n[detective]   bank reason: ${why}`,
       );
-      return NextResponse.json(banked(question, tourId, actId, '', originalQuestion));
+      return NextResponse.json(banked(question, tourId, actId, '', originalQuestion, {
+        researchBackend: backend, researchMs: timings.research,
+      }));
     }
 
     // Guard: a model glitch sometimes dumps source markup into relevanceNote —
@@ -444,7 +494,11 @@ export async function POST(req: Request) {
 
     if (research.status === 'declined') {
       const declined: DetectiveAnswer = { status: 'declined', narrative: research.draft, handout: null, branch: research.branch, sources, relevanceNote: research.relevanceNote || undefined };
-      void logResponse({ ...declined, question, originalQuestion, tourId, actId, retrievedIds: ranked.map((c) => c.id) });
+      void logResponse({
+        ...declined, question, originalQuestion, tourId, actId,
+        retrievedIds: ranked.map((c) => c.id),
+        researchBackend: backend, researchMs: timings.research,
+      });
       return NextResponse.json(declined);
     }
 
@@ -471,7 +525,7 @@ export async function POST(req: Request) {
     const summary = voiced?.summary?.trim() || '';
 
     console.log(
-      `[detective] "${question.slice(0, 70)}" → ${research.status}/${research.branch} · `
+      `[detective] "${question.slice(0, 70)}" → ${research.status}/${research.branch} · backend=${backend} · `
       + `retrieve=${timings.retrieve}ms research=${timings.research}ms voice=${timings.voice}ms · total=${Date.now() - t0}ms`,
     );
 
@@ -509,7 +563,11 @@ export async function POST(req: Request) {
       status: 'answered', narrative, handout, branch: research.branch, sources,
       relevanceNote: handout.relevanceNote,
     };
-    void logResponse({ ...answer, question, originalQuestion, tourId, actId, retrievedIds: ranked.map((c) => c.id) });
+    void logResponse({
+      ...answer, question, originalQuestion, tourId, actId,
+      retrievedIds: ranked.map((c) => c.id),
+      researchBackend: backend, researchMs: timings.research,
+    });
     // Grow the verified base over time: capture web-sourced answers as candidates.
     if (research.branch === 'live') {
       void captureCandidate({ tourId, question, lens: entryLens, card: handout.cards[0], narrative, sources });
