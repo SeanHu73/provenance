@@ -1207,6 +1207,18 @@ export interface InvestigationQuestion {
   /** Ticked off at the end of Act 1 as "I heard this answered on the tour". */
   heard?: boolean;
   answeredAt?: string;
+  /** The Detective's whole response, kept verbatim so the journal can reopen a
+   *  contextual answer in the ordinary ask flow — generated title, photo, audio
+   *  at the top, cited sources, and Add to Context. Flattening it to a few fields
+   *  was what left these answers looking unlike every other answer in the tour. */
+  detective?: {
+    status?: 'answered' | 'banked' | 'declined';
+    narrative?: string;
+    handout?: {
+      cards?: { lens?: string; title?: string; summary?: string; explanation?: string; imageUrl?: string; imageCredit?: string }[];
+    } | null;
+    sources?: { kind?: string; url?: string; name?: string; author?: string; date?: string; verified?: boolean; consulted?: boolean }[];
+  };
 }
 
 /** Everything from the opening investigation stage, kept on the session so the

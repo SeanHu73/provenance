@@ -16,8 +16,8 @@ import type { PastCategory } from './types';
 export interface DetectiveResp {
   status?: 'answered' | 'banked' | 'declined';
   narrative?: string;
-  handout?: { cards?: { lens?: PastCategory; title?: string; summary?: string; explanation?: string }[] } | null;
-  sources?: { kind?: string; url?: string; name?: string; author?: string; date?: string; verified?: boolean }[];
+  handout?: { cards?: { lens?: PastCategory; title?: string; summary?: string; explanation?: string; imageUrl?: string; imageCredit?: string }[] } | null;
+  sources?: { kind?: string; url?: string; name?: string; author?: string; date?: string; verified?: boolean; consulted?: boolean }[];
 }
 
 export interface ResearchJob {
@@ -89,6 +89,42 @@ export function startResearch(input: {
     })
     .finally(() => controllers.delete(id));
 
+  return id;
+}
+
+/**
+ * Seed an already-finished answer as a job, so it can be opened through the
+ * ordinary ask flow.
+ *
+ * The opening investigation researches its questions in its own persistent queue
+ * (this store is memory-only, and its answers have to survive a whole act). That
+ * left them with nowhere to be *read*: they had a narrative and nothing else — no
+ * generated title, no photo, no audio bar, no sources, no Add to Context —
+ * because all of that lives in the ask flow, and the ask flow only knows how to
+ * read a job. So the stored answer becomes one here.
+ *
+ * Keyed by the question's own id, so reopening the same question returns the same
+ * job rather than stacking duplicates.
+ */
+export function adoptResearch(input: {
+  key: string;
+  question: string;
+  lens: PastCategory;
+  tourId: string;
+  actId?: string;
+  result: DetectiveResp;
+}): string {
+  const id = `adopted_${input.key}`;
+  if (jobs.some((j) => j.id === id)) {
+    patch(id, { result: input.result, status: 'ready' });
+    return id;
+  }
+  jobs = [...jobs, {
+    id, question: input.question, originalQuestion: input.question, lens: input.lens,
+    tourId: input.tourId, actId: input.actId, priorStops: undefined,
+    theory: '', motivation: '', status: 'ready', result: input.result, seen: false, startedAt: Date.now(),
+  }];
+  emit();
   return id;
 }
 

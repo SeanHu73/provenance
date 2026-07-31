@@ -35,6 +35,10 @@ const KEY = 'provenance-investigation-v1';
 const CONCURRENCY = 2;
 
 interface Stored {
+  /** True once the raw submission has been split into questions — however many
+   *  that turned out to be, including none. Distinguishes "nothing to show" from
+   *  "not back yet" for the screen that hands the answers over. */
+  parsed?: boolean;
   tourId: string;
   actId?: string;
   raw: string;
@@ -94,6 +98,10 @@ async function answerContextual(q: InvestigationQuestion, tourId: string, actId?
   const d = await res.json();
   const card = d?.handout?.cards?.[0];
   patch(q.id, {
+    // Verbatim, as well as flattened: the journal reopens this through the
+    // ordinary ask flow, which needs the photo, the source metadata and the card
+    // — none of which survive being reduced to answer + title + summary.
+    detective: d,
     status: d?.status === 'answered' && d?.narrative ? 'answered' : 'failed',
     answer: d?.narrative || '',
     title: card?.title || '',
@@ -145,6 +153,7 @@ export function startInvestigation(input: {
     raw: input.raw,
     submittedAt: new Date().toISOString(),
     questions: input.questions,
+    parsed: true,
   };
   persist();
   pump();
@@ -181,11 +190,14 @@ export function beginInvestigation(input: { tourId: string; actId?: string; raw:
       const questions: InvestigationQuestion[] = (await res.json()).questions || [];
       // Guard against a second submission having replaced this one mid-flight.
       if (!state || state.raw !== input.raw) return;
-      state = { ...state, questions };
+      state = { ...state, questions, parsed: true };
       persist();
       pump();
     } catch (err) {
+      // Marked parsed even so: the screen waiting on this should hand over what
+      // it has rather than hold a learner on "gathering" forever.
       console.error('[investigation] parse failed; the raw text is still recorded:', err);
+      if (state && state.raw === input.raw) { state = { ...state, parsed: true }; persist(); }
     }
   })();
 }
@@ -228,7 +240,7 @@ export function clearInvestigation(): void {
  * `[questions, raw]`. Starts empty on every render and syncs in an effect: the
  * server has no sessionStorage, so seeding during render would break hydration.
  */
-export function useInvestigation(): { questions: InvestigationQuestion[]; raw: string; pending: number } {
+export function useInvestigation(): { questions: InvestigationQuestion[]; raw: string; pending: number; parsed: boolean } {
   const [snap, setSnap] = useState<Stored | null>(null);
   useEffect(() => {
     const h = () => setSnap(state ? { ...state } : null);
@@ -240,6 +252,7 @@ export function useInvestigation(): { questions: InvestigationQuestion[]; raw: s
   const questions = snap?.questions ?? [];
   return {
     questions,
+    parsed: !!snap?.parsed,
     raw: snap?.raw ?? '',
     pending: questions.filter((q) => q.status === 'pending' || q.status === 'researching').length,
   };

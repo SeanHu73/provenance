@@ -27,28 +27,44 @@ import type { InvestigationQuestion } from '@/lib/types';
 
 interface Props {
   questions: InvestigationQuestion[];
+  /** False while the opening submission is still being split into questions.
+   *  Without this the screen could not tell "they asked nothing we answer here"
+   *  from "the parse has not landed yet", and skipped itself on both — which a
+   *  learner who moved through act 1 quickly would hit every time. */
+  parsed: boolean;
   onComplete: () => void;
 }
 
-export default function InvestigationReturnCard({ questions, onComplete }: Props) {
+export default function InvestigationReturnCard({ questions, parsed, onComplete }: Props) {
   const [step, setStep] = useState<'tick' | 'answers'>('tick');
   const [heard, setHeard] = useState<Record<string, boolean>>(
     () => Object.fromEntries(questions.map((q) => [q.id, !!q.heard])),
   );
 
-  // Nothing to hand back — every question was contextual, or the parse found
-  // none. Bow out rather than showing an empty screen. The phase is entered on
-  // "did they submit anything", which is deliberate (the answers can still be in
-  // flight at that point), so this is where the emptiness is actually known.
+  // Bow out only once we know there is genuinely nothing to hand back — every
+  // question contextual, or the parse found none. While it is still being split,
+  // wait instead: an answer arriving a moment later is worth a moment's wait,
+  // and skipping is not recoverable.
   //
   // Every hook stays above the bail-out: an empty list that later fills in would
   // otherwise change the hook count between renders and take React down with it.
+  const nothingToShow = parsed && questions.length === 0;
   const doneRef = useRef(onComplete);
   doneRef.current = onComplete;
   useEffect(() => {
-    if (questions.length === 0) doneRef.current();
-  }, [questions.length]);
-  if (questions.length === 0) return null;
+    if (nothingToShow) doneRef.current();
+  }, [nothingToShow]);
+  if (nothingToShow) return null;
+
+  if (!parsed) {
+    return (
+      <div className="animate-fade-in min-h-full flex flex-col justify-center px-1">
+        <p className="font-serif italic text-center" style={{ fontSize: 17, color: 'var(--text-secondary)' }}>
+          Gathering your questions&hellip;
+        </p>
+      </div>
+    );
+  }
 
   const toggle = (id: string) => {
     const next = !heard[id];

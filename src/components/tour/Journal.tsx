@@ -128,7 +128,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
   // of them ever fired, which is what left the act intro and the context intro
   // hanging. So: the setter lives in a ref (out of the deps), and a signature
   // check means an unchanged list writes nothing at all.
-  const { questions: liveQuestions } = useInvestigation();
+  const { questions: liveQuestions, parsed: investigationParsed } = useInvestigation();
   const mirrorRef = useRef('');
   const setInvRef = useRef(setInvestigationQuestions);
   setInvRef.current = setInvestigationQuestions;
@@ -401,6 +401,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
           <InvestigationReturnCard
             questions={(liveQuestions.length ? liveQuestions : session.investigation?.questions || [])
               .filter((q) => q.kind === 'factual' || q.status === 'later')}
+            parsed={investigationParsed || (session.investigation?.questions || []).length > 0}
             onComplete={completeInvestigationReturn}
           />
         )}

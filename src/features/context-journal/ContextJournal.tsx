@@ -35,6 +35,7 @@ import EvidencePromptOverlay from './components/EvidencePromptOverlay';
 import AddContextFlow from './components/AddContextFlow';
 import ContextAskFlow from './components/ContextAskFlow';
 import ResearchReadyBar from './components/ResearchReadyBar';
+import { adoptResearch, type DetectiveResp } from './research-store';
 import { captureExploredContext, subscribeExploredContexts, updateExploredContext, type ExploredContext } from './shared-store';
 import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
 import { contextNarrationText } from '@/lib/tts-narration';
@@ -167,6 +168,9 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   // A finished background job the learner tapped "reveal" on — reopens the ask
   // sheet straight at its result.
   const [reopenJobId, setReopenJobId] = useState<string | null>(null);
+  /** Which opening question the ask flow is currently showing, so keeping it
+   *  files that question into whichever lens the learner adds it under. */
+  const [openInvestigationId, setOpenInvestigationId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   // A/B lens UI variant + the magnifier variant's open/ask coordination.
   const [lensVariant, setLensVariant] = useLensVariant();
@@ -312,53 +316,38 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
         sources: (draft.sources || []).filter((s) => s.url || s.name).map((s) => ({ label: s.name || s.url || 'Source', url: s.url || '' })),
       });
     }
+    // Keeping an opening question is what finally files it, which is what takes
+    // it off the unfiled panel. Filing here rather than on the onboarding screen
+    // is the point: they have heard the answer, so the lens is a judgement about
+    // something they know rather than a guess about a title.
+    if (openInvestigationId) setInvestigationLens(openInvestigationId, draft.pastCategory);
     setExplored(true);
     setAddedLens(draft.pastCategory);
     setShowAddedTip(true);
   };
   /**
-   * Keep one of their own opening questions, in the lens they pick for it.
+   * Open one of their opening questions the way every other answer opens.
    *
-   * Two things happen at once and both matter: the answer becomes a real context
-   * in their journal, and the question is finally filed — which is what takes it
-   * out of the unfiled panel. Filing here rather than on the onboarding screen is
-   * the point: they have now heard the answer, so "where does this belong" is a
-   * judgement about something they know rather than a guess about a title.
+   * These were researched by the same Detective, but in the investigation's own
+   * queue, so they arrived as bare narrative — no generated title, no photo, no
+   * audio, no sources, no way to keep one. Handing the stored response to the
+   * research store as a finished job puts them back on the ordinary path: the ask
+   * flow reads it and reveals it exactly like a question asked here.
    */
-  const addUnfiledQuestion = async (id: string, lens: PastCategory) => {
+  const openInvestigationQuestion = (id: string) => {
     const q = investigationQuestions.find((x) => x.id === id);
-    if (!q || !q.answer) return;
+    if (!q?.detective) return;
     haptic();
-    try {
-      await persistAdd({
-        question: q.text,
-        title: q.title || q.text,
-        shortSummary: q.summary || '',
-        longExplanation: q.answer,
-        pastCategory: lens,
-        timeRange: defaultRange(DEFAULT_DOMAIN),
-        geometry: null,
-        camera: null,
-        mapType: 'default',
-        includePlaceTime: false,
-        media: [],
-        thumbnailMediaId: null,
-        sources: (q.sources || []).map((sr, i) => ({
-          id: `src_${i}`, name: sr.label, author: '', date: '', imageUrl: null, url: sr.url,
-        })),
-        origin: 'self',
-        placeId: scopeId,
-      });
-    } catch (err) {
-      console.error('[investigation] could not add the question as a context:', err);
-      return;
-    }
-    // Only after the add succeeds — otherwise it leaves the panel with nothing
-    // to show for it.
-    setInvestigationLens(id, lens);
-    setExplored(true);
-    setAddedLens(lens);
-    setShowAddedTip(true);
+    const card = q.detective.handout?.cards?.[0];
+    setOpenInvestigationId(id);
+    setReopenJobId(adoptResearch({
+      key: q.id,
+      question: q.text,
+      lens: (q.lens || card?.lens || 'society') as PastCategory,
+      tourId: scopeId,
+      actId,
+      result: q.detective as DetectiveResp,
+    }));
   };
 
   const persistUpdate = (id: string, patch: Partial<NewContextEntry>): Promise<void> =>
@@ -733,7 +722,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
             ownQuestions={investigationQuestions
               .filter((q) => q.kind === 'contextual' && q.status !== 'failed')
               .map((q) => ({ id: q.id, text: q.text, status: q.status, lens: q.lens, answer: q.answer, title: q.title, summary: q.summary }))}
-            onAddUnfiled={addUnfiledQuestion}
+            onOpenOwnQuestion={openInvestigationQuestion}
             entries={displayEntries}
             selectedRange={range}
             savedIds={savedIds}
@@ -939,7 +928,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
           existingJobId={reopenJobId ?? undefined}
           presetLens={askLens}
           onAnswered={(info) => { setExplored(true); setAskedOwnActId(actId ?? null); onContextQuestion?.(info); }}
-          onClose={() => { setAskOpen(false); setReopenJobId(null); setAskLens(undefined); }}
+          onClose={() => { setAskOpen(false); setReopenJobId(null); setAskLens(undefined); setOpenInvestigationId(null); }}
           onAdd={askAdd}
         />
       )}

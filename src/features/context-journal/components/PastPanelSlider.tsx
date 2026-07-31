@@ -64,7 +64,8 @@ interface Props {
   ownQuestions?: { id: string; text: string; status: string; lens?: string; answer?: string; title?: string; summary?: string; sources?: { label: string; url: string }[] }[];
   /** They kept one and chose where it belongs — adds it to the journal in that
    *  lens and takes it out of this panel. */
-  onAddUnfiled?: (id: string, lens: PastCategory) => void;
+  /** Open one of the learner's own opening questions in the ordinary ask flow. */
+  onOpenOwnQuestion?: (id: string) => void;
 }
 
 /** A soft "lens" halo worn over the active P·A·S·T initial (the redesign's style):
@@ -195,7 +196,7 @@ const slideVariants = {
 export default function PastPanelSlider({
   entries, selectedRange, savedIds, focusedId, guidingQuestion, lockInfoById,
   onFocus, onToggleSave, onOpenFull, onAskLens, onAllSeenChange, onLensTintChange, initiallyAllSeen = false,
-  ownQuestions = [], onAddUnfiled,
+  ownQuestions = [], onOpenOwnQuestion,
 }: Props) {
   // Deck index. 0 is the ✱ instructions panel; 1–4 are the lenses. Starts on the
   // instructions so "pick a lens" is the first thing they read.
@@ -305,11 +306,12 @@ export default function PastPanelSlider({
             {onInstructions ? (
               <InstructionsSlide onNext={() => goTo(1)} />
             ) : onUnfiled ? (
-              <UnfiledSlide questions={unfiled} onAdd={onAddUnfiled} />
+              <UnfiledSlide questions={unfiled} onOpen={onOpenOwnQuestion} />
             ) : (
               <LensSlide
                 lens={lens}
                 mine={filedByLens.get(lens.key as string) || []}
+                onOpenMine={onOpenOwnQuestion}
                 questions={questions}
                 added={added}
                 savedIds={savedIds}
@@ -360,10 +362,11 @@ export default function PastPanelSlider({
  *  colour with an (i) and its sub-topics, a "what are you curious about?" prompt
  *  leading the ask-your-own pill, then the model questions (locked ones last) and
  *  any contexts already added here. */
-function LensSlide({ lens, mine = [], questions, added, savedIds, focusedId, lockInfoById, onOpenCard, onAsk, onFocus, onToggleSave, onOpenFull }: {
+function LensSlide({ lens, mine = [], onOpenMine, questions, added, savedIds, focusedId, lockInfoById, onOpenCard, onAsk, onFocus, onToggleSave, onOpenFull }: {
   lens: LensDef;
-  /** The learner's own questions, filed into this lens on the onboarding screen. */
+  /** The learner's own questions, filed into this lens. */
   mine?: { id: string; text: string; status: string; answer?: string; title?: string }[];
+  onOpenMine?: (id: string) => void;
   questions: ContextEntry[];
   added: ContextEntry[];
   savedIds: Set<string>;
@@ -501,7 +504,7 @@ function LensSlide({ lens, mine = [], questions, added, savedIds, focusedId, loc
             Your questions:
           </p>
           {mine.map((q) => (
-            <OwnQuestionRow key={q.id} question={q} colour={colour} />
+            <OwnQuestionRow key={q.id} question={q} colour={colour} onOpen={onOpenMine} />
           ))}
         </div>
       )}
@@ -716,59 +719,50 @@ function ContextCard({ entry, colour, active, saved, onTap, onToggleSave }: {
  * No "ask your own question" pill. This panel is for questions they have already
  * asked; inviting another one here reads as a prompt to abandon these.
  */
-function OwnQuestionRow({ question: q, colour }: {
+function OwnQuestionRow({ question: q, colour, onOpen }: {
   question: { id: string; text: string; status: string; answer?: string; title?: string };
   colour: string;
+  onOpen?: (id: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const ready = q.status === 'answered' && !!q.answer;
   return (
-    <div>
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full text-left flex items-start gap-3 px-4 py-3 rounded-xl"
-        style={{ backgroundColor: 'var(--ds-white)', border: `1px solid ${colour}` }}
-      >
-        <span className="flex-1 min-w-0">
-          <span className="block font-serif leading-snug" style={{ fontSize: 16, color: 'var(--ds-ink)' }}>
-            {q.text}
+    <button
+      onClick={() => ready && onOpen?.(q.id)}
+      disabled={!ready}
+      className="w-full text-left flex items-start gap-3 px-4 py-3 rounded-xl"
+      style={{ backgroundColor: 'var(--ds-white)', border: `1px solid ${colour}` }}
+    >
+      <span className="flex-1 min-w-0">
+        <span className="block font-serif leading-snug" style={{ fontSize: 16, color: 'var(--ds-ink)' }}>
+          {q.text}
+        </span>
+        {!ready && (
+          <span className="block font-serif italic mt-1" style={{ fontSize: 13, color: 'var(--ds-ink-soft)' }}>
+            {q.status === 'later' ? 'You will hear about it later!' : 'Still researching…'}
           </span>
-          {open && (
-            <>
-              <span className="block font-serif leading-relaxed mt-2" style={{ fontSize: 15, color: 'var(--ds-ink-soft)' }}>
-                {ready ? q.answer : q.status === 'later' ? 'You will hear about it later!' : 'Still researching…'}
-              </span>
-              {ready && (
-                <span className="block mt-2" onClick={(e) => e.stopPropagation()}>
-                  <OpenAiSpeechBar text={q.answer || ''} title={q.title || q.text} autoplay={false} />
-                </span>
-              )}
-            </>
-          )}
-        </span>
-        <span className="shrink-0 mt-0.5" aria-hidden>
-          {ready ? (
-            <ChevronRightIcon width={16} height={16} />
-          ) : (
-            <span
-              className="block w-4 h-4 rounded-full border-2 animate-spin"
-              style={{ borderColor: 'var(--ds-blush)', borderTopColor: colour }}
-            />
-          )}
-        </span>
-      </button>
-    </div>
+        )}
+      </span>
+      {/* Where a locked authored question wears its padlock, one still in the
+          queue wears a spinner — same slot, so the row reads as "not open yet"
+          either way. */}
+      <span className="shrink-0 mt-0.5" aria-hidden>
+        {ready ? (
+          <ChevronRightIcon width={16} height={16} />
+        ) : (
+          <span
+            className="block w-4 h-4 rounded-full border-2 animate-spin"
+            style={{ borderColor: 'var(--ds-blush)', borderTopColor: colour }}
+          />
+        )}
+      </span>
+    </button>
   );
 }
 
-function UnfiledSlide({ questions, onAdd }: {
+function UnfiledSlide({ questions, onOpen }: {
   questions: { id: string; text: string; status: string; answer?: string; title?: string; summary?: string }[];
-  onAdd?: (id: string, lens: PastCategory) => void;
+  onOpen?: (id: string) => void;
 }) {
-  const [openId, setOpenId] = useState<string | null>(null);
-  /** Which question is mid-filing — the lens picker is only shown for one at a
-   *  time, so the four chips never appear under every row at once. */
-  const [filingId, setFilingId] = useState<string | null>(null);
   return (
     <div
       className="px-5 py-5 rounded-2xl mx-4"
@@ -781,90 +775,16 @@ function UnfiledSlide({ questions, onAdd }: {
         Not categorised
       </p>
 
-      <ul className="mt-4 space-y-2">
-        {questions.map((q) => {
-          const ready = q.status === 'answered' && !!q.answer;
-          const open = openId === q.id;
-          return (
-            <li key={q.id}>
-              <button
-                onClick={() => setOpenId(open ? null : q.id)}
-                className="w-full text-left flex items-start gap-3 px-4 py-3 rounded-xl"
-                style={{ backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)' }}
-              >
-                <span className="flex-1 min-w-0">
-                  <span className="block font-serif leading-snug" style={{ fontSize: 16, color: 'var(--text-primary)' }}>
-                    {q.text}
-                  </span>
-                  {open && (
-                    <>
-                      <span className="block font-serif leading-relaxed mt-2" style={{ fontSize: 15, color: 'var(--text-secondary)' }}>
-                        {ready ? q.answer : q.status === 'later' ? 'You will hear about it later!' : 'Still researching…'}
-                      </span>
-                      {/* Read aloud, like every other context page. */}
-                      {ready && (
-                        <span className="block mt-2" onClick={(e) => e.stopPropagation()}>
-                          <OpenAiSpeechBar text={q.answer || ''} title={q.title || q.text} autoplay={false} />
-                        </span>
-                      )}
-                    </>
-                  )}
-                </span>
-                {/* Where a locked authored question wears its padlock, one still in
-                    the queue wears a spinner — same slot, so the row reads as
-                    "not open yet" either way. */}
-                <span className="shrink-0 mt-0.5" aria-hidden>
-                  {ready ? (
-                    <ChevronRightIcon width={16} height={16} />
-                  ) : (
-                    <span
-                      className="block w-4 h-4 rounded-full border-2 animate-spin"
-                      style={{ borderColor: 'var(--th-border)', borderTopColor: 'var(--th-primary)' }}
-                    />
-                  )}
-                </span>
-              </button>
-
-              {/* Keeping it is where the lens finally gets chosen. Filing was never
-                  forced on the onboarding screen, and this is the moment it
-                  actually matters — they have heard the answer and decided it is
-                  worth keeping, so "where does this belong" is now a real question
-                  rather than a form field. */}
-              {open && ready && onAdd && (
-                <div className="mt-2 px-1">
-                  {filingId === q.id ? (
-                    <>
-                      <p className="text-[12px] font-semibold uppercase tracking-[0.12em] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                        Which lens does it belong to?
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {LENSES.map((l) => (
-                          <button
-                            key={l.key}
-                            onClick={() => { haptic(10); onAdd(q.id, l.key as PastCategory); }}
-                            className="px-3 py-1.5 rounded-full text-[13px] font-semibold border-2"
-                            style={{ borderColor: l.colour, color: l.colour }}
-                          >
-                            {l.label}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => setFilingId(q.id)}
-                      className="px-4 py-2 rounded-full text-[14px] font-semibold text-white"
-                      style={{ backgroundColor: 'var(--th-primary)' }}
-                    >
-                      + Add to Context
-                    </button>
-                  )}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      {/* Tapping one opens it in the ordinary ask flow, and keeping it there is
+          what files it into a lens — which is also what takes it off this panel.
+          The lens picker used to live here, on a row showing nothing but the
+          question; asking where an answer belongs before you have read it was
+          the wrong order. */}
+      <div className="mt-4 space-y-2">
+        {questions.map((q) => (
+          <OwnQuestionRow key={q.id} question={q} colour="var(--th-primary)" onOpen={onOpen} />
+        ))}
+      </div>
     </div>
   );
 }

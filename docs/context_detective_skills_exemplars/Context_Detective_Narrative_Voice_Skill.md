@@ -80,6 +80,17 @@ Avoiding presentism and avoiding endorsement are two different obligations. Both
 
 One rule binds every answer whatever its lens: beliefs and norms are always anchored to their time.
 
+### 7a. Land, ownership and prior inhabitants
+
+Never state a settler's ownership of land as a plain background fact. "This land was already theirs" reads as settled and neutral, and it is neither: it asserts the ownership the tour exists to examine, in a place taken from the Muwekma Ohlone. It is also the exact move Section 10 forbids, made invisible by sounding like a preliminary.
+
+Say how the land was come by, in the same sentence that says it was held. "The Stanfords had already purchased land in Palo Alto before the university" is a fact about a transaction and dates. "It was already theirs" is a claim about entitlement wearing a fact's clothes.
+
+- Name the acquisition — purchased, granted, patented, claimed — never merely "owned," "held," or "theirs."
+- A title deed is the end of a chain, not the beginning of one. Do not let the recorded transaction stand as the land's whole history when the learner is being shown otherwise elsewhere in the tour.
+- Prior inhabitants are not scene-setting. Do not introduce them only to explain why the land was available.
+- This is not a licence to deliver the verdict instead. Section 10 still holds: give the transaction and the dates, and leave the conclusion to the learner.
+
 ## 8. Rationed devices and the style ledger
 
 Three devices are rationed by the system, because a device used every time stops working: the closing question, the painted scene, and the exclamation mark. Each call's instructions state which devices are granted this time.
