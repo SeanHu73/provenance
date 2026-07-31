@@ -33,6 +33,11 @@ interface Props {
    *  footer/continue button (the reader snap-scrolls down to DISCOVER); a
    *  "scroll to discover" cue replaces it. */
   embedded?: boolean;
+  /** The Background narration finished playing. Only fires for a clip that was
+   *  autoplaying — a reader who pressed play themselves is reading at their own
+   *  pace and should not be moved on. Used by FindDiscoverCard to carry a
+   *  listening learner down to DISCOVER. */
+  onBackgroundNarrationEnded?: () => void;
   /** Drop the find instructions + notice photos, leaving Background only. Set by
    *  FindDiscoverCard, where FindActivityCard is now its own snap section above
    *  and has already given the instructions — and, crucially, controls when the
@@ -55,7 +60,7 @@ export function hasBackgroundContent(stop: Stop): boolean {
   return !!(stop.seed.text || stop.seed.audioUrl);
 }
 
-export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false, hideFindInstructions = false }: Props) {
+export default function SeedCard({ stop, onContinue, onPeekMap, onBackgroundNarrationEnded, embedded = false, hideFindInstructions = false }: Props) {
   const [autoplayPref] = useAudioAutoplay();
   // Background narration source: uploaded voiceover → cached OpenAI narration →
   // free browser voice. The narration takes autoplay priority — a non-voiceover
@@ -64,6 +69,15 @@ export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false
   const seedNar = resolveNarration(stop.seed, seedTtsSource, autoplayPref);
   const bgNarrationAutoplays = seedNar.uploadedAutoplay || seedNar.cachedAutoplay || seedNar.browserAutoplay;
   const noticeAutoplay = autoplayPref && !stop.notice.audioAutoplayDisabled && !bgNarrationAutoplays;
+
+  // The Background narration ending is a cue to move a *listening* learner on.
+  // Guarded on the clip having been autoplaying: someone who pressed play is
+  // reading at their own pace, and yanking the page out from under them the
+  // moment the audio stops would be worse than leaving them be.
+  const bgEnded = (autoplayed: boolean) => {
+    seedCues.onEnded();
+    if (autoplayed) onBackgroundNarrationEnded?.();
+  };
 
   // Audio-synced photo highlights for the Background (seed) and Find
   // (notice) narrations.
@@ -171,9 +185,9 @@ export default function SeedCard({ stop, onContinue, onPeekMap, embedded = false
         <div>
           <SectionSubtitle className="mb-2">Background</SectionSubtitle>
           {/* Uploaded audio (voiceover, or an extra non-voiceover clip). */}
-          {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedNar.uploadedAutoplay} onTimeUpdate={seedCues.onTimeUpdate} onEnded={seedCues.onEnded} />}
+          {stop.seed.audioUrl && <AudioButton audioUrl={stop.seed.audioUrl} title={stop.seed.audioTitle} autoplay={seedNar.uploadedAutoplay} onTimeUpdate={seedCues.onTimeUpdate} onEnded={() => bgEnded(seedNar.uploadedAutoplay)} />}
           {/* Cached OpenAI narration of the Background (also drives the photo cues). */}
-          {seedNar.showCached && <AudioButton audioUrl={seedNar.cachedUrl!} title={stop.seed.audioTitle || 'Background'} autoplay={seedNar.cachedAutoplay} onTimeUpdate={seedCues.onTimeUpdate} onEnded={seedCues.onEnded} />}
+          {seedNar.showCached && <AudioButton audioUrl={seedNar.cachedUrl!} title={stop.seed.audioTitle || 'Background'} autoplay={seedNar.cachedAutoplay} onTimeUpdate={seedCues.onTimeUpdate} onEnded={() => bgEnded(seedNar.cachedAutoplay)} />}
           {/* Free browser voice when nothing is cached yet. */}
           {seedNar.showBrowser && <SpeechBar text={seedTtsSource} title={stop.seed.audioTitle || 'Background'} autoplay={seedNar.browserAutoplay} />}
           {stop.seed.text && (

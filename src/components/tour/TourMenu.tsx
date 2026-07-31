@@ -324,7 +324,7 @@ export default function TourMenu({ inline = false, onDark = false }: { inline?: 
   // Five taps on this button reveals the admin rows (see admin-unlock.ts). It
   // rides along with the normal open/close, so the gesture needs no affordance
   // and a stray double-tap reads as exactly what it looks like.
-  const [, tapAdmin, tapsLeft] = useAdminUnlock();
+  const [, tapAdmin] = useAdminUnlock();
 
   return (
     <>
@@ -345,17 +345,6 @@ export default function TourMenu({ inline = false, onDark = false }: { inline?: 
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
           <path d="M4 6h16M4 12h16M4 18h16" />
         </svg>
-        {/* Taps remaining to reveal the admin rows. Only appears once the taps
-            can't be an accident, so it stays invisible to everyone else. */}
-        {tapsLeft > 0 && (
-          <span
-            className="absolute top-0 right-0 min-w-[15px] h-[15px] px-1 rounded-full text-[9px] font-bold flex items-center justify-center"
-            style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}
-            aria-hidden
-          >
-            {tapsLeft}
-          </span>
-        )}
       </button>
 
       {shown && (

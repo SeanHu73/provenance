@@ -50,16 +50,17 @@ export function lockAdmin(): void {
 }
 
 /**
- * `[unlocked, tap, remaining]`.
+ * `[unlocked, tap]`.
  *
- * `tap` registers one press on the hidden target; `remaining` counts down once
- * the taps are clearly deliberate, so the person doing it gets confirmation
- * they're on the right track without advertising anything to anyone else.
+ * `tap` registers one press on the menu button. Nothing is shown while the count
+ * builds — no badge, no counter. A visible countdown would announce that a hidden
+ * thing exists to anyone who happened to tap twice, which defeats the point of
+ * hiding it; the haptic on success is confirmation enough for whoever meant it.
  *
  * Starts `false` on every render and syncs in an effect — the server has no
  * sessionStorage, so seeding from it during render would break hydration.
  */
-export function useAdminUnlock(): [boolean, () => void, number] {
+export function useAdminUnlock(): [boolean, () => void] {
   const [on, setOn] = useState(false);
   const [taps, setTaps] = useState(0);
   const [lastTap, setLastTap] = useState(0);
@@ -85,7 +86,5 @@ export function useAdminUnlock(): [boolean, () => void, number] {
     setTaps(next);
   };
 
-  // Only start counting out loud once it can't be an accident.
-  const remaining = on ? 0 : Math.max(0, TAPS_REQUIRED - taps);
-  return [on, tap, taps >= 2 ? remaining : 0];
+  return [on, tap];
 }

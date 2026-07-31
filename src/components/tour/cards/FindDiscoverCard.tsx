@@ -43,6 +43,9 @@ export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = fal
   // Set by the "reveal answer" escape hatch: mount the sections and then scroll
   // straight to Background (or DISCOVER when there's no Background).
   const [jumpToBackground, setJumpToBackground] = useState(false);
+  // Set when the Background narration finishes on its own — carries a listening
+  // learner down to DISCOVER (see the effect below).
+  const [jumpToDiscover, setJumpToDiscover] = useState(false);
   const hasBackground = hasBackgroundContent(stop);
 
   useEffect(() => {
@@ -54,6 +57,32 @@ export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = fal
     });
     return () => cancelAnimationFrame(id);
   }, [found, jumpToBackground, hasBackground]);
+
+  /**
+   * Background narration finished → carry on to DISCOVER.
+   *
+   * For someone listening rather than reading, the audio ending is the end of
+   * that section; leaving them on a finished screen makes them work out for
+   * themselves that there is more below, which is exactly the moment a
+   * headphones-on learner looks up and loses the thread. So the page moves for
+   * them and DISCOVER's own narration picks up.
+   *
+   * This only scrolls — it deliberately does NOT mount DISCOVER first. The
+   * section is always in the DOM at full height (with a placeholder), so the
+   * scroll lands correctly either way, and the observer below mounts DISCOVER as
+   * it comes into view exactly as it would on a manual scroll. Mounting it early
+   * would start its narration while Background is still the section on screen,
+   * and the observer only pauses on a threshold *crossing* — a clip that begins
+   * already off-screen never gets one, so it would simply play to an empty room.
+   *
+   * Only fires for an autoplaying clip (SeedCard enforces that), so a reader who
+   * pressed play by hand is never moved.
+   */
+  useEffect(() => {
+    if (!jumpToDiscover) return;
+    setJumpToDiscover(false);
+    discoverRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [jumpToDiscover]);
 
   // Mount DISCOVER once it scrolls in, and — since FIND and DISCOVER share one
   // snap-scroll page — pause a section's audio when it snaps out of view and
@@ -98,7 +127,13 @@ export default function FindDiscoverCard({ stop, onContinue, isFinalInStop = fal
               reader mid-flow for nothing. FIND then snaps straight to DISCOVER. */}
           {hasBackground && (
             <section ref={bgRef} className="min-h-full snap-start flex flex-col justify-start px-5 py-6">
-              <SeedCard stop={stop} embedded hideFindInstructions onPeekMap={onPeekMap} />
+              <SeedCard
+                stop={stop}
+                embedded
+                hideFindInstructions
+                onPeekMap={onPeekMap}
+                onBackgroundNarrationEnded={() => setJumpToDiscover(true)}
+              />
             </section>
           )}
           <section ref={discoverRef} className="min-h-full snap-start flex flex-col justify-start px-5 py-6">
