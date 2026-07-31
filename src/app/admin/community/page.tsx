@@ -240,6 +240,32 @@ function SharesSection() {
   const sharedList = shares.filter((s) => !s.unshared);
   const unsharedList = shares.filter((s) => s.unshared);
 
+  // Grouped by the prompt each response answers, matching the explorer's wall.
+  // Responses recorded before the prompts were merged carry no question — they
+  // group under their act instead of disappearing into an unlabelled pile.
+  const byQuestion = (list: CommunityShare[]) => {
+    const groups = new Map<string, { question: string; items: CommunityShare[] }>();
+    for (const s of list) {
+      const key = s.promptId || (s.promptText ? `text:${s.promptText}` : `act:${s.actId || 'unknown'}`);
+      const question = s.promptText || (s.isCustom ? 'Their own prompt' : `No prompt recorded · act ${(s.actId || 'unknown').slice(0, 8)}`);
+      const g = groups.get(key);
+      if (g) g.items.push(s);
+      else groups.set(key, { question, items: [s] });
+    }
+    return [...groups.values()];
+  };
+
+  const renderGroups = (list: CommunityShare[]) => (
+    <div className="space-y-5">
+      {byQuestion(list).map((g, i) => (
+        <div key={i} className="space-y-2">
+          <p className="text-xs font-semibold text-stone-600">{g.question} <span className="text-stone-400 font-normal">({g.items.length})</span></p>
+          <div className="space-y-3">{g.items.map(renderShare)}</div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="space-y-8">
       <section>
@@ -247,7 +273,7 @@ function SharesSection() {
         {sharedList.length === 0 ? (
           <p className="text-stone-400 text-xs italic">No one has shared a reflection publicly yet.</p>
         ) : (
-          <div className="space-y-3">{sharedList.map(renderShare)}</div>
+          renderGroups(sharedList)
         )}
       </section>
 
@@ -257,7 +283,7 @@ function SharesSection() {
         {unsharedList.length === 0 ? (
           <p className="text-stone-400 text-xs italic">No unshared responses.</p>
         ) : (
-          <div className="space-y-3">{unsharedList.map(renderShare)}</div>
+          renderGroups(unsharedList)
         )}
       </section>
     </div>

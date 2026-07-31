@@ -1,20 +1,25 @@
 'use client';
 
 /**
- * End-of-act reflection — "Share Your Thoughts" (redesigned).
+ * The tour's closing reflection — "Share Your Thoughts".
  *
- * The learner picks one of the act's authored prompts (swipeable cards) or the
- * "create your own" card, which flips to a response view: a big record button
- * (dictation is transcribed into the textbox to read/edit), an optional textbox,
- * chips to tag the contexts they referred to, and photos — uploaded or found
- * online (Wikimedia Commons). Saving stores the response and moves on to the
- * community ("see what others think"); sharing happens there, not here.
+ * One page for the whole tour, after the last act's Context step: every act's
+ * authored prompts are merged into a single swipeable set (allReflectionPrompts),
+ * plus the "create your own" card. Picking one flips to a response view: a big
+ * record button (dictation is transcribed into the textbox to read/edit), an
+ * optional textbox, chips to tag the contexts they referred to, and photos —
+ * uploaded or found online (Wikimedia Commons).
+ *
+ * Saving files the response and returns to the picker, so the explorer can answer
+ * as many prompts as they like — the acts' reflections merged into one page, not
+ * into one response. "See what others think" moves on to the community once at
+ * least one response is in; sharing happens there, not here.
  */
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
-import { findActOfStop, reflectionPromptsOf } from '@/lib/tour-session';
+import { findActOfStop, allReflectionPrompts, actReflectionsOf } from '@/lib/tour-session';
 import { ActReflectionResponse } from '@/lib/types';
 import { uploadSharePhoto, recordUnsharedResponse } from '@/lib/community-store';
 import { subscribeGuestContexts } from '@/features/context-journal/guest-contexts';
@@ -29,15 +34,32 @@ const CUSTOM_PROMPT = 'What piqued your interest? What else would you want to sh
 interface ImageResult { id: string; title: string; thumbUrl: string; fullUrl: string; credit: string }
 
 interface Props {
-  onComplete: (response: ActReflectionResponse) => void;
+  /** File one response — the explorer stays here and may answer more. */
+  onSave: (response: ActReflectionResponse) => void;
+  /** Done responding → the community. */
+  onDone: () => void;
 }
 
-type Selected = { id: string | null; text: string; isCustom: boolean };
+type Selected = { id: string | null; text: string; isCustom: boolean; actId?: string };
 
-export default function ActReflectionCard({ onComplete }: Props) {
+function newResponseId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `refl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export default function ActReflectionCard({ onSave, onDone }: Props) {
   const { tour, session, currentStop } = useTour();
   const act = tour && currentStop ? findActOfStop(tour, currentStop.id) : null;
-  const prompts = reflectionPromptsOf(act);
+  const prompts = allReflectionPrompts(tour);
+  // More than one act contributing prompts → say which act each came from, so a
+  // question from three stops ago doesn't read as a non-sequitur.
+  const showActLabels = new Set(prompts.map((p) => p.actId)).size > 1;
+
+  // Responses already filed this session, across every act — drives the ✓ on a
+  // prompt they've answered and unlocks the way on.
+  const saved = Object.values(session?.actResponses ?? {}).flatMap((entry) => actReflectionsOf(entry));
+  const answeredIds = new Set(saved.map((r) => r.promptId).filter(Boolean) as string[]);
+  const customCount = saved.filter((r) => r.isCustom).length;
 
   // Taggable contexts: only the contexts the learner has *added* (their own /
   // Detective answers) — not the act's authored ones.
@@ -61,7 +83,12 @@ export default function ActReflectionCard({ onComplete }: Props) {
   const save = async () => {
     if (!canSave || !selected) return;
     setBusy(true);
+    // A response belongs to the act its prompt was authored on; one they wrote
+    // themselves belongs to the act they are standing in (the last one).
+    const actId = selected.actId || act?.id || '';
     const response: ActReflectionResponse = {
+      id: newResponseId(),
+      actId,
       text: text.trim(),
       photos,
       taggedContexts: tagged.map((id) => ({ id, title: taggable.find((c) => c.id === id)?.title ?? '' })),
@@ -73,10 +100,12 @@ export default function ActReflectionCard({ onComplete }: Props) {
     // explorers; visible to the admin). If they later choose to share, this
     // same record is promoted rather than duplicated. Best-effort — a failure
     // here must not block the reflection from saving.
-    if (tour && act) {
+    if (tour && actId) {
       try {
         response.unsharedRecordId = await recordUnsharedResponse({
-          tourId: tour.id, actId: act.id, text: response.text,
+          tourId: tour.id, actId,
+          promptId: response.promptId, promptText: response.promptText, isCustom: response.isCustom,
+          text: response.text,
           photos: response.photos || [], pin: response.pin ?? null,
           sessionId: session?.id || 'unknown',
         });
@@ -84,7 +113,13 @@ export default function ActReflectionCard({ onComplete }: Props) {
         console.error('[reflection] recording response failed:', err);
       }
     }
-    onComplete(response);
+    onSave(response);
+    // Back to the picker so the next prompt is one tap away.
+    setSelected(null);
+    setText('');
+    setPhotos([]);
+    setTagged([]);
+    setBusy(false);
   };
 
   // Picker and response are two faces of a flip: selecting a prompt rotates the
@@ -105,24 +140,38 @@ export default function ActReflectionCard({ onComplete }: Props) {
             <p className="mt-1 font-serif italic" style={{ fontSize: 16, color: 'var(--text-secondary)' }}>Choose a prompt or create your own:</p>
 
             <div className="mt-5 -mx-4 px-4 flex gap-3 overflow-x-auto cj-hscroll pb-2" style={{ scrollSnapType: 'x mandatory' }}>
-              {prompts.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setSelected({ id: p.id, text: p.prompt, isCustom: false })}
-                  className="shrink-0 w-[85%] rounded-2xl px-6 py-8 text-center shadow-md flex flex-col items-center justify-center"
-                  style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)', minHeight: '54vh' }}
-                >
-                  {p.photoUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.photoUrl} alt="" className="w-full max-h-44 object-cover rounded-xl mb-6" />
-                  )}
-                  <p className="font-serif leading-relaxed" style={{ fontSize: 26, color: 'var(--text-primary)' }}><FormattedText text={p.prompt} /></p>
-                  <span className="mt-8 inline-flex items-center gap-1.5 px-6 py-3 rounded-full text-base font-semibold text-white" style={{ backgroundColor: 'var(--th-primary)' }}>
-                    Respond
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><path d="M9 6l6 6-6 6" /></svg>
-                  </span>
-                </button>
-              ))}
+              {prompts.map((p) => {
+                const done = answeredIds.has(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelected({ id: p.id, text: p.prompt, isCustom: false, actId: p.actId })}
+                    className="shrink-0 w-[85%] rounded-2xl px-6 py-8 text-center shadow-md flex flex-col items-center justify-center"
+                    style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)', minHeight: '54vh' }}
+                  >
+                    {showActLabels && (
+                      <span className="mb-3 text-[11px] uppercase tracking-[0.16em] font-semibold" style={{ color: 'var(--ds-cardinal)' }}>
+                        Act {p.actNumber}
+                      </span>
+                    )}
+                    {p.photoUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.photoUrl} alt="" className="w-full max-h-44 object-cover rounded-xl mb-6" />
+                    )}
+                    <p className="font-serif leading-relaxed" style={{ fontSize: 26, color: 'var(--text-primary)' }}><FormattedText text={p.prompt} /></p>
+                    {done ? (
+                      <span className="mt-8 inline-flex items-center gap-1.5 px-6 py-3 rounded-full text-base font-semibold border-2" style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
+                        ✓ Answered — add another
+                      </span>
+                    ) : (
+                      <span className="mt-8 inline-flex items-center gap-1.5 px-6 py-3 rounded-full text-base font-semibold text-white" style={{ backgroundColor: 'var(--th-primary)' }}>
+                        Respond
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><path d="M9 6l6 6-6 6" /></svg>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
 
               {/* create your own — distinct dark card */}
               <button
@@ -133,11 +182,30 @@ export default function ActReflectionCard({ onComplete }: Props) {
                 <p className="font-serif italic leading-relaxed" style={{ fontSize: 23, color: 'var(--th-surface)' }}>{CUSTOM_PROMPT}</p>
                 <span className="mt-8 inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold" style={{ backgroundColor: 'var(--th-secondary)', color: 'var(--th-journal)' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-                  Create your own
+                  {customCount > 0 ? 'Write another' : 'Create your own'}
                 </span>
               </button>
             </div>
             <p className="mt-2 text-center text-xs text-text-muted">Swipe to see more →</p>
+
+            {/* The way on, once they've answered at least one. Answering more is
+                always optional — the button sits under the cards, not over them. */}
+            {saved.length > 0 && (
+              <button
+                onClick={onDone}
+                className="mt-4 w-full flex items-center justify-center text-white"
+                style={{
+                  minHeight: 'var(--ds-btn-s-height)',
+                  borderRadius: 'var(--ds-radius-pill)',
+                  backgroundColor: 'var(--ds-cardinal)',
+                  fontFamily: 'var(--ds-button-s-family)',
+                  fontSize: 'var(--ds-button-s-size)',
+                  fontWeight: 'var(--ds-button-s-weight)',
+                }}
+              >
+                See what others think
+              </button>
+            )}
           </motion.div>
         ) : (
           <motion.div
@@ -242,7 +310,7 @@ export default function ActReflectionCard({ onComplete }: Props) {
         className="mt-5 w-full py-3.5 rounded-xl text-base font-semibold text-white disabled:opacity-40"
         style={{ backgroundColor: 'var(--th-primary)' }}
       >
-        {busy ? 'Saving…' : 'Save and see what others think'}
+        {busy ? 'Saving…' : 'Save response'}
       </button>
           </motion.div>
         )}

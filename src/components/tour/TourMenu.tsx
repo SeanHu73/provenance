@@ -57,16 +57,24 @@ function useJumpTargets(): JumpTarget[] {
     targets.push({ label: 'Onboarding — theme question', phase: 'theme_question' });
   }
 
-  getActs(tour).forEach((act, i) => {
+  const acts = getActs(tour);
+  acts.forEach((act, i) => {
     const at = indexOf(act.stopIds[0]);
     if (at < 0) return; // act's stops no longer resolve — skip rather than jump blind
     const n = i + 1;
     targets.push(
       { label: `Act ${n} — Explore`, phase: 'act_intro', stopIndex: at },
       { label: `Act ${n} — Context`, phase: 'act_context_intro', stopIndex: at },
-      { label: `Act ${n} — Reflection`, phase: 'act_reflection_intro', stopIndex: at },
     );
   });
+
+  // Reflection is the tour's closing stage now, not each act's — one entry, and
+  // it plays from the last act's stops (where the merged picker lives).
+  const lastAct = acts[acts.length - 1];
+  const lastAt = lastAct ? indexOf(lastAct.stopIds[0]) : -1;
+  if (lastAt >= 0) {
+    targets.push({ label: 'Closing — Reflection', phase: 'act_reflection_intro', stopIndex: lastAt });
+  }
 
   targets.push({ label: 'Closing — questions', phase: 'eq_questions' });
   return targets;

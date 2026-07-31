@@ -7,7 +7,7 @@
  * a single group visit.
  */
 
-import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry, ContextEntrySnapshot, ActContextItem, ContextMediaItem, ContextQuestion, ReflectionPrompt, AdditionalStop } from './types';
+import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry, ContextEntrySnapshot, ActContextItem, ContextMediaItem, ContextQuestion, ReflectionPrompt, MergedReflectionPrompt, AdditionalStop } from './types';
 import { getActiveStops, getTourMode } from './tours-store';
 
 export type { TourPhase };
@@ -403,14 +403,38 @@ function setActResponse(
   return { ...prev, [actId]: { ...(prev[actId] || {}), [kind]: value } };
 }
 
-/** Merge the "Share What You Think" reflection response into the session map. */
-function setActReflection(
+/** Every reflection filed under an act, oldest first. Older sessions only carry
+ *  the single `reflection`, so it stands in for the list. */
+export function actReflectionsOf(
+  entry: { reflection?: ActReflectionResponse; reflections?: ActReflectionResponse[] } | undefined | null
+): ActReflectionResponse[] {
+  if (!entry) return [];
+  if (entry.reflections?.length) return entry.reflections;
+  return entry.reflection ? [entry.reflection] : [];
+}
+
+/** Append a reflection response to an act. The closing reflection lets the
+ *  explorer answer several prompts, so responses accumulate; `reflection` stays
+ *  pinned to the first one for everything that reads a single response. */
+function addActReflection(
   map: TourSession['actResponses'],
   actId: string,
   value: ActReflectionResponse
 ): TourSession['actResponses'] {
   const prev = map || {};
-  return { ...prev, [actId]: { ...(prev[actId] || {}), reflection: value } };
+  const entry = prev[actId] || {};
+  const list = [...actReflectionsOf(entry), value];
+  return { ...prev, [actId]: { ...entry, reflection: list[0], reflections: list } };
+}
+
+/** Replace the reflections filed under an act (used when marking them shared). */
+function setActReflections(
+  map: TourSession['actResponses'],
+  actId: string,
+  list: ActReflectionResponse[]
+): TourSession['actResponses'] {
+  const prev = map || {};
+  return { ...prev, [actId]: { ...(prev[actId] || {}), reflection: list[0], reflections: list } };
 }
 
 /** Append a context question (+ answer/status) to the session map. */
@@ -450,6 +474,25 @@ export function reflectionPromptsOf(act: Act | null): ReflectionPrompt[] {
   if (list.length) return list;
   const legacy = reflectionPromptOf(act);
   return legacy ? [{ id: 'legacy', prompt: legacy }] : [];
+}
+
+/** Every act's reflection prompts, in act order, for the one closing reflection
+ *  that now replaces the per-act ones. Nothing an act authored is dropped: ids
+ *  are namespaced by act so two acts' legacy prompts can't collide, and the act
+ *  each prompt came from rides along (responses are still filed under it). */
+export function allReflectionPrompts(tour: Tour | null): MergedReflectionPrompt[] {
+  if (!tour) return [];
+  const out: MergedReflectionPrompt[] = [];
+  const seen = new Set<string>();
+  getActs(tour).forEach((act, i) => {
+    for (const p of reflectionPromptsOf(act)) {
+      const id = `${act.id}:${p.id}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push({ ...p, id, actId: act.id, actNumber: i + 1 });
+    }
+  });
+  return out;
 }
 
 /** Rich "Add Context" items for an act, migrating a legacy `act.context` into a
@@ -950,10 +993,12 @@ export function completeCommunityForum(session: TourSession, tour: Tour): TourSe
   return advanceToNextActOrClosing(session, tour, act);
 }
 
-// ── End-of-act chain: act_context_intro → act_context → act_reflection_intro →
-//    act_reflection → community_share → next act. Each step's completer routes to
-//    the next applicable phase. (`act_context_questions` is retired — nothing
-//    routes to it now; its completer/render are kept only for in-flight sessions.)
+// ── End-of-act chain: act_context_intro → act_context → next act. Reflection is
+//    no longer per-act: after the *last* act's Context step the tour runs one
+//    closing chain — act_reflection_intro → act_reflection → community_share —
+//    whose prompt picker offers every act's prompts at once (allReflectionPrompts).
+//    (`act_context_questions` is retired — nothing routes to it now; its
+//    completer/render are kept only for in-flight sessions.)
 
 
 /** Context mode: the "Context" intro splash ("So what context do we need?")
@@ -971,10 +1016,10 @@ export function completeContextIntro(session: TourSession): TourSession {
 
 /** Context mode: explorer left the Context Journal ("Continue tour"). The journal
  *  now shows the whole act's contexts at once *and* handles question-asking, so we
- *  go straight to the next act (or the tour's close) — no per-stop context
- *  stepping (which used to loop), no separate questions screen, and no per-act
- *  community step. */
-export function completeActContext(session: TourSession): TourSession {
+ *  go straight to the next act — no per-stop context stepping (which used to
+ *  loop), no separate questions screen, and no per-act community step. After the
+ *  last act it leads into the tour's one closing reflection instead. */
+export function completeActContext(session: TourSession, tour: Tour): TourSession {
   // Post-tour additional stop: closing its journal marks the stop explored and
   // returns to the additional-stops menu (no act reflection flow).
   if (session.additionalActive) {
@@ -993,9 +1038,18 @@ export function completeActContext(session: TourSession): TourSession {
       completedStops,
     };
   }
-  // The Context step now leads into the end-of-act reflection ("Share Your
-  // Thoughts"): a fade intro, then the prompt picker. The learner can always
-  // write their own, so we always route here (the picker handles zero prompts).
+  // Reflection is the tour's closing move, not each act's: mid-tour acts hand
+  // straight over to the next act. Only the last act's Context step leads into
+  // "Share Your Thoughts" — a fade intro, then the picker carrying every act's
+  // prompts. The learner can always write their own, so the last act always
+  // routes there (the picker handles zero authored prompts).
+  const stop = getActiveStops(tour)[session.currentStopIndex];
+  const act = stop ? findActOfStop(tour, stop.id) : null;
+  const acts = getActs(tour);
+  const isLastAct = !!act && acts.findIndex((a) => a.id === act.id) === acts.length - 1;
+  if (!isLastAct) {
+    return advanceToNextActOrClosing({ ...session, currentContextId: null }, tour, act);
+  }
   return {
     ...session,
     phaseHistory: pushHistory(session),
@@ -1040,36 +1094,58 @@ export function completeActContextQuestions(
   };
 }
 
-/** Context mode: explorer submitted their "Share What You Think" reflection →
- *  the community ("Hear from the Community"). */
-export function completeActReflection(
+/** Context mode: explorer saved one "Share Your Thoughts" response. They can
+ *  answer more than one prompt, so this only files the response — the phase
+ *  stays put until they say they're done. The response is filed under the act
+ *  its prompt was authored on (`response.actId`), falling back to the act they
+ *  are standing in, which is where a prompt they wrote themselves belongs. */
+export function saveActReflection(
   session: TourSession,
   tour: Tour,
   response: ActReflectionResponse
 ): TourSession {
   const stop = getActiveStops(tour)[session.currentStopIndex];
   const act = stop ? findActOfStop(tour, stop.id) : null;
+  const actId = response.actId || act?.id;
+  if (!actId) return session;
+  return {
+    ...session,
+    actResponses: addActReflection(session.actResponses, actId, response),
+  };
+}
+
+/** Context mode: explorer is done responding → the community ("Hear from the
+ *  Community"). */
+export function completeActReflection(session: TourSession): TourSession {
   return {
     ...session,
     phaseHistory: pushHistory(session),
     currentPhase: 'community_share',
     currentRound: 0,
-    actResponses: act ? setActReflection(session.actResponses, act.id, response) : session.actResponses,
   };
 }
 
-/** Record that the explorer shared their act reflection to the community (from
- *  the "Hear from the Community" screen) — updates the stored reflection without
- *  changing the phase, so the backup shows shared vs unpublished. */
-export function markActReflectionShared(session: TourSession, tour: Tour, shareId: string): TourSession {
-  const stop = getActiveStops(tour)[session.currentStopIndex];
-  const act = stop ? findActOfStop(tour, stop.id) : null;
-  const prev = act ? session.actResponses?.[act.id]?.reflection : null;
-  if (!act || !prev) return session;
-  return {
-    ...session,
-    actResponses: setActReflection(session.actResponses, act.id, { ...prev, sharedToCommunity: true, shareId }),
-  };
+/** Record that the explorer shared reflections to the community (from the "Hear
+ *  from the Community" screen) — updates the stored responses without changing
+ *  the phase, so the backup shows shared vs unpublished. `shareIds` maps a
+ *  reflection's local id to the CommunityShare doc it became; reflections are
+ *  scanned across every act, since the closing screen can share several at once.
+ *  Responses saved before this screen existed have no local id, so their
+ *  community-record id stands in as the key. */
+export function markReflectionsShared(session: TourSession, shareIds: Record<string, string>): TourSession {
+  if (!Object.keys(shareIds).length) return session;
+  const keyOf = (r: ActReflectionResponse) => r.id || r.unsharedRecordId || '';
+  let actResponses = session.actResponses;
+  for (const [actId, entry] of Object.entries(session.actResponses || {})) {
+    const list = actReflectionsOf(entry);
+    if (!list.some((r) => shareIds[keyOf(r)])) continue;
+    actResponses = setActReflections(
+      actResponses,
+      actId,
+      list.map((r) => (shareIds[keyOf(r)] ? { ...r, sharedToCommunity: true, shareId: shareIds[keyOf(r)] } : r)),
+    );
+  }
+  return { ...session, actResponses };
 }
 
 /** Context mode: explorer leaves "Hear from the Community" → next act / end. */

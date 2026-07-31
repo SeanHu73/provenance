@@ -102,6 +102,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeActContext,
     completeReflectionIntro,
     completeActContextQuestions,
+    saveActReflection,
     completeActReflection,
     completeCommunityShare,
     startAdditionalStop,
@@ -525,7 +526,7 @@ export default function Journal({ onMapPeek }: JournalProps) {
         )}
 
         {phase === 'act_reflection' && currentStop && (
-          <ActReflectionCard onComplete={completeActReflection} />
+          <ActReflectionCard onSave={saveActReflection} onDone={completeActReflection} />
         )}
 
         {phase === 'community_share' && currentStop && (

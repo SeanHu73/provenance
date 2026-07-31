@@ -1,20 +1,24 @@
 'use client';
 
 /**
- * Context-Prototype — "Hear from the Community", shown at the end of each act
- * after the reflection. Lists other explorers' shared reflections (text +
- * photos + their map pin) for this act; each can be upvoted and commented on.
+ * Context-Prototype — "Hear from the Community", the screen after the tour's
+ * closing reflection. Lists other explorers' shared reflections (text + photos +
+ * their map pin) for the whole tour, grouped under the question each one answers;
+ * every share can be upvoted and commented on.
  *
- * On Continue, if this explorer wrote a reflection but did NOT share it, we
- * re-prompt them to share before moving to the next act.
+ * Reflections recorded before the prompts were merged carry an act but no
+ * question — they keep their own group under that act rather than being dropped.
+ *
+ * On Continue, if this explorer wrote reflections but did NOT share them, we
+ * re-prompt them to share before the tour ends.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTour } from '@/context/TourContext';
-import { findActOfStop, getActs, getAdditionalStops } from '@/lib/tour-session';
+import { findActOfStop, getActs, getAdditionalStops, allReflectionPrompts, actReflectionsOf } from '@/lib/tour-session';
 import { CommunityShare, CommunityComment, ForumIdentity } from '@/lib/types';
 import {
-  getShares,
+  getSharesForTour,
   getComments,
   submitComment,
   upvoteShare,
@@ -30,23 +34,36 @@ interface Props {
   onComplete: () => void;
 }
 
+/** One question's worth of shared reflections. */
+interface ShareGroup {
+  key: string;
+  question: string;
+  shares: CommunityShare[];
+}
+
 export default function HearFromCommunityCard({ onComplete }: Props) {
-  const { tour, session, currentStop, markReflectionShared } = useTour();
+  const { tour, session, currentStop, markReflectionsShared } = useTour();
   const act = tour && currentStop ? findActOfStop(tour, currentStop.id) : null;
-  const actId = act?.id ?? '';
-  const reflection = (actId && session?.actResponses?.[actId]?.reflection) || null;
-  const acts = tour ? getActs(tour) : [];
+  const acts = useMemo(() => (tour ? getActs(tour) : []), [tour]);
   const isLastAct = act ? acts.findIndex((a) => a.id === act.id) === acts.length - 1 : false;
   // On the last act, if the tour has post-tour "additional" stops, the button
   // leads into their map rather than ending — so it invites exploration.
   const hasAdditional = tour ? getAdditionalStops(tour).length > 0 : false;
   const lastActLabel = hasAdditional ? 'Explore related stops' : 'End Tour';
 
+  // Everything this explorer wrote, across every act — the closing reflection
+  // lets them answer several prompts, and all of them share together.
+  const myReflections = useMemo(
+    () => Object.values(session?.actResponses ?? {}).flatMap((entry) => actReflectionsOf(entry)),
+    [session?.actResponses],
+  );
+  const unsharedMine = myReflections.filter((r) => !r.sharedToCommunity);
+
   const [shares, setShares] = useState<CommunityShare[]>([]);
   const [loading, setLoading] = useState(true);
   const [upvoted, setUpvoted] = useState<Set<string>>(new Set());
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const [shared, setShared] = useState(!!reflection?.sharedToCommunity);
+  const [shared, setShared] = useState(unsharedMine.length === 0 && myReflections.length > 0);
   const [askShare, setAskShare] = useState(false);   // "Would you like to share your thoughts?"
   const [nameSheet, setNameSheet] = useState(false); // "Share your response" (name entry)
   const [continueAfter, setContinueAfter] = useState(false);
@@ -55,7 +72,7 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
     if (!tour) return;
     let cancelled = false;
     (async () => {
-      const list = actId ? await getShares(tour.id, actId) : [];
+      const list = await getSharesForTour(tour.id);
       if (cancelled) return;
       setShares(list);
       setCounts(Object.fromEntries(list.map((s) => [s.id, s.upvotes || 0])));
@@ -63,7 +80,47 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [tour, actId]);
+  }, [tour]);
+
+  // Categorise the wall by question: the tour's prompts in authored order, then
+  // the ones explorers wrote themselves, then anything recorded before the merge
+  // (grouped by its act, since no question was stored on it).
+  const groups: ShareGroup[] = useMemo(() => {
+    const prompts = allReflectionPrompts(tour);
+    const order = new Map(prompts.map((p, i) => [p.id, i]));
+    const promptText = new Map(prompts.map((p) => [p.id, p.prompt]));
+    const actLabel = (id: string) => {
+      const i = acts.findIndex((a) => a.id === id);
+      if (i < 0) return 'Earlier reflections';
+      return `Act ${i + 1} — ${acts[i].guidingQuestion?.trim() || acts[i].title}`;
+    };
+    const map = new Map<string, ShareGroup>();
+    const rank = new Map<string, number>();
+    for (const s of shares) {
+      let key: string;
+      let question: string;
+      let at: number;
+      if (s.promptId && (order.has(s.promptId) || s.promptText)) {
+        key = s.promptId;
+        // Prefer the prompt as it reads now; the snapshot covers prompts the
+        // admin has since edited away.
+        question = promptText.get(s.promptId) || s.promptText || '';
+        at = order.get(s.promptId) ?? 500;
+      } else if (s.isCustom || (!s.promptId && s.promptText)) {
+        key = 'custom';
+        question = 'Prompts explorers wrote themselves';
+        at = 1000;
+      } else {
+        key = `act:${s.actId}`;
+        question = actLabel(s.actId);
+        at = 2000 + Math.max(0, acts.findIndex((a) => a.id === s.actId));
+      }
+      const group = map.get(key);
+      if (group) group.shares.push(s);
+      else { map.set(key, { key, question, shares: [s] }); rank.set(key, at); }
+    }
+    return [...map.values()].sort((a, b) => (rank.get(a.key) ?? 0) - (rank.get(b.key) ?? 0));
+  }, [shares, tour, acts]);
 
   const toggleUpvote = (id: string) => {
     const isUp = upvoted.has(id);
@@ -75,9 +132,9 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
     upvoteShare(id, !isUp).catch((err) => console.error('[community] upvote failed:', err));
   };
 
-  // Continue: if they wrote a reflection but haven't shared, ask first.
+  // Continue: if they wrote reflections but haven't shared, ask first.
   const handleContinue = () => {
-    if (reflection && !shared) { setContinueAfter(true); setAskShare(true); return; }
+    if (unsharedMine.length > 0 && !shared) { setContinueAfter(true); setAskShare(true); return; }
     onComplete();
   };
 
@@ -85,41 +142,57 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
   const openShareSheet = () => { setContinueAfter(false); setNameSheet(true); };
 
   const shareNow = async (name?: string) => {
-    if (tour && act && reflection) {
+    if (tour && unsharedMine.length > 0) {
       let identity: ForumIdentity | undefined = getForumIdentity() ?? undefined;
       const typed = name?.trim();
       if (typed && (!identity || identity.name !== typed)) {
         identity = { name: typed, about: identity?.about || '' };
         saveForumIdentity(identity);
       }
-      try {
-        // Every reflection was already recorded as an unshared community doc;
-        // sharing promotes that same doc (no duplicate). Fall back to a fresh
-        // submit if the record is missing (e.g. it failed to record earlier).
-        let shareId: string;
-        if (reflection.unsharedRecordId) {
-          shareId = reflection.unsharedRecordId;
-          await promoteUnsharedShare(shareId, {
-            text: reflection.text, photos: reflection.photos || [], pin: reflection.pin ?? null,
-            name: identity?.name, about: identity?.about,
-          });
-        } else {
-          shareId = await submitShare({
-            tourId: tour.id, actId: act.id, text: reflection.text,
+      // Publish every response they wrote, under the same name — one decision
+      // covers the lot, and none is left behind.
+      const publishedIds: Record<string, string> = {};
+      const published: CommunityShare[] = [];
+      for (const reflection of unsharedMine) {
+        const actId = reflection.actId || act?.id || '';
+        try {
+          // Every reflection was already recorded as an unshared community doc;
+          // sharing promotes that same doc (no duplicate). Fall back to a fresh
+          // submit if the record is missing (e.g. it failed to record earlier).
+          let shareId: string;
+          if (reflection.unsharedRecordId) {
+            shareId = reflection.unsharedRecordId;
+            await promoteUnsharedShare(shareId, {
+              text: reflection.text, photos: reflection.photos || [], pin: reflection.pin ?? null,
+              name: identity?.name, about: identity?.about,
+            });
+          } else {
+            shareId = await submitShare({
+              tourId: tour.id, actId,
+              promptId: reflection.promptId, promptText: reflection.promptText, isCustom: reflection.isCustom,
+              text: reflection.text,
+              photos: reflection.photos || [], pin: reflection.pin ?? null,
+              sessionId: session?.id || 'unknown', name: identity?.name, about: identity?.about,
+            });
+          }
+          const key = reflection.id || reflection.unsharedRecordId;
+          if (key) publishedIds[key] = shareId;
+          published.push({
+            id: shareId, tourId: tour.id, actId,
+            promptId: reflection.promptId, promptText: reflection.promptText, isCustom: reflection.isCustom,
+            text: reflection.text,
             photos: reflection.photos || [], pin: reflection.pin ?? null,
-            sessionId: session?.id || 'unknown', name: identity?.name, about: identity?.about,
-          });
+            sessionId: session?.id || 'unknown', name: identity?.name, upvotes: 0,
+            status: 'approved', createdAt: new Date().toISOString(),
+          } as CommunityShare);
+        } catch (err) {
+          console.error('[community] share failed:', err);
         }
-        markReflectionShared(shareId);
-        setShares((prev) => [{
-          id: shareId, tourId: tour.id, actId: act.id, text: reflection.text,
-          photos: reflection.photos || [], pin: reflection.pin ?? null,
-          sessionId: session?.id || 'unknown', name: identity?.name, upvotes: 0,
-          status: 'approved', createdAt: new Date().toISOString(),
-        } as CommunityShare, ...prev]);
+      }
+      if (published.length) {
+        markReflectionsShared(publishedIds);
+        setShares((prev) => [...published, ...prev]);
         setShared(true);
-      } catch (err) {
-        console.error('[community] share failed:', err);
       }
     }
     setNameSheet(false);
@@ -151,33 +224,51 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
           color: 'var(--ds-ink-soft)',
         }}
       >
-        What others took away from this part of the tour.
+        What others took away from the tour.
       </p>
 
       {loading ? (
         <div className="flex justify-center py-6"><span className="w-6 h-6 border-2 border-aged-gold border-t-transparent rounded-full animate-spin" /></div>
-      ) : shares.length === 0 ? (
+      ) : groups.length === 0 ? (
         <p className="text-[15px] italic py-4" style={{ color: 'var(--text-secondary)' }}>
           No one has shared here yet — you could be the first.
         </p>
       ) : (
-        <div className="space-y-3">
-          {shares.map((s) => (
-            <ShareCard
-              key={s.id}
-              share={s}
-              tourId={tour!.id}
-              sessionId={session?.id || 'unknown'}
-              upvoted={upvoted.has(s.id)}
-              count={counts[s.id] || 0}
-              onUpvote={() => toggleUpvote(s.id)}
-            />
+        <div className="space-y-6">
+          {groups.map((g) => (
+            <section key={g.key} className="space-y-3">
+              {/* The question the responses under it answer. */}
+              <h3
+                style={{
+                  fontFamily: 'var(--ds-title-s-family)',
+                  fontSize: 'var(--ds-title-s-size)',
+                  lineHeight: 'var(--ds-title-s-line)',
+                  fontWeight: 'var(--ds-title-s-weight)',
+                  color: 'var(--ds-cardinal)',
+                }}
+              >
+                {g.question}
+              </h3>
+              {g.shares.map((s) => (
+                <ShareCard
+                  key={s.id}
+                  share={s}
+                  tourId={tour!.id}
+                  sessionId={session?.id || 'unknown'}
+                  upvoted={upvoted.has(s.id)}
+                  count={counts[s.id] || 0}
+                  onUpvote={() => toggleUpvote(s.id)}
+                />
+              ))}
+            </section>
           ))}
         </div>
       )}
 
       {shared && (
-        <p className="text-center text-[13px] font-semibold" style={{ color: 'var(--th-primary)' }}>✓ Your response is shared with the community</p>
+        <p className="text-center text-[13px] font-semibold" style={{ color: 'var(--th-primary)' }}>
+          {myReflections.length > 1 ? '✓ Your responses are shared with the community' : '✓ Your response is shared with the community'}
+        </p>
       )}
 
       {/* Continue leads on the left as the filled pill; sharing sits beside it as
@@ -198,7 +289,7 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
         >
           {isLastAct ? lastActLabel : 'Continue Tour'}
         </button>
-        {reflection && !shared && (
+        {unsharedMine.length > 0 && !shared && (
           <button
             onClick={openShareSheet}
             className="flex-1 flex items-center justify-center"

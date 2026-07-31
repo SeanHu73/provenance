@@ -491,6 +491,14 @@ export interface Act {
  *  text plus optional photos and a single labelled map pin ("their own stop"),
  *  and whether they shared it to the community. */
 export interface ActReflectionResponse {
+  /** Stable local id, minted when the response is saved. The explorer can answer
+   *  several prompts on the closing reflection, so "which response was shared"
+   *  needs a key that isn't the act. */
+  id?: string;
+  /** The act whose prompt this answers — the acts' prompts are merged into one
+   *  closing page, so a response is filed under its prompt's act, not the act
+   *  the explorer happens to be standing in. */
+  actId?: string;
   text: string;
   photos?: string[];                 // Uploaded photo URLs
   pin?: { lat: number; lng: number; title?: string; note?: string } | null;
@@ -508,6 +516,15 @@ export interface ActReflectionResponse {
   /** Contexts the learner tagged as ones they referred to (id + title snapshot,
    *  so the admin can see what was picked even for guest-added contexts). */
   taggedContexts?: { id: string; title: string }[];
+}
+
+/** One end-of-tour reflection prompt, merged out of every act. The closing
+ *  reflection offers all the acts' prompts on one page, so each carries the act
+ *  it was authored on (responses are still filed under that act). */
+export interface MergedReflectionPrompt extends ReflectionPrompt {
+  actId: string;
+  /** 1-based act number, for the card's label. */
+  actNumber: number;
 }
 
 /** One context question the explorer asked (and the AI's answer, once wired). */
@@ -1084,7 +1101,14 @@ export interface TourSession {
   actResponses?: Record<string, {
     opening?: string;
     closing?: string;
+    /** The first reflection filed under this act. Kept as-is so older sessions
+     *  (and everything that reads a single response) still resolve; `reflections`
+     *  is the full list. */
     reflection?: ActReflectionResponse;
+    /** Every reflection filed under this act — the closing reflection lets the
+     *  explorer answer more than one prompt. Read this (falling back to
+     *  `reflection`) wherever responses are shown or exported. */
+    reflections?: ActReflectionResponse[];
     contextQuestions?: ContextQuestionEntry[];
   }>;
   /** Snapshots of the contexts the explorer added/edited/created in their
@@ -1175,6 +1199,12 @@ export interface CommunityShare {
   id: string;
   tourId: string;
   actId: string;
+  /** The reflection prompt this answers — the community wall groups shares by
+   *  question. Absent on shares recorded before the closing reflection merged
+   *  the prompts; those are grouped by their act instead. */
+  promptId?: string | null;
+  promptText?: string;
+  isCustom?: boolean;
   text: string;
   photos: string[];
   pin?: { lat: number; lng: number; title?: string; note?: string } | null;
@@ -1184,7 +1214,7 @@ export interface CommunityShare {
   upvotes?: number;          // per-device toggle in the explorer view
   status: ModerationStatus;  // created `approved` (immediate); admin can hide
   /** True while the reflection was recorded but NOT published by the explorer.
-   *  Unshared records are hidden from other explorers (excluded in `getShares`)
+   *  Unshared records are hidden from other explorers (excluded in `getSharesForTour`)
    *  but visible to admins under an "Unshared" category. Cleared when the
    *  explorer chooses to share (the same doc is promoted). */
   unshared?: boolean;

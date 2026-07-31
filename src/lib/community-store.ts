@@ -341,6 +341,9 @@ export async function upvoteShare(id: string, up: boolean): Promise<void> {
 export async function submitShare(input: {
   tourId: string;
   actId: string;
+  promptId?: string | null;
+  promptText?: string;
+  isCustom?: boolean;
   text: string;
   photos: string[];
   pin?: { lat: number; lng: number; title?: string; note?: string } | null;
@@ -352,6 +355,9 @@ export async function submitShare(input: {
   const data = cleanUndefined({
     tourId: input.tourId,
     actId: input.actId,
+    promptId: input.promptId ?? undefined,
+    promptText: input.promptText,
+    isCustom: input.isCustom,
     text: input.text,
     photos: input.photos,
     pin: input.pin ? cleanUndefined(input.pin) : null,
@@ -373,6 +379,9 @@ export async function submitShare(input: {
 export async function recordUnsharedResponse(input: {
   tourId: string;
   actId: string;
+  promptId?: string | null;
+  promptText?: string;
+  isCustom?: boolean;
   text: string;
   photos: string[];
   pin?: { lat: number; lng: number; title?: string; note?: string } | null;
@@ -382,6 +391,9 @@ export async function recordUnsharedResponse(input: {
   const data = cleanUndefined({
     tourId: input.tourId,
     actId: input.actId,
+    promptId: input.promptId ?? undefined,
+    promptText: input.promptText,
+    isCustom: input.isCustom,
     text: input.text,
     photos: input.photos,
     pin: input.pin ? cleanUndefined(input.pin) : null,
@@ -434,9 +446,14 @@ export async function submitComment(
 
 // ── Read (explorer — approved only) ──
 
-export async function getShares(tourId: string, actId: string): Promise<CommunityShare[]> {
+/** Every published share for a tour, across all acts. The community wall is now
+ *  the tour's closing screen and groups by question rather than by act, so it
+ *  reads the whole tour — including reflections recorded before the prompts were
+ *  merged, which carry an act but no prompt. (This replaces the per-act
+ *  `getShares`; nothing asks for one act's shares any more.) */
+export async function getSharesForTour(tourId: string): Promise<CommunityShare[]> {
   try {
-    const snap = await getDocs(query(collection(db, SHARES), where('tourId', '==', tourId), where('actId', '==', actId), where('status', '==', 'approved')));
+    const snap = await getDocs(query(collection(db, SHARES), where('tourId', '==', tourId), where('status', '==', 'approved')));
     const out: CommunityShare[] = [];
     // Unshared records are recorded for the admin only — never surface them to
     // other explorers.
@@ -445,7 +462,7 @@ export async function getShares(tourId: string, actId: string): Promise<Communit
     out.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0) || (b.createdAt || '').localeCompare(a.createdAt || ''));
     return out;
   } catch (err) {
-    console.error('[community-store] getShares failed:', err);
+    console.error('[community-store] getSharesForTour failed:', err);
     return [];
   }
 }

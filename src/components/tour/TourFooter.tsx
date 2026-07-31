@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion, useAnimationControls } from 'framer-motion';
 import { Tour, TourSession } from '@/lib/types';
 import { getTourMode, getActiveStops } from '@/lib/tours-store';
-import { findActOfStop, getActs, getActContexts } from '@/lib/tour-session';
+import { findActOfStop, getActs, getActContexts, actReflectionsOf } from '@/lib/tour-session';
 import { useTour } from '@/context/TourContext';
 import MicButton from './MicButton';
 import { NoteIcon } from '@/components/icons';
@@ -94,10 +94,9 @@ export default function TourFooter({ tour, session, pointAtQuestion = false }: P
     return goneThrough ? getActContexts(a).map((c) => authoredToEntry(c, tour.id)) : [];
   });
   const journalResponses = Object.entries(session.actResponses ?? {}).flatMap(([aid, r]) => {
-    const refl = r?.reflection;
-    if (!refl) return [];
     const a = getActs(tour).find((x) => x.id === aid);
-    return [{ actTitle: a?.title ?? '', promptText: refl.promptText ?? '', text: refl.text }];
+    // Every response, not just the first — the closing reflection can hold several.
+    return actReflectionsOf(r).map((refl) => ({ actTitle: a?.title ?? '', promptText: refl.promptText ?? '', text: refl.text }));
   });
 
   // One-time nudge: the first time the learner reaches a reflection, point out

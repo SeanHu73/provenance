@@ -51,8 +51,9 @@ import {
   completeReflectionIntro as completeReflectionIntroImpl,
   completeActContextQuestions as completeActContextQuestionsImpl,
   recordDetectiveAnswer as recordDetectiveAnswerImpl,
+  saveActReflection as saveActReflectionImpl,
   completeActReflection as completeActReflectionImpl,
-  markActReflectionShared as markActReflectionSharedImpl,
+  markReflectionsShared as markReflectionsSharedImpl,
   completeCommunityShare as completeCommunityShareImpl,
   startAdditionalStop as startAdditionalStopImpl,
   finishAdditionalStops as finishAdditionalStopsImpl,
@@ -104,14 +105,20 @@ interface TourContextValue {
   completeActContext: () => void;
   completeReflectionIntro: () => void;
   completeActContextQuestions: (asked?: ContextQuestionEntry[]) => void;
-  completeActReflection: (response: ActReflectionResponse) => void;
+  /** File one closing-reflection response; the explorer may answer several, so
+   *  this does not move the tour on. */
+  saveActReflection: (response: ActReflectionResponse) => void;
+  /** Done responding → the community screen. */
+  completeActReflection: () => void;
   /** Record that the explorer opened a designer-authored context item (deduped
    *  by id) so the admin can see which contexts they chose to look at. */
   recordContextViewed: (ctx: { contextId: string; title: string; lens: string; question?: string; actId?: string }) => void;
   /** Record a full snapshot of a Detective answer the learner got in the journal, so
    *  the admin can review / correct / promote it (whether or not they added it). */
   recordDetectiveAnswer: (snapshot: ContextEntrySnapshot) => void;
-  markReflectionShared: (shareId: string) => void;
+  /** Mark reflections as published — maps each response's local id to its
+   *  CommunityShare doc id. */
+  markReflectionsShared: (shareIds: Record<string, string>) => void;
   completeCommunityShare: () => void;
   /** Post-tour additional stops: open one from the menu, or finish and go to the
    *  tour's closing. */
@@ -733,7 +740,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const completeActContextFn = useCallback(() => {
     if (!session || !tour) return;
-    persist(completeActContextImpl(session));
+    persist(completeActContextImpl(session, tour));
   }, [session, tour, persist]);
 
   const completeReflectionIntroFn = useCallback(() => {
@@ -746,20 +753,25 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(completeActContextQuestionsImpl(session, tour, asked));
   }, [session, tour, persist]);
 
-  const completeActReflectionFn = useCallback((response: ActReflectionResponse) => {
+  const saveActReflectionFn = useCallback((response: ActReflectionResponse) => {
     if (!session || !tour) return;
-    persist(completeActReflectionImpl(session, tour, response));
+    persist(saveActReflectionImpl(session, tour, response));
   }, [session, tour, persist]);
+
+  const completeActReflectionFn = useCallback(() => {
+    if (!session) return;
+    persist(completeActReflectionImpl(session));
+  }, [session, persist]);
 
   const completeCommunityShareFn = useCallback(() => {
     if (!session || !tour) return;
     persist(completeCommunityShareImpl(session, tour));
   }, [session, tour, persist]);
 
-  const markReflectionSharedFn = useCallback((shareId: string) => {
-    if (!session || !tour) return;
-    persist(markActReflectionSharedImpl(session, tour, shareId));
-  }, [session, tour, persist]);
+  const markReflectionsSharedFn = useCallback((shareIds: Record<string, string>) => {
+    if (!session) return;
+    persist(markReflectionsSharedImpl(session, shareIds));
+  }, [session, persist]);
 
   const startAdditionalStopFn = useCallback((stopId: string) => {
     if (!session || !tour) return;
@@ -835,10 +847,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeActContext: completeActContextFn,
       completeReflectionIntro: completeReflectionIntroFn,
       completeActContextQuestions: completeActContextQuestionsFn,
+      saveActReflection: saveActReflectionFn,
       completeActReflection: completeActReflectionFn,
       recordContextViewed: recordContextViewedFn,
       recordDetectiveAnswer: recordDetectiveAnswerFn,
-      markReflectionShared: markReflectionSharedFn,
+      markReflectionsShared: markReflectionsSharedFn,
       completeCommunityShare: completeCommunityShareFn,
       startAdditionalStop: startAdditionalStopFn,
       finishAdditionalStops: finishAdditionalStopsFn,

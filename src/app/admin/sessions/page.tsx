@@ -23,6 +23,7 @@ import { Tour, Act, ContextEntrySnapshot, DetectiveCorrection, KnowledgeEntry } 
 import type { PastCategory } from '@/features/context-journal/types';
 import { LENS_BY_KEY, formatYear } from '@/features/context-journal/constants';
 import { getAllTourSessions, setSessionStarred, StoredTourSession } from '@/lib/tour-sessions-store';
+import { actReflectionsOf } from '@/lib/tour-session';
 import { getTours } from '@/lib/tours-store';
 import { getAllCorrections, saveCorrection } from '@/lib/detective-corrections-store';
 import { fetchEmbedding, saveKnowledgeEntry, newKnowledgeId, knowledgeEmbedText, knowledgeEmbedHash } from '@/lib/knowledge-store';
@@ -99,10 +100,10 @@ function buildRows(sessions: StoredTourSession[], toursById: Record<string, Tour
       for (const cq of resp?.contextQuestions || []) {
         rows.push([...base, 'Context question (asked)', actTitle, cq.question, cq.answer || `(${cq.status})`]);
       }
-      // "Share Your Thoughts" reflection — the prompt they picked (or their own),
-      // their response, tagged contexts, photos, pin, and shared/unshared.
-      const refl = resp?.reflection;
-      if (refl) {
+      // "Share Your Thoughts" reflections — the prompt they picked (or their own),
+      // their response, tagged contexts, photos, pin, and shared/unshared. One row
+      // each: the closing reflection lets an explorer answer several prompts.
+      for (const refl of actReflectionsOf(resp)) {
         const prompt = (refl.promptText || act?.reflectionQuestion?.prompt || act?.closingQuestion?.prompt || '')
           + (refl.isCustom ? ' (their own prompt)' : '');
         const extras: string[] = [];
@@ -245,28 +246,29 @@ function Field({ label, value }: { label: string; value: string }) {
 function ActBlock({ s, act, index }: { s: StoredTourSession; act: Act; index: number }) {
   const resp = s.actResponses?.[act.id];
   const viewed = (s.viewedContexts || []).filter((v) => v.actId === act.id);
-  const refl = resp?.reflection;
+  // Every response filed under this act — the closing reflection lets an explorer
+  // answer several of the tour's prompts.
+  const reflections = actReflectionsOf(resp);
   const askedQs = resp?.contextQuestions || [];
 
   const hasAny = !!resp || viewed.length > 0;
   if (!hasAny) return null;
 
-  const reflPrompt = refl
-    ? (refl.promptText || act.reflectionQuestion?.prompt || act.closingQuestion?.prompt || '') + (refl.isCustom ? '  (their own prompt)' : '')
-    : '';
-
   return (
     <div className="border-l-2 border-stone-200 pl-3 space-y-3">
       <p className="text-sm font-semibold text-stone-800">{actTitleOf(act, `Act ${index + 1}`)}</p>
 
-      {refl && (
-        <div className="space-y-1.5 bg-stone-50 rounded p-2.5">
+      {reflections.map((refl, i) => (
+        <div key={refl.id || i} className="space-y-1.5 bg-stone-50 rounded p-2.5">
           <div className="flex items-center gap-2">
             <Tag>Reflection</Tag>
             <Tag color={refl.sharedToCommunity ? '#15803d' : '#a16207'}>{refl.sharedToCommunity ? 'shared' : 'unshared'}</Tag>
             {refl.isCustom && <Tag>their own prompt</Tag>}
           </div>
-          <Field label="Prompt they picked" value={reflPrompt} />
+          <Field
+            label="Prompt they picked"
+            value={(refl.promptText || act.reflectionQuestion?.prompt || act.closingQuestion?.prompt || '') + (refl.isCustom ? '  (their own prompt)' : '')}
+          />
           <Field label="Response" value={refl.text} />
           {refl.taggedContexts && refl.taggedContexts.length > 0 && (
             <Field label="Contexts they tagged" value={refl.taggedContexts.map((c) => c.title || c.id).join(', ')} />
@@ -278,7 +280,7 @@ function ActBlock({ s, act, index }: { s: StoredTourSession; act: Act; index: nu
             </p>
           )}
         </div>
-      )}
+      ))}
 
       {resp?.opening && <Field label="Act opening" value={resp.opening} />}
       {resp?.closing && <Field label="Act closing" value={resp.closing} />}
