@@ -418,22 +418,63 @@ const VOICE_SCHEMA = {
  * Voice is a constrained rewrite (no new facts) — no thinking needed, and
  * omitting it on Opus 4.8 shaves real latency off the pipeline.
  */
-export async function voiceRewrite(system: string, userText: string): Promise<VoiceOutput | null> {
-  const resp = await callClaude({
-    model: OPUS,
-    max_tokens: 3000,
-    system: cachedSystem(system),
-    output_config: { format: { type: 'json_schema', schema: VOICE_SCHEMA } },
-    messages: [{ role: 'user', content: userText }],
-  });
-  const text = ((resp.content || []) as Json[]).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
-  try {
-    return JSON.parse(text) as VoiceOutput;
-  } catch (err) {
-    console.error('[detective] voice JSON failed:', err, text.slice(0, 200));
-    return null;
+export async function voiceRewrite(
+  system: string,
+  userText: string,
+  /** Hard word ceiling for the narrative. Over it, we ask once for a cut. */
+  maxWords = 0,
+): Promise<VoiceOutput | null> {
+  const messages: Json[] = [{ role: 'user', content: userText }];
+
+  // Two attempts at most. The length rule lived only in the skill and was missed
+  // more often than not — measured, 327 words mean against a stated 300 ceiling.
+  // A rule nothing checks is a suggestion, so this checks it: over the ceiling,
+  // hand the draft back once with its own word count. Cheap, because it only
+  // costs a second call on the answers that were going to be too long anyway.
+  for (let i = 0; i < 2; i++) {
+    const resp = await callClaude({
+      model: OPUS,
+      max_tokens: 3000,
+      system: cachedSystem(system),
+      output_config: { format: { type: 'json_schema', schema: VOICE_SCHEMA } },
+      messages,
+    });
+    const text = ((resp.content || []) as Json[]).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    let out: VoiceOutput;
+    try {
+      out = JSON.parse(text) as VoiceOutput;
+    } catch (err) {
+      console.error('[detective] voice JSON failed:', err, text.slice(0, 200));
+      return null;
+    }
+    const count = wordCount(out.narrative);
+    if (!maxWords || count <= maxWords || i > 0) {
+      if (maxWords && count > maxWords) {
+        console.warn(`[detective]   ⚠ narrative still ${count} words after a cut (ceiling ${maxWords}) — shipping it`);
+      } else if (maxWords) {
+        console.log(`[detective]   narrative ${count} words (~${Math.round((count / 150) * 60)}s aloud)`);
+      }
+      return out;
+    }
+    console.warn(`[detective]   narrative ${count} words, over the ${maxWords} ceiling — asking for a cut`);
+    messages.push({ role: 'assistant', content: text });
+    messages.push({
+      role: 'user',
+      content:
+        `That rewrite is ${count} words. The ceiling is ${maxWords} and the target is 150–200 — it is read aloud, `
+        + `and ${count} words is roughly ${Math.round((count / 150) * 60)} seconds of audio.
+
+`
+        + `Cut it to the target. Do not trim evenly: pick the single point this answer is making and drop the claims `
+        + `that serve other points, however good they are. Keep every hedge and qualification — losing "the record does `
+        + `not establish" to save words makes the answer wrong, not shorter. Return the same three fields.`,
+    });
   }
+  return null;
 }
+
+/** Words, as a listener would count them. */
+const wordCount = (t: string) => (t || '').trim().split(/\s+/).filter(Boolean).length;
 
 // ── Framing coach (fast pre-pass, Haiku, structured output) ──
 

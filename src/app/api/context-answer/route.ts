@@ -56,6 +56,12 @@ const PREFER_PRIMARY_MS = 60_000;
  * room for the voice pass and the photo lookup, which run afterwards.
  */
 const RESEARCH_CEILING_MS = 120_000;
+/** The voiced answer's word budget. It is read aloud, so this is really a time
+ *  budget: at ~150 words a minute the target lands around 60–80 seconds and the
+ *  ceiling around 90, comfortably inside the two minutes a learner will stand
+ *  still for. Measured before this existed: mean 327 words, p90 443, max 543. */
+const VOICE_TARGET_WORDS: [number, number] = [150, 200];
+const VOICE_MAX_WORDS = 220;
 const TOP_K = 6;
 /** Cosine floor a base entry must clear to be shown to the model at all. Below this
  *  it is not "related material", it is a distraction we have stamped as verified. */
@@ -674,7 +680,11 @@ export async function POST(req: Request) {
     //    written here rather than by a separate pass that would have to re-read
     //    (and retype) the whole answer to produce them.
     const voiceUser =
-      `Rewrite the following draft for the spoken Context Detective voice, following your Narrative Voice skill exactly. Do not add, remove, or change any fact, source, or claim — only the prose. British spelling, no em dashes, written to be heard. You are granted NO rationed devices this turn: no closing question, no painted scene, no exclamation.\n\n`
+      `Rewrite the following draft for the spoken Context Detective voice, following your Narrative Voice skill exactly. Do not add, remove, or change any fact, source, or claim — only the prose and what you leave out. British spelling, no em dashes, written to be heard. You are granted NO rationed devices this turn: no closing question, no painted scene, no exclamation.\n\n`
+      // The skill carries this too (§11), but it was there alone and being missed:
+      // measured across 76 answers the mean was 327 words against a stated ceiling
+      // of 300. Saying it at the point of use as well is the cheap half of the fix.
+      + `LENGTH: ${VOICE_TARGET_WORDS[0]}–${VOICE_TARGET_WORDS[1]} words, hard ceiling ${VOICE_MAX_WORDS}. This is heard aloud — ${VOICE_TARGET_WORDS[1]} words is about eighty seconds, and that is the whole budget. The draft you are given will usually be longer than this, so rewriting it means deciding what the answer is actually for and cutting the rest, including good material. Do not drop hedges or qualifications to save words: an answer that gets shorter by losing "the record does not establish" has been made worse.\n\n`
       + `Return three fields:\n`
       + `- narrative: the rewritten answer, and nothing else. This is read aloud and shown to the learner verbatim.\n`
       + `- title: a short plain phrase naming the CONTEXT ITSELF — the conditions, not the site and not the question. "The Gilded Age economy", not "How Stanford got rich". A few words; no rhetoric, no cleverness, no punctuation tricks. A learner scanning their journal months later should know from the title alone what conditions this holds.\n`
@@ -682,7 +692,7 @@ export async function POST(req: Request) {
       + `Both title and summary must be drawn from the draft — compress it, never add to it.\n\n`
       + `DRAFT:\n${research.draft}\n\nLENS: ${entryLens}`;
     const tVoice = Date.now();
-    const voiced = await voiceRewrite(voiceSystem(), voiceUser);
+    const voiced = await voiceRewrite(voiceSystem(), voiceUser, VOICE_MAX_WORDS);
     timings.voice = Date.now() - tVoice;
 
     // Voice failing (or returning unusable JSON) must not lose the answer: fall

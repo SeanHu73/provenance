@@ -109,7 +109,13 @@ And whatever the close: no verdicts, no verdict-smuggling questions ("What does 
 
 ## 11. Length
 
-Noticeably shorter than a context entry; hard ceiling 300 words. Detail budget follows the answer's job — cut the detail you are fondest of if it serves a point the answer is not making. When cutting, protect load-bearing words from earlier in the answer (a phrase doing anti-misreading work must survive compression).
+**Target 150–200 words. Hard ceiling 220.**
+
+This is heard, not read. At normal narration pace 200 words is about eighty seconds, and a learner standing outside a building with their phone to their ear will not give you more than that. Length is not a measure of how much you found; it is a measure of how much you decided the learner needs.
+
+The previous ceiling was 300 and answers were averaging 327 — over the limit more often than under it. If your draft is longer than this, the answer is not "trim a few adjectives": cut a claim. Decide which single point this answer is making and let the others go, including good ones. Detail budget follows the answer's job — cut the detail you are fondest of if it serves a point the answer is not making.
+
+When cutting, protect load-bearing words from earlier in the answer (a phrase doing anti-misreading work must survive compression), and protect the hedges — an answer that gets shorter by dropping "the record does not establish" has been made worse, not tighter.
 
 ## 12. Self-check before returning
 
