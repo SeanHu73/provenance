@@ -58,11 +58,15 @@ async function callClaude(body: Json, signal?: AbortSignal): Promise<Json> {
         body: JSON.stringify(body),
       });
     } catch (err) {
-      // Connection-level failure — no response at all. Worth another go.
+      // Losing the race aborts the fetch, which lands here looking like a network
+      // failure. Don't retry it — the caller has already stopped caring, and
+      // backing off first would sleep a second before noticing.
+      if (signal?.aborted) throw new Error('aborted');
+      // A genuine connection-level failure — no response at all. Worth another go.
       lastErr = `network: ${err instanceof Error ? err.message : String(err)}`;
       if (attempt === MAX_ATTEMPTS) break;
-      await sleep(backoffMs(attempt));
       console.warn(`[detective]   claude ${lastErr} — retrying (${attempt + 1}/${MAX_ATTEMPTS})`);
+      await sleep(backoffMs(attempt));
       continue;
     }
     if (res.ok) return res.json();
@@ -313,6 +317,7 @@ export async function synthesiseResearch(
   userText: string,
   /** The URLs the search returned, for the pushback below. */
   availableUrls: string[] = [],
+  signal?: AbortSignal,
 ): Promise<ResearchOutput | null> {
   const tools = [{
     name: 'submit_answer',
@@ -332,6 +337,7 @@ export async function synthesiseResearch(
   // too, just shorter: the sources are already in the prompt, so one reminder is
   // either enough or the problem is not forgetfulness.
   for (let i = 0; i < 2; i++) {
+    if (signal?.aborted) return null;
     const resp = await callClaude({
       model: SONNET,
       max_tokens: 8000,
@@ -345,7 +351,7 @@ export async function synthesiseResearch(
       tools,
       tool_choice: { type: 'tool', name: 'submit_answer' },
       messages,
-    });
+    }, signal);
     const content: Json[] = resp.content || [];
     const submit = content.find((b: Json) => b.type === 'tool_use' && b.name === 'submit_answer');
     if (!submit) {

@@ -33,15 +33,28 @@ export const maxDuration = 300;
 
 const LOG_COLLECTION = 'memorial-church-detective-responses';
 /**
- * How long the *research* stage gets before Perplexity takes over.
+ * How long to hold out for the *preferred* research path before shipping the
+ * other one's answer.
  *
- * Research only — voice and the photo lookup run after it and are not on this
- * clock. Measured, the Claude path's own calls run 17–66s each and it may make
- * several, so 60s lets a normal run finish untouched and catches the ones that
- * were heading for two or three minutes. The whole function still has to land
- * inside `maxDuration`, and a handover costs Perplexity's ~18s on top.
+ * Both paths run at once (see the hedge below), so this is not "how long before
+ * we start the fallback" — the fallback is already finished or nearly so. It is
+ * only "how long do we prefer mode 1's answer over a mode 2 answer that is
+ * sitting ready". That makes a short value cheap: passing it costs the learner
+ * nothing, because the alternative is already in hand.
+ *
+ * Deliberately NOT a substitute for the attempt caps (`max_uses: 8` on the search
+ * tool, 8 loop iterations). Those bound how much work the model does; this bounds
+ * how long the learner waits. A slow network sails straight past the first and is
+ * caught only by the second.
  */
-const RESEARCH_DEADLINE_MS = 60_000;
+const PREFER_PRIMARY_MS = 60_000;
+/**
+ * Hard ceiling on research, both paths included. Past this we bank deliberately
+ * rather than let Vercel kill the function at `maxDuration` — a graceful miss the
+ * learner can see beats a request that dies holding the answer. Leaves room for
+ * the voice pass and the photo lookup, which run afterwards.
+ */
+const RESEARCH_CEILING_MS = 200_000;
 const TOP_K = 6;
 /** Cosine floor a base entry must clear to be shown to the model at all. Below this
  *  it is not "related material", it is a distraction we have stamped as verified. */
@@ -464,11 +477,11 @@ export async function POST(req: Request) {
 
     /** Search with Perplexity and draft from it. `research` is null if either half
      *  fails; `findings` comes back either way so the caller can see what it got. */
-    const viaPerplexity = async (): Promise<{
+    const viaPerplexity = async (signal: AbortSignal): Promise<{
       research: Awaited<ReturnType<typeof synthesiseResearch>>;
       findings: PerplexityFindings | null;
     }> => {
-      const findings = await perplexitySearch({ question, domains: preferredDomains });
+      const findings = await perplexitySearch({ question, domains: preferredDomains, signal });
       // Findings with no citations are worse than no findings: the drafting pass
       // has an answer in front of it and nothing to attribute it to.
       if (findings && !findings.sources.length) {
@@ -481,45 +494,68 @@ export async function POST(req: Request) {
         + `Follow your P.A.S.T., Research, and Grounding skills. Screen first (is this a question? is it about context?).\n\n`
         + `The search above is raw material, not your answer: judge it, keep what the sources actually support, and write the draft yourself. The synthesis is not a source — cite the URLs. If the material is thin, say plainly what it does not establish and answer as far as it goes; a partial answer is expected and welcome.\n\n`
         + submitBlock;
-      const drafted = await synthesiseResearch(researchSystem(), synthUser, findings.sources.map((s) => s.url));
+      const drafted = await synthesiseResearch(researchSystem(), synthUser, findings.sources.map((s) => s.url), signal);
       return { research: drafted, findings };
     };
 
-    if (setting === 'perplexity') {
-      const first = await viaPerplexity();
-      if (first.research) { research = first.research; backend = 'perplexity'; usedFindings = first.findings; }
-      else console.warn('[detective] perplexity path produced nothing — falling back to the Claude research path');
+    // Both paths run at once, and the mode decides which answer we'd rather have.
+    //
+    // Serially, a fallback only helps after the primary has burned its whole
+    // budget — the learner pays the failure *and then* the recovery. Run together,
+    // the alternative is finished (or nearly) by the moment the primary gives up,
+    // so a handover costs almost nothing. It does mean paying for both on every
+    // ask; that is the trade, taken deliberately.
+    const claudeCtl = new AbortController();
+    const pplxCtl = new AbortController();
+    // Launched here and neither awaited yet, so each must swallow its own failure
+    // — an unawaited rejection takes the process down rather than politely losing.
+    const claudeRun = researchDraft(researchSystem(), researchUser, claudeCtl.signal)
+      .catch((err) => {
+        if (!claudeCtl.signal.aborted) console.warn(`[detective] claude research failed: ${err instanceof Error ? err.message : err}`);
+        return null;
+      });
+    const pplxRun = viaPerplexity(pplxCtl.signal)
+      .catch((err) => {
+        if (!pplxCtl.signal.aborted) console.warn(`[detective] perplexity research failed: ${err instanceof Error ? err.message : err}`);
+        return { research: null, findings: null };
+      });
+
+    const preferPerplexity = setting === 'perplexity';
+    const primary = preferPerplexity ? pplxRun.then((r) => r.research) : claudeRun;
+    const secondary = preferPerplexity ? claudeRun : pplxRun.then((r) => r.research);
+    const primaryName: ResearchBackend = preferPerplexity ? 'perplexity' : 'claude';
+    const secondaryName: ResearchBackend = preferPerplexity ? 'claude' : 'perplexity';
+    type Draft = Awaited<typeof claudeRun>;
+    const usable = (r: Draft) => !!r && r.status !== 'banked';
+    const after = <T,>(ms: number, value: T) => new Promise<T>((r) => { setTimeout(() => r(value), ms); });
+    const LATE = { late: true } as const;
+
+    const raced = await Promise.race([primary, after(PREFER_PRIMARY_MS, LATE)]);
+    const first: Draft = raced === LATE ? null : raced as Draft;
+    if (raced === LATE) {
+      console.warn(`[detective] ${primaryName} research passed ${PREFER_PRIMARY_MS}ms — taking whatever ${secondaryName} has`);
     }
 
-    if (!research) {
-      // Mode 1, and the fallback for mode 2. The Claude path has no natural
-      // ceiling — it can loop eight model calls and the only limit was the
-      // platform killing the function at 300s, which hands the learner nothing at
-      // all. So it gets a deadline: if the *research* stage hasn't produced an
-      // answer by then, abort it and let Perplexity search instead. The deadline
-      // covers research only — voice and the photo lookup run afterwards on their
-      // own time, and cutting research short to protect them would be backwards.
-      const ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(), RESEARCH_DEADLINE_MS);
-      try {
-        research = await researchDraft(researchSystem(), researchUser, ctl.signal);
-      } catch (err) {
-        const aborted = ctl.signal.aborted;
-        console.warn(`[detective] claude research ${aborted ? `passed ${RESEARCH_DEADLINE_MS}ms` : 'failed'}: ${err instanceof Error ? err.message : err}`);
-      } finally {
-        clearTimeout(timer);
-      }
-      // Out of time, or came back with nothing usable. Perplexity is the second
-      // opinion rather than the first — it only costs its ~18s when the primary
-      // has already failed, which is the trade you asked for.
-      if ((!research || research.status === 'banked') && setting !== 'perplexity') {
-        console.warn(`[detective] claude research ${ctl.signal.aborted ? 'timed out' : 'came back empty'} — handing over to perplexity`);
-        const second = await viaPerplexity();
-        if (second.research && second.research.status !== 'banked') {
-          research = second.research; backend = 'perplexity'; usedFindings = second.findings;
-        }
+    if (usable(first)) {
+      research = first; backend = primaryName;
+    } else {
+      // The preferred path missed, or is still going. The other has been running
+      // the whole time, so this is usually already resolved.
+      const remaining = Math.max(0, RESEARCH_CEILING_MS - (Date.now() - tResearch));
+      const second = await Promise.race([secondary, after(remaining, null)]);
+      if (usable(second)) {
+        research = second; backend = secondaryName;
+        console.log(`[detective] answered by ${secondaryName} — the ${primaryName} path did not`);
+      } else {
+        // Neither answered. Keep a banked draft over nothing at all, so the learner
+        // gets the friendly saved state rather than a request that died holding it.
+        research = first ?? second ?? null;
+        backend = first ? primaryName : secondaryName;
       }
     }
+    if (backend === 'perplexity') usedFindings = (await pplxRun).findings;
+    // Whoever lost stops working — no sense paying for an answer nobody will read.
+    (backend === 'perplexity' ? claudeCtl : pplxCtl).abort();
     timings.research = Date.now() - tResearch;
     if (!research || research.status === 'banked') {
       // Banking is meant to be rare (see the Research skill §4a). When it happens,

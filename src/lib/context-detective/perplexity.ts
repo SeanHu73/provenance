@@ -152,6 +152,8 @@ function readSources(data: Json): PerplexitySource[] {
 export async function perplexitySearch(input: {
   question: string;
   domains?: string[];
+  /** Aborts the search when the other path has already won the race. */
+  signal?: AbortSignal;
 }): Promise<PerplexityFindings | null> {
   const key = process.env.PERPLEXITY_API_KEY;
   if (!key) {
@@ -164,6 +166,8 @@ export async function perplexitySearch(input: {
   const started = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  // Either the caller giving up or our own timeout ends the request.
+  input.signal?.addEventListener('abort', () => controller.abort(), { once: true });
 
   const baseBody = {
     model,
