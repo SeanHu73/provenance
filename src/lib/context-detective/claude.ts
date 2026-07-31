@@ -43,15 +43,17 @@ const MAX_ATTEMPTS = 3;
  * Three attempts is the ceiling — the research pass can make several calls of its
  * own, and the route has a 300s budget to stay inside.
  */
-async function callClaude(body: Json): Promise<Json> {
+async function callClaude(body: Json, signal?: AbortSignal): Promise<Json> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error('ANTHROPIC_API_KEY is not set.');
   let lastErr = '';
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    if (signal?.aborted) throw new Error('aborted');
     let res: Response;
     try {
       res = await fetch(ANTHROPIC, {
         method: 'POST',
+        signal,
         headers: { 'x-api-key': key, 'anthropic-version': VERSION, 'content-type': 'application/json' },
         body: JSON.stringify(body),
       });
@@ -139,7 +141,7 @@ const RESEARCH_SCHEMA = {
   required: ['status', 'branch', 'leadLens', 'draft', 'relevanceNote', 'sources'],
 };
 
-export async function researchDraft(system: string, userText: string): Promise<ResearchOutput | null> {
+export async function researchDraft(system: string, userText: string, signal?: AbortSignal): Promise<ResearchOutput | null> {
   const tools = [
     // max_uses was 3, and the model kept walking into it — partly by re-issuing queries
     // it had already run. Hitting the cap produced an error it read as "research failed",
@@ -173,7 +175,11 @@ export async function researchDraft(system: string, userText: string): Promise<R
   const started = Date.now();
   let totalSearches = 0;
   let repairs = 0; // pushbacks spent forcing a citable answer (see below)
-  const MAX_REPAIRS = 2;
+  // One, not two. An uncited answer is now caught downstream — the route attaches
+  // what the research consulted — so a second round of arguing with the model
+  // buys a marginal citation at the cost of a whole model call, on a stage that
+  // is already the slowest thing a learner waits for.
+  const MAX_REPAIRS = 1;
   let bankChallenged = false; // a bank made while holding results gets challenged once
   const seenUrls: string[] = []; // every URL the search tool has handed back this run
   // (The container plumbing that used to live here died with _20260209. It existed only
@@ -184,6 +190,7 @@ export async function researchDraft(system: string, userText: string): Promise<R
   // so the whole failure mode is gone. Restore this if you ever restore _20260209.)
   for (let i = 0; i < 8; i++) {
     const iterStart = Date.now();
+    if (signal?.aborted) return null;
     const resp = await callClaude({
       model: SONNET,
       max_tokens: 8000,
@@ -192,7 +199,7 @@ export async function researchDraft(system: string, userText: string): Promise<R
       output_config: { effort: 'medium' },
       tools,
       messages,
-    });
+    }, signal);
     const content: Json[] = resp.content || [];
 
     // Visibility: what did this turn search, and how long did it take? Web search

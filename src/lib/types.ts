@@ -257,6 +257,11 @@ export interface DetectiveSource {
   verified: boolean;
   /** Sub-field names the learner should verify (blank or inferred). */
   checkThis?: string[];
+  /** True when the research consulted this but the draft didn't name it. The
+   *  learner sees these collapsed, under the ones actually cited: the model
+   *  citing nothing is a poor reason to show no provenance when we know exactly
+   *  what the search read. */
+  consulted?: boolean;
 }
 
 export interface DetectiveCard {

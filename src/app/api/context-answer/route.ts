@@ -20,7 +20,7 @@ import {
 } from '@/lib/types';
 import { researchSystem, voiceSystem } from '@/lib/context-detective/prompts';
 import { researchDraft, synthesiseResearch, voiceRewrite, ResearchSource } from '@/lib/context-detective/claude';
-import { perplexitySearch, findingsBlock } from '@/lib/context-detective/perplexity';
+import { perplexitySearch, findingsBlock, type PerplexityFindings } from '@/lib/context-detective/perplexity';
 import { getResearchBackend } from '@/lib/app-settings-store';
 import { embedTexts, cosine } from '@/lib/context-detective/embed';
 import { searchCommonsImages, isPhotoExt } from '@/lib/image-search';
@@ -32,6 +32,16 @@ import { hashText } from '@/lib/tts-text';
 export const maxDuration = 300;
 
 const LOG_COLLECTION = 'memorial-church-detective-responses';
+/**
+ * How long the *research* stage gets before Perplexity takes over.
+ *
+ * Research only — voice and the photo lookup run after it and are not on this
+ * clock. Measured, the Claude path's own calls run 17–66s each and it may make
+ * several, so 60s lets a normal run finish untouched and catches the ones that
+ * were heading for two or three minutes. The whole function still has to land
+ * inside `maxDuration`, and a handover costs Perplexity's ~18s on top.
+ */
+const RESEARCH_DEADLINE_MS = 60_000;
 const TOP_K = 6;
 /** Cosine floor a base entry must clear to be shown to the model at all. Below this
  *  it is not "related material", it is a distraction we have stamped as verified. */
@@ -447,35 +457,68 @@ export async function POST(req: Request) {
     const tResearch = Date.now();
     let research = null as Awaited<ReturnType<typeof researchDraft>>;
     let backend: ResearchBackend = 'claude';
-    // Kept for the citation floor below: what the search actually returned.
-    let lastFindings: Awaited<ReturnType<typeof perplexitySearch>> = null;
+    // What the search read, when its draft is the one we ship. Only set on the
+    // path we actually use, so a Perplexity search that failed and handed over to
+    // Claude never attributes its results to an answer Claude wrote.
+    let usedFindings: PerplexityFindings | null = null;
 
-    if (setting === 'perplexity') {
+    /** Search with Perplexity and draft from it. `research` is null if either half
+     *  fails; `findings` comes back either way so the caller can see what it got. */
+    const viaPerplexity = async (): Promise<{
+      research: Awaited<ReturnType<typeof synthesiseResearch>>;
+      findings: PerplexityFindings | null;
+    }> => {
       const findings = await perplexitySearch({ question, domains: preferredDomains });
-      lastFindings = findings;
       // Findings with no citations are worse than no findings: the drafting pass
-      // has an answer in front of it and nothing to attribute it to, so it either
-      // banks or writes an uncited draft — which is exactly the failure this
-      // backend was supposed to remove. Treat it as a failed search.
+      // has an answer in front of it and nothing to attribute it to.
       if (findings && !findings.sources.length) {
         console.warn('[detective] perplexity returned an answer with no citations — treating as a failed search');
       }
-      if (findings?.sources.length) {
-        const synthUser =
-          askBlock
-          + `${findingsBlock(findings)}\n\n`
-          + `Follow your P.A.S.T., Research, and Grounding skills. Screen first (is this a question? is it about context?).\n\n`
-          + `The search above is raw material, not your answer: judge it, keep what the sources actually support, and write the draft yourself. The synthesis is not a source — cite the URLs. If the material is thin, say plainly what it does not establish and answer as far as it goes; a partial answer is expected and welcome.\n\n`
-          + submitBlock;
-        research = await synthesiseResearch(researchSystem(), synthUser, findings.sources.map((s) => s.url));
-        if (research) backend = 'perplexity';
-      }
-      if (!research) {
-        console.warn('[detective] perplexity path produced nothing — falling back to the Claude research path');
-      }
+      if (!findings?.sources.length) return { research: null, findings };
+      const synthUser =
+        askBlock
+        + `${findingsBlock(findings)}\n\n`
+        + `Follow your P.A.S.T., Research, and Grounding skills. Screen first (is this a question? is it about context?).\n\n`
+        + `The search above is raw material, not your answer: judge it, keep what the sources actually support, and write the draft yourself. The synthesis is not a source — cite the URLs. If the material is thin, say plainly what it does not establish and answer as far as it goes; a partial answer is expected and welcome.\n\n`
+        + submitBlock;
+      const drafted = await synthesiseResearch(researchSystem(), synthUser, findings.sources.map((s) => s.url));
+      return { research: drafted, findings };
+    };
+
+    if (setting === 'perplexity') {
+      const first = await viaPerplexity();
+      if (first.research) { research = first.research; backend = 'perplexity'; usedFindings = first.findings; }
+      else console.warn('[detective] perplexity path produced nothing — falling back to the Claude research path');
     }
+
     if (!research) {
-      research = await researchDraft(researchSystem(), researchUser);
+      // Mode 1, and the fallback for mode 2. The Claude path has no natural
+      // ceiling — it can loop eight model calls and the only limit was the
+      // platform killing the function at 300s, which hands the learner nothing at
+      // all. So it gets a deadline: if the *research* stage hasn't produced an
+      // answer by then, abort it and let Perplexity search instead. The deadline
+      // covers research only — voice and the photo lookup run afterwards on their
+      // own time, and cutting research short to protect them would be backwards.
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), RESEARCH_DEADLINE_MS);
+      try {
+        research = await researchDraft(researchSystem(), researchUser, ctl.signal);
+      } catch (err) {
+        const aborted = ctl.signal.aborted;
+        console.warn(`[detective] claude research ${aborted ? `passed ${RESEARCH_DEADLINE_MS}ms` : 'failed'}: ${err instanceof Error ? err.message : err}`);
+      } finally {
+        clearTimeout(timer);
+      }
+      // Out of time, or came back with nothing usable. Perplexity is the second
+      // opinion rather than the first — it only costs its ~18s when the primary
+      // has already failed, which is the trade you asked for.
+      if ((!research || research.status === 'banked') && setting !== 'perplexity') {
+        console.warn(`[detective] claude research ${ctl.signal.aborted ? 'timed out' : 'came back empty'} — handing over to perplexity`);
+        const second = await viaPerplexity();
+        if (second.research && second.research.status !== 'banked') {
+          research = second.research; backend = 'perplexity'; usedFindings = second.findings;
+        }
+      }
     }
     timings.research = Date.now() - tResearch;
     if (!research || research.status === 'banked') {
@@ -525,20 +568,31 @@ export async function POST(req: Request) {
     // material (a curator entry is verified whoever names it), not our confidence
     // that the draft leaned on it. Watch the warning count: this firing often
     // means the drafts are unattributed, not that the floor is working.
-    if (research.status === 'answered' && sources.length === 0) {
-      const fallback: DetectiveSource[] = research.branch === 'live'
-        ? (lastFindings?.sources ?? []).slice(0, 3).map((s) => ({
-            kind: 'web' as const, url: linkOf(s.url), name: s.title || s.url, verified: false,
-          }))
-        : ranked.slice(0, 2).map((c) => ({
-            kind: c.kind, id: c.id, url: linkOf(c.domains.find(Boolean)), name: c.title, verified: true,
-          }));
-      if (fallback.length) {
-        console.warn(
-          `[detective]   ⚠ answered with no citations after pushback — attributing to the ${fallback.length} `
-          + `${research.branch === 'live' ? 'search result(s)' : 'retrieved entr(ies)'} it was given`,
-        );
-        sources.push(...fallback);
+    if (research.status === 'answered' && sources.length === 0 && ranked.length) {
+      const fallback: DetectiveSource[] = ranked.slice(0, 2).map((c) => ({
+        kind: c.kind, id: c.id, url: linkOf(c.domains.find(Boolean)), name: c.title, verified: true,
+      }));
+      console.warn(`[detective]   ⚠ answered with no citations — attributing to the ${fallback.length} retrieved entr(ies) it was given`);
+      sources.push(...fallback);
+    }
+
+    // Everything the search read, whether or not the draft named it. We know
+    // exactly what was consulted, so there is no good reason to show the learner
+    // nothing when the model declines to cite — and no reason to hide the other
+    // seventeen results either. Cited ones stay at the top; these render collapsed
+    // underneath, so the context page isn't buried in links.
+    if (usedFindings?.sources.length) {
+      const already = new Set(sources.map((s) => s.url).filter(Boolean));
+      const consulted = usedFindings.sources
+        .filter((s) => !already.has(linkOf(s.url) ?? s.url))
+        .map((s): DetectiveSource => ({
+          kind: 'web', url: linkOf(s.url), name: s.title || s.url,
+          date: s.date, verified: false, consulted: true,
+        }))
+        .filter((s) => s.url);
+      if (consulted.length) {
+        console.log(`[detective]   + ${consulted.length} consulted source(s) attached (collapsed for the learner)`);
+        sources.push(...consulted);
       }
     }
 

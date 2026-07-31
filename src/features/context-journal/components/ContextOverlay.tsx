@@ -261,11 +261,11 @@ export default function ContextOverlay({
             </div>
           )}
 
-          {/* 6 — cited sources */}
+          {/* 6 — cited sources, then everything else the research read, folded away */}
           {sources.length > 0 && (
             <div className="px-5 pt-5 space-y-2">
               <p className="text-[11px] uppercase tracking-[0.14em] font-semibold text-text-secondary">Sources</p>
-              {sources.map((s) => (
+              {sources.filter((s) => !s.consulted).map((s) => (
                 <div key={s.id} className="flex items-start gap-3 rounded-xl border px-3 py-2.5" style={{ borderColor: 'var(--th-border)' }}>
                   {s.imageUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -291,6 +291,28 @@ export default function ContextOverlay({
                   </div>
                 </div>
               ))}
+
+              {/* What the research read but the answer didn't lean on. Folded so a
+                  page with twenty results still reads as a page, not a bibliography. */}
+              {sources.some((s) => s.consulted) && (
+                <details className="rounded-xl border px-3 py-2.5" style={{ borderColor: 'var(--th-border)' }}>
+                  <summary className="cursor-pointer text-[13px] font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                    Also consulted ({sources.filter((s) => s.consulted).length})
+                  </summary>
+                  <ul className="mt-2 space-y-1.5">
+                    {sources.filter((s) => s.consulted).map((s) => (
+                      <li key={s.id} className="text-[14px] leading-snug break-words">
+                        {s.url ? (
+                          <a href={s.url} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: colour }}>{s.name}</a>
+                        ) : (
+                          <span className="text-text-primary">{s.name}</span>
+                        )}
+                        {s.date && <span className="text-xs text-text-muted"> · {s.date}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
             </div>
           )}
 

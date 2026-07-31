@@ -48,6 +48,9 @@ export interface ContextSource {
   imageUrl: string | null;
   /** Optional link — the source name is shown as a hyperlink to it in the app. */
   url?: string | null;
+  /** Consulted by the research but not cited in the answer — rendered collapsed,
+   *  below the cited ones. */
+  consulted?: boolean;
 }
 
 /** A snapshot of a question that led a learner to this context, stored on the

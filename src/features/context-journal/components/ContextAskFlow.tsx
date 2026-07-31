@@ -33,7 +33,7 @@ function readyHaptic() {
   }
 }
 
-interface RespSource { kind?: string; url?: string; name?: string; author?: string; date?: string; verified?: boolean }
+interface RespSource { kind?: string; url?: string; name?: string; author?: string; date?: string; verified?: boolean; consulted?: boolean }
 interface RespCard { lens?: PastCategory; title?: string; summary?: string; explanation?: string; imageUrl?: string; imageCredit?: string }
 
 /** Media id for the answer's own photo, kept distinct from the `ph_N` ids the
@@ -249,7 +249,7 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
   const buildDraft = (): ContextDraft => {
     const sources: ContextSource[] = (resp?.sources || [])
       .filter((s) => s.url || s.name)
-      .map((s, i) => ({ id: `src_${i}`, name: s.name || s.url || 'Source', author: s.author || '', date: s.date || '', imageUrl: null, url: s.url || null }));
+      .map((s, i) => ({ id: `src_${i}`, name: s.name || s.url || 'Source', author: s.author || '', date: s.date || '', imageUrl: null, url: s.url || null, consulted: s.consulted }));
     return {
       question: asked,
       title,
@@ -477,18 +477,37 @@ export default function ContextAskFlow({ tourId, actId, priorStops, heading = 'A
             </div>
             {/* the answer */}
             <p className="text-[16px] leading-relaxed whitespace-pre-line" style={{ color: 'var(--text-primary)' }}>{answer}</p>
-            {(resp?.sources || []).length > 0 && (
-              <div className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>
-                <p className="font-semibold uppercase tracking-wide mb-1">Where this comes from</p>
-                <ul className="space-y-0.5">
-                  {(resp?.sources || []).map((s, i) => (
-                    <li key={i}>
-                      {s.url ? <a href={s.url} target="_blank" rel="noreferrer" className="underline">{s.name || s.url}</a> : (s.name || 'Source')}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            {(resp?.sources || []).length > 0 && (() => {
+              // Cited first and open; everything else the research read is folded
+              // away behind a count — present if the learner wants to check, out
+              // of the way if they don't.
+              const all = resp?.sources || [];
+              const cited = all.filter((s) => !s.consulted);
+              const consulted = all.filter((s) => s.consulted);
+              const link = (s: RespSource, i: number) => (
+                <li key={i}>
+                  {s.url ? <a href={s.url} target="_blank" rel="noreferrer" className="underline">{s.name || s.url}</a> : (s.name || 'Source')}
+                </li>
+              );
+              return (
+                <div className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>
+                  {cited.length > 0 && (
+                    <>
+                      <p className="font-semibold uppercase tracking-wide mb-1">Where this comes from</p>
+                      <ul className="space-y-0.5">{cited.map(link)}</ul>
+                    </>
+                  )}
+                  {consulted.length > 0 && (
+                    <details className={cited.length ? 'mt-2' : ''}>
+                      <summary className="cursor-pointer font-semibold uppercase tracking-wide">
+                        Also consulted ({consulted.length})
+                      </summary>
+                      <ul className="space-y-0.5 mt-1">{consulted.map(link)}</ul>
+                    </details>
+                  )}
+                </div>
+              );
+            })()}
             {/* their own theory, kept for comparison */}
             {theory.trim() && (
               <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--th-bg)' }}>
