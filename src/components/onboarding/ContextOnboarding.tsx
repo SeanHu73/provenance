@@ -1,21 +1,28 @@
 'use client';
 
 /**
- * First-open onboarding — a snap-scroll teaching flow of 13 slides. Big editorial
+ * First-open onboarding — a snap-scroll teaching flow of 14 slides. Big editorial
  * type, staggered reveal-on-scroll, varied alignment. A fixed progress bar tracks
- * which of the 13 the reader is on (Welcome = #1).
+ * which of the 14 the reader is on (Welcome = #1).
  *
  * The argument runs: you were taught history as fragments → fragments tell you
  * what, not why → piecing them together is the bigger picture → that's what a
  * historian reconstructs → that world is Context → places are full of it, but we
  * only see the surface → Provenance helps you see past it → explore, contextualise,
- * reflect. It ends by handing you off to explore, because the P.A.S.T. is taught
- * at the first Context step, not here.
+ * reflect → and you do it, not us. It ends by handing you off to explore, because
+ * the P.A.S.T. is taught at the first Context step, not here.
  *
- * **Pacing is the design.** Each panel's lines carry long `--d` delays so they
- * arrive one at a time with a real pause between them, and they land on different
- * sides of the page. Both are deliberate: a slide that drops four lines at once,
- * all left-aligned, reads as homework. Keep the gaps generous when editing.
+ * **Pacing is the design, but it has a ceiling.** Each panel's lines carry `--d`
+ * delays so they arrive one at a time rather than dropping four lines at once,
+ * and they land on different sides of the page. Both are deliberate — a slide
+ * that arrives all at once, all left-aligned, reads as homework.
+ *
+ * The ceiling: **no line waits longer than 0.9s.** Delays used to run to 1.8s,
+ * which past about a second stops reading as a pause and starts reading as the
+ * app being broken — the reader has finished the first line and is looking at
+ * blank space wondering whether to scroll. Stagger the beats, don't stall them.
+ * That ceiling applies to every onboarding surface, not just this file (the
+ * Reflection and Act intros, and the P.A.S.T. reveal, hold to it too).
  *
  * Mostly free snap-scroll with one *gate* — slide 2, which needs an answer before
  * the rest reveal. A gate simply hides the panels beyond it, so the scroll
@@ -31,7 +38,7 @@ import RecordButton from '@/components/tour/cards/RecordButton';
 import AnimatedMark from './AnimatedMark';
 
 const LEAVE_MS = 500;
-const TOTAL = 13;
+const TOTAL = 14;
 // Panel indices that block forward progress until satisfied. Just the one now:
 // the P.A.S.T. teaching (and its two gates) moved out of the intro and into the
 // first Context step, where the flow now says it belongs — "before we learn to
@@ -299,7 +306,7 @@ const OnbPanels = memo(function OnbPanels({
           Most people have been taught history as lists of{' '}
           <strong style={{ color: 'var(--th-secondary)' }}>people, dates, and events.</strong>
         </p>
-        <p className="onb-lead onb-r text-center" style={{ '--d': '1.8s', marginTop: 40 } as React.CSSProperties}><strong>Perhaps as a story!</strong></p>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '0.9s', marginTop: 40 } as React.CSSProperties}><strong>Perhaps as a story!</strong></p>
       </section>
 
       {/* 4 — Fragments. The word itself is scattered and pulled back together
@@ -308,7 +315,7 @@ const OnbPanels = memo(function OnbPanels({
              under the first, which onb-top pins to the top. */}
       <section data-idx={3} className="onb-panel onb-top" style={vis(3)}>
         <p className="onb-lead onb-r" style={{ '--onb-dy': '218px' } as React.CSSProperties}>But people, dates, and events are like <Pieces text="fragments" />.</p>
-        <p className="onb-lead onb-r text-center" style={{ '--d': '1.1s', marginTop: 'auto', marginBottom: 'auto', '--onb-dy': '95px' } as React.CSSProperties}>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '0.7s', marginTop: 'auto', marginBottom: 'auto', '--onb-dy': '95px' } as React.CSSProperties}>
           They tell you <em>what happened</em>, but not always
           <br />
           <strong style={{ color: 'var(--th-primary)' }}>why it happened</strong>.
@@ -321,7 +328,7 @@ const OnbPanels = memo(function OnbPanels({
           To understand why things happened, we need to piece those fragments into the{' '}
           <Expand>bigger picture.</Expand>
         </p>
-        <p className="onb-lead onb-r text-center" style={{ '--d': '1.4s', marginTop: 128, '--onb-dy': '27px' } as React.CSSProperties}>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '0.8s', marginTop: 128, '--onb-dy': '27px' } as React.CSSProperties}>
           <strong>That&rsquo;s how a <span style={{ color: 'var(--th-primary)' }}>historian</span> thinks.</strong>
         </p>
       </section>
@@ -333,7 +340,7 @@ const OnbPanels = memo(function OnbPanels({
         <p className="onb-lead onb-r" style={{ '--d': '0.1s', '--onb-dy': '76px' } as React.CSSProperties}>
           To understand the past, historians first <Reconstruct text="recreate" />{' '}the bigger picture &mdash;
         </p>
-        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.2s', maxWidth: '24ch', marginTop: 56, '--onb-dy': '102px' } as React.CSSProperties}>
+        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '0.75s', maxWidth: '24ch', marginTop: 56, '--onb-dy': '102px' } as React.CSSProperties}>
           &mdash; or the world around the <em>people</em> and <em>events</em>.
         </p>
       </section>
@@ -342,7 +349,7 @@ const OnbPanels = memo(function OnbPanels({
              pressing it (rather than swiping) carries the reader to the definition. */}
       <section data-idx={6} className="onb-panel onb-cx" style={vis(6)}>
         <p className="onb-lead onb-r italic" style={{ '--d': '0.2s', '--onb-dy': '60px' } as React.CSSProperties}>That world is what historians call&hellip;</p>
-        <div className="onb-r mt-8" style={{ '--d': '1.4s', transitionDuration: '1.3s', '--onb-dy': '83px' } as React.CSSProperties}>
+        <div className="onb-r mt-8" style={{ '--d': '0.8s', transitionDuration: '0.7s', '--onb-dy': '83px' } as React.CSSProperties}>
           <button type="button" onClick={onContextTap} className="onb-ctx-btn" aria-label="Context — tap to continue">
             <span className="onb-ctx" style={{ fontSize: 'clamp(46px, 15vw, 74px)' }}>Context</span>
           </button>
@@ -355,7 +362,7 @@ const OnbPanels = memo(function OnbPanels({
         <p className="onb-lead onb-r" style={{ '--d': '0.1s', opacity: 0.85, '--onb-dy': '125px' } as React.CSSProperties}>
           <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>Contextualising</strong>{' '}is <Reconstruct text="recreating" />{' '}the world of the past&hellip;
         </p>
-        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.4s', maxWidth: '24ch', marginTop: 104, '--onb-dy': '83px' } as React.CSSProperties}>
+        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '0.8s', maxWidth: '24ch', marginTop: 104, '--onb-dy': '83px' } as React.CSSProperties}>
           {/* {' '} not a plain space: a JSX text chunk containing a newline gets
               BOTH ends trimmed, so a space after an element that runs to the end
               of the line is silently eaten ("understandwhy"). */}
@@ -367,7 +374,7 @@ const OnbPanels = memo(function OnbPanels({
       {/* 9 — Places. Centre, left, then centre again. */}
       <section data-idx={8} className="onb-panel" style={vis(8)}>
         <p className="onb-q onb-r text-center" style={{ '--d': '0.1s', color: 'var(--th-primary)', fontSize: 'clamp(28px, 7.5vw, 44px)', '--onb-dy': '51px' } as React.CSSProperties}>History is hidden in the places around us!</p>
-        <p className="onb-lead onb-r text-center" style={{ '--d': '1.3s', marginTop: 72, '--onb-dy': '37px' } as React.CSSProperties}>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '0.75s', marginTop: 72, '--onb-dy': '37px' } as React.CSSProperties}>
           {/* nowrap so the phrase can't break across lines — it's the point of the
               sentence and reads badly split. */}
           But usually, we only see <strong className="whitespace-nowrap">what is in front of us.</strong>
@@ -379,7 +386,7 @@ const OnbPanels = memo(function OnbPanels({
         <p className="onb-q onb-r" style={{ '--d': '0.1s', color: 'var(--th-text)', fontSize: 'clamp(28px, 7.5vw, 44px)' } as React.CSSProperties}>
           This is where <span style={{ color: 'var(--th-primary)' }}>Provenance</span> comes in.
         </p>
-        <p className="onb-lead onb-r mt-14 text-center" style={{ '--d': '1.1s' } as React.CSSProperties}>
+        <p className="onb-lead onb-r mt-14 text-center" style={{ '--d': '0.7s' } as React.CSSProperties}>
           We want to help you see <strong style={{ color: 'var(--th-primary)' }}>BEYOND</strong>{' '}what&rsquo;s in front.
         </p>
       </section>
@@ -392,7 +399,7 @@ const OnbPanels = memo(function OnbPanels({
           We want to help you{' '}
           <strong style={{ color: 'var(--th-primary)', fontSize: 'clamp(34px, 10vw, 56px)', display: 'inline-block', lineHeight: 1.05 }}>contextualise</strong>
         </p>
-        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '1.5s', maxWidth: '22ch', marginTop: 'auto', paddingTop: 96, '--onb-dy': '-32px' } as React.CSSProperties}>
+        <p className="onb-lead onb-r ml-auto text-right" style={{ '--d': '0.7s', maxWidth: '22ch', marginTop: 'auto', paddingTop: 96, '--onb-dy': '-32px' } as React.CSSProperties}>
           &hellip; and <Reconstruct text="recreate" />{' '}the world of the past using
           <br />
           <strong>what&rsquo;s in front of you</strong>.
@@ -404,7 +411,7 @@ const OnbPanels = memo(function OnbPanels({
         <p className="onb-lead onb-r italic" style={{ opacity: 0.85 }}>In this experience, you will&hellip;</p>
         <div className="mt-8 flex flex-col items-center text-center">
           {FLOW.map((f, i) => (
-            <div key={f.word} className="onb-r flex flex-col items-center" style={{ '--d': `${0.25 + i * 0.5}s` } as React.CSSProperties}>
+            <div key={f.word} className="onb-r flex flex-col items-center" style={{ '--d': `${0.2 + i * 0.3}s` } as React.CSSProperties}>
               <p className="font-display leading-none" style={{ color: f.colour, fontSize: 'clamp(46px, 14vw, 74px)' }}>{f.word}</p>
               <p className="mt-1 font-serif text-[17px]" style={{ color: 'var(--th-text)', opacity: 0.8 }}>{f.sub}</p>
               {i < FLOW.length - 1 && (
@@ -415,8 +422,38 @@ const OnbPanels = memo(function OnbPanels({
         </div>
       </section>
 
-      {/* 13 — Off to explore */}
+      {/* 13 — You are a participant, not an audience.
+             Two registers, deliberately unalike: the claim is set in the body
+             serif at reading size, and the two things actually being asked of you
+             land underneath as display type, big and coloured. The eye takes the
+             instructions first and reads the sentence as their caption — which is
+             the right way round, because "ask questions" and "discuss and share"
+             are what the reader has to remember, not the sentence framing them.
+             The pair sits tight (leading-none, no gap) so it reads as one
+             instruction in two beats rather than two separate lines. */}
       <section data-idx={12} className="onb-panel onb-cx" style={vis(12)}>
+        <p className="onb-lead onb-r text-center" style={{ '--d': '0.1s', maxWidth: '20ch' } as React.CSSProperties}>
+          You are an{' '}
+          <strong style={{ color: 'var(--th-primary)' }}>active participant</strong>{' '}of this tour.
+        </p>
+        <div className="mt-14 flex flex-col items-center text-center">
+          <p
+            className="onb-r font-display leading-none"
+            style={{ '--d': '0.55s', color: 'var(--th-primary)', fontSize: 'clamp(32px, 9vw, 52px)' } as React.CSSProperties}
+          >
+            Ask questions.
+          </p>
+          <p
+            className="onb-r font-display leading-none"
+            style={{ '--d': '0.85s', color: '#E08A5F', fontSize: 'clamp(32px, 9vw, 52px)' } as React.CSSProperties}
+          >
+            Discuss and share.
+          </p>
+        </div>
+      </section>
+
+      {/* 14 — Off to explore */}
+      <section data-idx={13} className="onb-panel onb-cx" style={vis(13)}>
         <SlideExplore onDone={onDone} />
       </section>
     </div>
@@ -428,15 +465,17 @@ function SlideWelcome({ onBegin }: { onBegin: () => void }) {
   const [showReady, setShowReady] = useState(false);
   const [showBtn, setShowBtn] = useState(false);
   useEffect(() => {
-    const t1 = window.setTimeout(() => setShowReady(true), 1700);
-    const t2 = window.setTimeout(() => setShowBtn(true), 2500);
+    const t1 = window.setTimeout(() => setShowReady(true), 900);
+    const t2 = window.setTimeout(() => setShowBtn(true), 1300);
     return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
   }, []);
   return (
     <div className="flex flex-col items-center">
       {/* The mark draws itself — "…" dots, then the P writes — rather than dropping
-          in as a flat image. The wordmark below still fades at 1.7s, which is about
-          when the P finishes, so the two land in sequence. */}
+          in as a flat image. It resolves at ~1.7s (globals.css .mark-*), and the copy
+          below no longer waits for it: the button arrives at 1.3s while the P is
+          still finishing, so the reader is never held up by an animation they've
+          already understood. */}
       <AnimatedMark size={176} className="block select-none" />
       <p className="splash-wordmark onb-title mt-6">Welcome to Provenance!</p>
       {/* "Ready…" fades in first, the button follows. */}
@@ -455,7 +494,7 @@ const FLOW = [
   { word: 'Reflect', sub: 'Share your thoughts!', colour: 'var(--th-secondary)' },
 ];
 
-/* ── 13 · Off to explore ───────────────────────────────────────────── */
+/* ── 14 · Off to explore ───────────────────────────────────────────── */
 function SlideExplore({ onDone }: { onDone: () => void }) {
   return (
     <>
@@ -466,7 +505,7 @@ function SlideExplore({ onDone }: { onDone: () => void }) {
       <button
         onClick={() => { haptic(); onDone(); }}
         className="onb-r mt-10 px-12 py-4 rounded-full text-[18px] font-semibold"
-        style={{ '--d': '1.1s', backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' } as React.CSSProperties}
+        style={{ '--d': '0.7s', backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' } as React.CSSProperties}
       >
         Let&rsquo;s explore! &rarr;
       </button>
@@ -521,7 +560,7 @@ function Expand({ children }: { children: React.ReactNode }) {
       if (!e.isIntersecting || done) return;
       done = true;
       // Let the reader see it at body size for a beat, then grow.
-      window.setTimeout(() => { el.style.fontSize = 'clamp(34px, 10vw, 56px)'; }, 650);
+      window.setTimeout(() => { el.style.fontSize = 'clamp(34px, 10vw, 56px)'; }, 420);
     }), { threshold: 0.6 });
     io.observe(el);
     return () => io.disconnect();
