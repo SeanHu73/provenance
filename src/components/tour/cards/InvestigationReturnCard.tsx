@@ -23,6 +23,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { setInvestigationHeard } from '@/lib/investigation-store';
+import { requestFactsHint } from '@/lib/facts-hint';
 import type { InvestigationQuestion } from '@/lib/types';
 
 interface Props {
@@ -83,9 +84,13 @@ export default function InvestigationReturnCard({ questions, parsed, onComplete 
       <div className="animate-fade-in min-h-full flex flex-col justify-center px-1 space-y-5">
         <p
           className="font-serif leading-snug"
-          style={{ fontSize: 'clamp(18px, 5vw, 23px)', color: 'var(--text-primary)' }}
+          style={{ fontSize: 'clamp(21px, 5.8vw, 27px)', color: 'var(--text-primary)' }}
         >
-          Here are your questions returned, tap those you heard answers to.
+          Here are{' '}
+          <span className="font-semibold" style={{ color: 'var(--th-primary)' }}>your questions</span>{' '}
+          returned, tap those you{' '}
+          <span className="font-semibold" style={{ color: 'var(--th-primary)' }}>heard answers to</span>{' '}
+          on the tour.
         </p>
 
         <ul className="space-y-2.5">
@@ -163,7 +168,7 @@ export default function InvestigationReturnCard({ questions, parsed, onComplete 
                     ? q.answer
                     : q.status === 'failed'
                       ? 'We could not find a reliable answer to this one.'
-                      : 'Still looking. It will be under Facts in the menu.'}
+                      : 'Still looking…'}
               </p>
               {q.status === 'answered' && (q.sources || []).length > 0 && (
                 <ul className="mt-1.5 space-y-0.5">
@@ -187,20 +192,14 @@ export default function InvestigationReturnCard({ questions, parsed, onComplete 
         </div>
       )}
 
-      {/* Where the unfinished ones live from here on. Said once, plainly — they
-          will not be watching this screen while it resolves. */}
-      {unready.length > 0 && (
-        <p
-          className="font-serif italic leading-snug"
-          style={{ fontSize: 14, color: 'var(--text-secondary)' }}
-        >
-          Still looking for {unready.length === 1 ? 'one of these' : `${unready.length} of these`}. Open
-          {' '}<span className="font-semibold not-italic">Facts</span>{' '}in the menu any time to check.
-        </p>
-      )}
-
       <button
-        onClick={onComplete}
+        onClick={() => {
+          // Show them where, rather than telling them. A line of text on a screen
+          // they are leaving is read once and gone; the menu opening itself with
+          // the row called out is what they will remember when an answer lands.
+          if (unready.length > 0) requestFactsHint();
+          onComplete();
+        }}
         className="w-full py-3.5 rounded-full text-[17px] font-semibold text-white"
         style={{ backgroundColor: 'var(--th-primary)' }}
       >

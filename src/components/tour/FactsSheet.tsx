@@ -48,7 +48,10 @@ export default function FactsSheet({ onClose }: { onClose: () => void }) {
         style={{ borderColor: 'var(--th-border)' }}
       >
         <div className="min-w-0">
-          <h3 className="font-display font-bold text-[21px] leading-tight" style={{ color: 'var(--th-primary)' }}>
+          <h3
+            className="font-display font-bold leading-[0.95]"
+            style={{ fontSize: 'clamp(38px, 11vw, 60px)', color: 'var(--th-primary)' }}
+          >
             Facts
           </h3>
           <p className="text-[13px] leading-snug mt-0.5" style={{ color: 'var(--text-secondary)' }}>

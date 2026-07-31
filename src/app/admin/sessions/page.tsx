@@ -127,9 +127,11 @@ function buildRows(sessions: StoredTourSession[], toursById: Record<string, Tour
     // Every Detective answer the explorer got from asking their own question —
     // in the journal, and in the opening investigation before they explored.
     for (const e of s.detectiveAnswers || []) {
-      const kind = e.askedIn === 'investigation'
-        ? 'Investigation question (answer)'
-        : 'Context question (Detective answer)';
+      const kind = e.askedIn !== 'investigation'
+        ? 'Context question (Detective answer)'
+        : e.askedKind === 'factual'
+          ? 'Investigation — fact'
+          : 'Investigation — context';
       rows.push([...base, kind, lensLabel(e.lens), e.question || e.title, e.longExplanation || '']);
       if (e.motivation) rows.push([...base, 'Context question — why asked', lensLabel(e.lens), e.question || e.title, e.motivation]);
     }
@@ -482,10 +484,16 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
         {e.origin && <Tag>{e.origin === 'self' ? 'their own' : e.origin}</Tag>}
         {correction?.verdict && (() => { const v = VERDICTS.find((x) => x.key === correction.verdict); return v ? <Tag color={v.hex}>{v.label}</Tag> : null; })()}
         {correction?.kind && <Tag>{KINDS.find((k) => k.key === correction.kind)?.label.toLowerCase()}</Tag>}
+        {e.askedKind === 'factual' && <Tag color="#0f766e">fact</Tag>}
         {correction?.edited && <Tag>edited</Tag>}
         {correction?.promotedEntryId && <Tag>in base</Tag>}
         <span className="text-sm font-semibold text-stone-800">{shownTitle}</span>
       </div>
+      {e.researchedAs && (
+        <p className="text-[11px] text-sky-800">
+          Researched as: &ldquo;{e.researchedAs}&rdquo;
+        </p>
+      )}
       {e.originalQuestion && (
         <p className="text-[11px] text-amber-700">First asked: &ldquo;{e.originalQuestion}&rdquo; <span className="text-stone-400">→ reframed to:</span></p>
       )}
@@ -806,8 +814,13 @@ function SessionCard({ s, toursById, corrections, onSaved, onToggleStar }: {
             <div className="space-y-4">
               {acts.map((act, i) => <ActBlock key={act.id} s={s} act={act} index={i} />)}
               <ContextEntriesBlock
-                entries={(s.detectiveAnswers || []).filter((d) => d.askedIn === 'investigation')}
-                heading="Opening investigation — what they asked before exploring"
+                entries={(s.detectiveAnswers || []).filter((d) => d.askedIn === 'investigation' && d.askedKind === 'factual')}
+                heading="Opening investigation — facts they looked up"
+                sessionId={s.id} tourId={s.tourId} corrections={corrections} onSaved={onSaved}
+              />
+              <ContextEntriesBlock
+                entries={(s.detectiveAnswers || []).filter((d) => d.askedIn === 'investigation' && d.askedKind !== 'factual')}
+                heading="Opening investigation — contexts they asked for"
                 sessionId={s.id} tourId={s.tourId} corrections={corrections} onSaved={onSaved}
               />
               <ContextEntriesBlock

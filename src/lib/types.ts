@@ -1002,6 +1002,15 @@ export interface ContextEntrySnapshot {
    *  `investigation` is the opening stage before they explored anything. Both are
    *  reviewed the same way; this only separates them in the admin listing. */
   askedIn?: 'investigation' | 'journal';
+  /** Lookup or contextual, for answers from the opening investigation. The two
+   *  are reviewed the same way but read very differently — a fact is a sentence,
+   *  a context is a narrative — so the listing says which. */
+  askedKind?: 'factual' | 'contextual';
+  /** The wording actually sent to research, when the learner's own question had a
+   *  reference that needed resolving ("Who built it?" → "Who built Stanford
+   *  Memorial Church?"). An answer that looks wrong for the question asked is
+   *  usually a reference resolved to the wrong thing. */
+  researchedAs?: string;
   /** The act this answer belongs to — lets the journal tell it was asked for this
    *  act (so back-nav doesn't re-lock the ask gate). */
   actId?: string;
@@ -1198,6 +1207,11 @@ export interface InvestigationQuestion {
   /** `later` means the tour covers this in an act still to come, so we answer
    *  "You will hear about it later!" rather than spoiling it. */
   status: 'pending' | 'researching' | 'answered' | 'later' | 'failed';
+  /** The question with its references resolved — "Who built it?" asked in front
+   *  of the church becomes "Who built Stanford Memorial Church?". Set only when it
+   *  differs from `text`. Everything shown to the learner uses `text`, their own
+   *  wording; everything that researches uses this. */
+  searchText?: string;
   /** Factual: the plain answer. Contextual: the voiced narrative. */
   answer?: string;
   /** Contextual answers also carry a title and summary, for the journal card. */

@@ -1058,9 +1058,18 @@ function mergeInvestigationAnswers(
       shortSummary: q.summary || '',
       longExplanation: q.answer || '',
       question: q.text,
+      // What was actually researched, when it differs from what they typed. An
+      // answer that looks wrong for the question asked is usually this — the
+      // reference was resolved to the wrong thing — and without it the reviewer
+      // cannot see that. NOT `originalQuestion`, which already means the wording
+      // before a Framing Coach reframe and reads back to the admin as such.
+      ...(q.searchText?.trim() ? { researchedAs: q.searchText.trim() } : {}),
       lens: q.lens || '',
       origin: 'self',
       askedIn: 'investigation',
+      // Lookups and contextual answers both. A short sourced fact is as worth
+      // correcting as a long one, and it is cheaper to promote.
+      askedKind: q.kind,
       sourceLinks: q.sources || [],
     });
   }

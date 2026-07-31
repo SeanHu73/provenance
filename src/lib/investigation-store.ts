@@ -83,7 +83,7 @@ async function answerFactual(q: InvestigationQuestion, tourId: string) {
   const res = await fetch('/api/factual-answer', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ question: q.text, tourId }),
+    body: JSON.stringify({ question: q.searchText || q.text, tourId }),
   });
   const d = await res.json();
   const answered = d.status === 'answered' && d.answer;
@@ -107,7 +107,7 @@ async function answerContextual(q: InvestigationQuestion, tourId: string, actId?
     headers: { 'content-type': 'application/json' },
     // No lens: the learner picks one later, on the categorisation screen, and
     // that choice is theirs to make rather than ours to pre-empt.
-    body: JSON.stringify({ question: q.text, tourId, actId }),
+    body: JSON.stringify({ question: q.searchText || q.text, tourId, actId }),
   });
   const d = await res.json();
   const card = d?.handout?.cards?.[0];

@@ -520,6 +520,8 @@ export async function frameQuestion(system: string, userText: string): Promise<F
 
 export interface ParsedInvestigationQuestion {
   text: string;
+  /** The same question with its references resolved, for research. See below. */
+  searchText?: string;
   kind: 'factual' | 'contextual';
   /** The original wordings folded into this one, if it merged duplicates. */
   mergedFrom: string[];
@@ -536,10 +538,11 @@ const INVESTIGATION_SCHEMA = {
         additionalProperties: false,
         properties: {
           text: { type: 'string' },
+          searchText: { type: 'string' },
           kind: { type: 'string', enum: ['factual', 'contextual'] },
           mergedFrom: { type: 'array', items: { type: 'string' } },
         },
-        required: ['text', 'kind', 'mergedFrom'],
+        required: ['text', 'searchText', 'kind', 'mergedFrom'],
       },
     },
   },
@@ -547,6 +550,14 @@ const INVESTIGATION_SCHEMA = {
 };
 
 const INVESTIGATION_SYSTEM = `You split a learner's opening questions into a clean list, before a history tour begins.
+
+TWO VERSIONS OF EVERY QUESTION. \`text\` is the learner's own wording, tidied but theirs — it is shown back to them and must still sound like the question they asked. \`searchText\` is the same question made to stand on its own, for a researcher who was not standing there.
+
+They are asking in front of the thing. So they write "Who built it?", "When was it finished?", "Why did they build it here?" — and every one of those is unanswerable to anyone who cannot see what they are looking at. Resolve it: put the subject in, so it becomes "Who built Stanford Memorial Church?". Replace every pronoun and bare reference — it, they, this, here, the church, the building — with the name from the tour subject you are given.
+
+If a question already stands on its own, \`searchText\` is simply the same as \`text\`. Never put anything in searchText but the resolved reference: no extra qualifiers, no rephrasing towards what you think they meant.
+
+If you were given no tour subject, or the subject does not name the thing the question is about, copy \`text\` into \`searchText\` unchanged. Never write a placeholder. "Who built the subject?" and "Who built the site?" are worse than the question you were given, because they look resolved and are not.
 
 They have written or dictated several questions at once, often as one run-on stretch of speech with no punctuation. Your job is mechanical and fast. Do not answer anything.
 
@@ -566,14 +577,15 @@ When a question could be read either way, classify it contextual: a short factua
 Discard anything that is not a question — stray dictation, filler, a comment about the weather. If they wrote nothing that is a question, return an empty array.`;
 
 /** Split one submission into separate, deduped, classified questions. */
-export async function parseInvestigation(raw: string): Promise<ParsedInvestigationQuestion[] | null> {
+export async function parseInvestigation(raw: string, subject?: string): Promise<ParsedInvestigationQuestion[] | null> {
   try {
     const resp = await callClaude({
       model: HAIKU,
       max_tokens: 2000,
       system: cachedSystem(INVESTIGATION_SYSTEM),
       output_config: { format: { type: 'json_schema', schema: INVESTIGATION_SCHEMA } },
-      messages: [{ role: 'user', content: `The learner wrote:
+      messages: [{ role: 'user', content: (subject?.trim() ? `They are about to take this tour: ${subject.trim()}\n\n` : '')
+        + `The learner wrote:
 
 """
 ${raw}

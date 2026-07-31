@@ -62,6 +62,33 @@ const SPOILER_MIN = 0.45;
  * by text hash, and the questions are embedded in one batch — so this costs one
  * call regardless of how many questions were asked.
  */
+/**
+ * A one-line description of what this tour is about, for resolving references.
+ *
+ * The learner asks standing in front of the thing, so they write "Who built it?"
+ * — perfectly clear to them and unanswerable to a researcher who cannot see what
+ * they are looking at. Every one of those questions came back empty before this.
+ */
+async function tourSubject(tourId: string): Promise<string> {
+  if (!tourId) return '';
+  try {
+    const snap = await getDoc(doc(db, 'memorial-church-tours', tourId));
+    if (!snap.exists()) return '';
+    const tour = snap.data() as Tour;
+    // The stop names as well as the title, because the title often names the tour
+    // rather than the thing. "Stanford Early History Tour" cannot resolve "the
+    // church"; a stop called "Stanford Memorial Church" can.
+    const stops = (tour.stops || []).map((st) => st.title).filter(Boolean).slice(0, 14);
+    return [
+      [tour.title, tour.subtitle].filter(Boolean).join(' — '),
+      stops.length ? `Stops on it: ${stops.join('; ')}` : '',
+    ].filter(Boolean).join('. ').trim();
+  } catch (err) {
+    console.error('[investigation] could not read the tour subject:', err);
+    return '';
+  }
+}
+
 async function findSpoilers(tourId: string, questions: string[]): Promise<boolean[]> {
   const none = questions.map(() => false);
   if (!tourId || !questions.length) return none;
@@ -126,14 +153,14 @@ export async function POST(req: Request) {
   if (!raw) return NextResponse.json({ questions: [] });
 
   const started = Date.now();
-  let parsed = await parseInvestigation(raw);
+  let parsed = await parseInvestigation(raw, await tourSubject(tourId));
 
   if (!parsed?.length) {
     // The parse failed. Fall back to a dumb split rather than dropping the
     // learner's questions on the floor — an unclassified question still gets
     // researched, it just takes the contextual path.
     console.warn('[investigation] parse returned nothing — falling back to a naive split');
-    parsed = naiveSplit(raw).map((text) => ({ text, kind: 'contextual' as const, mergedFrom: [] }));
+    parsed = naiveSplit(raw).map((text) => ({ text, searchText: text, kind: 'contextual' as const, mergedFrom: [] }));
   }
 
   const usable = parsed.filter((q) => q.text?.trim());
@@ -142,6 +169,10 @@ export async function POST(req: Request) {
   const questions: InvestigationQuestion[] = usable.map((q, i) => ({
     id: newId(),
     text: q.text.trim(),
+    // Only kept when it actually differs — an identical copy on every question
+    // is noise in the session record and in the admin.
+    ...(q.searchText?.trim() && q.searchText.trim() !== q.text.trim()
+      ? { searchText: q.searchText.trim() } : {}),
     kind: q.kind === 'factual' ? 'factual' : 'contextual',
     ...(q.mergedFrom?.length ? { mergedFrom: q.mergedFrom } : {}),
     // `later` never reaches a research pipeline — the tour answers it in person.
@@ -152,7 +183,8 @@ export async function POST(req: Request) {
     `[investigation] ${questions.length} question(s) from ${raw.length} chars in ${Date.now() - started}ms · `
     + `${questions.filter((q) => q.kind === 'factual').length} factual, `
     + `${questions.filter((q) => q.kind === 'contextual').length} contextual`
-    + `, ${questions.filter((q) => q.status === 'later').length} held for a later act`,
+    + `, ${questions.filter((q) => q.status === 'later').length} held for a later act`
+    + `, ${questions.filter((q) => q.searchText).length} needed their reference resolved`,
   );
   return NextResponse.json({ questions });
 }

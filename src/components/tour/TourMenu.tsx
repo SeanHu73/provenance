@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react';
 import { useAudioAutoplay } from '@/lib/audio-autoplay';
 import { useAutoplayHint } from '@/lib/autoplay-hint';
+import { useFactsHint } from '@/lib/facts-hint';
 import { useDevJump } from '@/lib/dev-jump';
 import { subscribeAppSettings, setResearchBackend, RESEARCH_MODES } from '@/lib/app-settings-store';
 import { useAdminUnlock } from '@/lib/admin-unlock';
@@ -259,7 +260,7 @@ export function ResearchBackendMenuItem() {
  * a learner sent here from the end-of-act-1 screen was told an answer was coming,
  * and this is where they find out whether it has.
  */
-export function FactsMenuItem() {
+export function FactsMenuItem({ highlight = false }: { highlight?: boolean }) {
   const [open, setOpen] = useState(false);
   const { questions } = useInvestigation();
   const facts = factualQuestions(questions);
@@ -269,8 +270,10 @@ export function FactsMenuItem() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-black/[0.03] border-t"
-        style={{ borderColor: 'var(--th-border)' }}
+        className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors border-t ${highlight ? '' : 'hover:bg-black/[0.03]'}`}
+        style={highlight
+          ? { borderColor: 'var(--th-border)', backgroundColor: 'color-mix(in srgb, var(--th-primary) 8%, transparent)', boxShadow: 'inset 0 0 0 2px var(--th-primary)' }
+          : { borderColor: 'var(--th-border)' }}
       >
         <span
           className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 relative"
@@ -297,6 +300,14 @@ export function FactsMenuItem() {
           </span>
         </span>
       </button>
+      {highlight && (
+        <div
+          className="px-4 py-2.5 border-t text-[13px] leading-snug"
+          style={{ borderColor: 'var(--th-border)', color: 'var(--th-primary)' }}
+        >
+          Find answers here when it&rsquo;s ready.
+        </div>
+      )}
       {open && <FactsSheet onClose={() => setOpen(false)} />}
     </>
   );
@@ -368,12 +379,19 @@ export function AutoPlayMenuItem({ highlight = false }: { highlight?: boolean })
 export default function TourMenu({ inline = false, onDark = false }: { inline?: boolean; onDark?: boolean }) {
   const [open, setOpen] = useState(false);
   const [hint, clearHint] = useAutoplayHint();
+  // The end of act 1 fires this when an answer is still being looked for, so the
+  // learner is shown where it will appear rather than only told.
+  const [factsHint, clearFactsHint] = useFactsHint();
 
-  // Open when the user taps the button OR when onboarding fires the hint. Closing
-  // clears the (one-shot) hint so it can't force the menu back open. Derived — no
-  // effect needed.
-  const shown = open || hint;
-  const close = () => { setOpen(false); if (hint) clearHint(); };
+  // Open when the user taps the button OR when something fires a hint. Closing
+  // clears the (one-shot) hints so they can't force the menu back open. Derived —
+  // no effect needed.
+  const shown = open || hint || factsHint;
+  const close = () => {
+    setOpen(false);
+    if (hint) clearHint();
+    if (factsHint) clearFactsHint();
+  };
   // Five taps on this button reveals the admin rows (see admin-unlock.ts). It
   // rides along with the normal open/close, so the gesture needs no affordance
   // and a stray double-tap reads as exactly what it looks like.
@@ -413,7 +431,7 @@ export default function TourMenu({ inline = false, onDark = false }: { inline?: 
                 Audio plays automatically. Turn it off here to control when it plays.
               </div>
             )}
-            <FactsMenuItem />
+            <FactsMenuItem highlight={factsHint} />
             <PastReminderMenuItem />
             <DevJumpMenuItem />
             <ResearchBackendMenuItem />
