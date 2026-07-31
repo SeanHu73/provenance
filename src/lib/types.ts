@@ -998,6 +998,10 @@ export interface ContextEntrySnapshot {
   lens: string;
   /** authored = designer's, added = the learner's own copy, self = their own. */
   origin?: 'authored' | 'added' | 'self';
+  /** Where the learner asked it: `journal` is the Context Journal's ask flow,
+   *  `investigation` is the opening stage before they explored anything. Both are
+   *  reviewed the same way; this only separates them in the admin listing. */
+  askedIn?: 'investigation' | 'journal';
   /** The act this answer belongs to — lets the journal tell it was asked for this
    *  act (so back-nav doesn't re-lock the ask gate). */
   actId?: string;

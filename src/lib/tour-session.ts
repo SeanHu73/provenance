@@ -1003,7 +1003,53 @@ export function setInvestigationQuestions(
   questions: InvestigationQuestion[],
 ): TourSession {
   if (!session.investigation) return session;
-  return { ...session, investigation: { ...session.investigation, questions } };
+  return {
+    ...session,
+    investigation: { ...session.investigation, questions },
+    detectiveAnswers: mergeInvestigationAnswers(session.detectiveAnswers || [], questions),
+  };
+}
+
+/**
+ * Answered investigation questions, as reviewable snapshots alongside the ones
+ * asked in the journal. They cost the same research pipeline and are worth the
+ * same review, so they go through `detectiveAnswers` rather than a parallel
+ * channel — the admin gets edit, verdict and promote-to-base for free, and they
+ * reach the CSV and review exports with no extra plumbing.
+ *
+ * Upserted rather than skipped-if-present: the answer lands before the learner
+ * files it into a lens, so a snapshot written once would never learn its lens.
+ * Admin edits live in the corrections collection keyed by id, so rewriting the
+ * snapshot loses nothing.
+ *
+ * `actId` is deliberately left unset. The journal's ask gate treats a
+ * detectiveAnswer carrying an act's id as "they already asked here" — filling it
+ * in would silently satisfy that gate for act 1 with a question asked before the
+ * act began.
+ */
+function mergeInvestigationAnswers(
+  existing: ContextEntrySnapshot[],
+  questions: InvestigationQuestion[],
+): ContextEntrySnapshot[] {
+  const answered = questions.filter((q) => q.status === 'answered' && q.answer?.trim());
+  if (!answered.length) return existing;
+  const snapshots = new Map(existing.map((e) => [e.id, e]));
+  for (const q of answered) {
+    const id = `inv-${q.id}`;
+    snapshots.set(id, {
+      ...snapshots.get(id),
+      id,
+      title: q.title?.trim() || q.text,
+      shortSummary: q.summary || '',
+      longExplanation: q.answer || '',
+      question: q.text,
+      lens: q.lens || '',
+      origin: 'self',
+      askedIn: 'investigation',
+      sourceLinks: q.sources || [],
+    });
+  }
+  return [...snapshots.values()];
 }
 
 /** Context mode: the "Act N: Title" splash finished (auto after a hold, or

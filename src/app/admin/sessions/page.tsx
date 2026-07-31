@@ -21,7 +21,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Tour, Act, ContextEntrySnapshot, DetectiveCorrection, KnowledgeEntry } from '@/lib/types';
 import type { PastCategory } from '@/features/context-journal/types';
-import { LENS_BY_KEY, formatYear } from '@/features/context-journal/constants';
+import { LENS_BY_KEY, LENSES, formatYear } from '@/features/context-journal/constants';
 import { getAllTourSessions, setSessionStarred, StoredTourSession } from '@/lib/tour-sessions-store';
 import { actReflectionsOf } from '@/lib/tour-session';
 import { getTours } from '@/lib/tours-store';
@@ -124,10 +124,20 @@ function buildRows(sessions: StoredTourSession[], toursById: Record<string, Tour
       rows.push([...base, 'Context viewed', actTitleOf(act, v.actId || ''), `${lensLabel(v.lens)} · ${v.title}`, v.question || '']);
     }
 
-    // Every Detective answer the explorer got from asking their own question.
+    // Every Detective answer the explorer got from asking their own question —
+    // in the journal, and in the opening investigation before they explored.
     for (const e of s.detectiveAnswers || []) {
-      rows.push([...base, 'Context question (Detective answer)', lensLabel(e.lens), e.question || e.title, e.longExplanation || '']);
+      const kind = e.askedIn === 'investigation'
+        ? 'Investigation question (answer)'
+        : 'Context question (Detective answer)';
+      rows.push([...base, kind, lensLabel(e.lens), e.question || e.title, e.longExplanation || '']);
       if (e.motivation) rows.push([...base, 'Context question — why asked', lensLabel(e.lens), e.question || e.title, e.motivation]);
+    }
+
+    // What they actually typed on the opening screen, before it was split into
+    // questions — worth keeping whether or not the parse made anything of it.
+    if (s.investigation?.raw?.trim()) {
+      rows.push([...base, 'Investigation — as submitted', '', '', s.investigation.raw.trim()]);
     }
 
     // Contexts the explorer built in their Context Journal (map + timeline).
@@ -407,6 +417,13 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
     setStatus('Saved edit');
   };
 
+  // The lens to promote under. Answers from the opening investigation can arrive
+  // without one: factual questions are never filed, and filing a contextual one is
+  // the learner's choice. The knowledge base requires a lens, so an unfiled answer
+  // is promotable only once the reviewer picks one here.
+  const [lensPick, setLensPick] = useState<PastCategory | ''>((e.lens as PastCategory) || '');
+  const promoteLens = (e.lens || lensPick) as KnowledgeEntry['lens'];
+
   // Promote the (corrected, else original) answer into the verified knowledge base.
   const promote = async () => {
     setBusy(true);
@@ -416,7 +433,7 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
       const base: KnowledgeEntry = {
         id: correction?.promotedEntryId || newKnowledgeId(),
         title: src.title, shortSummary: src.shortSummary, longExplanation: src.longExplanation,
-        sourceLinks: e.sourceLinks ?? [], lens: e.lens as KnowledgeEntry['lens'],
+        sourceLinks: e.sourceLinks ?? [], lens: promoteLens,
         status: 'verified', createdAt: '', updatedAt: '',
         // Carry what makes the entry reusable: the question it came from, and the
         // photo it was illustrated with. Without the question a promoted entry can
@@ -459,7 +476,9 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
   return (
     <div className="rounded border border-stone-200 p-2.5 space-y-1">
       <div className="flex items-center gap-2 flex-wrap">
-        <Tag color={LENS_BY_KEY[e.lens as PastCategory]?.colour}>{lensLabel(e.lens)}</Tag>
+        {e.lens
+          ? <Tag color={LENS_BY_KEY[e.lens as PastCategory]?.colour}>{lensLabel(e.lens)}</Tag>
+          : <Tag>unfiled</Tag>}
         {e.origin && <Tag>{e.origin === 'self' ? 'their own' : e.origin}</Tag>}
         {correction?.verdict && (() => { const v = VERDICTS.find((x) => x.key === correction.verdict); return v ? <Tag color={v.hex}>{v.label}</Tag> : null; })()}
         {correction?.kind && <Tag>{KINDS.find((k) => k.key === correction.kind)?.label.toLowerCase()}</Tag>}
@@ -582,10 +601,26 @@ function ContextEntryRow({ e, sessionId, tourId, correction, onSaved }: {
               )}
             </div>
             {/* promote */}
+            {!e.lens && (
+              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                <span className="text-[10px] uppercase tracking-wide text-stone-400">Lens to file it under</span>
+                {LENSES.map((l) => (
+                  <button
+                    key={l.key}
+                    onClick={() => setLensPick(l.key as PastCategory)}
+                    className="px-2 py-0.5 rounded text-[11px] text-white"
+                    style={{ backgroundColor: l.colour, opacity: lensPick === l.key ? 1 : 0.35 }}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex items-center gap-2 pt-0.5">
-              <button onClick={promote} disabled={busy} className="px-2 py-1 rounded bg-emerald-700 text-white text-[11px] hover:bg-emerald-800 disabled:opacity-40">
+              <button onClick={promote} disabled={busy || !promoteLens} className="px-2 py-1 rounded bg-emerald-700 text-white text-[11px] hover:bg-emerald-800 disabled:opacity-40">
                 {correction?.promotedEntryId ? 'Update in knowledge base' : 'Promote to knowledge base'}
               </button>
+              {!promoteLens && <span className="text-[11px] text-stone-500">Pick a lens first</span>}
               {status && <span className="text-[11px] text-stone-600">{status}</span>}
             </div>
           </div>
@@ -771,7 +806,12 @@ function SessionCard({ s, toursById, corrections, onSaved, onToggleStar }: {
             <div className="space-y-4">
               {acts.map((act, i) => <ActBlock key={act.id} s={s} act={act} index={i} />)}
               <ContextEntriesBlock
-                entries={s.detectiveAnswers || []}
+                entries={(s.detectiveAnswers || []).filter((d) => d.askedIn === 'investigation')}
+                heading="Opening investigation — what they asked before exploring"
+                sessionId={s.id} tourId={s.tourId} corrections={corrections} onSaved={onSaved}
+              />
+              <ContextEntriesBlock
+                entries={(s.detectiveAnswers || []).filter((d) => d.askedIn !== 'investigation')}
                 heading="Questions they asked — Detective answers to review / promote"
                 sessionId={s.id} tourId={s.tourId} corrections={corrections} onSaved={onSaved}
               />
