@@ -592,7 +592,10 @@ ${raw}
 
 export interface FactualOutput {
   answer: string;
+  /** What the model chose to cite. Often empty even after a good search. */
   sources: { url: string; name: string }[];
+  /** Every page the search returned, as a floor under the above. */
+  searched?: { url: string; name: string }[];
 }
 
 const FACTUAL_SCHEMA = {
@@ -654,10 +657,29 @@ export async function factualAnswer(
       tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
       messages: [{ role: 'user', content: user }],
     });
-    const text = ((resp.content || []) as Json[]).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    const content: Json[] = resp.content || [];
+    const text = content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
     if (!text) return null;
     const out = JSON.parse(text) as FactualOutput;
-    return { answer: out.answer || '', sources: Array.isArray(out.sources) ? out.sources : [] };
+
+    // The pages the search actually returned, whether or not the model listed
+    // them. It routinely answers from memory and reports nothing, and the route
+    // refuses to ship an unsourced answer — so without this the whole answer is
+    // thrown away over a citation the model simply did not bother to write down.
+    // Same floor the Detective keeps, for the same reason.
+    const searched = content
+      .filter((b) => b.type === 'web_search_tool_result' && Array.isArray(b.content))
+      .flatMap((b) => (b.content as Json[]).map((r) => ({
+        url: r?.url as string,
+        name: (r?.title as string) || '',
+      })))
+      .filter((r) => r.url);
+
+    return {
+      answer: out.answer || '',
+      sources: Array.isArray(out.sources) ? out.sources : [],
+      searched,
+    };
   } catch (err) {
     console.error('[factual] call failed:', err);
     return null;

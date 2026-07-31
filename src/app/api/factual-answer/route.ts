@@ -79,10 +79,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ status: 'failed', answer: '', sources: [] });
     }
 
-    const sources = (out.sources || [])
-      .filter((s) => s.url && acceptableSource(s.url))
-      .map((s) => ({ label: (s.name || s.url).slice(0, 120), url: s.url }));
-    const dropped = (out.sources || []).length - sources.length;
+    const clean = (list: { url: string; name?: string }[]) => {
+      const seen = new Set<string>();
+      return list
+        .filter((s) => s.url && acceptableSource(s.url))
+        .filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)))
+        .map((s) => ({ label: (s.name || s.url).slice(0, 120), url: s.url }));
+    };
+
+    const cited = clean(out.sources || []);
+    const dropped = (out.sources || []).length - cited.length;
+    // Nothing citable came back, but the search still opened pages — use those
+    // rather than throwing the answer away. The model answering from memory and
+    // reporting no sources is the common case, not a sign the answer is bad; the
+    // Detective takes the same floor. Capped, since these were consulted rather
+    // than deliberately chosen.
+    const sources = cited.length ? cited : clean(out.searched || []).slice(0, 3);
+    if (!cited.length && sources.length) {
+      console.log(`[factual] "${question.slice(0, 60)}" → model cited nothing; using ${sources.length} searched page(s)`);
+    }
 
     // A plain fact with nothing behind it is exactly what this app should not be
     // showing. Better to say we couldn't find one than to assert it unsourced.
