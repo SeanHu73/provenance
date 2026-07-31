@@ -41,7 +41,7 @@ import { contextNarrationText } from '@/lib/tts-narration';
 import { AutoPlayMenuItem, DevJumpMenuItem, ResearchBackendMenuItem, PastReminderMenuItem } from '@/components/tour/TourMenu';
 import { useAdminUnlock } from '@/lib/admin-unlock';
 import { useDevJumpOn } from '@/lib/dev-jump';
-import { useInvestigation } from '@/lib/investigation-store';
+import { useInvestigation, setInvestigationLens } from '@/lib/investigation-store';
 
 /** Comic ink shared with the P.A.S.T. lens buttons, for the "Ask" CTA's border
  *  + hard offset shadow (see PastLens). */
@@ -316,6 +316,51 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
     setAddedLens(draft.pastCategory);
     setShowAddedTip(true);
   };
+  /**
+   * Keep one of their own opening questions, in the lens they pick for it.
+   *
+   * Two things happen at once and both matter: the answer becomes a real context
+   * in their journal, and the question is finally filed — which is what takes it
+   * out of the unfiled panel. Filing here rather than on the onboarding screen is
+   * the point: they have now heard the answer, so "where does this belong" is a
+   * judgement about something they know rather than a guess about a title.
+   */
+  const addUnfiledQuestion = async (id: string, lens: PastCategory) => {
+    const q = investigationQuestions.find((x) => x.id === id);
+    if (!q || !q.answer) return;
+    haptic();
+    try {
+      await persistAdd({
+        question: q.text,
+        title: q.title || q.text,
+        shortSummary: q.summary || '',
+        longExplanation: q.answer,
+        pastCategory: lens,
+        timeRange: defaultRange(DEFAULT_DOMAIN),
+        geometry: null,
+        camera: null,
+        mapType: 'default',
+        includePlaceTime: false,
+        media: [],
+        thumbnailMediaId: null,
+        sources: (q.sources || []).map((sr, i) => ({
+          id: `src_${i}`, name: sr.label, author: '', date: '', imageUrl: null, url: sr.url,
+        })),
+        origin: 'self',
+        placeId: scopeId,
+      });
+    } catch (err) {
+      console.error('[investigation] could not add the question as a context:', err);
+      return;
+    }
+    // Only after the add succeeds — otherwise it leaves the panel with nothing
+    // to show for it.
+    setInvestigationLens(id, lens);
+    setExplored(true);
+    setAddedLens(lens);
+    setShowAddedTip(true);
+  };
+
   const persistUpdate = (id: string, patch: Partial<NewContextEntry>): Promise<void> =>
     guestLocal ? Promise.resolve(updateGuestContext(scopeId, id, patch)) : updateContextEntry(id, patch);
   const persistDelete = (id: string): Promise<void> =>
@@ -687,7 +732,8 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
           <PastPanelSlider
             unfiledQuestions={investigationQuestions
               .filter((q) => q.kind === 'contextual' && !q.lens && q.status !== 'failed')
-              .map((q) => ({ id: q.id, text: q.text, status: q.status, answer: q.answer, title: q.title }))}
+              .map((q) => ({ id: q.id, text: q.text, status: q.status, answer: q.answer, title: q.title, summary: q.summary }))}
+            onAddUnfiled={addUnfiledQuestion}
             entries={displayEntries}
             selectedRange={range}
             savedIds={savedIds}

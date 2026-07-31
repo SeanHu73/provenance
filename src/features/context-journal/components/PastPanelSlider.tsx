@@ -24,6 +24,7 @@ import { LENSES, overlapsRange, thumbnailPhotoUrl, type LensDef } from '../const
 import type { ContextEntry, PastCategory, TimeRange } from '../types';
 import BookmarkButton from './BookmarkButton';
 import PastLensCard from './PastLensCard';
+import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
 import { ChevronRightIcon, LockIcon } from '@/components/icons';
 
 function haptic(ms = 8) {
@@ -55,7 +56,10 @@ interface Props {
    *  file into a lens. They get a panel of their own after T rather than being
    *  dropped into one we picked — filing was theirs to do, and guessing on their
    *  behalf would quietly undo the exercise. */
-  unfiledQuestions?: { id: string; text: string; status: string; answer?: string; title?: string }[];
+  unfiledQuestions?: { id: string; text: string; status: string; answer?: string; title?: string; summary?: string; sources?: { label: string; url: string }[] }[];
+  /** They kept one and chose where it belongs — adds it to the journal in that
+   *  lens and takes it out of this panel. */
+  onAddUnfiled?: (id: string, lens: PastCategory) => void;
 }
 
 /** A soft "lens" halo worn over the active P·A·S·T initial (the redesign's style):
@@ -186,7 +190,7 @@ const slideVariants = {
 export default function PastPanelSlider({
   entries, selectedRange, savedIds, focusedId, guidingQuestion, lockInfoById,
   onFocus, onToggleSave, onOpenFull, onAskLens, onAllSeenChange, onLensTintChange, initiallyAllSeen = false,
-  unfiledQuestions = [],
+  unfiledQuestions = [], onAddUnfiled,
 }: Props) {
   // Deck index. 0 is the ✱ instructions panel; 1–4 are the lenses. Starts on the
   // instructions so "pick a lens" is the first thing they read.
@@ -288,7 +292,7 @@ export default function PastPanelSlider({
             {onInstructions ? (
               <InstructionsSlide onNext={() => goTo(1)} />
             ) : onUnfiled ? (
-              <UnfiledSlide questions={unfiled} />
+              <UnfiledSlide questions={unfiled} onAdd={onAddUnfiled} />
             ) : (
               <LensSlide
                 lens={lens}
@@ -673,10 +677,14 @@ function ContextCard({ entry, colour, active, saved, onTap, onToggleSave }: {
  * No "ask your own question" pill. This panel is for questions they have already
  * asked; inviting another one here reads as a prompt to abandon these.
  */
-function UnfiledSlide({ questions }: {
-  questions: { id: string; text: string; status: string; answer?: string; title?: string }[];
+function UnfiledSlide({ questions, onAdd }: {
+  questions: { id: string; text: string; status: string; answer?: string; title?: string; summary?: string }[];
+  onAdd?: (id: string, lens: PastCategory) => void;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  /** Which question is mid-filing — the lens picker is only shown for one at a
+   *  time, so the four chips never appear under every row at once. */
+  const [filingId, setFilingId] = useState<string | null>(null);
   return (
     <div
       className="px-5 py-5 rounded-2xl mx-4"
@@ -705,9 +713,17 @@ function UnfiledSlide({ questions }: {
                     {q.text}
                   </span>
                   {open && (
-                    <span className="block font-serif leading-relaxed mt-2" style={{ fontSize: 15, color: 'var(--text-secondary)' }}>
-                      {ready ? q.answer : q.status === 'later' ? 'You will hear about it later!' : 'Still researching…'}
-                    </span>
+                    <>
+                      <span className="block font-serif leading-relaxed mt-2" style={{ fontSize: 15, color: 'var(--text-secondary)' }}>
+                        {ready ? q.answer : q.status === 'later' ? 'You will hear about it later!' : 'Still researching…'}
+                      </span>
+                      {/* Read aloud, like every other context page. */}
+                      {ready && (
+                        <span className="block mt-2" onClick={(e) => e.stopPropagation()}>
+                          <OpenAiSpeechBar text={q.answer || ''} title={q.title || q.text} autoplay={false} />
+                        </span>
+                      )}
+                    </>
                   )}
                 </span>
                 {/* Where a locked authored question wears its padlock, one still in
@@ -724,6 +740,43 @@ function UnfiledSlide({ questions }: {
                   )}
                 </span>
               </button>
+
+              {/* Keeping it is where the lens finally gets chosen. Filing was never
+                  forced on the onboarding screen, and this is the moment it
+                  actually matters — they have heard the answer and decided it is
+                  worth keeping, so "where does this belong" is now a real question
+                  rather than a form field. */}
+              {open && ready && onAdd && (
+                <div className="mt-2 px-1">
+                  {filingId === q.id ? (
+                    <>
+                      <p className="text-[12px] font-semibold uppercase tracking-[0.12em] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                        Which lens does it belong to?
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {LENSES.map((l) => (
+                          <button
+                            key={l.key}
+                            onClick={() => { haptic(10); onAdd(q.id, l.key as PastCategory); }}
+                            className="px-3 py-1.5 rounded-full text-[13px] font-semibold border-2"
+                            style={{ borderColor: l.colour, color: l.colour }}
+                          >
+                            {l.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setFilingId(q.id)}
+                      className="px-4 py-2 rounded-full text-[14px] font-semibold text-white"
+                      style={{ backgroundColor: 'var(--th-primary)' }}
+                    >
+                      + Add to Context
+                    </button>
+                  )}
+                </div>
+              )}
             </li>
           );
         })}
