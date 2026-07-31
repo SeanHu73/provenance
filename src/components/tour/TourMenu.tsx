@@ -18,6 +18,8 @@ import { useDevJump } from '@/lib/dev-jump';
 import { subscribeAppSettings, setResearchBackend, RESEARCH_MODES } from '@/lib/app-settings-store';
 import { useAdminUnlock } from '@/lib/admin-unlock';
 import PastReminderSheet from './PastReminderSheet';
+import FactsSheet, { factualQuestions, pendingFactualCount } from './FactsSheet';
+import { useInvestigation } from '@/lib/investigation-store';
 import { useTourOptional } from '@/context/TourContext';
 import { getActs } from '@/lib/tour-session';
 import { getActiveStops } from '@/lib/tours-store';
@@ -249,6 +251,57 @@ export function ResearchBackendMenuItem() {
  *  learner is doing. Wanting to check what the S stands for is not the same as
  *  wanting to redo the Context step, so this opens a sheet rather than jumping
  *  the tour anywhere. Shared by both menus. */
+/**
+ * "Facts" — the way back to the lookup answers.
+ *
+ * Only rendered when they actually asked something at the opening, so a tour
+ * begun without questions carries no dead row. The subtitle is doing real work:
+ * a learner sent here from the end-of-act-1 screen was told an answer was coming,
+ * and this is where they find out whether it has.
+ */
+export function FactsMenuItem() {
+  const [open, setOpen] = useState(false);
+  const { questions } = useInvestigation();
+  const facts = factualQuestions(questions);
+  if (!facts.length) return null;
+  const pending = pendingFactualCount(questions);
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-black/[0.03] border-t"
+        style={{ borderColor: 'var(--th-border)' }}
+      >
+        <span
+          className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 relative"
+          style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-journal)' }}
+        >
+          {/* a page with a turned corner — a note, not a lens */}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" />
+          </svg>
+          {pending > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 block w-2.5 h-2.5 rounded-full border-2"
+              style={{ backgroundColor: 'var(--th-secondary)', borderColor: 'var(--th-journal)' }}
+              aria-hidden
+            />
+          )}
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block font-semibold text-text-primary">Facts</span>
+          <span className="block text-xs text-text-secondary leading-snug">
+            {pending > 0
+              ? `Answers to the questions you asked. ${pending} still being looked up — check back here.`
+              : 'Answers to the questions you asked at the start.'}
+          </span>
+        </span>
+      </button>
+      {open && <FactsSheet onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
 export function PastReminderMenuItem() {
   const [open, setOpen] = useState(false);
   return (
@@ -360,6 +413,7 @@ export default function TourMenu({ inline = false, onDark = false }: { inline?: 
                 Audio plays automatically. Turn it off here to control when it plays.
               </div>
             )}
+            <FactsMenuItem />
             <PastReminderMenuItem />
             <DevJumpMenuItem />
             <ResearchBackendMenuItem />

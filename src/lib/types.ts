@@ -1164,6 +1164,9 @@ export interface TourSession {
    *  review/correct/promote each answer (the skill-correction loop). Full snapshots
    *  so they render with the same controls as built contexts. */
   detectiveAnswers?: ContextEntrySnapshot[];
+  /** The opening questions have been handed back at the end of act 1. Stops the
+   *  screen reappearing if the learner navigates back into that stop. */
+  investigationReturned?: boolean;
   /** Designer-authored context items the explorer opened during the tour. */
   viewedContexts?: ViewedContext[];
   startedAt: string;

@@ -682,6 +682,24 @@ function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession
     };
   }
 
+  // The opening questions come back the moment Discover wraps on act 1's last
+  // stop. This sits AHEAD of the positioned contexts on purpose, and not only
+  // because that is the order asked for: the only route into the phase used to be
+  // resumeAfterContexts, which this next block returns before ever reaching
+  // whenever the last stop has Add-Context items positioned after it. On a tour
+  // that has them the screen was unreachable — not late, not waiting on research,
+  // simply never routed to.
+  if (wantsInvestigationReturn(session, tour, act, currentStop)) {
+    return {
+      ...session,
+      phaseHistory: pushHistory(session),
+      currentPhase: 'investigation_return',
+      currentRound: 0,
+      completedStops,
+      currentContextId: null,
+    };
+  }
+
   // Play any Add-Context items positioned after this stop first.
   const pending = contextsAfterStop(act, currentStop.id);
   if (pending.length) {
@@ -696,6 +714,20 @@ function advanceToNextStopContext(session: TourSession, tour: Tour): TourSession
   }
 
   return resumeAfterContexts(session, tour, act, currentStop, completedStops);
+}
+
+/** End of act 1's last stop, and they submitted something to investigate — the
+ *  one place the opening questions are handed back. Gated on having submitted,
+ *  never on the answers being ready: the screen asks what they heard on the tour,
+ *  which they can answer whether or not the research has landed. */
+function wantsInvestigationReturn(
+  session: TourSession, tour: Tour, act: Act, currentStop: Stop,
+): boolean {
+  if (session.investigationReturned) return false;
+  if (!session.investigation?.raw?.trim()) return false;
+  const acts = getActs(tour);
+  if (acts.findIndex((a) => a.id === act.id) !== 0) return false;
+  return act.stopIds.indexOf(currentStop.id) === act.stopIds.length - 1;
 }
 
 /** After a stop's positioned contexts are exhausted: advance to the next stop,
@@ -722,29 +754,6 @@ function resumeAfterContexts(
       currentContextId: null,
     };
   }
-  // End of the FIRST act only: the questions they asked before exploring come
-  // back to them before they contextualise. Act 1 because that is where the
-  // asking happened — by act 2 they have the journal and can ask in place.
-  // Skipped when there is nothing to return, so a learner who wrote nothing (or
-  // whose questions were all contextual) never meets an empty screen.
-  // Gated on them having SUBMITTED, not on the answers being ready. The parse
-  // runs in the background now, so the session's copy of the question list lags
-  // the queue by a few seconds — reading it here meant the screen was skipped
-  // for anyone who reached the end of act 1 before the mirror caught up. The
-  // screen itself bows out when there is genuinely nothing to show.
-  const acts = getActs(tour);
-  const isFirstAct = !!act && acts.findIndex((a) => a.id === act.id) === 0;
-  if (isFirstAct && !!session.investigation?.raw?.trim()) {
-    return {
-      ...session,
-      phaseHistory: pushHistory(session),
-      currentPhase: 'investigation_return',
-      currentRound: 0,
-      completedStops,
-      currentContextId: null,
-    };
-  }
-
   // currentStopIndex stays on the act's last stop so each step resolves the act.
   return {
     ...session,
@@ -764,14 +773,20 @@ export function investigationReturnQuestions(session: TourSession): Investigatio
     (q) => q.kind === 'factual' || q.status === 'later',
   );
 }
-/** The return screen's [Let's Contextualize] → the context step. */
-export function completeInvestigationReturn(session: TourSession): TourSession {
+/** Leaving the return screen. Picks the flow back up where it was interrupted:
+ *  the act's positioned contexts if it has any, else the context step. Marked
+ *  returned so re-entering the stop cannot show it twice. */
+export function completeInvestigationReturn(session: TourSession, tour: Tour): TourSession {
+  const marked = { ...session, investigationReturned: true };
+  const stop = getActiveStops(tour)[session.currentStopIndex];
+  const act = stop ? findActOfStop(tour, stop.id) : null;
+  const pending = act && stop ? contextsAfterStop(act, stop.id) : [];
   return {
-    ...session,
+    ...marked,
     phaseHistory: pushHistory(session),
     currentPhase: 'act_context_intro',
     currentRound: 0,
-    currentContextId: null,
+    currentContextId: pending.length ? pending[0].id : null,
   };
 }
 

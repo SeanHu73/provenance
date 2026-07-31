@@ -39,7 +39,7 @@ import { adoptResearch, type DetectiveResp } from './research-store';
 import { captureExploredContext, subscribeExploredContexts, updateExploredContext, type ExploredContext } from './shared-store';
 import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
 import { contextNarrationText } from '@/lib/tts-narration';
-import { AutoPlayMenuItem, DevJumpMenuItem, ResearchBackendMenuItem, PastReminderMenuItem } from '@/components/tour/TourMenu';
+import { AutoPlayMenuItem, DevJumpMenuItem, ResearchBackendMenuItem, PastReminderMenuItem, FactsMenuItem } from '@/components/tour/TourMenu';
 import { useAdminUnlock } from '@/lib/admin-unlock';
 import { useDevJumpOn } from '@/lib/dev-jump';
 import { useInvestigation, setInvestigationLens } from '@/lib/investigation-store';
@@ -592,6 +592,7 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
                   without this row an admin can't jump back out. Renders nothing
                   when there's no tour session (the standalone journal route). */}
               {/* The lenses, on demand — this is the screen they're used on. */}
+              <FactsMenuItem />
               <PastReminderMenuItem />
               <DevJumpMenuItem />
               {/* The Detective's research mode — global, and reachable here

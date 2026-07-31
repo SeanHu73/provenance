@@ -72,15 +72,29 @@ function patch(id: string, p: Partial<InvestigationQuestion>) {
 
 // ── Answering ──
 
+/** How many times a lookup is attempted before it is left alone. A failure here
+ *  is usually a search that went wide rather than a question with no answer, but
+ *  some questions really cannot be settled and must be allowed to stop. */
+const MAX_FACTUAL_TRIES = 3;
+const tries = new Map<string, number>();
+
 async function answerFactual(q: InvestigationQuestion, tourId: string) {
+  tries.set(q.id, (tries.get(q.id) || 0) + 1);
   const res = await fetch('/api/factual-answer', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ question: q.text, tourId }),
   });
   const d = await res.json();
+  const answered = d.status === 'answered' && d.answer;
+  if (!answered && (tries.get(q.id) || 0) < MAX_FACTUAL_TRIES) {
+    // Straight back on the queue. The learner is walking; the cost of another
+    // search is nothing to them, and the answer is worth more than the call.
+    patch(q.id, { status: 'pending' });
+    return;
+  }
   patch(q.id, {
-    status: d.status === 'answered' && d.answer ? 'answered' : 'failed',
+    status: answered ? 'answered' : 'failed',
     answer: d.answer || '',
     sources: d.sources || [],
     answeredAt: new Date().toISOString(),
@@ -227,6 +241,25 @@ export function setInvestigationLens(id: string, lens: PastLens): void {
 /** Ticked off at the end of Act 1 as "I heard this answered on the tour". */
 export function setInvestigationHeard(id: string, heard: boolean): void {
   patch(id, { heard });
+}
+
+/**
+ * Try the failed lookups once more, and reset their attempt count so they get a
+ * full set of tries again. Called when the learner opens the Facts sheet: asking
+ * to see an answer is the clearest signal it is still wanted.
+ */
+export function retryFailedFactual(): void {
+  if (!state) return;
+  const failed = state.questions.filter((q) => q.kind === 'factual' && q.status === 'failed');
+  if (!failed.length) return;
+  failed.forEach((q) => tries.delete(q.id));
+  state = {
+    ...state,
+    questions: state.questions.map((q) =>
+      failed.some((f) => f.id === q.id) ? { ...q, status: 'pending' } : q),
+  };
+  persist();
+  pump();
 }
 
 /** Clear it — a new tour, or the same learner starting again. */

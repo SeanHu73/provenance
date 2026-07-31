@@ -714,9 +714,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
   }, [session, persist]);
 
   const completeInvestigationReturnFn = useCallback(() => {
-    if (!session) return;
-    persist(completeInvestigationReturnImpl(session));
-  }, [session, persist]);
+    if (!session || !tour) return;
+    persist(completeInvestigationReturnImpl(session, tour));
+  }, [session, tour, persist]);
 
   const completeActIntroFn = useCallback(() => {
     if (!session || !tour) return;

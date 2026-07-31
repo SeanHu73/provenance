@@ -37,17 +37,20 @@ interface Props {
 
 export default function InvestigationReturnCard({ questions, parsed, onComplete }: Props) {
   const [step, setStep] = useState<'tick' | 'answers'>('tick');
-  const [heard, setHeard] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(questions.map((q) => [q.id, !!q.heard])),
+  // Seeded from the questions themselves so a tick survives leaving and coming
+  // back, and merged rather than replaced because the list can still be filling
+  // in underneath this screen.
+  const [heard, setHeard] = useState<Record<string, boolean>>({});
+  const marks: Record<string, boolean> = Object.fromEntries(
+    questions.map((q) => [q.id, heard[q.id] ?? !!q.heard]),
   );
 
-  // Bow out only once we know there is genuinely nothing to hand back — every
-  // question contextual, or the parse found none. While it is still being split,
-  // wait instead: an answer arriving a moment later is worth a moment's wait,
-  // and skipping is not recoverable.
-  //
-  // Every hook stays above the bail-out: an empty list that later fills in would
-  // otherwise change the hook count between renders and take React down with it.
+  // Ticking does not wait on research. What the screen asks — "did the tour
+  // answer this?" — is a question about the walk they just did, and they can
+  // answer it whether or not anything has come back. Only the second screen
+  // depends on the answers, and it has somewhere to send them when they are not
+  // ready. Bowing out is reserved for genuinely having nothing: the split ran and
+  // produced no question this screen handles.
   const nothingToShow = parsed && questions.length === 0;
   const doneRef = useRef(onComplete);
   doneRef.current = onComplete;
@@ -67,14 +70,13 @@ export default function InvestigationReturnCard({ questions, parsed, onComplete 
   }
 
   const toggle = (id: string) => {
-    const next = !heard[id];
+    const next = !marks[id];
     setHeard((prev) => ({ ...prev, [id]: next }));
     setInvestigationHeard(id, next);
   };
 
-  // What's left to answer: not ticked, and something to show. A question still
-  // researching shows as that rather than being silently dropped.
-  const remaining = questions.filter((q) => !heard[q.id]);
+  const remaining = questions.filter((q) => !marks[q.id]);
+  const unready = remaining.filter((q) => q.status !== 'later' && !(q.status === 'answered' && q.answer));
 
   if (step === 'tick') {
     return (
@@ -88,7 +90,7 @@ export default function InvestigationReturnCard({ questions, parsed, onComplete 
 
         <ul className="space-y-2.5">
           {questions.map((q) => {
-            const on = !!heard[q.id];
+            const on = !!marks[q.id];
             return (
               <li key={q.id}>
                 <button
@@ -161,7 +163,7 @@ export default function InvestigationReturnCard({ questions, parsed, onComplete 
                     ? q.answer
                     : q.status === 'failed'
                       ? 'We could not find a reliable answer to this one.'
-                      : 'Still researching…'}
+                      : 'Still looking. It will be under Facts in the menu.'}
               </p>
               {q.status === 'answered' && (q.sources || []).length > 0 && (
                 <ul className="mt-1.5 space-y-0.5">
@@ -183,6 +185,18 @@ export default function InvestigationReturnCard({ questions, parsed, onComplete 
             </div>
           ))}
         </div>
+      )}
+
+      {/* Where the unfinished ones live from here on. Said once, plainly — they
+          will not be watching this screen while it resolves. */}
+      {unready.length > 0 && (
+        <p
+          className="font-serif italic leading-snug"
+          style={{ fontSize: 14, color: 'var(--text-secondary)' }}
+        >
+          Still looking for {unready.length === 1 ? 'one of these' : `${unready.length} of these`}. Open
+          {' '}<span className="font-semibold not-italic">Facts</span>{' '}in the menu any time to check.
+        </p>
       )}
 
       <button
