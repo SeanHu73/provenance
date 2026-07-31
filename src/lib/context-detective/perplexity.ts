@@ -17,16 +17,30 @@
  * Claude path. A globally-switched backend must not be able to take the
  * Detective down for everyone.
  *
- * ENDPOINT: Perplexity has moved this more than once, so it is an env var
- * (`PERPLEXITY_API_URL`) with the OpenAI-compatible chat/completions path as the
- * default — that is the shape the search parameters below belong to. Confirm it
- * against the current API reference before trusting the toggle in a live tour;
- * a wrong URL shows up as "perplexity search failed" in the logs and a silent
- * fall back to Claude, not as a broken tour.
+ * ENDPOINT: Perplexity currently exposes two OpenAI-shaped surfaces, and which
+ * one an account sees has moved more than once, so both the URL and the model are
+ * env vars:
+ *
+ *   • the gateway / router — `/router/v1/chat/completions`, multi-provider
+ *     (`creator/model-name` ids), citations on `message.annotations[]`. It
+ *     REJECTS the search parameters with a 400.
+ *   • the native Sonar API — `/chat/completions`, bare model ids, citations on
+ *     `search_results[]` or `citations[]`, and it takes `search_domain_filter`
+ *     and `web_search_options`.
+ *
+ * Rather than make that a setting someone has to get right, the call sends the
+ * search parameters and retries once without them if the endpoint refuses them,
+ * and the citation parser reads all three shapes. So either URL works, and the
+ * only thing the domains cost on the gateway is that they don't apply.
+ *
+ * A wrong URL still degrades safely: it logs and the route falls back to the
+ * Claude path, rather than costing a learner their answer.
  */
 
-const DEFAULT_URL = 'https://api.perplexity.ai/chat/completions';
-const MODEL = 'sonar-pro';
+const DEFAULT_URL = 'https://api.perplexity.ai/router/v1/chat/completions';
+/** Gateway ids are `creator/model-name`; the native API wants a bare `sonar-pro`.
+ *  Set PERPLEXITY_MODEL to match whichever PERPLEXITY_API_URL points at. */
+const DEFAULT_MODEL = 'perplexity/sonar-pro';
 /** Sonar's own research depth. `low` is the fast one; the drafting pass adds the
  *  depth we care about, so buying more here mostly buys latency. */
 const CONTEXT_SIZE = 'low';
@@ -57,24 +71,40 @@ export function perplexityConfigured(): boolean {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = any;
 
-/** Pull the citation list out, tolerating both shapes the API has used: the rich
- *  `search_results` objects and the older bare `citations` URL array. */
+/** Pull the citation list out, tolerating all three shapes the API surfaces use:
+ *  the gateway's `message.annotations[]` url_citations, the native API's rich
+ *  `search_results[]` objects, and its older bare `citations` URL array. */
 function readSources(data: Json): PerplexitySource[] {
-  const rich = Array.isArray(data?.search_results) ? data.search_results : null;
-  if (rich) {
-    return rich
-      .map((r: Json) => ({
-        title: String(r?.title || r?.url || '').slice(0, 200),
-        url: String(r?.url || ''),
-        date: r?.date ? String(r.date) : undefined,
-        snippet: r?.snippet ? String(r.snippet).slice(0, 600) : undefined,
-      }))
-      .filter((r: PerplexitySource) => r.url);
+  const dedupe = (list: PerplexitySource[]) => {
+    const seen = new Set<string>();
+    return list.filter((s) => s.url && !seen.has(s.url) && seen.add(s.url));
+  };
+
+  // Gateway: OpenAI-style annotations hanging off the message.
+  const annotations = data?.choices?.[0]?.message?.annotations;
+  if (Array.isArray(annotations) && annotations.length) {
+    const cited = annotations
+      .filter((a: Json) => a?.type === 'url_citation' && (a?.url || a?.url_citation?.url))
+      .map((a: Json) => {
+        const c = a.url_citation ?? a;
+        return { title: String(c.title || c.url || '').slice(0, 200), url: String(c.url || '') };
+      });
+    if (cited.length) return dedupe(cited);
   }
+
+  // Native Sonar: rich results, with dates and snippets worth passing on.
+  const rich = Array.isArray(data?.search_results) ? data.search_results : null;
+  if (rich?.length) {
+    return dedupe(rich.map((r: Json) => ({
+      title: String(r?.title || r?.url || '').slice(0, 200),
+      url: String(r?.url || ''),
+      date: r?.date ? String(r.date) : undefined,
+      snippet: r?.snippet ? String(r.snippet).slice(0, 600) : undefined,
+    })));
+  }
+
   const urls = Array.isArray(data?.citations) ? data.citations : [];
-  return urls
-    .map((u: Json) => ({ title: String(u || ''), url: String(u || '') }))
-    .filter((r: PerplexitySource) => r.url);
+  return dedupe(urls.map((u: Json) => ({ title: String(u || ''), url: String(u || '') })));
 }
 
 /**
@@ -93,34 +123,50 @@ export async function perplexitySearch(input: {
     return null;
   }
   const url = process.env.PERPLEXITY_API_URL || DEFAULT_URL;
+  const model = process.env.PERPLEXITY_MODEL || DEFAULT_MODEL;
   const domains = (input.domains || []).map((d) => d.trim()).filter(Boolean).slice(0, 20);
   const started = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  const baseBody = {
+    model,
+    messages: [
+      {
+        role: 'system',
+        content:
+          'You are a research assistant for a history tour. Answer the question with the historical '
+          + 'conditions that explain it — the period, the place, and what was true at the time — and cite '
+          + 'every claim. Say plainly what the record does not establish rather than guessing.',
+      },
+      { role: 'user', content: input.question },
+    ],
+  };
+  // Only the native Sonar API takes these; the gateway 400s on them. Send them,
+  // and fall back to the bare body if they come back rejected — that way the same
+  // code serves either endpoint without anyone having to configure which.
+  const searchParams = {
+    web_search_options: { search_context_size: CONTEXT_SIZE },
+    ...(domains.length ? { search_domain_filter: domains } : {}),
+  };
+
+  const post = (body: object) => fetch(url, {
+    method: 'POST',
+    signal: controller.signal,
+    headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
   try {
-    const res = await fetch(url, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a research assistant for a history tour. Answer the question with the historical '
-              + 'conditions that explain it — the period, the place, and what was true at the time — and cite '
-              + 'every claim. Say plainly what the record does not establish rather than guessing.',
-          },
-          { role: 'user', content: input.question },
-        ],
-        web_search_options: { search_context_size: CONTEXT_SIZE },
-        ...(domains.length ? { search_domain_filter: domains } : {}),
-      }),
-    });
+    let res = await post({ ...baseBody, ...searchParams });
+    if (res.status === 400) {
+      const detail = await res.text().catch(() => '');
+      console.warn(`[detective] perplexity refused the search parameters — retrying without them: ${detail.slice(0, 200)}`);
+      res = await post(baseBody);
+    }
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
-      console.error(`[detective] perplexity ${res.status}: ${detail.slice(0, 300)}`);
+      console.error(`[detective] perplexity ${res.status} at ${url}: ${detail.slice(0, 300)}`);
       return null;
     }
     const data = await res.json();
@@ -132,9 +178,12 @@ export async function perplexitySearch(input: {
       return null;
     }
     console.log(
-      `[detective] perplexity ${MODEL} · ${ms}ms · ${sources.length} sources`
+      `[detective] perplexity ${model} · ${ms}ms · ${sources.length} sources`
       + (sources.length ? ` (${sources.slice(0, 5).map((s) => s.url).join(' | ')})` : ''),
     );
+    if (!sources.length) {
+      console.warn('[detective]   ⚠ perplexity returned no citations — the draft will have nothing to cite');
+    }
     return { answer, sources, ms };
   } catch (err) {
     const aborted = err instanceof Error && err.name === 'AbortError';
