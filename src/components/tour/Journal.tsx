@@ -15,12 +15,14 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { getActiveStops, getTourMode } from '@/lib/tours-store';
 import type { Stop } from '@/lib/types';
-import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts, getAdditionalStops, getContextOrderedStops, getLogicalStops, actReflectionsOf } from '@/lib/tour-session';
+import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts, getAdditionalStops, getContextOrderedStops, getLogicalStops, actReflectionsOf, investigationReturnQuestions } from '@/lib/tour-session';
+import { useInvestigation } from '@/lib/investigation-store';
 import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
 import EqSceneCard from './cards/EqSceneCard';
 import EqOpeningCard from './cards/EqOpeningCard';
 import InvestigationCard from './cards/InvestigationCard';
+import InvestigationReturnCard from './cards/InvestigationReturnCard';
 import EqAdditionalCard from './cards/EqAdditionalCard';
 import EqClosingCard from './cards/EqClosingCard';
 import EqClosingAdditionalCard from './cards/EqClosingAdditionalCard';
@@ -98,6 +100,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeActClosing,
     completeCommunityForum,
     completeThemeQuestion,
+    completeInvestigationReturn,
+    setInvestigationQuestions,
     completeContextIntro,
     completeActContext,
     completeReflectionIntro,
@@ -110,6 +114,16 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeResources,
     completeStopMap,
   } = useTour();
+
+  // The silent investigation queue. Mirrored onto the session as it finishes so
+  // the admin sees every question and answer even if the learner never reaches
+  // the screen that shows them.
+  const { questions: liveQuestions } = useInvestigation();
+  useEffect(() => {
+    if (!liveQuestions.length) return;
+    setInvestigationQuestions(liveQuestions);
+    // Only when the answers actually change — this writes to the session backup.
+  }, [liveQuestions, setInvestigationQuestions]);
 
   const [paused, setPaused] = useState(false);
   const [stopsOpen, setStopsOpen] = useState(false);
@@ -363,6 +377,20 @@ export default function Journal({ onMapPeek }: JournalProps) {
             tourId={tour.id}
             actId={findActOfStop(tour, getActiveStops(tour)[session.currentStopIndex]?.id || '')?.id}
             onComplete={completeThemeQuestion}
+          />
+        )}
+
+        {/* End of Act 1 — their opening questions come back. Reads live from the
+            silent queue, so an answer that landed a moment ago is already here. */}
+        {phase === 'investigation_return' && (
+          <InvestigationReturnCard
+            questions={investigationReturnQuestions({
+              ...session,
+              investigation: session.investigation
+                ? { ...session.investigation, questions: liveQuestions.length ? liveQuestions : session.investigation.questions }
+                : undefined,
+            })}
+            onComplete={completeInvestigationReturn}
           />
         )}
 

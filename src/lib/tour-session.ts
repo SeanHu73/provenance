@@ -722,6 +722,24 @@ function resumeAfterContexts(
       currentContextId: null,
     };
   }
+  // End of the FIRST act only: the questions they asked before exploring come
+  // back to them before they contextualise. Act 1 because that is where the
+  // asking happened — by act 2 they have the journal and can ask in place.
+  // Skipped when there is nothing to return, so a learner who wrote nothing (or
+  // whose questions were all contextual) never meets an empty screen.
+  const acts = getActs(tour);
+  const isFirstAct = !!act && acts.findIndex((a) => a.id === act.id) === 0;
+  if (isFirstAct && hasFactualReturn(session)) {
+    return {
+      ...session,
+      phaseHistory: pushHistory(session),
+      currentPhase: 'investigation_return',
+      currentRound: 0,
+      completedStops,
+      currentContextId: null,
+    };
+  }
+
   // currentStopIndex stays on the act's last stop so each step resolves the act.
   return {
     ...session,
@@ -729,6 +747,29 @@ function resumeAfterContexts(
     currentPhase: 'act_context_intro',
     currentRound: 0,
     completedStops,
+    currentContextId: null,
+  };
+}
+
+/** Anything to show on the end-of-act-1 return screen: a factual question, or one
+ *  the tour is holding for a later act. Contextual ones are not shown here — they
+ *  go to the P.A.S.T. categorisation still unanswered. */
+export function investigationReturnQuestions(session: TourSession): InvestigationQuestion[] {
+  return (session.investigation?.questions || []).filter(
+    (q) => q.kind === 'factual' || q.status === 'later',
+  );
+}
+function hasFactualReturn(session: TourSession): boolean {
+  return investigationReturnQuestions(session).length > 0;
+}
+
+/** The return screen's [Let's Contextualize] → the context step. */
+export function completeInvestigationReturn(session: TourSession): TourSession {
+  return {
+    ...session,
+    phaseHistory: pushHistory(session),
+    currentPhase: 'act_context_intro',
+    currentRound: 0,
     currentContextId: null,
   };
 }

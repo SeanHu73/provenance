@@ -43,6 +43,7 @@ import {
   completeOpeningFrame as completeOpeningFrameImpl,
   completeThemeQuestion as completeThemeQuestionImpl,
   setInvestigationQuestions as setInvestigationQuestionsImpl,
+  completeInvestigationReturn as completeInvestigationReturnImpl,
   completeActIntro as completeActIntroImpl,
   completeActOpening as completeActOpeningImpl,
   completeActClosing as completeActClosingImpl,
@@ -101,6 +102,8 @@ interface TourContextValue {
   /** The silent investigation queue finished something — mirror it onto the
    *  session so the admin can read it and promote the good answers. */
   setInvestigationQuestions: (questions: InvestigationQuestion[]) => void;
+  /** End-of-act-1 return screen → the context step. */
+  completeInvestigationReturn: () => void;
   completeActIntro: () => void;
   completeActOpening: (response: string) => void;
   completeActClosing: (response: string) => void;
@@ -710,6 +713,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
     persist(setInvestigationQuestionsImpl(session, questions));
   }, [session, persist]);
 
+  const completeInvestigationReturnFn = useCallback(() => {
+    if (!session) return;
+    persist(completeInvestigationReturnImpl(session));
+  }, [session, persist]);
+
   const completeActIntroFn = useCallback(() => {
     if (!session || !tour) return;
     persist(completeActIntroImpl(session));
@@ -849,6 +857,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       completeOpeningFrame: completeOpeningFrameFn,
       completeThemeQuestion: completeThemeQuestionFn,
       setInvestigationQuestions: setInvestigationQuestionsFn,
+      completeInvestigationReturn: completeInvestigationReturnFn,
       completeActIntro: completeActIntroFn,
       completeActOpening: completeActOpeningFn,
       completeActClosing: completeActClosingFn,
