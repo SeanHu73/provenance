@@ -524,11 +524,10 @@ export interface ActReflectionResponse {
 
 /** One prompt on the closing reflection page. Prompts authored on the tour carry
  *  no act; ones merged out of a legacy tour's acts carry the act they came from,
- *  so responses stay filed under it. */
+ *  so responses stay filed under it. The act is never shown to the explorer —
+ *  the prompts read as one closing set. */
 export interface MergedReflectionPrompt extends ReflectionPrompt {
   actId?: string;
-  /** 1-based act number, for the card's label. */
-  actNumber?: number;
 }
 
 /** One context question the explorer asked (and the AI's answer, once wired). */

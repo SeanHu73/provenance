@@ -490,14 +490,14 @@ export function allReflectionPrompts(tour: Tour | null): MergedReflectionPrompt[
   if (authored.length) return authored;
   const out: MergedReflectionPrompt[] = [];
   const seen = new Set<string>();
-  getActs(tour).forEach((act, i) => {
+  for (const act of getActs(tour)) {
     for (const p of reflectionPromptsOf(act)) {
       const id = `${act.id}:${p.id}`;
       if (seen.has(id)) continue;
       seen.add(id);
-      out.push({ ...p, id, actId: act.id, actNumber: i + 1 });
+      out.push({ ...p, id, actId: act.id });
     }
-  });
+  }
   return out;
 }
 

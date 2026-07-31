@@ -50,11 +50,10 @@ function newResponseId(): string {
 export default function ActReflectionCard({ onSave, onDone }: Props) {
   const { tour, session, currentStop } = useTour();
   const act = tour && currentStop ? findActOfStop(tour, currentStop.id) : null;
+  // The prompts read as one closing set, not as a round-up of the acts — no card
+  // says which act it came from. (A legacy tour's prompts still carry their act
+  // internally, so a response is filed where it belongs.)
   const prompts = allReflectionPrompts(tour);
-  // Prompts are authored on the tour, so they carry no act. A legacy tour's are
-  // merged out of its acts: when more than one act contributed, say which act
-  // each came from, so a question from three stops ago isn't a non-sequitur.
-  const showActLabels = new Set(prompts.map((p) => p.actId).filter(Boolean)).size > 1;
 
   // Responses already filed this session, across every act — drives the ✓ on a
   // prompt they've answered and unlocks the way on.
@@ -150,11 +149,6 @@ export default function ActReflectionCard({ onSave, onDone }: Props) {
                     className="shrink-0 w-[85%] rounded-2xl px-6 py-8 text-center shadow-md flex flex-col items-center justify-center"
                     style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)', minHeight: '54vh' }}
                   >
-                    {showActLabels && p.actNumber && (
-                      <span className="mb-3 text-[11px] uppercase tracking-[0.16em] font-semibold" style={{ color: 'var(--ds-cardinal)' }}>
-                        Act {p.actNumber}
-                      </span>
-                    )}
                     {p.photoUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.photoUrl} alt="" className="w-full max-h-44 object-cover rounded-xl mb-6" />
