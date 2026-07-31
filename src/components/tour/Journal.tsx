@@ -20,7 +20,7 @@ import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
 import EqSceneCard from './cards/EqSceneCard';
 import EqOpeningCard from './cards/EqOpeningCard';
-import ThemeQuestionCard from './cards/ThemeQuestionCard';
+import InvestigationCard from './cards/InvestigationCard';
 import EqAdditionalCard from './cards/EqAdditionalCard';
 import EqClosingCard from './cards/EqClosingCard';
 import EqClosingAdditionalCard from './cards/EqClosingAdditionalCard';
@@ -354,10 +354,14 @@ export default function Journal({ onMapPeek }: JournalProps) {
           />
         )}
 
-        {/* Context-Prototype: the tour-wide theme question, recorded to the session */}
+        {/* Context-Prototype: the opening investigation. The theme question is
+            still posed, but as the thing they ask questions ABOUT rather than
+            something to answer cold. */}
         {phase === 'theme_question' && tour.openingFrame?.themeQuestion?.trim() && (
-          <ThemeQuestionCard
+          <InvestigationCard
             question={tour.openingFrame.themeQuestion}
+            tourId={tour.id}
+            actId={findActOfStop(tour, getActiveStops(tour)[session.currentStopIndex]?.id || '')?.id}
             onComplete={completeThemeQuestion}
           />
         )}

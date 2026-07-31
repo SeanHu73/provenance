@@ -9,7 +9,7 @@
  */
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { Tour, Stop, TourSession, TourPhase, BankedQuestion, ContextQuestionEntry, ContextEntrySnapshot, ActReflectionResponse } from '@/lib/types';
+import { Tour, Stop, TourSession, TourPhase, BankedQuestion, ContextQuestionEntry, ContextEntrySnapshot, ActReflectionResponse, InvestigationQuestion } from '@/lib/types';
 import { getTour, getActiveStops, getTourMode } from '@/lib/tours-store';
 import { persistTourSession, persistSessionContextEntries } from '@/lib/tour-sessions-store';
 import { resetGuestContexts, snapshotGuestContexts, subscribeGuestContexts } from '@/features/context-journal/guest-contexts';
@@ -42,6 +42,7 @@ import {
   completeMidwayCheckin as completeMidwayCheckinImpl,
   completeOpeningFrame as completeOpeningFrameImpl,
   completeThemeQuestion as completeThemeQuestionImpl,
+  setInvestigationQuestions as setInvestigationQuestionsImpl,
   completeActIntro as completeActIntroImpl,
   completeActOpening as completeActOpeningImpl,
   completeActClosing as completeActClosingImpl,
@@ -96,7 +97,10 @@ interface TourContextValue {
   endTour: () => void;
   // Context-Prototype mode
   completeOpeningFrame: () => void;
-  completeThemeQuestion: (response: string) => void;
+  completeThemeQuestion: (input: { raw: string; questions: InvestigationQuestion[] }) => void;
+  /** The silent investigation queue finished something — mirror it onto the
+   *  session so the admin can read it and promote the good answers. */
+  setInvestigationQuestions: (questions: InvestigationQuestion[]) => void;
   completeActIntro: () => void;
   completeActOpening: (response: string) => void;
   completeActClosing: (response: string) => void;
@@ -694,12 +698,17 @@ export function TourProvider({ children }: { children: ReactNode }) {
     logSeedIfEntered(next, tour);
   }, [session, tour, persist, logSeedIfEntered]);
 
-  const completeThemeQuestionFn = useCallback((response: string) => {
+  const completeThemeQuestionFn = useCallback((input: { raw: string; questions: InvestigationQuestion[] }) => {
     if (!session || !tour) return;
-    const next = completeThemeQuestionImpl(session, tour, response);
+    const next = completeThemeQuestionImpl(session, tour, input);
     persist(next);
     logSeedIfEntered(next, tour);
   }, [session, tour, persist, logSeedIfEntered]);
+
+  const setInvestigationQuestionsFn = useCallback((questions: InvestigationQuestion[]) => {
+    if (!session) return;
+    persist(setInvestigationQuestionsImpl(session, questions));
+  }, [session, persist]);
 
   const completeActIntroFn = useCallback(() => {
     if (!session || !tour) return;
@@ -839,6 +848,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       endTour,
       completeOpeningFrame: completeOpeningFrameFn,
       completeThemeQuestion: completeThemeQuestionFn,
+      setInvestigationQuestions: setInvestigationQuestionsFn,
       completeActIntro: completeActIntroFn,
       completeActOpening: completeActOpeningFn,
       completeActClosing: completeActClosingFn,

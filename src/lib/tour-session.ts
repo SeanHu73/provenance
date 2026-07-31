@@ -7,7 +7,7 @@
  * a single group visit.
  */
 
-import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, ContextQuestionEntry, ContextEntrySnapshot, ActContextItem, ContextMediaItem, ContextQuestion, ReflectionPrompt, MergedReflectionPrompt, AdditionalStop } from './types';
+import type { Tour, Stop, TourSession, TourPhase, BankedQuestion, Act, ActReflectionResponse, InvestigationQuestion, ContextQuestionEntry, ContextEntrySnapshot, ActContextItem, ContextMediaItem, ContextQuestion, ReflectionPrompt, MergedReflectionPrompt, AdditionalStop } from './types';
 import { getActiveStops, getTourMode } from './tours-store';
 
 export type { TourPhase };
@@ -928,13 +928,40 @@ export function completeOpeningFrame(session: TourSession, tour: Tour): TourSess
   return enterFirstContextAct(base, tour);
 }
 
-/** Context mode: the theme-question "Begin Exploration" button → first act.
- *  Records the explorer's response (or '' when skipped) on the session. */
-export function completeThemeQuestion(session: TourSession, tour: Tour, response: string): TourSession {
+/**
+ * Context mode: [Let's Explore!] on the opening investigation → first act.
+ *
+ * The learner no longer *answers* the theme question here — answering it before
+ * seeing anything was guesswork. They ask their own questions about it instead,
+ * and those are what the session records: the raw text exactly as written or
+ * dictated, plus the parsed, classified list. `themeQuestionResponse` is kept and
+ * still holds the raw text, so older sessions and the admin export that read it
+ * carry on working.
+ */
+export function completeThemeQuestion(
+  session: TourSession,
+  tour: Tour,
+  input: { raw: string; questions: InvestigationQuestion[] },
+): TourSession {
   return enterFirstContextAct(
-    { ...session, phaseHistory: pushHistory(session), themeQuestionResponse: response },
+    {
+      ...session,
+      phaseHistory: pushHistory(session),
+      themeQuestionResponse: input.raw,
+      investigation: { raw: input.raw, questions: input.questions, submittedAt: new Date().toISOString() },
+    },
     tour,
   );
+}
+
+/** Merge the answers back onto the session as the silent queue finishes them, so
+ *  the admin sees what each learner asked cold and what we found. */
+export function setInvestigationQuestions(
+  session: TourSession,
+  questions: InvestigationQuestion[],
+): TourSession {
+  if (!session.investigation) return session;
+  return { ...session, investigation: { ...session.investigation, questions } };
 }
 
 /** Context mode: the "Act N: Title" splash finished (auto after a hold, or
