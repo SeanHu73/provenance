@@ -277,30 +277,6 @@ export function PastReminderMenuItem() {
   );
 }
 
-/** The hidden way in. Seven taps on the menu's footer reveals Dev Jump and the
- *  research-mode switch; before that neither is rendered at all. It looks like a
- *  wordmark because it is one — nothing here says "tap me", which is the point.
- *  See `admin-unlock.ts` for why this exists. */
-export function AdminUnlockTapTarget() {
-  const [unlocked, tap, remaining] = useAdminUnlock();
-  return (
-    <button
-      onClick={tap}
-      aria-hidden={!unlocked}
-      tabIndex={-1}
-      className="w-full px-4 py-2.5 text-center border-t select-none"
-      style={{ borderColor: 'var(--th-border)' }}
-    >
-      <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-secondary)', opacity: unlocked ? 0.6 : 0.35 }}>
-        {unlocked ? 'Provenance · admin' : 'Provenance'}
-      </span>
-      {remaining > 0 && (
-        <span className="ml-2 text-[10px]" style={{ color: 'var(--th-primary)' }}>{remaining}</span>
-      )}
-    </button>
-  );
-}
-
 /** The Auto-Play on/off row — a headphone icon, a label, and a switch. Shared by
  *  this menu and the Context Journal's menu so it looks/behaves identically. */
 export function AutoPlayMenuItem({ highlight = false }: { highlight?: boolean }) {
@@ -345,16 +321,20 @@ export default function TourMenu({ inline = false, onDark = false }: { inline?: 
   // effect needed.
   const shown = open || hint;
   const close = () => { setOpen(false); if (hint) clearHint(); };
+  // Five taps on this button reveals the admin rows (see admin-unlock.ts). It
+  // rides along with the normal open/close, so the gesture needs no affordance
+  // and a stray double-tap reads as exactly what it looks like.
+  const [, tapAdmin, tapsLeft] = useAdminUnlock();
 
   return (
     <>
       <button
-        onClick={() => (shown ? close() : setOpen(true))}
+        onClick={() => { tapAdmin(); if (shown) close(); else setOpen(true); }}
         aria-label="Menu" aria-expanded={shown}
         className={onDark
-          ? 'shrink-0 rounded-full flex items-center justify-center border-0 text-white'
+          ? 'relative shrink-0 rounded-full flex items-center justify-center border-0 text-white'
           : inline
-            ? 'w-9 h-9 rounded-full flex items-center justify-center bg-warm-white hover:bg-black/[0.04] border-2'
+            ? 'relative w-9 h-9 rounded-full flex items-center justify-center bg-warm-white hover:bg-black/[0.04] border-2'
             : 'fixed top-3 right-3 z-[46] w-10 h-10 rounded-full flex items-center justify-center text-warm-white bg-black/35 hover:bg-black/50 backdrop-blur border border-white/30 shadow-lg'}
         style={onDark
           // matches JourneyBar's BarButton so the two controls on the bar pair up
@@ -365,6 +345,17 @@ export default function TourMenu({ inline = false, onDark = false }: { inline?: 
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
           <path d="M4 6h16M4 12h16M4 18h16" />
         </svg>
+        {/* Taps remaining to reveal the admin rows. Only appears once the taps
+            can't be an accident, so it stays invisible to everyone else. */}
+        {tapsLeft > 0 && (
+          <span
+            className="absolute top-0 right-0 min-w-[15px] h-[15px] px-1 rounded-full text-[9px] font-bold flex items-center justify-center"
+            style={{ backgroundColor: 'var(--th-primary)', color: 'var(--th-surface)' }}
+            aria-hidden
+          >
+            {tapsLeft}
+          </span>
+        )}
       </button>
 
       {shown && (
@@ -383,7 +374,6 @@ export default function TourMenu({ inline = false, onDark = false }: { inline?: 
             <PastReminderMenuItem />
             <DevJumpMenuItem />
             <ResearchBackendMenuItem />
-            <AdminUnlockTapTarget />
           </div>
         </>
       )}

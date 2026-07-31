@@ -38,7 +38,8 @@ import ResearchReadyBar from './components/ResearchReadyBar';
 import { captureExploredContext, subscribeExploredContexts, updateExploredContext, type ExploredContext } from './shared-store';
 import OpenAiSpeechBar from '@/components/tour/cards/OpenAiSpeechBar';
 import { contextNarrationText } from '@/lib/tts-narration';
-import { AutoPlayMenuItem, DevJumpMenuItem, ResearchBackendMenuItem, PastReminderMenuItem, AdminUnlockTapTarget } from '@/components/tour/TourMenu';
+import { AutoPlayMenuItem, DevJumpMenuItem, ResearchBackendMenuItem, PastReminderMenuItem } from '@/components/tour/TourMenu';
+import { useAdminUnlock } from '@/lib/admin-unlock';
 import { useDevJumpOn } from '@/lib/dev-jump';
 
 /** Comic ink shared with the P.A.S.T. lens buttons, for the "Ask" CTA's border
@@ -133,6 +134,8 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   // continue, and the shared-contexts pool. They are the pedagogy, not plumbing, so
   // this is only for inspecting a stage without playing the tour to reach it.
   const devJump = useDevJumpOn();
+  // Five taps on the menu button reveals the admin rows (admin-unlock.ts).
+  const [, tapAdmin] = useAdminUnlock();
   // Both the in-tour flow and the revisit overlay read/write the learner's
   // guest-local contexts (sessionStorage); only a bare standalone visit uses
   // Firestore.
@@ -534,7 +537,9 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
         }
         menu={
           <>
-            <BarButton label="Menu" expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)}>
+            {/* Five taps here reveals the admin rows — same gesture as the tour's
+                own menu button (admin-unlock.ts). */}
+            <BarButton label="Menu" expanded={menuOpen} onClick={() => { tapAdmin(); setMenuOpen((v) => !v); }}>
               <MenuIcon width={18} height={18} />
             </BarButton>
             {menuOpen && (
@@ -554,7 +559,6 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
               {/* The Detective's research mode — global, and reachable here
                   because this is the screen where questions are actually asked. */}
               <ResearchBackendMenuItem />
-              <AdminUnlockTapTarget />
               {/* A/B: swap the P.A.S.T. lens UI (magnifier vs classic buttons). */}
               <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--th-border)' }}>
                 <span className="font-semibold text-text-primary text-sm">Lens style</span>

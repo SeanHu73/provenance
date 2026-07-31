@@ -7,8 +7,12 @@
  * visitor should never trip over — one disables the tour's learning gates, the
  * other changes the Detective for every user at once. They used to sit in the
  * menu in plain sight, one tap from anyone who opened it looking for the audio
- * toggle. Now they aren't rendered at all until someone taps the menu's footer
- * seven times.
+ * toggle. Now they aren't rendered at all until the menu button itself is tapped
+ * five times in a row.
+ *
+ * The menu button rather than a hidden target in the panel: it is already there
+ * on every screen, it needs no affordance of its own, and a stray double-tap just
+ * opens and closes the menu — which is what it looks like it should do.
  *
  * Not security — anyone reading this file knows the gesture. It is there so the
  * controls can't be found by accident, which is the actual risk during a tour.
@@ -21,8 +25,9 @@
 import { useEffect, useState } from 'react';
 
 const KEY = 'mc_admin_unlock_v1';
-/** Enough that nobody arrives here by fidgeting; few enough to do one-handed. */
-const TAPS_REQUIRED = 7;
+/** Enough that nobody arrives here by fidgeting; few enough to do one-handed.
+ *  Odd, so the last tap leaves the menu open rather than shut. */
+const TAPS_REQUIRED = 5;
 /** Taps have to be deliberate — a gap this long and the count starts over. */
 const TAP_WINDOW_MS = 3000;
 
@@ -82,5 +87,5 @@ export function useAdminUnlock(): [boolean, () => void, number] {
 
   // Only start counting out loud once it can't be an accident.
   const remaining = on ? 0 : Math.max(0, TAPS_REQUIRED - taps);
-  return [on, tap, taps >= 3 ? remaining : 0];
+  return [on, tap, taps >= 2 ? remaining : 0];
 }
