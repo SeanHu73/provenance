@@ -120,7 +120,7 @@ export default function FindActivityCard({ stop, onFound, onRevealAnswer, onPeek
           {/* Through FormattedText, not raw — prompts are authored with the
               app's markup (**bold**, *italic*, {{#hex}}colour{{/}}), and a plain
               <p> renders the asterisks literally. */}
-          <p className="text-[29px] leading-snug text-text-primary whitespace-pre-line max-w-xl mx-auto">
+          <p className="text-[22px] leading-snug text-text-primary whitespace-pre-line max-w-xl mx-auto">
             <FormattedText text={instructions} />
           </p>
           <div className="mx-auto mt-3 h-px w-12" style={{ backgroundColor: 'var(--th-primary)', opacity: 0.5 }} />

@@ -15,7 +15,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useTour } from '@/context/TourContext';
 import { getActiveStops, getTourMode } from '@/lib/tours-store';
 import type { Stop } from '@/lib/types';
-import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts, getAdditionalStops, getContextOrderedStops, getLogicalStops, actReflectionsOf, investigationReturnQuestions } from '@/lib/tour-session';
+import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts, getAdditionalStops, getContextOrderedStops, getLogicalStops, actReflectionsOf } from '@/lib/tour-session';
 import { useInvestigation, setInvestigationLens } from '@/lib/investigation-store';
 import type { PastCategory } from '@/features/context-journal/types';
 import MeetGuideCard from './cards/MeetGuideCard';
@@ -116,15 +116,29 @@ export default function Journal({ onMapPeek }: JournalProps) {
     completeStopMap,
   } = useTour();
 
-  // The silent investigation queue. Mirrored onto the session as it finishes so
-  // the admin sees every question and answer even if the learner never reaches
-  // the screen that shows them.
+  // The silent investigation queue, mirrored onto the session so the admin sees
+  // every question and answer even if the learner never reaches the screen that
+  // shows them.
+  //
+  // Both guards below are load-bearing, and the first version of this had
+  // neither. `setInvestigationQuestions` is rebuilt whenever the session changes,
+  // and calling it CHANGES the session — so with it in the dependency array the
+  // effect re-ran its own cause, forever. That loop re-rendered the whole tour
+  // continuously: every screen holding a timer restarted it on each pass and none
+  // of them ever fired, which is what left the act intro and the context intro
+  // hanging. So: the setter lives in a ref (out of the deps), and a signature
+  // check means an unchanged list writes nothing at all.
   const { questions: liveQuestions } = useInvestigation();
+  const mirrorRef = useRef('');
+  const setInvRef = useRef(setInvestigationQuestions);
+  setInvRef.current = setInvestigationQuestions;
   useEffect(() => {
     if (!liveQuestions.length) return;
-    setInvestigationQuestions(liveQuestions);
-    // Only when the answers actually change — this writes to the session backup.
-  }, [liveQuestions, setInvestigationQuestions]);
+    const sig = liveQuestions.map((q) => `${q.id}:${q.status}:${q.lens || ''}:${q.heard ? 1 : 0}`).join('|');
+    if (mirrorRef.current === sig) return;
+    mirrorRef.current = sig;
+    setInvRef.current(liveQuestions);
+  }, [liveQuestions]);
 
   const [paused, setPaused] = useState(false);
   const [stopsOpen, setStopsOpen] = useState(false);
@@ -385,12 +399,8 @@ export default function Journal({ onMapPeek }: JournalProps) {
             silent queue, so an answer that landed a moment ago is already here. */}
         {phase === 'investigation_return' && (
           <InvestigationReturnCard
-            questions={investigationReturnQuestions({
-              ...session,
-              investigation: session.investigation
-                ? { ...session.investigation, questions: liveQuestions.length ? liveQuestions : session.investigation.questions }
-                : undefined,
-            })}
+            questions={(liveQuestions.length ? liveQuestions : session.investigation?.questions || [])
+              .filter((q) => q.kind === 'factual' || q.status === 'later')}
             onComplete={completeInvestigationReturn}
           />
         )}

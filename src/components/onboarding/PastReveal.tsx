@@ -94,13 +94,24 @@ export default function PastReveal({ onDone }: { onDone?: () => void }) {
   }, []);
 
   // Once the reveal starts, stagger the meanings and the closing line off it.
+  //
+  // `onDone` is held in a ref rather than listed as a dependency, and that is
+  // load-bearing. Callers pass an inline arrow, so it is a new function on every
+  // render; with it in the deps this effect cleared and restarted its own timers
+  // each time the parent re-rendered. Under a re-rendering parent the early
+  // `setMeanings` would latch on some pass while the later `setTail` never
+  // survived to fire, which left the lens meanings expanded, `onDone` uncalled,
+  // and the scroll lock below (released only by `tail`) holding the learner on
+  // this beat with no way forward.
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
   useEffect(() => {
     if (!diagonal) return;
     const timers: number[] = [];
     timers.push(window.setTimeout(() => setMeanings(true), DRIFT_MS * 0.7));
-    timers.push(window.setTimeout(() => { setTail(true); onDone?.(); }, DRIFT_MS + 350));
+    timers.push(window.setTimeout(() => { setTail(true); doneRef.current?.(); }, DRIFT_MS + 350));
     return () => timers.forEach(clearTimeout);
-  }, [diagonal, onDone]);
+  }, [diagonal]);
 
   // Lock the intro scroller while this beat is up and the reveal hasn't finished,
   // and read any down-gesture as "reveal". The lock (overflow hidden) is what

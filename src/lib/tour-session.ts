@@ -727,9 +727,14 @@ function resumeAfterContexts(
   // asking happened — by act 2 they have the journal and can ask in place.
   // Skipped when there is nothing to return, so a learner who wrote nothing (or
   // whose questions were all contextual) never meets an empty screen.
+  // Gated on them having SUBMITTED, not on the answers being ready. The parse
+  // runs in the background now, so the session's copy of the question list lags
+  // the queue by a few seconds — reading it here meant the screen was skipped
+  // for anyone who reached the end of act 1 before the mirror caught up. The
+  // screen itself bows out when there is genuinely nothing to show.
   const acts = getActs(tour);
   const isFirstAct = !!act && acts.findIndex((a) => a.id === act.id) === 0;
-  if (isFirstAct && hasFactualReturn(session)) {
+  if (isFirstAct && !!session.investigation?.raw?.trim()) {
     return {
       ...session,
       phaseHistory: pushHistory(session),
@@ -759,10 +764,6 @@ export function investigationReturnQuestions(session: TourSession): Investigatio
     (q) => q.kind === 'factual' || q.status === 'later',
   );
 }
-function hasFactualReturn(session: TourSession): boolean {
-  return investigationReturnQuestions(session).length > 0;
-}
-
 /** The return screen's [Let's Contextualize] → the context step. */
 export function completeInvestigationReturn(session: TourSession): TourSession {
   return {

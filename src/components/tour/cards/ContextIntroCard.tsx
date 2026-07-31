@@ -360,13 +360,17 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
   // Both paths end by scrolling past the sentinel into the Context Journal — a
   // real scroll, so the guiding-theme splash above it stays put and can be
   // scrolled back up to.
+  // `onComplete` via a ref: it is rebuilt whenever the session changes, and
+  // rebuilding the observer re-fires it against whatever is on screen.
+  const completeRef = useRef(onComplete);
+  completeRef.current = onComplete;
   useEffect(() => {
     const el = enterRef.current;
     if (!el) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) onComplete(); }, { threshold: 0.75 });
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) completeRef.current(); }, { threshold: 0.75 });
     obs.observe(el);
     return () => obs.disconnect();
-  }, [onComplete]);
+  }, []);
 
   // Progress counter (N of total). Observe the real section elements so the count
   // matches whatever the current path renders (first-time vs returning), and the

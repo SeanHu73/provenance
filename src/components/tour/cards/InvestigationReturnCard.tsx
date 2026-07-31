@@ -21,7 +21,7 @@
  * answer — they show "You will hear about it later!" and stay on screen one.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { setInvestigationHeard } from '@/lib/investigation-store';
 import type { InvestigationQuestion } from '@/lib/types';
 
@@ -35,6 +35,20 @@ export default function InvestigationReturnCard({ questions, onComplete }: Props
   const [heard, setHeard] = useState<Record<string, boolean>>(
     () => Object.fromEntries(questions.map((q) => [q.id, !!q.heard])),
   );
+
+  // Nothing to hand back — every question was contextual, or the parse found
+  // none. Bow out rather than showing an empty screen. The phase is entered on
+  // "did they submit anything", which is deliberate (the answers can still be in
+  // flight at that point), so this is where the emptiness is actually known.
+  //
+  // Every hook stays above the bail-out: an empty list that later fills in would
+  // otherwise change the hook count between renders and take React down with it.
+  const doneRef = useRef(onComplete);
+  doneRef.current = onComplete;
+  useEffect(() => {
+    if (questions.length === 0) doneRef.current();
+  }, [questions.length]);
+  if (questions.length === 0) return null;
 
   const toggle = (id: string) => {
     const next = !heard[id];
