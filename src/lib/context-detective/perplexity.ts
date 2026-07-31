@@ -71,6 +71,10 @@ const SEARCH_MODE: string | null = null;
 const TIMEOUT_MS = 30_000;
 
 export interface PerplexitySource {
+  /** 1-based citation index. Sonar's answer carries inline `[3][4]` markers that
+   *  refer to THIS number, so it must survive intact — renumbering the list
+   *  silently repoints every marker in the text at the wrong source. */
+  n: number;
   title: string;
   url: string;
   date?: string;
@@ -93,40 +97,50 @@ export function perplexityConfigured(): boolean {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = any;
 
-/** Pull the citation list out, tolerating all three shapes the API surfaces use:
- *  the gateway's `message.annotations[]` url_citations, the native API's rich
- *  `search_results[]` objects, and its older bare `citations` URL array. */
+/**
+ * Pull the citation list out, numbered as the answer text numbers it.
+ *
+ * `citations[]` is the index authority — the `[3][4]` markers Sonar writes into
+ * the prose are 1-based offsets into it — so position is load-bearing and this
+ * does NOT dedupe or reorder. `search_results[]` carries the same URLs with
+ * titles, dates and snippets, so it is matched in by URL to enrich each entry.
+ * The gateway's `annotations[]` shape is read as a last resort.
+ */
 function readSources(data: Json): PerplexitySource[] {
-  const dedupe = (list: PerplexitySource[]) => {
-    const seen = new Set<string>();
-    return list.filter((s) => s.url && !seen.has(s.url) && seen.add(s.url));
-  };
-
-  // Gateway: OpenAI-style annotations hanging off the message.
-  const annotations = data?.choices?.[0]?.message?.annotations;
-  if (Array.isArray(annotations) && annotations.length) {
-    const cited = annotations
-      .filter((a: Json) => a?.type === 'url_citation' && (a?.url || a?.url_citation?.url))
-      .map((a: Json) => {
-        const c = a.url_citation ?? a;
-        return { title: String(c.title || c.url || '').slice(0, 200), url: String(c.url || '') };
-      });
-    if (cited.length) return dedupe(cited);
-  }
-
-  // Native Sonar: rich results, with dates and snippets worth passing on.
-  const rich = Array.isArray(data?.search_results) ? data.search_results : null;
-  if (rich?.length) {
-    return dedupe(rich.map((r: Json) => ({
-      title: String(r?.title || r?.url || '').slice(0, 200),
-      url: String(r?.url || ''),
+  const rich: Json[] = Array.isArray(data?.search_results) ? data.search_results : [];
+  const byUrl = new Map<string, Json>(rich.map((r) => [String(r?.url || ''), r]));
+  const enrich = (url: string, n: number, fallbackTitle?: string): PerplexitySource => {
+    const r = byUrl.get(url);
+    return {
+      n,
+      url,
+      title: String(r?.title || fallbackTitle || url).slice(0, 200),
       date: r?.date ? String(r.date) : undefined,
       snippet: r?.snippet ? String(r.snippet).slice(0, 600) : undefined,
-    })));
+    };
+  };
+
+  const citations: Json[] = Array.isArray(data?.citations) ? data.citations : [];
+  if (citations.length) {
+    return citations
+      .map((u, i) => enrich(String(u || ''), i + 1))
+      .filter((s) => s.url);
+  }
+  if (rich.length) {
+    return rich.map((r, i) => enrich(String(r?.url || ''), i + 1)).filter((s) => s.url);
   }
 
-  const urls = Array.isArray(data?.citations) ? data.citations : [];
-  return dedupe(urls.map((u: Json) => ({ title: String(u || ''), url: String(u || '') })));
+  const annotations = data?.choices?.[0]?.message?.annotations;
+  if (Array.isArray(annotations)) {
+    return annotations
+      .filter((a: Json) => a?.type === 'url_citation')
+      .map((a: Json, i: number) => {
+        const c = a.url_citation ?? a;
+        return enrich(String(c.url || ''), i + 1, c.title);
+      })
+      .filter((s) => s.url);
+  }
+  return [];
 }
 
 /**
@@ -217,13 +231,29 @@ export async function perplexitySearch(input: {
   }
 }
 
-/** The findings, rendered for the drafting pass: the answer as raw material and
- *  the sources as the identifiers it must cite from. */
+/**
+ * The findings, rendered for the drafting pass.
+ *
+ * The important part is that the numbering is preserved: the synthesis carries
+ * inline `[3][4]` markers, and the list below is numbered to match, so the pass
+ * can see which source stands behind each claim rather than being handed prose
+ * and a bag of loose URLs and asked to guess. Saying so explicitly matters —
+ * without the key the markers read as noise to be stripped, which is how a draft
+ * ends up citing nothing while holding fifteen perfectly good sources.
+ */
 export function findingsBlock(findings: PerplexityFindings): string {
-  const list = findings.sources.length
-    ? findings.sources
-        .map((s, i) => `[${i + 1}] ${s.title}\n    url: ${s.url}${s.date ? `\n    date: ${s.date}` : ''}${s.snippet ? `\n    ${s.snippet}` : ''}`)
-        .join('\n')
-    : '(the search returned no sources)';
-  return `WEB RESEARCH (a search engine's synthesis — raw material, NOT the answer, and NOT a source in itself):\n${findings.answer}\n\nSOURCES IT CITED (these are the URLs available to you; cite the ones that actually support what you write):\n${list}`;
+  if (!findings.sources.length) {
+    return `WEB RESEARCH (a search engine's synthesis — raw material, NOT the answer, and NOT a source in itself):\n${findings.answer}\n\n(the search returned no sources)`;
+  }
+  const list = findings.sources
+    .map((s) => `[${s.n}] ${s.title}\n    url: ${s.url}${s.date ? `\n    date: ${s.date}` : ''}${s.snippet ? `\n    ${s.snippet}` : ''}`)
+    .join('\n');
+  return (
+    `WEB RESEARCH — a search engine's synthesis. Raw material, NOT your answer, and NOT a source in itself.\n`
+    + `The bracketed numbers in it are live citation markers: [3] means that claim came from source [3] below.\n\n`
+    + `${findings.answer}\n\n`
+    + `SOURCES, numbered to match those markers:\n${list}\n\n`
+    + `Use the markers to see what stands behind each claim. Keep the claims the sources actually support, drop the rest, `
+    + `and cite by URL the numbered sources behind whatever you keep (strip the [n] markers from your own prose — they mean nothing to the learner).`
+  );
 }

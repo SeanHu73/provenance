@@ -25,20 +25,60 @@ const HAIKU = 'claude-haiku-4-5';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = any;
 
+/** Statuses worth trying again: rate limit, overload, and the 5xx family. */
+const RETRYABLE = new Set([408, 429, 500, 502, 503, 504, 529]);
+const MAX_ATTEMPTS = 3;
+
+/**
+ * One Claude call, with backoff on the transient failures.
+ *
+ * This used to throw on any non-2xx, and the route turns a throw into a banked
+ * answer — so a single `529 Overloaded`, which says nothing about the question,
+ * cost a learner their answer entirely. Caught in testing when a run banked after
+ * two minutes with twenty perfectly good sources already in hand. Some fraction
+ * of the banks in the logs are almost certainly this rather than the model
+ * declining, since the two are indistinguishable once it reaches the UI.
+ *
+ * Honours `retry-after` when the API sends one; otherwise 1s, 2s with jitter.
+ * Three attempts is the ceiling — the research pass can make several calls of its
+ * own, and the route has a 300s budget to stay inside.
+ */
 async function callClaude(body: Json): Promise<Json> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error('ANTHROPIC_API_KEY is not set.');
-  const res = await fetch(ANTHROPIC, {
-    method: 'POST',
-    headers: { 'x-api-key': key, 'anthropic-version': VERSION, 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
+  let lastErr = '';
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(ANTHROPIC, {
+        method: 'POST',
+        headers: { 'x-api-key': key, 'anthropic-version': VERSION, 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      // Connection-level failure — no response at all. Worth another go.
+      lastErr = `network: ${err instanceof Error ? err.message : String(err)}`;
+      if (attempt === MAX_ATTEMPTS) break;
+      await sleep(backoffMs(attempt));
+      console.warn(`[detective]   claude ${lastErr} — retrying (${attempt + 1}/${MAX_ATTEMPTS})`);
+      continue;
+    }
+    if (res.ok) return res.json();
+
     const detail = await res.text().catch(() => '');
-    throw new Error(`Claude ${res.status}: ${detail.slice(0, 400)}`);
+    lastErr = `Claude ${res.status}: ${detail.slice(0, 400)}`;
+    if (!RETRYABLE.has(res.status) || attempt === MAX_ATTEMPTS) break;
+    const retryAfter = Number(res.headers.get('retry-after'));
+    const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : backoffMs(attempt);
+    console.warn(`[detective]   claude ${res.status} — retrying in ${wait}ms (${attempt + 1}/${MAX_ATTEMPTS})`);
+    await sleep(wait);
   }
-  return res.json();
+  throw new Error(lastErr || 'Claude request failed');
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** 1s, 2s, with jitter so parallel asks don't retry in lockstep. */
+const backoffMs = (attempt: number) => 2 ** (attempt - 1) * 1000 + Math.floor(Math.random() * 400);
 
 const cachedSystem = (text: string) => [{ type: 'text', text, cache_control: { type: 'ephemeral' } }];
 
