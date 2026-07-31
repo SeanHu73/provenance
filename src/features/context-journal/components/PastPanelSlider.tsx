@@ -56,7 +56,12 @@ interface Props {
    *  file into a lens. They get a panel of their own after T rather than being
    *  dropped into one we picked — filing was theirs to do, and guessing on their
    *  behalf would quietly undo the exercise. */
-  unfiledQuestions?: { id: string; text: string; status: string; answer?: string; title?: string; summary?: string; sources?: { label: string; url: string }[] }[];
+  /** The learner's own contextual questions. Those with a `lens` show inside that
+   *  lens's panel; the rest gather on the ✻ panel past T. Before, only the unfiled
+   *  ones were passed at all, so filing a question into a lens made it vanish from
+   *  the journal completely — off the ✻ panel, and into a lens that never rendered
+   *  it. */
+  ownQuestions?: { id: string; text: string; status: string; lens?: string; answer?: string; title?: string; summary?: string; sources?: { label: string; url: string }[] }[];
   /** They kept one and chose where it belongs — adds it to the journal in that
    *  lens and takes it out of this panel. */
   onAddUnfiled?: (id: string, lens: PastCategory) => void;
@@ -190,7 +195,7 @@ const slideVariants = {
 export default function PastPanelSlider({
   entries, selectedRange, savedIds, focusedId, guidingQuestion, lockInfoById,
   onFocus, onToggleSave, onOpenFull, onAskLens, onAllSeenChange, onLensTintChange, initiallyAllSeen = false,
-  unfiledQuestions = [], onAddUnfiled,
+  ownQuestions = [], onAddUnfiled,
 }: Props) {
   // Deck index. 0 is the ✱ instructions panel; 1–4 are the lenses. Starts on the
   // instructions so "pick a lens" is the first thing they read.
@@ -198,7 +203,7 @@ export default function PastPanelSlider({
   const [dir, setDir] = useState(0);
   const [cardOpen, setCardOpen] = useState(false);
   // One past the lenses when the learner has unfiled questions waiting.
-  const LAST = LENSES.length + (unfiledQuestions.length ? 1 : 0);
+  const LAST = LENSES.length + (ownQuestions.some((q) => !q.lens) ? 1 : 0);
   // Which LENS indices (1–4) have been swiped to. The gate is "all four lenses
   // seen"; the instructions panel doesn't count. A returning learner is all-seen.
   const [seenLenses, setSeenLenses] = useState<Set<number>>(
@@ -238,7 +243,15 @@ export default function PastPanelSlider({
     else if (swipe > 70) goTo(active - 1);
   };
 
-  const unfiled = unfiledQuestions;
+  const unfiled = ownQuestions.filter((q) => !q.lens);
+  const filedByLens = useMemo(() => {
+    const m = new Map<string, typeof ownQuestions>();
+    ownQuestions.forEach((q) => {
+      if (!q.lens) return;
+      m.set(q.lens, [...(m.get(q.lens) || []), q]);
+    });
+    return m;
+  }, [ownQuestions]);
   const onInstructions = active === 0;
   // The unfiled panel sits one past the last lens, and only exists when there is
   // something in it — no empty tab for a learner who filed everything.
@@ -296,6 +309,7 @@ export default function PastPanelSlider({
             ) : (
               <LensSlide
                 lens={lens}
+                mine={filedByLens.get(lens.key as string) || []}
                 questions={questions}
                 added={added}
                 savedIds={savedIds}
@@ -318,7 +332,7 @@ export default function PastPanelSlider({
           {[
             { key: '__star__', colour: STAR_COLOUR },
             ...LENSES,
-            ...(unfiledQuestions.length ? [{ key: '__unfiled__', colour: 'var(--th-primary)' }] : []),
+            ...(unfiled.length ? [{ key: '__unfiled__', colour: 'var(--th-primary)' }] : []),
           ].map((l, i) => (
             <button
               key={l.key}
@@ -346,8 +360,10 @@ export default function PastPanelSlider({
  *  colour with an (i) and its sub-topics, a "what are you curious about?" prompt
  *  leading the ask-your-own pill, then the model questions (locked ones last) and
  *  any contexts already added here. */
-function LensSlide({ lens, questions, added, savedIds, focusedId, lockInfoById, onOpenCard, onAsk, onFocus, onToggleSave, onOpenFull }: {
+function LensSlide({ lens, mine = [], questions, added, savedIds, focusedId, lockInfoById, onOpenCard, onAsk, onFocus, onToggleSave, onOpenFull }: {
   lens: LensDef;
+  /** The learner's own questions, filed into this lens on the onboarding screen. */
+  mine?: { id: string; text: string; status: string; answer?: string; title?: string }[];
   questions: ContextEntry[];
   added: ContextEntry[];
   savedIds: Set<string>;
@@ -466,6 +482,29 @@ function LensSlide({ lens, questions, added, savedIds, focusedId, lockInfoById, 
           </button>
         )}
       </div>
+
+      {/* The learner's own questions, filed into this lens. Above the authored
+          list on purpose: they sorted these here themselves, so this is the part
+          of the lens that is theirs. */}
+      {mine.length > 0 && (
+        <div className="mt-4 space-y-2">
+          <p
+            className="text-left"
+            style={{
+              fontFamily: 'var(--ds-title-family)',
+              fontSize: 'var(--ds-title-size)',
+              lineHeight: 'var(--ds-title-line)',
+              fontWeight: 'var(--ds-title-weight)',
+              color: colour,
+            }}
+          >
+            Your questions:
+          </p>
+          {mine.map((q) => (
+            <OwnQuestionRow key={q.id} question={q} colour={colour} />
+          ))}
+        </div>
+      )}
 
       {/* model questions (locked last). The label sits out here rather than in the
           ask card because it belongs to this list, and reads left-aligned. */}
@@ -677,6 +716,51 @@ function ContextCard({ entry, colour, active, saved, onTap, onToggleSave }: {
  * No "ask your own question" pill. This panel is for questions they have already
  * asked; inviting another one here reads as a prompt to abandon these.
  */
+function OwnQuestionRow({ question: q, colour }: {
+  question: { id: string; text: string; status: string; answer?: string; title?: string };
+  colour: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ready = q.status === 'answered' && !!q.answer;
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full text-left flex items-start gap-3 px-4 py-3 rounded-xl"
+        style={{ backgroundColor: 'var(--ds-white)', border: `1px solid ${colour}` }}
+      >
+        <span className="flex-1 min-w-0">
+          <span className="block font-serif leading-snug" style={{ fontSize: 16, color: 'var(--ds-ink)' }}>
+            {q.text}
+          </span>
+          {open && (
+            <>
+              <span className="block font-serif leading-relaxed mt-2" style={{ fontSize: 15, color: 'var(--ds-ink-soft)' }}>
+                {ready ? q.answer : q.status === 'later' ? 'You will hear about it later!' : 'Still researching…'}
+              </span>
+              {ready && (
+                <span className="block mt-2" onClick={(e) => e.stopPropagation()}>
+                  <OpenAiSpeechBar text={q.answer || ''} title={q.title || q.text} autoplay={false} />
+                </span>
+              )}
+            </>
+          )}
+        </span>
+        <span className="shrink-0 mt-0.5" aria-hidden>
+          {ready ? (
+            <ChevronRightIcon width={16} height={16} />
+          ) : (
+            <span
+              className="block w-4 h-4 rounded-full border-2 animate-spin"
+              style={{ borderColor: 'var(--ds-blush)', borderTopColor: colour }}
+            />
+          )}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 function UnfiledSlide({ questions, onAdd }: {
   questions: { id: string; text: string; status: string; answer?: string; title?: string; summary?: string }[];
   onAdd?: (id: string, lens: PastCategory) => void;

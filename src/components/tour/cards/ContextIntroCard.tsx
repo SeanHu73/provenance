@@ -248,19 +248,21 @@ function LensFiling({
     <>
       <p
         className="font-serif italic leading-snug"
-        style={{ fontSize: 'clamp(20px, 5.4vw, 28px)', color: INK, maxWidth: '22ch' }}
+        style={{ fontSize: 'clamp(24px, 6.4vw, 34px)', color: INK, maxWidth: '20ch' }}
       >
-        Can you find a place in the <span className="font-bold not-italic">P.A.S.T.</span> for your questions?
+        Can you find a place in the{' '}
+        <span className="font-bold not-italic" style={{ color: CONTEXT_ACCENT }}>P.A.S.T.</span>{' '}
+        for your questions?
       </p>
 
-      <div className="mt-6 space-y-4 overflow-y-auto" style={{ maxHeight: '58vh' }}>
+      <div className="mt-10 space-y-6 overflow-y-auto" style={{ maxHeight: '54vh' }}>
         {questions.length === 0 ? (
           <p className="font-serif italic text-[15px]" style={{ color: INK, opacity: 0.6 }}>
             You have no questions waiting — you can ask one in the journal.
           </p>
         ) : questions.map((q) => (
           <div key={q.id}>
-            <p className="font-serif leading-snug" style={{ fontSize: 16, color: INK }}>{q.text}</p>
+            <p className="font-serif leading-snug" style={{ fontSize: 'clamp(18px, 4.8vw, 22px)', color: INK }}>{q.text}</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {LENSES.map((lens) => {
                 const on = filed[q.id] === lens.key;

@@ -730,9 +730,9 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
       <div className="flex-1 overflow-y-auto">
         {lensVariant === 'slider' ? (
           <PastPanelSlider
-            unfiledQuestions={investigationQuestions
-              .filter((q) => q.kind === 'contextual' && !q.lens && q.status !== 'failed')
-              .map((q) => ({ id: q.id, text: q.text, status: q.status, answer: q.answer, title: q.title, summary: q.summary }))}
+            ownQuestions={investigationQuestions
+              .filter((q) => q.kind === 'contextual' && q.status !== 'failed')
+              .map((q) => ({ id: q.id, text: q.text, status: q.status, lens: q.lens, answer: q.answer, title: q.title, summary: q.summary }))}
             onAddUnfiled={addUnfiledQuestion}
             entries={displayEntries}
             selectedRange={range}

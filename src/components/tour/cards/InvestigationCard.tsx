@@ -88,9 +88,9 @@ export default function InvestigationCard({ question, tourId, actId, onComplete 
         <div
           className="font-display leading-[0.95] tracking-tight"
           style={{
-            // 11vw, not 15 — INVESTIGATION is thirteen characters and was
-            // touching both edges on a narrow phone.
-            fontSize: 'clamp(34px, 11vw, 76px)',
+            // 12.2vw. INVESTIGATION is thirteen characters, so this is close to
+            // the ceiling — at 15vw it touched both edges on a narrow phone.
+            fontSize: 'clamp(38px, 12.2vw, 84px)',
             color: '#F59E0B',
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(16px)',
@@ -103,8 +103,8 @@ export default function InvestigationCard({ question, tourId, actId, onComplete 
           <p
             className="font-serif mt-8 leading-snug text-warm-white"
             style={{
-              fontSize: 'clamp(19px, 5.2vw, 28px)',
-              maxWidth: '26ch',
+              fontSize: 'clamp(22px, 6.1vw, 32px)',
+              maxWidth: '24ch',
               opacity: mounted ? 0.92 : 0,
               transform: mounted ? 'translateY(0)' : 'translateY(14px)',
               transition: 'opacity 900ms ease-out 1000ms, transform 900ms ease-out 1000ms',
@@ -128,13 +128,15 @@ export default function InvestigationCard({ question, tourId, actId, onComplete 
           className="font-serif leading-snug"
           style={{ fontSize: 'clamp(24px, 6.4vw, 34px)', fontWeight: 400, color: 'var(--text-primary)' }}
         >
-          What are a couple questions <em className="not-italic font-semibold" style={{ color: 'var(--th-primary)' }}>YOU</em> would ask to help you investigate&hellip;
+          What are a couple questions{' '}
+          <em className="not-italic font-semibold" style={{ color: 'var(--th-primary)' }}>YOU</em>{' '}
+          would ask to help you investigate&hellip;
         </h2>
         {question.trim() && (
           <p
             className="font-serif italic font-bold mt-7 leading-snug text-center mx-auto"
             style={{
-              fontSize: 'clamp(19px, 5.2vw, 25px)',
+              fontSize: 'clamp(21px, 5.8vw, 28px)',
               color: 'var(--ds-cardinal, #A33829)',
               maxWidth: '28ch',
             }}
