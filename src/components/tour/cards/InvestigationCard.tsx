@@ -30,7 +30,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import RecordButton from './RecordButton';
-import { startInvestigation } from '@/lib/investigation-store';
+import { beginInvestigation } from '@/lib/investigation-store';
 import type { InvestigationQuestion } from '@/lib/types';
 
 /** How long the title card holds before carrying them down. Long enough to read
@@ -48,7 +48,6 @@ interface Props {
 export default function InvestigationCard({ question, tourId, actId, onComplete }: Props) {
   const [mounted, setMounted] = useState(false);
   const [text, setText] = useState('');
-  const [busy, setBusy] = useState(false);
   const askRef = useRef<HTMLElement | null>(null);
   const scrolled = useRef(false);
 
@@ -64,26 +63,14 @@ export default function InvestigationCard({ question, tourId, actId, onComplete 
     return () => { cancelAnimationFrame(raf); window.clearTimeout(t); };
   }, []);
 
-  const submit = async () => {
+  // Nothing to wait for. The parse runs behind them while they walk to the first
+  // stop, and the list fills in on the session as it lands — so the button goes
+  // straight to the act rather than sitting on "One moment".
+  const submit = () => {
     const raw = text.trim();
-    if (!raw || busy) return;
-    setBusy(true);
-    let questions: InvestigationQuestion[] = [];
-    try {
-      const res = await fetch('/api/investigation', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ raw, tourId }),
-      });
-      questions = (await res.json()).questions || [];
-    } catch (err) {
-      // Losing their questions to a network blip would be the worst outcome
-      // here, since they never find out anything went wrong. Keep the raw text
-      // on the session even with nothing parsed — the admin can still read it.
-      console.error('[investigation] parse request failed:', err);
-    }
-    if (questions.length) startInvestigation({ tourId, actId, raw, questions });
-    onComplete({ raw, questions });
+    if (!raw) return;
+    beginInvestigation({ tourId, actId, raw });
+    onComplete({ raw, questions: [] });
   };
 
   if (typeof document === 'undefined') return null;
@@ -134,17 +121,20 @@ export default function InvestigationCard({ question, tourId, actId, onComplete 
         className="relative min-h-[100dvh] flex flex-col justify-center px-6 py-10"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always', backgroundColor: 'var(--th-bg)' }}
       >
+        {/* Serif and unbolded: this is a question being asked of them, not a
+            headline at them. The only emphasis is YOU, which is the whole point
+            of the sentence. */}
         <h2
-          className="font-display leading-tight"
-          style={{ fontSize: 'clamp(26px, 7vw, 40px)', color: 'var(--text-primary)' }}
+          className="font-serif leading-snug"
+          style={{ fontSize: 'clamp(24px, 6.4vw, 34px)', fontWeight: 400, color: 'var(--text-primary)' }}
         >
-          What are a couple questions <em className="not-italic" style={{ color: 'var(--th-primary)' }}>YOU</em> would ask to help you investigate?
+          What are a couple questions <em className="not-italic font-semibold" style={{ color: 'var(--th-primary)' }}>YOU</em> would ask to help you investigate&hellip;
         </h2>
         {question.trim() && (
           <p
-            className="font-serif italic mt-4 leading-snug text-center mx-auto"
+            className="font-serif italic font-bold mt-7 leading-snug text-center mx-auto"
             style={{
-              fontSize: 'clamp(17px, 4.6vw, 22px)',
+              fontSize: 'clamp(19px, 5.2vw, 25px)',
               color: 'var(--ds-cardinal, #A33829)',
               maxWidth: '28ch',
             }}
@@ -167,11 +157,11 @@ export default function InvestigationCard({ question, tourId, actId, onComplete 
 
         <button
           onClick={submit}
-          disabled={!text.trim() || busy}
+          disabled={!text.trim()}
           className="mt-5 w-full py-3.5 rounded-full text-[17px] font-semibold text-white disabled:opacity-40"
           style={{ backgroundColor: 'var(--th-primary)' }}
         >
-          {busy ? 'One moment…' : "Let's Explore!"}
+          Let&rsquo;s Explore!
         </button>
       </section>
     </div>,

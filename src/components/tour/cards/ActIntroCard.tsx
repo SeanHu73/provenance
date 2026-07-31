@@ -21,7 +21,7 @@ interface Props {
 
 /** How long the title holds before the map opens. Long enough to read "Act 2"
  *  and its guiding question, short enough not to feel like a wait. */
-const HOLD_MS = 3000;
+const HOLD_MS = 3500;
 
 export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props) {
   const [mounted, setMounted] = useState(false);

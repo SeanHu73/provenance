@@ -132,7 +132,7 @@ function pump() {
 
 // ── Public surface ──
 
-/** Begin the queue. Called once, the moment they press [Let's Explore!]. */
+/** Begin the queue with questions already parsed. */
 export function startInvestigation(input: {
   tourId: string;
   actId?: string;
@@ -148,6 +148,46 @@ export function startInvestigation(input: {
   };
   persist();
   pump();
+}
+
+/**
+ * Begin from the raw text, without waiting for it to be parsed.
+ *
+ * The parse is a real call — a Haiku pass plus an embedding batch for the
+ * spoiler check, measured at 2.4-3.5s — and making the learner watch a button
+ * say "One moment" for it was buying nothing. They are about to walk to a stop;
+ * the questions can be split while they do. So the raw text is recorded
+ * immediately, the tour moves on, and the list fills in underneath.
+ *
+ * If the parse fails the raw text still stands on the session, so the admin can
+ * read what they asked even when nothing was made of it.
+ */
+export function beginInvestigation(input: { tourId: string; actId?: string; raw: string }): void {
+  state = {
+    tourId: input.tourId,
+    actId: input.actId,
+    raw: input.raw,
+    submittedAt: new Date().toISOString(),
+    questions: [],
+  };
+  persist();
+  void (async () => {
+    try {
+      const res = await fetch('/api/investigation', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ raw: input.raw, tourId: input.tourId }),
+      });
+      const questions: InvestigationQuestion[] = (await res.json()).questions || [];
+      // Guard against a second submission having replaced this one mid-flight.
+      if (!state || state.raw !== input.raw) return;
+      state = { ...state, questions };
+      persist();
+      pump();
+    } catch (err) {
+      console.error('[investigation] parse failed; the raw text is still recorded:', err);
+    }
+  })();
 }
 
 /**
