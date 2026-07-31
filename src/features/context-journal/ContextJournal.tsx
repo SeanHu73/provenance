@@ -41,6 +41,7 @@ import { contextNarrationText } from '@/lib/tts-narration';
 import { AutoPlayMenuItem, DevJumpMenuItem, ResearchBackendMenuItem, PastReminderMenuItem } from '@/components/tour/TourMenu';
 import { useAdminUnlock } from '@/lib/admin-unlock';
 import { useDevJumpOn } from '@/lib/dev-jump';
+import { useInvestigation } from '@/lib/investigation-store';
 
 /** Comic ink shared with the P.A.S.T. lens buttons, for the "Ask" CTA's border
  *  + hard offset shadow (see PastLens). */
@@ -134,6 +135,9 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
   // continue, and the shared-contexts pool. They are the pedagogy, not plumbing, so
   // this is only for inspecting a stage without playing the tour to reach it.
   const devJump = useDevJumpOn();
+  // The learner's own opening questions. Filed ones go to their lens; the rest
+  // get the panel after T.
+  const { questions: investigationQuestions } = useInvestigation();
   // Five taps on the menu button reveals the admin rows (admin-unlock.ts).
   const [, tapAdmin] = useAdminUnlock();
   // Both the in-tour flow and the revisit overlay read/write the learner's
@@ -681,6 +685,9 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
       <div className="flex-1 overflow-y-auto">
         {lensVariant === 'slider' ? (
           <PastPanelSlider
+            unfiledQuestions={investigationQuestions
+              .filter((q) => q.kind === 'contextual' && !q.lens && q.status !== 'failed')
+              .map((q) => ({ id: q.id, text: q.text, status: q.status, answer: q.answer, title: q.title }))}
             entries={displayEntries}
             selectedRange={range}
             savedIds={savedIds}

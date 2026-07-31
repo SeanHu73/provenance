@@ -51,6 +51,11 @@ interface Props {
   onLensTintChange?: (colour: string | null) => void;
   /** Seed all lenses as already-seen (a returning learner, via back-nav). */
   initiallyAllSeen?: boolean;
+  /** The learner's own questions from the opening investigation that they did NOT
+   *  file into a lens. They get a panel of their own after T rather than being
+   *  dropped into one we picked — filing was theirs to do, and guessing on their
+   *  behalf would quietly undo the exercise. */
+  unfiledQuestions?: { id: string; text: string; status: string; answer?: string; title?: string }[];
 }
 
 /** A soft "lens" halo worn over the active P·A·S·T initial (the redesign's style):
@@ -80,8 +85,14 @@ function LensGlass({ colour, size }: { colour: string; size: number }) {
  *  active glyph swells and wears the lens glass (centred over it — the ✱ uses a
  *  neutral colour); the rest sit small and dimmed. Tapping a glyph jumps to it. */
 const STAR_COLOUR = 'var(--th-primary)';
-function PastIndicator({ active, onJump }: { active: number; onJump: (i: number) => void }) {
-  const items = [{ glyph: '✱', label: 'instructions', colour: STAR_COLOUR, key: null as string | null }, ...LENSES.map((l) => ({ glyph: l.label[0], label: l.label, colour: l.colour, key: l.key as string }))];
+function PastIndicator({ active, onJump, showUnfiled }: { active: number; onJump: (i: number) => void; showUnfiled: boolean }) {
+  const items = [
+    { glyph: '✱', label: 'instructions', colour: STAR_COLOUR, key: null as string | null },
+    ...LENSES.map((l) => ({ glyph: l.label[0], label: l.label, colour: l.colour, key: l.key as string })),
+    // The learner's unfiled questions, marked with an asterisk rather than a
+    // letter — it is not a fifth lens, it is the pile that has not been sorted yet.
+    ...(showUnfiled ? [{ glyph: '✻', label: 'your questions', colour: 'var(--th-primary)', key: '__unfiled__' as string }] : []),
+  ];
   return (
     <div className="flex items-end justify-center gap-1.5 select-none">
       {items.map((it, i) => {
@@ -175,13 +186,15 @@ const slideVariants = {
 export default function PastPanelSlider({
   entries, selectedRange, savedIds, focusedId, guidingQuestion, lockInfoById,
   onFocus, onToggleSave, onOpenFull, onAskLens, onAllSeenChange, onLensTintChange, initiallyAllSeen = false,
+  unfiledQuestions = [],
 }: Props) {
   // Deck index. 0 is the ✱ instructions panel; 1–4 are the lenses. Starts on the
   // instructions so "pick a lens" is the first thing they read.
   const [active, setActive] = useState(0);
   const [dir, setDir] = useState(0);
   const [cardOpen, setCardOpen] = useState(false);
-  const LAST = LENSES.length; // max index (4)
+  // One past the lenses when the learner has unfiled questions waiting.
+  const LAST = LENSES.length + (unfiledQuestions.length ? 1 : 0);
   // Which LENS indices (1–4) have been swiped to. The gate is "all four lenses
   // seen"; the instructions panel doesn't count. A returning learner is all-seen.
   const [seenLenses, setSeenLenses] = useState<Set<number>>(
@@ -196,8 +209,14 @@ export default function PastPanelSlider({
     return LENSES.map((lens) => ({ lens, items: inRange.filter((e) => e.pastCategory === lens.key) }));
   }, [entries, selectedRange]);
 
-  // Hand the shown lens's colour up so the page can tint its background.
-  const shownColour = active === 0 ? null : LENSES[active - 1].colour;
+  // Hand the shown lens's colour up so the page can tint its background. The
+  // unfiled panel washes in the theme red instead, so it reads as the tour's own
+  // rather than as a fifth lens.
+  const shownColour = active === 0
+    ? null
+    : active > LENSES.length
+      ? 'var(--th-primary)'
+      : LENSES[active - 1].colour;
   useEffect(() => { onLensTintChange?.(shownColour); }, [shownColour, onLensTintChange]);
 
   const goTo = (i: number) => {
@@ -215,8 +234,12 @@ export default function PastPanelSlider({
     else if (swipe > 70) goTo(active - 1);
   };
 
+  const unfiled = unfiledQuestions;
   const onInstructions = active === 0;
-  const { lens, items } = byLens[Math.max(0, active - 1)];
+  // The unfiled panel sits one past the last lens, and only exists when there is
+  // something in it — no empty tab for a learner who filed everything.
+  const onUnfiled = unfiled.length > 0 && active === LENSES.length + 1;
+  const { lens, items } = byLens[Math.min(LENSES.length - 1, Math.max(0, active - 1))];
   const questions = items.filter((e) => e.origin === 'authored');
   const added = items.filter((e) => e.origin !== 'authored');
 
@@ -242,14 +265,14 @@ export default function PastPanelSlider({
 
       {/* ✱·P·A·S·T indicator */}
       <div className="pt-2 pb-3.5">
-        <PastIndicator active={active} onJump={goTo} />
+        <PastIndicator active={active} onJump={goTo} showUnfiled={unfiled.length > 0} />
       </div>
 
       {/* the swipeable deck: instructions, then one lens at a time */}
       <div className="relative overflow-hidden">
         <AnimatePresence initial={false} custom={dir} mode="popLayout">
           <motion.div
-            key={onInstructions ? '__instructions__' : lens.key}
+            key={onInstructions ? '__instructions__' : onUnfiled ? '__unfiled__' : lens.key}
             custom={dir}
             variants={slideVariants}
             initial="enter"
@@ -264,6 +287,8 @@ export default function PastPanelSlider({
           >
             {onInstructions ? (
               <InstructionsSlide onNext={() => goTo(1)} />
+            ) : onUnfiled ? (
+              <UnfiledSlide questions={unfiled} />
             ) : (
               <LensSlide
                 lens={lens}
@@ -286,7 +311,11 @@ export default function PastPanelSlider({
       {/* swipe affordance: a dot per panel (✱ + four lenses), + a hint until seen */}
       <div className="mt-4 flex flex-col items-center gap-2">
         <div className="flex items-center gap-2">
-          {[{ key: '__star__', colour: STAR_COLOUR }, ...LENSES].map((l, i) => (
+          {[
+            { key: '__star__', colour: STAR_COLOUR },
+            ...LENSES,
+            ...(unfiledQuestions.length ? [{ key: '__unfiled__', colour: 'var(--th-primary)' }] : []),
+          ].map((l, i) => (
             <button
               key={l.key}
               onClick={() => goTo(i)}
@@ -629,6 +658,76 @@ function ContextCard({ entry, colour, active, saved, onTap, onToggleSave }: {
           <BookmarkButton saved={saved} onToggle={onToggleSave} colour={colour} />
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The learner's own questions that never got filed into a lens.
+ *
+ * A panel rather than a lens: filing was theirs to do on the onboarding screen,
+ * and quietly sorting the leftovers ourselves would undo the exercise. So they
+ * sit here, under the tour's own colour rather than any lens's, until the learner
+ * decides where they belong.
+ *
+ * No "ask your own question" pill. This panel is for questions they have already
+ * asked; inviting another one here reads as a prompt to abandon these.
+ */
+function UnfiledSlide({ questions }: {
+  questions: { id: string; text: string; status: string; answer?: string; title?: string }[];
+}) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  return (
+    <div
+      className="px-5 py-5 rounded-2xl mx-4"
+      style={{ backgroundColor: 'color-mix(in srgb, var(--th-primary) 7%, transparent)' }}
+    >
+      <p className="font-display leading-tight" style={{ fontSize: 'clamp(23px, 6.2vw, 30px)', color: 'var(--th-primary)' }}>
+        Your Context Questions
+      </p>
+      <p className="font-serif italic mt-0.5" style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+        Not categorised
+      </p>
+
+      <ul className="mt-4 space-y-2">
+        {questions.map((q) => {
+          const ready = q.status === 'answered' && !!q.answer;
+          const open = openId === q.id;
+          return (
+            <li key={q.id}>
+              <button
+                onClick={() => setOpenId(open ? null : q.id)}
+                className="w-full text-left flex items-start gap-3 px-4 py-3 rounded-xl"
+                style={{ backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)' }}
+              >
+                <span className="flex-1 min-w-0">
+                  <span className="block font-serif leading-snug" style={{ fontSize: 16, color: 'var(--text-primary)' }}>
+                    {q.text}
+                  </span>
+                  {open && (
+                    <span className="block font-serif leading-relaxed mt-2" style={{ fontSize: 15, color: 'var(--text-secondary)' }}>
+                      {ready ? q.answer : q.status === 'later' ? 'You will hear about it later!' : 'Still researching…'}
+                    </span>
+                  )}
+                </span>
+                {/* Where a locked authored question wears its padlock, one still in
+                    the queue wears a spinner — same slot, so the row reads as
+                    "not open yet" either way. */}
+                <span className="shrink-0 mt-0.5" aria-hidden>
+                  {ready ? (
+                    <ChevronRightIcon width={16} height={16} />
+                  ) : (
+                    <span
+                      className="block w-4 h-4 rounded-full border-2 animate-spin"
+                      style={{ borderColor: 'var(--th-border)', borderTopColor: 'var(--th-primary)' }}
+                    />
+                  )}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
