@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { useTour } from '@/context/TourContext';
 import { findActOfStop, getActs, getAdditionalStops, allReflectionPrompts, actReflectionsOf } from '@/lib/tour-session';
 import { CommunityShare, CommunityComment, ForumIdentity } from '@/lib/types';
@@ -329,6 +330,8 @@ export default function HearFromCommunityCard({ onComplete }: Props) {
 function ShareCard({ share, tourId, sessionId, upvoted, count, onUpvote }: {
   share: CommunityShare; tourId: string; sessionId: string; upvoted: boolean; count: number; onUpvote: () => void;
 }) {
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [pinOpen, setPinOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [comments, setComments] = useState<CommunityComment[]>([]);
 
@@ -377,20 +380,35 @@ function ShareCard({ share, tourId, sessionId, upvoted, count, onUpvote }: {
         {share.text}
       </p>
 
+      {/* Both open. A thumbnail of something someone walked to and photographed is
+          worth looking at properly, and a pin they dropped is worth being able to
+          go and stand on — neither of which a 20px square and a line of text
+          allowed. */}
       {share.photos && share.photos.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2">
           {share.photos.map((url, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={i} src={url} alt="" className="w-20 h-20 rounded-lg object-cover" />
+            <button key={i} onClick={() => setLightbox(url)} className="block w-20 h-20 rounded-lg overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" className="w-full h-full object-cover" />
+            </button>
           ))}
         </div>
       )}
 
       {share.pin && (
-        <div className="mt-2 inline-flex items-start gap-1.5 text-[14px]" style={{ color: 'var(--text-secondary)' }}>
+        <button
+          onClick={() => setPinOpen(true)}
+          className="mt-2 inline-flex items-start gap-1.5 text-[14px] text-left underline decoration-dotted underline-offset-2"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="mt-0.5 shrink-0"><path d="M12 21s-7-7.5-7-13a7 7 0 0 1 14 0c0 5.5-7 13-7 13z" /></svg>
           <span><span className="font-semibold">{share.pin.title || 'Their spot'}</span>{share.pin.note ? ` — ${share.pin.note}` : ''}</span>
-        </div>
+        </button>
+      )}
+
+      {lightbox && <PhotoLightbox url={lightbox} onClose={() => setLightbox(null)} />}
+      {pinOpen && share.pin && (
+        <SharePinMap pin={share.pin} title={share.pin.title || 'Their spot'} onClose={() => setPinOpen(false)} />
       )}
 
       {/* Footer: the comment count opens the thread; the upvote sits beside it. */}
@@ -533,6 +551,88 @@ function NameShareSheet({ defaultName, onShare, onCancel }: { defaultName: strin
           Share with the community
         </button>
         <button onClick={onCancel} className="w-full text-center text-sm py-1" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+
+/** A shared photo, full size. Tap anywhere to close — there is nothing else to do
+ *  here, so a dedicated target would only be something else to aim at. */
+function PhotoLightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.92)' }}
+      onClick={onClose}
+      role="button"
+      tabIndex={-1}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt="" className="max-w-full max-h-full object-contain rounded-lg" />
+      <span className="absolute top-5 right-5 text-white/80 text-[13px]">Tap to close</span>
+    </div>
+  );
+}
+
+/** Where they stood. Read-only, plus a way out to a real maps app — someone who
+ *  wants to go and see it needs directions, which this cannot give. */
+function SharePinMap({ pin, title, onClose }: {
+  pin: { lat: number; lng: number };
+  title: string;
+  onClose: () => void;
+}) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  return (
+    <div className="fixed inset-0 z-[90] flex flex-col" style={{ backgroundColor: 'var(--th-surface)' }}>
+      <header className="shrink-0 flex items-center justify-between gap-3 px-5 py-4 border-b" style={{ borderColor: 'var(--th-border)' }}>
+        <div className="min-w-0">
+          <p className="font-display font-bold text-[19px] leading-tight truncate" style={{ color: 'var(--th-primary)' }}>{title}</p>
+          <p className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>
+            {pin.lat.toFixed(5)}, {pin.lng.toFixed(5)}
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ backgroundColor: 'var(--th-bg)', color: 'var(--text-primary)' }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </header>
+
+      <div className="flex-1 min-h-0">
+        {apiKey ? (
+          <APIProvider apiKey={apiKey}>
+            <GoogleMap
+              defaultCenter={pin}
+              defaultZoom={18}
+              gestureHandling="greedy"
+              disableDefaultUI
+              mapId="community-pin"
+              style={{ width: '100%', height: '100%' }}
+            >
+              <AdvancedMarker position={pin} />
+            </GoogleMap>
+          </APIProvider>
+        ) : (
+          <p className="p-5 text-[14px]" style={{ color: 'var(--text-secondary)' }}>The map is unavailable.</p>
+        )}
+      </div>
+
+      <div className="shrink-0 px-5 py-4 border-t" style={{ borderColor: 'var(--th-border)' }}>
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${pin.lat},${pin.lng}`}
+          target="_blank"
+          rel="noreferrer"
+          className="block w-full py-3 rounded-full text-center text-[16px] font-semibold text-white"
+          style={{ backgroundColor: 'var(--th-primary)' }}
+        >
+          Open in Maps
+        </a>
       </div>
     </div>
   );

@@ -26,6 +26,9 @@ import { getActs } from '@/lib/tour-session';
 import { getActiveStops } from '@/lib/tours-store';
 import type { ResearchBackend, Stop, TourPhase } from '@/lib/types';
 
+/** How long a self-opened hint stays up. */
+const HINT_MS = 4000;
+
 /** One jumpable destination. `stopIndex` is required for anything inside an act —
  *  the act is derived from the stop the session is parked on, so a phase alone is
  *  not enough to say *which* act's Context step you meant. */
@@ -392,6 +395,22 @@ export default function TourMenu({ inline = false, onDark = false }: { inline?: 
     if (hint) clearHint();
     if (factsHint) clearFactsHint();
   };
+
+  // A hint that opened the menu closes it again after four seconds. Long enough
+  // to read one line, short enough that it never sits over the tour waiting to be
+  // dismissed. Tapping the button sets `open`, which outlives the hint — so a
+  // learner who is reading the menu is not interrupted by their own timer.
+  useEffect(() => {
+    if (!hint && !factsHint) return;
+    const t = window.setTimeout(() => {
+      if (hint) clearHint();
+      if (factsHint) clearFactsHint();
+    }, HINT_MS);
+    return () => window.clearTimeout(t);
+    // clearHint/clearFactsHint are recreated each render; the hint flags are the
+    // real trigger and re-arming on their identity would restart the timer forever.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hint, factsHint]);
   // Five taps on this button reveals the admin rows (see admin-unlock.ts). It
   // rides along with the normal open/close, so the gesture needs no affordance
   // and a stray double-tap reads as exactly what it looks like.

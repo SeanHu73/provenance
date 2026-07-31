@@ -158,20 +158,6 @@ export default function ActReflectionCard({ onSave, onDone }: Props) {
                     className="shrink-0 w-[85%] rounded-2xl px-6 py-8 text-center shadow-md flex flex-col items-center justify-center"
                     style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)', minHeight: '54vh' }}
                   >
-                    {/* This one asks for something different from the others — a
-                        photograph of a real thing, not a written thought — so the
-                        card says so before they commit to it. */}
-                    {p.kind === 'evidence' && (
-                      <span
-                        className="mb-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold uppercase tracking-[0.12em]"
-                        style={{ backgroundColor: 'color-mix(in srgb, var(--th-primary) 12%, transparent)', color: 'var(--th-primary)' }}
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" />
-                        </svg>
-                        Photo &amp; place
-                      </span>
-                    )}
                     {p.photoUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.photoUrl} alt="" className="w-full max-h-44 object-cover rounded-xl mb-6" />
@@ -392,7 +378,7 @@ function EvidenceStep({ n, label, done, children }: {
         >
           {done ? '✓' : n}
         </span>
-        <span className="font-semibold text-[15px]" style={{ color: 'var(--text-primary)' }}>{label}</span>
+        <span className="font-serif" style={{ fontSize: 17, color: 'var(--text-primary)' }}>{label}</span>
       </div>
       {children}
     </div>
