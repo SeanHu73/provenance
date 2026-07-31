@@ -10,7 +10,7 @@
  * fixed` is scoped to a transformed parent otherwise (see Build_State §7).
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 interface Props {
@@ -29,11 +29,19 @@ export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props)
   // No button. This screen only names the act, and asking someone to confirm
   // they have read two lines put a tap between them and the tour for nothing —
   // it advances itself, and a tap anywhere skips the wait.
+  //
+  // `onComplete` is held in a ref and the effect runs ONCE. It came from the tour
+  // context, where it is rebuilt whenever the session changes — and the session
+  // changes constantly right after the opening investigation, as each answer
+  // lands and is written back. With `[onComplete]` in the deps that tore down and
+  // restarted the timer every time, so it never fired and the screen hung.
+  const doneRef = useRef(onComplete);
+  doneRef.current = onComplete;
   useEffect(() => {
     const raf = requestAnimationFrame(() => setMounted(true));
-    const t = setTimeout(onComplete, HOLD_MS);
+    const t = setTimeout(() => doneRef.current(), HOLD_MS);
     return () => { cancelAnimationFrame(raf); clearTimeout(t); };
-  }, [onComplete]);
+  }, []);
 
   if (typeof document === 'undefined') return null;
 
