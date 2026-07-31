@@ -476,12 +476,18 @@ export function reflectionPromptsOf(act: Act | null): ReflectionPrompt[] {
   return legacy ? [{ id: 'legacy', prompt: legacy }] : [];
 }
 
-/** Every act's reflection prompts, in act order, for the one closing reflection
- *  that now replaces the per-act ones. Nothing an act authored is dropped: ids
- *  are namespaced by act so two acts' legacy prompts can't collide, and the act
- *  each prompt came from rides along (responses are still filed under it). */
+/** The prompts for the tour's one closing reflection.
+ *
+ *  Authored on the tour (`tour.reflectionPrompts`) — reflection is the tour's
+ *  closing stage, so that is where the admin writes them. Tours authored before
+ *  the move have them on their acts instead: those are merged in act order, with
+ *  ids namespaced by act so two acts' legacy prompts can't collide, and the act
+ *  each came from riding along (responses stay filed under it). Nothing an act
+ *  authored is dropped. */
 export function allReflectionPrompts(tour: Tour | null): MergedReflectionPrompt[] {
   if (!tour) return [];
+  const authored = (tour.reflectionPrompts ?? []).filter((p) => p.prompt.trim());
+  if (authored.length) return authored;
   const out: MergedReflectionPrompt[] = [];
   const seen = new Set<string>();
   getActs(tour).forEach((act, i) => {

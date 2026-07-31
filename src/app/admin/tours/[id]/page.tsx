@@ -19,7 +19,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { APIProvider, Map as GoogleMap, AdvancedMarker } from '@vis.gl/react-google-maps';
-import { Tour, Stop, Detour, StopPhoto, Act, ActContextItem, AdditionalStop, TourMode } from '@/lib/types';
+import { Tour, Stop, Detour, StopPhoto, Act, ActContextItem, AdditionalStop, TourMode, ReflectionPrompt } from '@/lib/types';
+import { allReflectionPrompts } from '@/lib/tour-session';
 import { ttsSanitize, hashText } from '@/lib/tts-text';
 import { contextNarrationText } from '@/lib/tts-narration';
 import { fetchTtsBlob } from '@/lib/tts-client';
@@ -429,26 +430,33 @@ export default function TourEditorPage() {
     [next[idx], next[swap]] = [next[swap], next[idx]];
     setTargetContexts(t, next);
   };
-  const addReflectionPrompt = (actId: string) => {
-    const act = (tour?.acts || []).find((a) => a.id === actId);
-    updateAct(actId, { reflectionPrompts: [...(act?.reflectionPrompts ?? []), { id: makeCtxId(), prompt: '' }] });
-  };
-  const updateReflectionPrompt = (actId: string, promptId: string, prompt: string) => {
-    const act = (tour?.acts || []).find((a) => a.id === actId);
-    updateAct(actId, { reflectionPrompts: (act?.reflectionPrompts ?? []).map((p) => (p.id === promptId ? { ...p, prompt } : p)) });
-  };
-  const removeReflectionPrompt = (actId: string, promptId: string) => {
-    const act = (tour?.acts || []).find((a) => a.id === actId);
-    updateAct(actId, { reflectionPrompts: (act?.reflectionPrompts ?? []).filter((p) => p.id !== promptId) });
-  };
-  const setReflectionPromptPhoto = async (actId: string, promptId: string, file: File) => {
+  // ── Closing reflection prompts (tour-level) ──
+  // Reflection is the tour's closing stage, so its prompts are authored once
+  // here. Tours written before the move carry them on their acts: those are read
+  // through allReflectionPrompts, so they show up in this list already and the
+  // first edit writes the whole set to the tour — keeping their act-namespaced
+  // ids, which is what already-recorded community responses are grouped by.
+  const closingPrompts: ReflectionPrompt[] = tour?.reflectionPrompts
+    ?? allReflectionPrompts(tour ?? null).map((p) => ({ id: p.id, prompt: p.prompt, photoUrl: p.photoUrl }));
+  const setClosingPrompts = (list: ReflectionPrompt[]) => updateField('reflectionPrompts', list);
+  const addReflectionPrompt = () => setClosingPrompts([...closingPrompts, { id: makeCtxId(), prompt: '' }]);
+  const updateReflectionPrompt = (promptId: string, prompt: string) =>
+    setClosingPrompts(closingPrompts.map((p) => (p.id === promptId ? { ...p, prompt } : p)));
+  const removeReflectionPrompt = (promptId: string) =>
+    setClosingPrompts(closingPrompts.filter((p) => p.id !== promptId));
+  const setReflectionPromptPhoto = async (promptId: string, file: File) => {
     const url = await uploadPhoto(file, `memorial-church/photos/tours/${tourId}/reflection_${promptId}_${file.name}`);
-    const act = (tour?.acts || []).find((a) => a.id === actId);
-    updateAct(actId, { reflectionPrompts: (act?.reflectionPrompts ?? []).map((p) => (p.id === promptId ? { ...p, photoUrl: url } : p)) });
+    setClosingPrompts(closingPrompts.map((p) => (p.id === promptId ? { ...p, photoUrl: url } : p)));
   };
-  const clearReflectionPromptPhoto = (actId: string, promptId: string) => {
-    const act = (tour?.acts || []).find((a) => a.id === actId);
-    updateAct(actId, { reflectionPrompts: (act?.reflectionPrompts ?? []).map((p) => (p.id === promptId ? { ...p, photoUrl: null } : p)) });
+  const clearReflectionPromptPhoto = (promptId: string) =>
+    setClosingPrompts(closingPrompts.map((p) => (p.id === promptId ? { ...p, photoUrl: null } : p)));
+  const moveReflectionPrompt = (promptId: string, direction: -1 | 1) => {
+    const idx = closingPrompts.findIndex((p) => p.id === promptId);
+    const to = idx + direction;
+    if (idx < 0 || to < 0 || to >= closingPrompts.length) return;
+    const next = [...closingPrompts];
+    [next[idx], next[to]] = [next[to], next[idx]];
+    setClosingPrompts(next);
   };
   /** Clear the legacy end-of-act `act.context` (still shown to learners via the
    *  getActContexts migration, but with no other admin UI to remove it). */
@@ -2192,49 +2200,6 @@ export default function TourEditorPage() {
                       ) : undefined}
                     />
 
-                    {/* Reflection prompts — the end-of-act "Share Your Thoughts" cards */}
-                    <div className="rounded border border-stone-300 bg-white p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-stone-600 uppercase tracking-wide">Reflection prompts</p>
-                        <button onClick={() => addReflectionPrompt(act.id)} className="px-2.5 py-1 rounded bg-emerald-700 text-white text-xs hover:bg-emerald-800">+ Add prompt</button>
-                      </div>
-                      <p className="text-[10px] text-stone-400">Shown after the context step as swipeable &ldquo;Share Your Thoughts&rdquo; cards. The learner picks one (or writes their own). Add several to offer a choice.</p>
-                      {(act.reflectionPrompts ?? []).length === 0 ? (
-                        <p className="text-xs text-stone-400 italic">No prompts yet — learners will only see the &ldquo;create your own&rdquo; card.</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {(act.reflectionPrompts ?? []).map((p, pi) => (
-                            <li key={p.id} className="flex items-start gap-2">
-                              <span className="text-[10px] font-mono text-stone-400 mt-2">{pi + 1}</span>
-                              <div className="flex-1 space-y-1.5">
-                                <textarea
-                                  value={p.prompt}
-                                  onChange={(e) => updateReflectionPrompt(act.id, p.id, e.target.value)}
-                                  placeholder="e.g. What surprised you most about this place?"
-                                  rows={2}
-                                  className="w-full px-2 py-1 border border-stone-300 rounded text-sm bg-white"
-                                />
-                                <div className="flex items-center gap-2">
-                                  {p.photoUrl ? (
-                                    <>
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={p.photoUrl} alt="" className="w-12 h-12 rounded object-cover border border-stone-200" />
-                                      <button onClick={() => clearReflectionPromptPhoto(act.id, p.id)} className="text-xs text-red-600 hover:underline">Remove photo</button>
-                                    </>
-                                  ) : (
-                                    <label className="text-xs text-blue-700 hover:underline cursor-pointer">
-                                      + Add photo (optional)
-                                      <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void setReflectionPromptPhoto(act.id, p.id, f); e.target.value = ''; }} />
-                                    </label>
-                                  )}
-                                </div>
-                              </div>
-                              <button onClick={() => removeReflectionPrompt(act.id, p.id)} className="text-xs text-red-600 hover:underline shrink-0 mt-1.5">Remove</button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
                   </div>
                 );
               })}
@@ -2330,6 +2295,58 @@ export default function TourEditorPage() {
                 upDisabled: idx === 0,
                 downDisabled: idx === activeStops.length - 1,
               }))}
+            </ul>
+          )}
+        </section>
+
+        {/* Closing reflection — the tour's one "Share Your Thoughts" page. */}
+        <section className="mb-8 p-4 rounded border-2 border-emerald-300 bg-emerald-50/40 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-sm text-stone-700 uppercase tracking-wide">Closing reflection prompts</h2>
+            <button onClick={addReflectionPrompt} className="px-2.5 py-1 rounded bg-emerald-700 text-white text-xs hover:bg-emerald-800">+ Add prompt</button>
+          </div>
+          <p className="text-[11px] text-stone-500 leading-snug">
+            Shown once, after the last act&apos;s context step, as swipeable &ldquo;Share Your Thoughts&rdquo; cards. The explorer
+            picks one, responds, and can answer as many more as they like — or write their own prompt. The community screen
+            that follows groups everyone&apos;s responses under the prompt each one answers.
+          </p>
+          {closingPrompts.length === 0 ? (
+            <p className="text-xs text-stone-400 italic">No prompts yet — explorers will only see the &ldquo;create your own&rdquo; card.</p>
+          ) : (
+            <ul className="space-y-2">
+              {closingPrompts.map((p, pi) => (
+                <li key={p.id} className="flex items-start gap-2 rounded border border-stone-300 bg-white p-2.5">
+                  <div className="flex flex-col items-center gap-0.5 mt-1">
+                    <button onClick={() => moveReflectionPrompt(p.id, -1)} disabled={pi === 0} className="text-stone-400 hover:text-stone-700 disabled:opacity-25 text-[11px] leading-none">▲</button>
+                    <span className="text-[10px] font-mono text-stone-400">{pi + 1}</span>
+                    <button onClick={() => moveReflectionPrompt(p.id, 1)} disabled={pi === closingPrompts.length - 1} className="text-stone-400 hover:text-stone-700 disabled:opacity-25 text-[11px] leading-none">▼</button>
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    <textarea
+                      value={p.prompt}
+                      onChange={(e) => updateReflectionPrompt(p.id, e.target.value)}
+                      placeholder="e.g. What surprised you most about this place?"
+                      rows={2}
+                      className="w-full px-2 py-1 border border-stone-300 rounded text-sm bg-white"
+                    />
+                    <div className="flex items-center gap-2">
+                      {p.photoUrl ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={p.photoUrl} alt="" className="w-12 h-12 rounded object-cover border border-stone-200" />
+                          <button onClick={() => clearReflectionPromptPhoto(p.id)} className="text-xs text-red-600 hover:underline">Remove photo</button>
+                        </>
+                      ) : (
+                        <label className="text-xs text-blue-700 hover:underline cursor-pointer">
+                          + Add photo (optional)
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void setReflectionPromptPhoto(p.id, f); e.target.value = ''; }} />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                  <button onClick={() => removeReflectionPrompt(p.id)} className="text-xs text-red-600 hover:underline shrink-0 mt-1.5">Remove</button>
+                </li>
+              ))}
             </ul>
           )}
         </section>

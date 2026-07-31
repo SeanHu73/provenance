@@ -518,13 +518,13 @@ export interface ActReflectionResponse {
   taggedContexts?: { id: string; title: string }[];
 }
 
-/** One end-of-tour reflection prompt, merged out of every act. The closing
- *  reflection offers all the acts' prompts on one page, so each carries the act
- *  it was authored on (responses are still filed under that act). */
+/** One prompt on the closing reflection page. Prompts authored on the tour carry
+ *  no act; ones merged out of a legacy tour's acts carry the act they came from,
+ *  so responses stay filed under it. */
 export interface MergedReflectionPrompt extends ReflectionPrompt {
-  actId: string;
+  actId?: string;
   /** 1-based act number, for the card's label. */
-  actNumber: number;
+  actNumber?: number;
 }
 
 /** One context question the explorer asked (and the AI's answer, once wired). */
@@ -671,6 +671,11 @@ export interface Tour {
   contextStops?: Stop[];
   // Ordered Acts for context mode. Each references stop IDs in `contextStops`.
   acts?: Act[];
+  /** Prompts offered on the tour's one closing reflection ("Share Your
+   *  Thoughts"), authored here rather than per act — reflection is the tour's
+   *  closing stage. Absent on tours authored before the move, where the acts'
+   *  own `reflectionPrompts` are merged instead (allReflectionPrompts). */
+  reflectionPrompts?: ReflectionPrompt[];
   // Optional post-tour "additional stops" (context mode): stops pulled out of the
   // guided acts, explored freely from a menu after the last act. Each references a
   // stop in `contextStops` by id and carries its own P.A.S.T. contexts.
