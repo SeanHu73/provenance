@@ -2,8 +2,8 @@
 
 /**
  * Context-Prototype — the "Act N: Title" title card shown at the start of
- * each act. Fades the whole screen to black, holds for ~4s, then advances.
- * Tapping advances early.
+ * each act. Fades the whole screen to black, holds, then opens the map on its
+ * own. Tapping anywhere advances early.
  *
  * Rendered via a portal to document.body so the fixed full-screen overlay
  * escapes the Journal's transformed (framer-motion) ancestor — `position:
@@ -19,20 +19,21 @@ interface Props {
   onComplete: () => void;
 }
 
+/** How long the title holds before the map opens. Long enough to read "Act 2"
+ *  and its guiding question, short enough not to feel like a wait. */
+const HOLD_MS = 3000;
+
 export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props) {
   const [mounted, setMounted] = useState(false);
-  // The screen no longer auto-advances — a "Ready to explore?" button fades in
-  // so the learner confirms they've read it.
-  const [showButton, setShowButton] = useState(false);
 
+  // No button. This screen only names the act, and asking someone to confirm
+  // they have read two lines put a tap between them and the tour for nothing —
+  // it advances itself, and a tap anywhere skips the wait.
   useEffect(() => {
     const raf = requestAnimationFrame(() => setMounted(true));
-    // 1.2s. Longer and the only control on the screen is missing for long enough
-    // that it reads as stuck; much shorter and it arrives before the title has
-    // landed, which reads as a screen that skipped its own entrance.
-    const t = setTimeout(() => setShowButton(true), 1200);
+    const t = setTimeout(onComplete, HOLD_MS);
     return () => { cancelAnimationFrame(raf); clearTimeout(t); };
-  }, []);
+  }, [onComplete]);
 
   if (typeof document === 'undefined') return null;
 
@@ -40,6 +41,11 @@ export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props)
     <div
       className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black select-none px-8 text-center"
       style={{ opacity: mounted ? 1 : 0, transition: 'opacity 600ms ease-in' }}
+      onClick={onComplete}
+      role="button"
+      tabIndex={0}
+      aria-label={`Act ${actNumber}. Tap to continue.`}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onComplete(); } }}
     >
       <div
         style={{
@@ -74,21 +80,6 @@ export default function ActIntroCard({ actNumber, actTitle, onComplete }: Props)
         )}
       </div>
 
-      {/* Ready button — fades in to confirm they've read the screen */}
-      <button
-        onClick={onComplete}
-        className="mt-12 px-8 py-3.5 rounded-full text-lg font-semibold"
-        style={{
-          backgroundColor: '#F59E0B',
-          color: '#1a1a1a',
-          opacity: showButton ? 1 : 0,
-          transform: showButton ? 'translateY(0)' : 'translateY(10px)',
-          pointerEvents: showButton ? 'auto' : 'none',
-          transition: 'opacity 600ms ease-out, transform 600ms ease-out',
-        }}
-      >
-        Ready to explore?
-      </button>
     </div>,
     document.body,
   );
