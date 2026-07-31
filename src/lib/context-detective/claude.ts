@@ -602,6 +602,8 @@ ${raw}
 
 // ── Factual answer (Sonnet + search) — short, plain, sourced ──
 
+const wordsIn = (t: string) => (t || '').trim().split(/\s+/).filter(Boolean).length;
+
 export interface FactualOutput {
   answer: string;
   /** What the model chose to cite. Often empty even after a good search. */
@@ -630,7 +632,11 @@ const FACTUAL_SCHEMA = {
 
 const factualSystem = (maxWords: number) => `You answer one factual question about a place, plainly and briefly, for someone standing in front of it.
 
-ANSWER PLAINLY. State the fact and stop. No preamble, no "great question", no restating the question, no explanation of why it matters, no invitation to explore further. If the question is small — "who designed the church" — the answer is one sentence. Never more than ${maxWords} words.
+ONE SENTENCE. TWO AT THE ABSOLUTE MOST, and only when the question genuinely has two answers. Never more than ${maxWords} words. State the fact and stop: no preamble, no "great question", no restating the question, no invitation to explore further.
+
+THE SECOND SENTENCE IS ALMOST ALWAYS A MISTAKE. It is where explanation creeps in — why it mattered, what it led to, what was happening at the time. None of that belongs here. Another part of this app builds that answer properly, at length, and it does it far better than a trailing sentence can. If the fact seems to need context to make sense, give the fact anyway; the context is not yours to give.
+
+The learner can ask again. They will be asking several questions, and a follow-up costs them nothing — so answering more than was asked buys nothing and spends the difference between a quick fact and a real context, which this app is built on. If your answer reads like a short version of a context answer, it is the wrong answer: delete everything but the fact.
 
 Write to be heard, not read: no markdown, no lists, no parentheses.
 
@@ -656,7 +662,7 @@ export async function factualAnswer(
     + (domains.length ? `Sites worth checking first for this tour: ${domains.join(', ')}
 
 ` : '')
-    + `Search, then answer in at most ${maxWords} words — one sentence if that is all the question needs. `
+    + `Search, then answer in one sentence — two only if the question truly has two answers — and at most ${maxWords} words. `
     + `Return the answer and the pages you used. If you cannot settle it, return an empty answer.`;
   try {
     const resp = await callClaude({
@@ -687,8 +693,37 @@ export async function factualAnswer(
       })))
       .filter((r) => r.url);
 
+    let answer = out.answer || '';
+
+    // Counted, with one pushback. A stated ceiling is a preference — measured
+    // elsewhere in this codebase, answers ran 10% over a limit they were told
+    // twice. Only pays the extra call when it actually overruns.
+    if (wordsIn(answer) > maxWords) {
+      const before = wordsIn(answer);
+      const cut = await callClaude({
+        model: SONNET,
+        max_tokens: 600,
+        system: cachedSystem(factualSystem(maxWords)),
+        output_config: { effort: 'low', format: { type: 'json_schema', schema: FACTUAL_SCHEMA } },
+        messages: [
+          { role: 'user', content: user },
+          { role: 'assistant', content: text },
+          { role: 'user', content: `That is ${before} words. Cut it to ${maxWords} at most — one sentence if you can. `
+            + `Drop the explanation, not the fact. Keep the same sources.` },
+        ],
+      }).catch(() => null);
+      const retry = cut && ((cut.content || []) as Json[]).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+      if (retry) {
+        try {
+          const shorter = JSON.parse(retry) as FactualOutput;
+          if (shorter.answer?.trim() && wordsIn(shorter.answer) < before) answer = shorter.answer;
+        } catch { /* keep the long one rather than none */ }
+      }
+      console.log(`[factual]   length: ${before}w → ${wordsIn(answer)}w (cap ${maxWords})`);
+    }
+
     return {
-      answer: out.answer || '',
+      answer,
       sources: Array.isArray(out.sources) ? out.sources : [],
       searched,
     };

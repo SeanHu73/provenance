@@ -27,8 +27,18 @@ import { factualAnswer } from '@/lib/context-detective/claude';
 
 export const maxDuration = 120;
 
-/** Word ceiling on the answer, counted rather than hoped for. */
-const MAX_WORDS = 100;
+/**
+ * Word ceiling on the answer — a sentence, or two when the question genuinely has
+ * two answers. Counted in `factualAnswer`, which pushes back once when a draft
+ * runs over rather than trusting the instruction.
+ *
+ * Was 100, which bought a whole second and third sentence, and that is where
+ * explanation crept in: why it mattered, what it led to. At that length a lookup
+ * starts reading like a thin version of a context answer, which is the one thing
+ * it must not be — if an answer needs that, the question was a context question
+ * and belongs in the Detective's pipeline instead.
+ */
+const MAX_WORDS = 40;
 
 /**
  * Hostnames we will show a learner, and ones we won't.
