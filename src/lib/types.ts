@@ -1117,6 +1117,9 @@ export interface TourSession {
     sliderValue: number;              // 0–1
     followUpResponse: string | null;  // Text of selected option, or null
   }>;
+  /** The opening "Your Investigation" stage — their own questions, asked before
+   *  they explored anything, and whatever we found for them. */
+  investigation?: Investigation;
   bankedQuestions: BankedQuestion[];
   detourVisits: Array<{ stopId: string; detourId: string; timestamp: string }>;
   essentialQuestionResponses: {
@@ -1161,6 +1164,54 @@ export interface TourSession {
   viewedContexts?: ViewedContext[];
   startedAt: string;
   completedAt: string | null;
+}
+
+/**
+ * A question the learner posed at the very start, on the "Your Investigation"
+ * screen, before they had explored anything.
+ *
+ * They write or dictate several at once, so one submission becomes several of
+ * these: the raw text is split, near-identical questions are merged (the ones
+ * folded in are kept in `mergedFrom`, so nothing they said is silently thrown
+ * away), and each is classified.
+ *
+ * `factual` questions get a short plain answer from a light search; `contextual`
+ * ones go through the full Context Detective. The learner is NOT told any of this
+ * is happening — the answers are simply waiting for them at the end of Act 1.
+ */
+export type InvestigationQuestionKind = 'factual' | 'contextual';
+
+export interface InvestigationQuestion {
+  id: string;
+  /** The question as parsed out of what they wrote or said. */
+  text: string;
+  kind: InvestigationQuestionKind;
+  /** Near-identical questions folded into this one, verbatim as they wrote them. */
+  mergedFrom?: string[];
+  /** `later` means the tour covers this in an act still to come, so we answer
+   *  "You will hear about it later!" rather than spoiling it. */
+  status: 'pending' | 'researching' | 'answered' | 'later' | 'failed';
+  /** Factual: the plain answer. Contextual: the voiced narrative. */
+  answer?: string;
+  /** Contextual answers also carry a title and summary, for the journal card. */
+  title?: string;
+  summary?: string;
+  sources?: { label: string; url: string }[];
+  /** Which P.A.S.T. lens the learner filed it under (contextual only, chosen by
+   *  them on the categorisation screen — never by us). */
+  lens?: PastLens;
+  /** Ticked off at the end of Act 1 as "I heard this answered on the tour". */
+  heard?: boolean;
+  answeredAt?: string;
+}
+
+/** Everything from the opening investigation stage, kept on the session so the
+ *  admin can read what learners asked cold and promote the good answers. */
+export interface Investigation {
+  /** Exactly what they typed or dictated, before any parsing. */
+  raw: string;
+  questions: InvestigationQuestion[];
+  submittedAt: string;
 }
 
 export interface BankedQuestion {

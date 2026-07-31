@@ -516,3 +516,144 @@ export async function frameQuestion(system: string, userText: string): Promise<F
   }
 }
 
+// ── Investigation parsing (Haiku) — split, merge, classify ──
+
+export interface ParsedInvestigationQuestion {
+  text: string;
+  kind: 'factual' | 'contextual';
+  /** The original wordings folded into this one, if it merged duplicates. */
+  mergedFrom: string[];
+}
+
+const INVESTIGATION_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    questions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          text: { type: 'string' },
+          kind: { type: 'string', enum: ['factual', 'contextual'] },
+          mergedFrom: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['text', 'kind', 'mergedFrom'],
+      },
+    },
+  },
+  required: ['questions'],
+};
+
+const INVESTIGATION_SYSTEM = `You split a learner's opening questions into a clean list, before a history tour begins.
+
+They have written or dictated several questions at once, often as one run-on stretch of speech with no punctuation. Your job is mechanical and fast. Do not answer anything.
+
+SPLIT: one entry per question they actually asked. Repair dictation lightly — capitalisation, an added question mark, an obvious mis-transcription — but never rewrite what they asked into a better question. Their wording is the record.
+
+MERGE: fold near-identical questions into one entry and list every original wording in mergedFrom. "Who built it" and "who was it built by" are one question. "Who built it" and "when was it built" are two. When nothing merged, mergedFrom is an empty array.
+
+CLASSIFY each entry:
+- "factual" — a lookup with a settled answer. Who designed it, when was it finished, how many people, what is it called, is it still used.
+- "contextual" — asks why things were as they were, or what made them possible: motives, conditions, attitudes, consequences, comparisons across time. Anything a plain fact would not satisfy.
+When a question could be read either way, classify it contextual: a short factual answer to a question that deserved a fuller one is the worse mistake here.
+
+Discard anything that is not a question — stray dictation, filler, a comment about the weather. If they wrote nothing that is a question, return an empty array.`;
+
+/** Split one submission into separate, deduped, classified questions. */
+export async function parseInvestigation(raw: string): Promise<ParsedInvestigationQuestion[] | null> {
+  try {
+    const resp = await callClaude({
+      model: HAIKU,
+      max_tokens: 2000,
+      system: cachedSystem(INVESTIGATION_SYSTEM),
+      output_config: { format: { type: 'json_schema', schema: INVESTIGATION_SCHEMA } },
+      messages: [{ role: 'user', content: `The learner wrote:
+
+"""
+${raw}
+"""` }],
+    });
+    const text = ((resp.content || []) as Json[]).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    const out = JSON.parse(text) as { questions?: ParsedInvestigationQuestion[] };
+    return Array.isArray(out.questions) ? out.questions : null;
+  } catch (err) {
+    console.error('[investigation] parse failed:', err);
+    return null;
+  }
+}
+
+// ── Factual answer (Sonnet + search) — short, plain, sourced ──
+
+export interface FactualOutput {
+  answer: string;
+  sources: { url: string; name: string }[];
+}
+
+const FACTUAL_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    answer: { type: 'string' },
+    sources: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: { url: { type: 'string' }, name: { type: 'string' } },
+        required: ['url'],
+      },
+    },
+  },
+  required: ['answer', 'sources'],
+};
+
+const factualSystem = (maxWords: number) => `You answer one factual question about a place, plainly and briefly, for someone standing in front of it.
+
+ANSWER PLAINLY. State the fact and stop. No preamble, no "great question", no restating the question, no explanation of why it matters, no invitation to explore further. If the question is small — "who designed the church" — the answer is one sentence. Never more than ${maxWords} words.
+
+Write to be heard, not read: no markdown, no lists, no parentheses.
+
+SOURCES. Search before answering. Prefer reference works, universities, government and museum pages, and the institution's own site. Never use forums, question-and-answer sites, social media, or personal blogs, no matter how well they rank. Return the pages you actually used.
+
+WHEN YOU CANNOT. If searching does not settle it, return an empty answer rather than a hedge or a guess. Something else will handle it. Do not pad, do not speculate, and never present a likely answer as a settled one.
+
+You are not teaching and not contextualising. Another part of this app does that, at length, and it does it better than a short answer can. Your job is the fact.`;
+
+/** One search-and-answer call. Returns null on failure. */
+export async function factualAnswer(
+  question: string,
+  preferredDomains: string[],
+  maxWords: number,
+): Promise<FactualOutput | null> {
+  const domains = preferredDomains.map((d) => d.trim()).filter(Boolean).slice(0, 12);
+  const user =
+    `QUESTION: "${question}"
+
+`
+    + (domains.length ? `Sites worth checking first for this tour: ${domains.join(', ')}
+
+` : '')
+    + `Search, then answer in at most ${maxWords} words — one sentence if that is all the question needs. `
+    + `Return the answer and the pages you used. If you cannot settle it, return an empty answer.`;
+  try {
+    const resp = await callClaude({
+      model: SONNET,
+      max_tokens: 1500,
+      system: cachedSystem(factualSystem(maxWords)),
+      // Low effort on purpose: this is a lookup. The depth that makes the
+      // Detective good is exactly what makes it slow, and none of it is wanted here.
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: FACTUAL_SCHEMA } },
+      tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+      messages: [{ role: 'user', content: user }],
+    });
+    const text = ((resp.content || []) as Json[]).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    if (!text) return null;
+    const out = JSON.parse(text) as FactualOutput;
+    return { answer: out.answer || '', sources: Array.isArray(out.sources) ? out.sources : [] };
+  } catch (err) {
+    console.error('[factual] call failed:', err);
+    return null;
+  }
+}
