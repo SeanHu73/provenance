@@ -151,25 +151,50 @@ export default function ActReflectionCard({ onSave, onDone }: Props) {
             <div className="mt-5 -mx-4 px-4 flex gap-3 overflow-x-auto cj-hscroll pb-2" style={{ scrollSnapType: 'x mandatory' }}>
               {prompts.map((p) => {
                 const done = answeredIds.has(p.id);
+                // The evidence prompt wears the dark card, like Create your own.
+                // Those two are the pair that ask the learner to make something
+                // rather than to answer one of the tour's questions, and the white
+                // cards are the tour's questions. Sorting by colour rather than by
+                // who authored it is what the carousel already communicates.
+                const dark = p.kind === 'evidence';
                 return (
                   <button
                     key={p.id}
                     onClick={() => setSelected({ id: p.id, text: p.prompt, isCustom: false, actId: p.actId, kind: p.kind })}
                     className="shrink-0 w-[85%] rounded-2xl px-6 py-8 text-center shadow-md flex flex-col items-center justify-center"
-                    style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always', backgroundColor: 'var(--th-surface)', border: '1px solid var(--th-border)', minHeight: '54vh' }}
+                    style={{
+                      scrollSnapAlign: 'center', scrollSnapStop: 'always', minHeight: '54vh',
+                      backgroundColor: dark ? 'var(--th-journal)' : 'var(--th-surface)',
+                      ...(dark ? {} : { border: '1px solid var(--th-border)' }),
+                    }}
                   >
                     {p.photoUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.photoUrl} alt="" className="w-full max-h-44 object-cover rounded-xl mb-6" />
                     )}
-                    <p className="font-serif leading-relaxed" style={{ fontSize: 26, color: 'var(--text-primary)' }}><FormattedText text={p.prompt} /></p>
+                    <p
+                      className={dark ? 'font-serif italic leading-relaxed' : 'font-serif leading-relaxed'}
+                      style={{ fontSize: dark ? 23 : 26, color: dark ? 'var(--th-surface)' : 'var(--text-primary)' }}
+                    >
+                      <FormattedText text={p.prompt} />
+                    </p>
                     {done ? (
-                      <span className="mt-8 inline-flex items-center gap-1.5 px-6 py-3 rounded-full text-base font-semibold border-2" style={{ color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}>
+                      <span
+                        className="mt-8 inline-flex items-center gap-1.5 px-6 py-3 rounded-full text-base font-semibold border-2"
+                        style={dark
+                          ? { color: 'var(--th-secondary)', borderColor: 'var(--th-secondary)' }
+                          : { color: 'var(--th-primary)', borderColor: 'var(--th-primary)' }}
+                      >
                         ✓ Answered — add another
                       </span>
                     ) : (
-                      <span className="mt-8 inline-flex items-center gap-1.5 px-6 py-3 rounded-full text-base font-semibold text-white" style={{ backgroundColor: 'var(--th-primary)' }}>
-                        Respond
+                      <span
+                        className="mt-8 inline-flex items-center gap-1.5 px-6 py-3 rounded-full text-base font-semibold"
+                        style={dark
+                          ? { backgroundColor: 'var(--th-secondary)', color: 'var(--th-journal)' }
+                          : { backgroundColor: 'var(--th-primary)', color: '#fff' }}
+                      >
+                        {dark ? 'Make your stop' : 'Respond'}
                         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><path d="M9 6l6 6-6 6" /></svg>
                       </span>
                     )}
