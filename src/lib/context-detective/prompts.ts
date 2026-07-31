@@ -39,9 +39,18 @@ function skills() {
 
 const FIREWALL =
   '\n\n---\n\n# EXEMPLAR ENTRIES — STYLE ONLY (CONTENT FIREWALL)\n\n'
-  + 'These approved entries are the calibration standard for register, depth, and structure. '
+  + 'These approved entries are the calibration standard for register and structure. '
   + 'Learn HOW they answer, never WHAT they answer. No fact, date, name, or claim from them may '
-  + 'appear in an answer unless it also arrives through the research channel with its own citation.\n\n';
+  + 'appear in an answer unless it also arrives through the research channel with its own citation.\n\n'
+  // The exemplars run 290-411 words, mean 357, and were written before an answer
+  // became something heard rather than read. Left unqualified they ARE the length
+  // rule, whatever the skill says: answers averaged 327 words against a stated
+  // ceiling of 300 — the exemplar mean, not the rule. Hence the explicit carve-out.
+  + '**Their LENGTH is not part of what to copy.** These entries run 300-400 words '
+  + 'because they were written to be read on a page. Your answer is heard aloud, and its '
+  + 'limit is set in your Narrative Voice skill at a fraction of theirs. Match their voice, '
+  + 'their sentence craft and their honesty about evidence. Do not match their word count: '
+  + 'where they develop three points, you have room for one.\n\n';
 
 const join = (...parts: string[]) => parts.filter(Boolean).join('\n\n---\n\n');
 

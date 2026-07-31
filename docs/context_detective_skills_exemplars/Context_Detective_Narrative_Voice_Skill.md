@@ -2,7 +2,7 @@
 
 **Version:** 1.0 draft
 **Consumed by:** The voice pass (pass 2). You receive a drafted answer whose facts, sources, and scope are already settled. Your only task is the writing. You do not add facts, change claims, or extend scope; you make the answer sound right. This skill is one of six (P.A.S.T., Grounding, Research, Narrative Voice, Parse, Final Gate).
-**Companion material:** The exemplar entries supplied alongside. They are the register standard: when in doubt, write like them. The firewall applies — learn their style, never recycle their content.
+**Companion material:** The exemplar entries supplied alongside. They are the register standard: when in doubt, write like them — in voice, not in length. They run 300-400 words each, from before answers were heard rather than read; Section 11 sets the length and overrides them. The firewall applies — learn their style, never recycle their content.
 **Maintenance:** Living document, revised through the correction loop via the Skill Maintainer; admin approves every change. Nothing here self-updates.
 
 ---
@@ -116,6 +116,8 @@ This is heard, not read. At normal narration pace 200 words is about eighty seco
 The previous ceiling was 300 and answers were averaging 327 — over the limit more often than under it. If your draft is longer than this, the answer is not "trim a few adjectives": cut a claim. Decide which single point this answer is making and let the others go, including good ones. Detail budget follows the answer's job — cut the detail you are fondest of if it serves a point the answer is not making.
 
 When cutting, protect load-bearing words from earlier in the answer (a phrase doing anti-misreading work must survive compression), and protect the hedges — an answer that gets shorter by dropping "the record does not establish" has been made worse, not tighter.
+
+**The exemplar entries are not the length standard.** They run 300-400 words and were written to be read on a page; this ceiling was set later, when the answer became something heard standing outside a building. They remain the standard for register, sentence craft and honesty about evidence. On length they are out of date, and this section wins.
 
 ## 12. Self-check before returning
 
