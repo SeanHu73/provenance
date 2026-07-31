@@ -215,13 +215,19 @@ export function ResearchBackendMenuItem() {
         </svg>
       </span>
       <span className="flex-1 min-w-0">
+        {/* Named by number, not by vendor: the label is on screen during a live
+            tour, and which engine is behind which mode is nobody's business but
+            the admin's. 1 = Claude, 2 = Perplexity. */}
         <span className="block font-semibold text-text-primary">
-          Research: {backend === null ? 'loading…' : on ? 'Perplexity' : 'Claude'}
+          Research mode {backend === null ? '…' : on ? '2' : '1'}
         </span>
         <span className="block text-xs text-text-secondary leading-snug">
           {backend === null
             ? 'Reading the global setting…'
             : `Applies to everyone, everywhere${changedAt ? ` · set ${new Date(changedAt).toLocaleString()}` : ''}`}
+        </span>
+        <span className="block text-[11px] text-text-secondary opacity-70 leading-snug mt-0.5">
+          Tap to switch to mode {on ? '1' : '2'}
         </span>
       </span>
       <span className="shrink-0 w-10 h-6 rounded-full p-0.5 transition-colors" style={{ backgroundColor: on ? '#0ea5e9' : 'var(--th-border)' }}>

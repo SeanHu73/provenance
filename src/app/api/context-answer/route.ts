@@ -49,6 +49,19 @@ interface Candidate {
   score: number;
 }
 
+/** A citation's href, or undefined. Accepts a full URL, and promotes a bare
+ *  domain ("stanford.edu/…") to one — the model writes both, and only the first
+ *  is a working link. Anything that isn't plausibly a web address (a book title,
+ *  an archive box number) returns undefined and renders as plain text. */
+function linkOf(raw?: string): string | undefined {
+  const v = (raw || '').trim();
+  if (!v) return undefined;
+  if (/^https?:\/\//i.test(v)) return v;
+  // A domain, optionally with a path — no spaces, a dot, and a plausible TLD.
+  if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(v) && /\.[a-z]{2,}(\/|$)/i.test(v)) return `https://${v}`;
+  return undefined;
+}
+
 const candidateText = (c: { title: string; summary: string; explanation: string }) =>
   `${c.title}\n\n${c.summary}\n\n${c.explanation}`.trim();
 
@@ -432,7 +445,14 @@ export async function POST(req: Request) {
 
     if (setting === 'perplexity') {
       const findings = await perplexitySearch({ question, domains: preferredDomains });
-      if (findings) {
+      // Findings with no citations are worse than no findings: the drafting pass
+      // has an answer in front of it and nothing to attribute it to, so it either
+      // banks or writes an uncited draft — which is exactly the failure this
+      // backend was supposed to remove. Treat it as a failed search.
+      if (findings && !findings.sources.length) {
+        console.warn('[detective] perplexity returned an answer with no citations — treating as a failed search');
+      }
+      if (findings?.sources.length) {
         const synthUser =
           askBlock
           + `${findingsBlock(findings)}\n\n`
@@ -472,10 +492,24 @@ export async function POST(req: Request) {
     research.relevanceNote = relevanceNote;
 
     const entryLens: PastLens = requestLens || research.leadLens;
-    const sources: DetectiveSource[] = (research.sources || []).map((s: ResearchSource) => ({
-      kind: s.kind, id: s.id || undefined, url: s.url || undefined, name: s.name || undefined,
-      author: s.author || undefined, date: s.date || undefined, verified: s.verified,
-    }));
+    // Resolve a link for every citation. A source the learner can't tap is not a
+    // citation, it's a claim with a title attached — and there were three ways to
+    // end up with one: a verified-base citation carries an entry/context id rather
+    // than a URL, the model sometimes puts the link in `name` and leaves `url`
+    // empty, and a bare domain isn't a href. Fix all three here, once, rather than
+    // in each of the two places sources are rendered.
+    const sources: DetectiveSource[] = (research.sources || []).map((s: ResearchSource) => {
+      const fromBase = s.id ? ranked.find((c) => c.id === s.id)?.domains.find(Boolean) : undefined;
+      const url = linkOf(s.url) || linkOf(s.name) || linkOf(fromBase);
+      return {
+        kind: s.kind, id: s.id || undefined, url, name: s.name || undefined,
+        author: s.author || undefined, date: s.date || undefined, verified: s.verified,
+      };
+    });
+    const unlinked = sources.filter((s) => !s.url).length;
+    if (unlinked) {
+      console.warn(`[detective]   ⚠ ${unlinked}/${sources.length} source(s) have no link — they will render as plain titles`);
+    }
 
     // The model self-reports `branch`, and it gets it wrong: it has labelled answers
     // `verified-base` while citing web sources it had just searched. The branch drives

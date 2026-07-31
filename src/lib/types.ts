@@ -296,11 +296,14 @@ export interface DetectiveAnswer {
 }
 
 /** A logged Detective response for the admin review queue. */
-/** Which pipeline researched an answer. `claude` is the original — Sonnet with
- *  the web-search tool, looping until it submits. `perplexity` runs one Sonar
- *  search and hands its findings to a single Claude pass to draft from. Switched
- *  globally in the app settings, and recorded on every answer so the two can be
- *  compared on the same questions. */
+/** Which pipeline researched an answer. Shown to the admin as "Research mode 1"
+ *  (claude) and "Research mode 2" (perplexity) — the vendor names stay in the
+ *  code and out of the UI, since the toggle is on screen during a live tour.
+ *
+ *  `claude` is the original: Sonnet with the web-search tool, looping until it
+ *  submits. `perplexity` runs one Sonar search and hands its findings to a single
+ *  Claude pass to draft from. Switched globally in the app settings, and recorded
+ *  on every answer so the two can be compared on the same questions. */
 export type ResearchBackend = 'claude' | 'perplexity';
 
 export interface DetectiveLog extends DetectiveAnswer {
