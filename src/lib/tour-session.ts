@@ -496,7 +496,7 @@ export function reflectionPromptsOf(act: Act | null): ReflectionPrompt[] {
 export const EVIDENCE_PROMPT_ID = '__evidence__';
 export const EVIDENCE_PROMPT: MergedReflectionPrompt = {
   id: EVIDENCE_PROMPT_ID,
-  prompt: 'Take a picture of something you saw that you also learned from the context! Make your own stop!',
+  prompt: '**Take a picture** of something you saw that you also learned from the context! Make your own stop!',
   kind: 'evidence',
 };
 

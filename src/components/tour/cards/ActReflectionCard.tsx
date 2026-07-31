@@ -173,7 +173,7 @@ export default function ActReflectionCard({ onSave, onDone }: Props) {
                       <img src={p.photoUrl} alt="" className="w-full max-h-44 object-cover rounded-xl mb-6" />
                     )}
                     <p
-                      className={dark ? 'font-serif italic leading-relaxed' : 'font-serif leading-relaxed'}
+                      className="font-serif leading-relaxed"
                       style={{ fontSize: dark ? 23 : 26, color: dark ? 'var(--th-surface)' : 'var(--text-primary)' }}
                     >
                       <FormattedText text={p.prompt} />
