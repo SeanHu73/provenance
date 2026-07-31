@@ -782,7 +782,9 @@ export default function ContextJournal({ tourId, actId, authored, inTour, revisi
                   color: 'var(--ds-grey)',
                 }}
               >
-                Ask your own question before continuing
+                {/* "another", not "your own": by the time they reach this gate
+                    they have already asked several, at the opening investigation. */}
+                Ask another question before continuing
               </p>
             ) : (
               <>

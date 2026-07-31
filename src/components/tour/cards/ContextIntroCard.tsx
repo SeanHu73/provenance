@@ -25,6 +25,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LENSES } from '@/features/context-journal/constants';
+import type { PastCategory } from '@/features/context-journal/types';
 import PastReveal from '@/components/onboarding/PastReveal';
 import PastLensAnimation, { hasPastLensAnimation, type PastLens } from '@/components/onboarding/PastLensAnimation';
 
@@ -209,6 +210,88 @@ interface Props {
   /** This act's authored context questions, grouped by lens key, shown on the
    *  lens cards (the generic sample questions live on the journal's lens card). */
   questionsByLens?: Record<string, string[]>;
+  /** The learner's OWN contextual questions from the opening investigation, shown
+   *  unanswered on the filing screen so they can put each one in a lens. */
+  ownQuestions?: { id: string; text: string; lens?: PastCategory }[];
+  /** They filed one. */
+  onFileQuestion?: (id: string, lens: PastCategory) => void;
+}
+
+/**
+ * The filing screen — the learner's own questions, and the four lenses.
+ *
+ * It comes after the lens cards and before the journal, and it is the first time
+ * the P.A.S.T. is asked to do any work: not "here is what the lenses mean" but
+ * "where does YOUR question belong". Answers are deliberately absent — reading an
+ * answer would settle the question, and settling it is what makes the sorting
+ * pointless.
+ *
+ * Continuing is allowed with questions unfiled. The point is the attempt; a gate
+ * would turn a thinking exercise into a form to complete.
+ */
+function LensFiling({
+  questions, onFile, onDone,
+}: {
+  questions: { id: string; text: string; lens?: PastCategory }[];
+  onFile?: (id: string, lens: PastCategory) => void;
+  onDone: () => void;
+}) {
+  const [filed, setFiled] = useState<Record<string, PastCategory>>(
+    () => Object.fromEntries(questions.filter((q) => q.lens).map((q) => [q.id, q.lens as PastCategory])),
+  );
+  const file = (id: string, lens: PastCategory) => {
+    setFiled((prev) => ({ ...prev, [id]: lens }));
+    onFile?.(id, lens);
+  };
+
+  return (
+    <>
+      <p
+        className="font-serif italic leading-snug"
+        style={{ fontSize: 'clamp(20px, 5.4vw, 28px)', color: INK, maxWidth: '22ch' }}
+      >
+        Can you find a place in the <span className="font-bold not-italic">P.A.S.T.</span> for your questions?
+      </p>
+
+      <div className="mt-6 space-y-4 overflow-y-auto" style={{ maxHeight: '58vh' }}>
+        {questions.length === 0 ? (
+          <p className="font-serif italic text-[15px]" style={{ color: INK, opacity: 0.6 }}>
+            You have no questions waiting — you can ask one in the journal.
+          </p>
+        ) : questions.map((q) => (
+          <div key={q.id}>
+            <p className="font-serif leading-snug" style={{ fontSize: 16, color: INK }}>{q.text}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {LENSES.map((lens) => {
+                const on = filed[q.id] === lens.key;
+                return (
+                  <button
+                    key={lens.key}
+                    onClick={() => file(q.id, lens.key as PastCategory)}
+                    aria-pressed={on}
+                    className="px-3 py-1.5 rounded-full text-[13px] font-semibold border-2 transition-colors"
+                    style={on
+                      ? { backgroundColor: lens.colour, borderColor: lens.colour, color: '#fff' }
+                      : { borderColor: lens.colour, color: lens.colour }}
+                  >
+                    {lens.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={onDone}
+        className="mt-8 w-full py-4 rounded-full text-[18px] font-semibold"
+        style={{ backgroundColor: CONTEXT_ACCENT, color: 'var(--th-journal)' }}
+      >
+        Let&rsquo;s recreate the P.A.S.T.
+      </button>
+    </>
+  );
 }
 
 /** The framing splash that ushers in the journal: "look through the P.A.S.T." then
@@ -233,7 +316,7 @@ function GuidingSplash({ theme, visible }: { theme: string; visible: boolean }) 
   );
 }
 
-export default function ContextIntroCard({ onComplete, returning = false, guidingQuestion, questionsByLens = {} }: Props) {
+export default function ContextIntroCard({ onComplete, returning = false, guidingQuestion, questionsByLens = {}, ownQuestions = [], onFileQuestion }: Props) {
   const [mounted, setMounted] = useState(false);
   const [sitIn, setSitIn] = useState(false);
   const [howIn, setHowIn] = useState(false);
@@ -547,28 +630,23 @@ export default function ContextIntroCard({ onComplete, returning = false, guidin
       </section>
       )}
 
-      {/* 6 — Try it out */}
+      {/* 6 — File your own questions into the P.A.S.T.
+             This replaces the old "Ready to recreate the past?" screen. That one
+             asked for assent; this asks them to use what they have just been
+             taught, on their own material, before they see a single answer.
+             Their questions are shown unanswered on purpose — sorting a question
+             into a lens is a different thought from reading its answer, and doing
+             the second first would spoil the first. */}
       {!returning && (
       <section
-        className="relative min-h-[100dvh] flex flex-col items-center justify-center text-center px-8"
+        className="relative min-h-[100dvh] flex flex-col justify-center px-7 py-10"
         style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
-        <p className="font-serif" style={{ fontSize: 'clamp(20px, 5.2vw, 27px)', color: INK, opacity: 0.9 }}>
-          Now let&rsquo;s try it out for this tour!
-        </p>
-        <p className="font-display leading-tight mt-6" style={{ fontSize: 'clamp(28px, 8vw, 46px)', color: INK, fontWeight: 700, maxWidth: '18ch' }}>
-          Ready to <span className="italic">recreate</span> the past?
-        </p>
-        {/* Brings up the guiding-theme splash as a screen above the journal, then
-            into the journal — no extra scroll slide. Straight to the journal if
-            there's no guiding theme to frame. */}
-        <button
-          onClick={() => (guidingQuestion ? setShowGuiding(true) : onComplete())}
-          className="mt-10 px-12 py-4 rounded-full text-[18px] font-semibold"
-          style={{ backgroundColor: CONTEXT_ACCENT, color: 'var(--th-journal)' }}
-        >
-          Ask my own question
-        </button>
+        <LensFiling
+          questions={ownQuestions}
+          onFile={onFileQuestion}
+          onDone={() => (guidingQuestion ? setShowGuiding(true) : onComplete())}
+        />
       </section>
       )}
 

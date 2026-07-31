@@ -16,7 +16,8 @@ import { useTour } from '@/context/TourContext';
 import { getActiveStops, getTourMode } from '@/lib/tours-store';
 import type { Stop } from '@/lib/types';
 import { hasBridgeContent, nextPhaseWouldBeWhatsNext, findActOfStop, getActs, getActContexts, getAdditionalStops, getContextOrderedStops, getLogicalStops, actReflectionsOf, investigationReturnQuestions } from '@/lib/tour-session';
-import { useInvestigation } from '@/lib/investigation-store';
+import { useInvestigation, setInvestigationLens } from '@/lib/investigation-store';
+import type { PastCategory } from '@/features/context-journal/types';
 import MeetGuideCard from './cards/MeetGuideCard';
 import GuideOutroCard from './cards/GuideOutroCard';
 import EqSceneCard from './cards/EqSceneCard';
@@ -462,7 +463,16 @@ export default function Journal({ onMapPeek }: JournalProps) {
             (questionsByLens[e.pastCategory] ??= []).push(q);
           }
           return (
-            <ContextIntroCard onComplete={completeContextIntro} returning={!!session.contextIntroSeen} guidingQuestion={introGuiding} questionsByLens={questionsByLens} />
+            <ContextIntroCard
+            onComplete={completeContextIntro}
+            returning={!!session.contextIntroSeen}
+            guidingQuestion={introGuiding}
+            questionsByLens={questionsByLens}
+            ownQuestions={liveQuestions
+              .filter((q) => q.kind === 'contextual' && q.status !== 'later')
+              .map((q) => ({ id: q.id, text: q.text, lens: q.lens as PastCategory | undefined }))}
+            onFileQuestion={(id, lens) => setInvestigationLens(id, lens)}
+          />
           );
         })()}
 
