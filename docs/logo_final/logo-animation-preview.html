@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logo animation</title>
+<style>
+  body { margin: 0; background: #f9f6ef; color: #2e2d29; font: 16px/1.5 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 40px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p { margin: 0 0 20px; color: #55514a; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  figure { margin: 0; background: #fff; border-radius: 20px; padding: 20px; text-align: center; }
+  figure img { width: 100%; max-width: 240px; aspect-ratio: 1; }
+  figcaption { font-weight: 700; margin-top: 8px; }
+  button { margin-top: 24px; font: 700 16px system-ui; border: 0; border-radius: 999px; padding: 12px 22px; background: #9e2b25; color: #fff; cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Provenance logo, drawn in</h1>
+  <p>The pin is drawn first, then the question mark, then the dot.</p>
+  <div class="row">
+    <figure><img data-src="provenance-enso-mark-animated.svg" alt="The mark drawn in; the dot appears"><figcaption>The dot appears</figcaption></figure>
+    <figure><img data-src="provenance-enso-mark-animated-drop.svg" alt="The mark drawn in; the dot drops in"><figcaption>The dot drops in</figcaption></figure>
+    <figure><img src="provenance-enso-mark.svg" alt="The finished mark"><figcaption>Still</figcaption></figure>
+  </div>
+  <button type="button" id="again">Play again</button>
+</main>
+<script>
+  // Reloading each image restarts its animation.
+  const play = () => document.querySelectorAll('img[data-src]').forEach((img) => (img.src = img.dataset.src + '?' + Date.now()));
+  document.getElementById('again').addEventListener('click', play);
+  play();
+</script>
+</body>
+</html>
